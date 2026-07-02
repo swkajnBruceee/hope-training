@@ -83,10 +83,11 @@ def calibrate_ball_physics(
         v2 = np.array(drag_v2)
         k = float(np.dot(a_mag, v2) / np.dot(v2, v2))
     else:
-        k = 0.5
+        k = BallPhysics().k
 
-    C_h = float(np.median(h_restitution)) if h_restitution else 0.75
-    C_v = float(np.median(v_restitution)) if v_restitution else 0.85
+    defaults = BallPhysics()
+    C_h = float(np.median(h_restitution)) if h_restitution else defaults.C_h
+    C_v = float(np.median(v_restitution)) if v_restitution else defaults.C_v
 
     return BallPhysics(k=k, C_h=C_h, C_v=C_v)
 

@@ -35,10 +35,10 @@ class HOPEPlannerNode(Node):
         self.declare_parameter("target_land_x", 2.055)
         self.declare_parameter("target_land_y", -0.7625)
         self.declare_parameter("delta_t_flight", 0.5)
-        self.declare_parameter("drag_k", 0.5)
-        self.declare_parameter("restitution_h", 0.75)
-        self.declare_parameter("restitution_v", 0.85)
-        self.declare_parameter("restitution_racket", 0.88)
+        self.declare_parameter("drag_k", 0.09375)
+        self.declare_parameter("restitution_h", 0.649)
+        self.declare_parameter("restitution_v", 0.906)
+        self.declare_parameter("restitution_racket", 0.842)
 
         self._ball_index = int(self.get_parameter("ball_pose_index").value)
 

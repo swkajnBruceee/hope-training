@@ -350,6 +350,11 @@ class TableTennisEnvCfg(ManagerBasedRLEnvCfg):
 
     # Ball aerodynamics (applied per physics substep by TableTennisEnv).
     ball_aerodynamics: BallAerodynamicsCfg = BallAerodynamicsCfg()
+    # Optional ROS 2 truth stream for downstream consumers such as trajectory predictors.
+    publish_ball_truth: bool = False
+    ball_truth_topic: str = "/ball/point"
+    ball_truth_frame_id: str = "world"
+    ball_truth_env_index: int = 0
 
     def __post_init__(self):
         # General.

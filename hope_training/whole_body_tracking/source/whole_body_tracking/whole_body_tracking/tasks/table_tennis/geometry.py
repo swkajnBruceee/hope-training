@@ -102,18 +102,21 @@ class ServeConfig:
     in the HOPE frame; velocities are in m/s in the HOPE frame. Ranges are sampled uniformly per reset.
     """
 
-    # Spawn box over the P2 half (so the ball travels toward the P1-side robot). Spawn height is well
-    # above the net top (0.1525 m) so the served arc clears the net at x = 1.37 for ~all resets.
-    pos_x_range: tuple[float, float] = (2.0, 2.4)
-    pos_y_range: tuple[float, float] = (-1.1, -0.4)
-    pos_z_range: tuple[float, float] = (0.55, 0.80)
-    # Launch velocity toward P1 (-X), roughly flat / slightly up so it clears the net then arcs down
-    # under gravity onto the P1 half, with small lateral spread.
-    vel_x_range: tuple[float, float] = (-5.0, -3.5)
-    vel_y_range: tuple[float, float] = (-0.4, 0.4)
-    vel_z_range: tuple[float, float] = (-0.2, 0.5)
+    # Default visualization serve: one fixed ball line toward the robot's forehand-middle hitting zone.
+    # Lower toss height and slightly faster incoming speed make the trajectory easier to inspect.
+    pos_x_range: tuple[float, float] = (2.22, 2.22)
+    pos_y_range: tuple[float, float] = (-1.02, -1.02)
+    pos_z_range: tuple[float, float] = (0.43, 0.43)
+    # Fixed launch velocity toward P1 (-X) with zero lateral drift and a small upward component so the
+    # first bounce lands consistently on the forehand-middle lane.
+    vel_x_range: tuple[float, float] = (-6.0, -6.0)
+    vel_y_range: tuple[float, float] = (0.0, 0.0)
+    vel_z_range: tuple[float, float] = (0.08, 0.08)
     # Optional initial spin (rad/s) about each HOPE axis; only matters if Magnus is enabled.
     spin_range: tuple[float, float] = (0.0, 0.0)
+    spin_x_range: tuple[float, float] | None = None
+    spin_y_range: tuple[float, float] | None = None
+    spin_z_range: tuple[float, float] | None = None
 
 
 @dataclass
@@ -123,11 +126,11 @@ class BounceMaterials:
     NOTE on restitution: PhysX applies a single (normal) restitution per contact pair, combined from
     the two materials' coefficients. With ``restitution_combine_mode="multiply"`` everywhere, the
     effective normal restitution of a ball<->surface bounce is ``ball.restitution * surface.restitution``.
-    We therefore set the *ball* restitution to the table normal-restitution target ``C_v = 0.85`` and the
+    We therefore set the *ball* restitution to the table normal-restitution target ``C_v = 0.906`` and the
     *table* restitution to 1.0, so a ball<->table bounce reproduces C_v, while the net (0.1) kills the
     ball and the floor (0.4) bounces it modestly.
 
-    The planner's horizontal restitution ``C_h = 0.75`` and ball<->racket ``C_r = 0.88`` are *not*
+    The planner's tangential retention ``C_h = 0.649`` and ball<->racket ``C_r = 0.842`` are *not*
     reproduced exactly: tangential (horizontal) velocity loss is governed by PhysX friction, not by a
     restitution coefficient, and the racket inherits the robot's contact material. Matching C_h / C_r
     exactly is a calibration TODO (a sim analogue of ``hope_planner.calibrate_ball_physics``); the
@@ -136,15 +139,13 @@ class BounceMaterials:
     """
 
     # Ball (dynamic). restitution == C_v target (vertical/normal restitution).
-    ball_restitution: float = 0.85
-    ball_static_friction: float = 0.08
-    ball_dynamic_friction: float = 0.06
+    ball_restitution: float = 0.906
+    ball_static_friction: float = 1.0
+    ball_dynamic_friction: float = 1.0
     # Table top.
     table_restitution: float = 1.0
-    # Low friction preserves horizontal speed through the bounce. The previous 0.5-0.6 values made
-    # incoming balls die on the table, so policies learned to chase unrealistic short balls.
-    table_static_friction: float = 0.08
-    table_dynamic_friction: float = 0.06
+    table_static_friction: float = 0.162
+    table_dynamic_friction: float = 0.162
     # Floor.
     floor_restitution: float = 0.4
     floor_static_friction: float = 0.8

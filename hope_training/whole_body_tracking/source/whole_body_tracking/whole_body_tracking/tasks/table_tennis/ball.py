@@ -7,7 +7,7 @@ matches the model the HOPE planner was calibrated against.
 
 Drag model (matches ``hope_planner.constants.BallPhysics`` / the planner's flight integrator):
 
-    a_drag = -k * |v| * v          (k = 0.5 s/m, fit from recorded trajectories)
+    a_drag = -k * |v| * v          (k = 0.09375 1/m, current no-spin fit)
     F_drag = m * a_drag = -m * k * |v| * v
 
 The planner **neglects spin**, so the Magnus (lift) term is **off by default**. It is provided as an
@@ -36,8 +36,8 @@ class BallAerodynamicsCfg:
     enabled: bool = True
     """Master switch. If False, the ball flies on PhysX gravity + contacts alone (still a valid scene)."""
 
-    drag_coefficient: float = 0.5
-    """Quadratic drag coefficient ``k`` (s/m). a_drag = -k|v|v. HOPE-calibrated default is 0.5."""
+    drag_coefficient: float = 0.09375
+    """Quadratic drag coefficient ``k`` (1/m). a_drag = -k|v|v."""
 
     magnus_coefficient: float = 0.0
     """Magnus/lift coefficient ``k_magnus``. a_magnus = k_magnus (omega x v). 0 disables spin lift

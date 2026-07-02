@@ -31,9 +31,9 @@ class BallPhysics:
     The HITTER paper uses 15 trajectories; more data improves robustness.
     """
 
-    k: float = 0.5               # aerodynamic drag coefficient (s/m), 0.3-0.8 for 40 mm ball
-    C_h: float = 0.75            # horizontal restitution coefficient
-    C_v: float = 0.85            # vertical restitution coefficient (magnitude)
+    k: float = 0.09375           # quadratic drag coefficient (1/m): a_drag = -k|v|v
+    C_h: float = 0.649           # table tangential velocity retention beta_table
+    C_v: float = 0.906           # table normal restitution e_table
     g: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, -9.81]))
     radius: float = 0.02         # ball radius, 40 mm diameter
     mass: float = 0.0027         # 2.7 g
@@ -59,5 +59,6 @@ class PlannerConfig:
         default_factory=lambda: np.array([2.055, -0.7625, 0.0])
     )                             # center of opponent's half
     delta_t_flight: float = 0.5   # desired post-strike flight time (s)
-    C_r: float = 0.88             # ball-racket coefficient of restitution
+    C_r: float = 0.842            # ball-racket normal restitution e_racket
     racket_radius: float = 0.075  # 7.5 cm paddle radius
+    racket_marker_plane_gap: float = 0.0365  # ball center to racket marker-plane contact gap (m)

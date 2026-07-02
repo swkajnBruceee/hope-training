@@ -10,12 +10,10 @@ hope_planner:
     target_land_x: 2.055   # opponent half-center X (fixed by table geometry)
     target_land_y: -0.7625 # opponent half-center Y (fixed by table geometry)
     delta_t_flight: 0.5    # desired return flight time (s); tune for your robot
-    # TODO(calibrate): drag + restitution. Defaults are reasonable starting points
-    # from the HITTER paper. HOW TO GET: record >=15 ball trajectories with the
-    # mocap, export to CSV (t,x,y,z), then run
-    #   ros2 run hope_planner hope_calibrate traj1.csv ... traj15.csv
-    # and paste the printed values here.
-    drag_k: 0.8781         # Calibrated from salvaged traj01 split into 15 toss chunks.
-    restitution_h: 0.8527  # Calibrated from salvaged traj01 split into 15 toss chunks.
-    restitution_v: 0.8518  # Calibrated from salvaged traj01 split into 15 toss chunks.
-    restitution_racket: 0.88  # TODO: calibrate (ball-racket restitution)
+    # Current no-spin model parameters:
+    # a_drag = -drag_k * |v| * v, table bounce uses beta_table/e_table, and
+    # racket impact uses e_racket. Magnus/spin is intentionally ignored here.
+    drag_k: 0.09375
+    restitution_h: 0.649
+    restitution_v: 0.906
+    restitution_racket: 0.842

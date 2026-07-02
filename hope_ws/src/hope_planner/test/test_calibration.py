@@ -50,7 +50,7 @@ def test_drag_free_flight_fits_near_zero_k():
 
 
 def test_restitution_recovered_from_synthetic_bounce():
-    # Far from the defaults (0.75 / 0.85): only passes if the bounce is detected.
+    # Far from the defaults: only passes if the bounce is detected.
     c_v_true, c_h_true = 0.60, 0.55
     t, p = _clean_bounce(c_v_true, c_h_true)
     phys = calibrate_ball_physics([p], [t])
@@ -60,4 +60,4 @@ def test_restitution_recovered_from_synthetic_bounce():
 
 def test_empty_input_returns_defaults():
     phys = calibrate_ball_physics([], [])
-    assert phys.k == 0.5 and phys.C_h == 0.75 and phys.C_v == 0.85
+    assert phys.k == 0.09375 and phys.C_h == 0.649 and phys.C_v == 0.906
