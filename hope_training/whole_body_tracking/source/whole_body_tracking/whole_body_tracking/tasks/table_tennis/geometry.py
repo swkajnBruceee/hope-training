@@ -137,12 +137,14 @@ class BounceMaterials:
 
     # Ball (dynamic). restitution == C_v target (vertical/normal restitution).
     ball_restitution: float = 0.85
-    ball_static_friction: float = 0.5
-    ball_dynamic_friction: float = 0.5
+    ball_static_friction: float = 0.08
+    ball_dynamic_friction: float = 0.06
     # Table top.
     table_restitution: float = 1.0
-    table_static_friction: float = 0.6
-    table_dynamic_friction: float = 0.5
+    # Low friction preserves horizontal speed through the bounce. The previous 0.5-0.6 values made
+    # incoming balls die on the table, so policies learned to chase unrealistic short balls.
+    table_static_friction: float = 0.08
+    table_dynamic_friction: float = 0.06
     # Floor.
     floor_restitution: float = 0.4
     floor_static_friction: float = 0.8

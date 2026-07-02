@@ -43,6 +43,30 @@ def _rewrite_mesh_paths(text: str) -> str:
     return re.sub(r"package://[^/]+/meshes/", "../meshes/", text)
 
 
+def _sanitize_fixed_joint_axes(text: str) -> str:
+    """Replace malformed/empty/zero axes on fixed joints with a valid placeholder.
+
+    Isaac Sim's URDF importer validates the axis string even for fixed joints,
+    and the Agibot-provided URDF contains empty, single-value, or zero-vector
+    axes that cause import failures. A fixed joint has no rotational DOF, so
+    the axis value is arbitrary as long as it parses.
+    """
+
+    def _fix_joint(match: re.Match) -> str:
+        joint_block = match.group(0)
+        # Only touch fixed joints.
+        if 'type="fixed"' not in joint_block:
+            return joint_block
+        # Replace any <axis xyz="..."/> with a valid unit vector.
+        joint_block = re.sub(r'<axis\s+xyz="[^"]*"\s*/?>', '<axis xyz="0 0 1"/>', joint_block)
+        # Some axes in the source are not self-closed.
+        joint_block = re.sub(r'<axis\s+xyz="[^"]*">', '<axis xyz="0 0 1">', joint_block)
+        return joint_block
+
+    # Match each <joint ...>...</joint> block (non-greedy inner match).
+    return re.sub(r"<joint\b[^>]*>.*?</joint>", _fix_joint, text, flags=re.DOTALL)
+
+
 def prepare(source: Path, dest: Path, force: bool) -> Path:
     if not source.exists():
         raise FileNotFoundError(f"source package not found: {source}")
@@ -66,6 +90,7 @@ def prepare(source: Path, dest: Path, force: bool) -> Path:
     urdf_dest_dir = dest / "urdf"
     urdf_dest_dir.mkdir(parents=True, exist_ok=True)
     text = _rewrite_mesh_paths(source_urdf.read_text(encoding="utf-8"))
+    text = _sanitize_fixed_joint_axes(text)
     model_urdf = urdf_dest_dir / DEST_URDF
     model_urdf.write_text(text, encoding="utf-8")
     return model_urdf

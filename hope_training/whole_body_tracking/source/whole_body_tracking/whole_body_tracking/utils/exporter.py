@@ -87,6 +87,12 @@ def list_to_csv_str(arr, *, decimals: int = 3, delimiter: str = ",") -> str:
 
 def attach_onnx_metadata(env: ManagerBasedRLEnv, run_path: str, path: str, filename="policy.onnx") -> None:
     onnx_path = os.path.join(path, filename)
+    robot_data = env.scene["robot"].data
+    default_joint_pos = getattr(robot_data, "default_joint_pos_nominal", None)
+    if default_joint_pos is None:
+        default_joint_pos = robot_data.default_joint_pos
+    if default_joint_pos.ndim > 1:
+        default_joint_pos = default_joint_pos[0]
 
     observation_names = env.observation_manager.active_terms["policy"]
     observation_history_lengths: list[int] = []
@@ -101,17 +107,19 @@ def attach_onnx_metadata(env: ManagerBasedRLEnv, run_path: str, path: str, filen
 
     metadata = {
         "run_path": run_path,
-        "joint_names": env.scene["robot"].data.joint_names,
-        "joint_stiffness": env.scene["robot"].data.joint_stiffness[0].cpu().tolist(),
-        "joint_damping": env.scene["robot"].data.joint_damping[0].cpu().tolist(),
-        "default_joint_pos": env.scene["robot"].data.default_joint_pos_nominal.cpu().tolist(),
+        "joint_names": robot_data.joint_names,
+        "joint_stiffness": robot_data.joint_stiffness[0].cpu().tolist(),
+        "joint_damping": robot_data.joint_damping[0].cpu().tolist(),
+        "default_joint_pos": default_joint_pos.cpu().tolist(),
         "command_names": env.command_manager.active_terms,
         "observation_names": observation_names,
         "observation_history_lengths": observation_history_lengths,
         "action_scale": env.action_manager.get_term("joint_pos")._scale[0].cpu().tolist(),
-        "anchor_body_name": env.command_manager.get_term("motion").cfg.anchor_body_name,
-        "body_names": env.command_manager.get_term("motion").cfg.body_names,
     }
+    if "motion" in env.command_manager.active_terms:
+        motion = env.command_manager.get_term("motion")
+        metadata["anchor_body_name"] = motion.cfg.anchor_body_name
+        metadata["body_names"] = motion.cfg.body_names
 
     model = onnx.load(onnx_path)
 

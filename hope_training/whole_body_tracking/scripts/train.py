@@ -278,7 +278,7 @@ def _run(cfg):
 
     import whole_body_tracking  # noqa: F401
     import whole_body_tracking.tasks  # noqa: F401  -- registers the gym tasks
-    from whole_body_tracking.utils.my_on_policy_runner import MotionOnPolicyRunner as OnPolicyRunner
+    from whole_body_tracking.utils.my_on_policy_runner import MotionOnPolicyRunner, MyOnPolicyRunner
     from whole_body_tracking.utils.ppo_cfg import runner_kwargs
 
     torch.backends.cuda.matmul.allow_tf32 = True
@@ -318,6 +318,7 @@ def _run(cfg):
               f"strike_window_s={_C.strike_window_s}", flush=True)
     env_cfg.seed = int(cfg.seed)
     env_cfg.sim.device = str(cfg.device)
+    has_motion_command = hasattr(env_cfg.commands, "motion")
 
     # 2) PPO runner cfg from cfg.algo
     algo = OmegaConf.to_container(cfg.algo, resolve=True)
@@ -334,32 +335,35 @@ def _run(cfg):
         agent_cfg.wandb_project = str(cfg.log_project_name)
         agent_cfg.neptune_project = str(cfg.log_project_name)
 
-    # 3) motion source. Public smoke runs should pass motion_file=... and do not need WandB.
-    motion_file = cfg.motion_file if cfg.motion_file is not None else _get(cfg.task, "motion_file")
+    # 3) motion source. Motion-imitation tasks require a clip; pure table-tennis RL tasks do not.
     registry_name = None
-    if motion_file is not None:
-        motion_path = pathlib.Path(str(motion_file)).expanduser()
-        if not motion_path.is_absolute():
-            motion_path = pathlib.Path.cwd() / motion_path
-        if not motion_path.is_file():
-            raise FileNotFoundError(
-                f"motion_file does not exist: {motion_path}. "
-                "Generate the public smoke clip with scripts/create_smoke_motion.py or pass a retargeted .npz."
-            )
-        env_cfg.commands.motion.motion_file = str(motion_path)
-        registry_name = f"local:{motion_path}"
-        print(f"[train.py] using local motion_file: {motion_path}", flush=True)
-    else:
-        registry_name = cfg.registry_name if cfg.registry_name is not None else cfg.task.registry_name
-        registry_name = str(registry_name)
-        if ":" not in registry_name:
-            registry_name += ":latest"
-        print(f"[train.py] loading motion from WandB registry: {registry_name}", flush=True)
-        import wandb
+    if has_motion_command:
+        motion_file = cfg.motion_file if cfg.motion_file is not None else _get(cfg.task, "motion_file")
+        if motion_file is not None:
+            motion_path = pathlib.Path(str(motion_file)).expanduser()
+            if not motion_path.is_absolute():
+                motion_path = pathlib.Path.cwd() / motion_path
+            if not motion_path.is_file():
+                raise FileNotFoundError(
+                    f"motion_file does not exist: {motion_path}. "
+                    "Generate the public smoke clip with scripts/create_smoke_motion.py or pass a retargeted .npz."
+                )
+            env_cfg.commands.motion.motion_file = str(motion_path)
+            registry_name = f"local:{motion_path}"
+            print(f"[train.py] using local motion_file: {motion_path}", flush=True)
+        else:
+            registry_name = cfg.registry_name if cfg.registry_name is not None else cfg.task.registry_name
+            registry_name = str(registry_name)
+            if ":" not in registry_name:
+                registry_name += ":latest"
+            print(f"[train.py] loading motion from WandB registry: {registry_name}", flush=True)
+            import wandb
 
-        api = wandb.Api()
-        artifact = api.artifact(registry_name)
-        env_cfg.commands.motion.motion_file = str(pathlib.Path(artifact.download()) / "motion.npz")
+            api = wandb.Api()
+            artifact = api.artifact(registry_name)
+            env_cfg.commands.motion.motion_file = str(pathlib.Path(artifact.download()) / "motion.npz")
+    else:
+        print("[train.py] env has no motion command; running pure RL task without motion source.", flush=True)
 
     # 4) logging dir (same layout as scripts/rsl_rl/train.py so export/eval are unchanged)
     log_root_path = os.path.abspath(os.path.join("logs", "rsl_rl", agent_cfg.experiment_name))
@@ -383,9 +387,12 @@ def _run(cfg):
     env = RslRlVecEnvWrapper(env)
 
     runner_registry_name = None if registry_name and registry_name.startswith("local:") else registry_name
-    runner = OnPolicyRunner(
-        env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device, registry_name=runner_registry_name
-    )
+    if has_motion_command:
+        runner = MotionOnPolicyRunner(
+            env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device, registry_name=runner_registry_name
+        )
+    else:
+        runner = MyOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     runner.add_git_repo_to_log(__file__)
 
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)

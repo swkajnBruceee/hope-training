@@ -9,6 +9,8 @@ import torch
 from isaaclab.assets import Articulation, RigidObject
 from isaaclab.managers import SceneEntityCfg
 
+from .racket import racket_normal_w, racket_state_w
+
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
@@ -37,3 +39,50 @@ def robot_base_too_low(
     robot: Articulation = env.scene[asset_cfg.name]
     z_hope = robot.data.root_pos_w[:, 2] - env.scene.env_origins[:, 2]
     return z_hope < minimum_height
+
+
+def ball_touched_by_racket(
+    env: "ManagerBasedRLEnv",
+    distance_threshold: float,
+    min_forward_velocity: float,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    ball_cfg: SceneEntityCfg = SceneEntityCfg("ball"),
+) -> torch.Tensor:
+    """True when the racket is near the ball and the ball has been redirected toward +X."""
+    ball: RigidObject = env.scene[ball_cfg.name]
+    racket_pos_w, _, _ = racket_state_w(env, robot_cfg)
+    distance = torch.norm(ball.data.root_pos_w - racket_pos_w, dim=-1)
+    return (distance < distance_threshold) & (ball.data.root_lin_vel_w[:, 0] > min_forward_velocity)
+
+
+def ball_close_to_racket(
+    env: "ManagerBasedRLEnv",
+    distance_threshold: float,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    ball_cfg: SceneEntityCfg = SceneEntityCfg("ball"),
+) -> torch.Tensor:
+    """True when the racket center is close enough to the ball, independent of return direction."""
+    ball: RigidObject = env.scene[ball_cfg.name]
+    racket_pos_w, _, _ = racket_state_w(env, robot_cfg)
+    distance = torch.norm(ball.data.root_pos_w - racket_pos_w, dim=-1)
+    return distance < distance_threshold
+
+
+def ball_close_to_racket_face(
+    env: "ManagerBasedRLEnv",
+    lateral_threshold: float,
+    normal_threshold: float,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    ball_cfg: SceneEntityCfg = SceneEntityCfg("ball"),
+    normal_axis: int = 1,
+    normal_sign: float = 1.0,
+) -> torch.Tensor:
+    """True when the ball is close to the racket face plane and within the blade target area."""
+    ball: RigidObject = env.scene[ball_cfg.name]
+    racket_pos_w, _, _ = racket_state_w(env, robot_cfg)
+    normal_w = racket_normal_w(env, robot_cfg, normal_axis, normal_sign)
+    rel = ball.data.root_pos_w - racket_pos_w
+    signed_normal_dist = torch.sum(rel * normal_w, dim=-1)
+    lateral = rel - signed_normal_dist.unsqueeze(-1) * normal_w
+    lateral_dist = torch.norm(lateral, dim=-1)
+    return (lateral_dist < lateral_threshold) & (torch.abs(signed_normal_dist) < normal_threshold)

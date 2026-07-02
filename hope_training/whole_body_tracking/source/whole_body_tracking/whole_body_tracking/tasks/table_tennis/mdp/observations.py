@@ -10,6 +10,8 @@ from isaaclab.assets import Articulation, RigidObject
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils.math import quat_rotate_inverse
 
+from .racket import racket_normal_b, racket_position_b, racket_state_w, racket_velocity_b
+
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
@@ -35,3 +37,15 @@ def ball_velocity_b(
     robot: Articulation = env.scene[robot_cfg.name]
     ball: RigidObject = env.scene[ball_cfg.name]
     return quat_rotate_inverse(robot.data.root_quat_w, ball.data.root_lin_vel_w)
+
+
+def racket_to_ball_b(
+    env: "ManagerBasedRLEnv",
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    ball_cfg: SceneEntityCfg = SceneEntityCfg("ball"),
+) -> torch.Tensor:
+    """Vector from racket center to ball, expressed in the robot base frame. Shape ``(N, 3)``."""
+    robot: Articulation = env.scene[robot_cfg.name]
+    ball: RigidObject = env.scene[ball_cfg.name]
+    racket_pos_w, _, _ = racket_state_w(env, robot_cfg)
+    return quat_rotate_inverse(robot.data.root_quat_w, ball.data.root_pos_w - racket_pos_w)
