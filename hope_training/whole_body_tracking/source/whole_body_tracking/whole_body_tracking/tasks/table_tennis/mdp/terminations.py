@@ -86,3 +86,61 @@ def ball_close_to_racket_face(
     lateral = rel - signed_normal_dist.unsqueeze(-1) * normal_w
     lateral_dist = torch.norm(lateral, dim=-1)
     return (lateral_dist < lateral_threshold) & (torch.abs(signed_normal_dist) < normal_threshold)
+
+
+def ball_contacted_by_racket(
+    env: "ManagerBasedRLEnv",
+    sensor_cfg: SceneEntityCfg = SceneEntityCfg("racket_ball_contact"),
+    force_threshold: float = 0.05,
+    lateral_threshold: float = 0.10,
+    normal_threshold: float = 0.10,
+    normal_axis: int = 1,
+    normal_sign: float = 1.0,
+) -> torch.Tensor:
+    """True when the ball is under contact force while close to the racket face."""
+    sensor = env.scene.sensors[sensor_cfg.name]
+    forces = sensor.data.net_forces_w[:, sensor_cfg.body_ids]
+    force_contact = torch.linalg.norm(forces, dim=-1).amax(dim=-1) > force_threshold
+
+    ball: RigidObject = env.scene["ball"]
+    racket_pos_w, _, _ = racket_state_w(env)
+    normal_w = racket_normal_w(env, normal_axis=normal_axis, normal_sign=normal_sign)
+    rel = ball.data.root_pos_w - racket_pos_w
+    signed_normal_dist = torch.sum(rel * normal_w, dim=-1)
+    lateral = rel - signed_normal_dist.unsqueeze(-1) * normal_w
+    lateral_dist = torch.norm(lateral, dim=-1)
+    face_close = (lateral_dist < lateral_threshold) & (torch.abs(signed_normal_dist) < normal_threshold)
+    return force_contact & face_close
+
+
+def ball_contacted_by_racket_forward(
+    env: "ManagerBasedRLEnv",
+    min_forward_velocity: float,
+    sensor_cfg: SceneEntityCfg = SceneEntityCfg("racket_ball_contact"),
+    ball_cfg: SceneEntityCfg = SceneEntityCfg("ball"),
+) -> torch.Tensor:
+    """True when racket-ball contact is detected and the ball is moving toward +X."""
+    ball: RigidObject = env.scene[ball_cfg.name]
+    return ball_contacted_by_racket(env, sensor_cfg) & (ball.data.root_lin_vel_w[:, 0] > min_forward_velocity)
+
+
+def ball_returned_from_racket_face(
+    env: "ManagerBasedRLEnv",
+    min_forward_velocity: float = 0.2,
+    lateral_threshold: float = 0.10,
+    normal_threshold: float = 0.10,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    ball_cfg: SceneEntityCfg = SceneEntityCfg("ball"),
+    normal_axis: int = 1,
+    normal_sign: float = 1.0,
+) -> torch.Tensor:
+    """True when the ball is near the racket face and has been redirected toward +X."""
+    ball: RigidObject = env.scene[ball_cfg.name]
+    racket_pos_w, _, _ = racket_state_w(env, robot_cfg)
+    normal_w = racket_normal_w(env, robot_cfg, normal_axis, normal_sign)
+    rel = ball.data.root_pos_w - racket_pos_w
+    signed_normal_dist = torch.sum(rel * normal_w, dim=-1)
+    lateral = rel - signed_normal_dist.unsqueeze(-1) * normal_w
+    lateral_dist = torch.norm(lateral, dim=-1)
+    face_close = (lateral_dist < lateral_threshold) & (torch.abs(signed_normal_dist) < normal_threshold)
+    return face_close & (ball.data.root_lin_vel_w[:, 0] > min_forward_velocity)

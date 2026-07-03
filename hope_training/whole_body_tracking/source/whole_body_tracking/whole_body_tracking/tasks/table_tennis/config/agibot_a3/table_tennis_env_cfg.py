@@ -67,6 +67,8 @@ class HitFixedBaseObservationsCfg:
         racket_vel_b = ObsTerm(func=mdp.racket_velocity_b, noise=Unoise(n_min=-0.05, n_max=0.05))
         racket_normal_b = ObsTerm(func=mdp.racket_normal_b, noise=Unoise(n_min=-0.02, n_max=0.02))
         racket_to_ball_b = ObsTerm(func=mdp.racket_to_ball_b, noise=Unoise(n_min=-0.01, n_max=0.01))
+        predicted_hit_pos_b = ObsTerm(func=mdp.predicted_hit_position_b, noise=Unoise(n_min=-0.01, n_max=0.01))
+        time_to_hit = ObsTerm(func=mdp.time_to_hit, noise=Unoise(n_min=-0.01, n_max=0.01))
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -83,6 +85,8 @@ class HitFixedBaseObservationsCfg:
         racket_vel_b = ObsTerm(func=mdp.racket_velocity_b)
         racket_normal_b = ObsTerm(func=mdp.racket_normal_b)
         racket_to_ball_b = ObsTerm(func=mdp.racket_to_ball_b)
+        predicted_hit_pos_b = ObsTerm(func=mdp.predicted_hit_position_b)
+        time_to_hit = ObsTerm(func=mdp.time_to_hit)
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -124,47 +128,100 @@ class HitFixedBaseTerminationsCfg:
 
 @configclass
 class HitFixedBaseTouchRewardsCfg:
-    """Curriculum stage 1: learn to move the racket close to the incoming ball."""
+    """Curriculum stage 1: learn stable racket-ball contact with the right arm."""
 
-    alive = RewTerm(func=mdp.is_alive, weight=0.1)
-    racket_ball_proximity = RewTerm(func=mdp.racket_ball_proximity_exp, weight=2.0, params={"std": 0.18})
+    alive = RewTerm(func=mdp.is_alive, weight=0.03)
+    predicted_hit_position_coarse = RewTerm(
+        func=mdp.racket_predicted_hit_position_exp,
+        weight=2.5,
+        params={"std": 0.35, "hit_x": -0.10, "min_height": 0.12, "max_height": 0.40, "max_time": 0.45},
+    )
+    predicted_hit_position_fine = RewTerm(
+        func=mdp.racket_predicted_hit_position_exp,
+        weight=2.0,
+        params={"std": 0.07, "hit_x": -0.10, "min_height": 0.12, "max_height": 0.40, "max_time": 0.45},
+    )
+    predicted_hit_lateral = RewTerm(
+        func=mdp.racket_predicted_hit_lateral_exp,
+        weight=2.5,
+        params={
+            "std": 0.07,
+            "hit_x": -0.10,
+            "min_height": 0.12,
+            "max_height": 0.40,
+            "max_time": 0.45,
+            "normal_axis": 1,
+            "normal_sign": 1.0,
+        },
+    )
+    predicted_hit_face = RewTerm(
+        func=mdp.racket_predicted_hit_face_exp,
+        weight=8.0,
+        params={
+            "lateral_std": 0.055,
+            "normal_std": 0.045,
+            "target_normal_dist": 0.025,
+            "hit_x": -0.10,
+            "min_height": 0.12,
+            "max_height": 0.40,
+            "max_time": 0.45,
+            "normal_axis": 1,
+            "normal_sign": 1.0,
+        },
+    )
     racket_ball_plane_alignment = RewTerm(
         func=mdp.racket_ball_plane_alignment_exp,
-        weight=2.0,
-        params={"std": 0.09, "normal_axis": 1, "normal_sign": 1.0},
+        weight=0.8,
+        params={"std": 0.08, "normal_axis": 1, "normal_sign": 1.0},
     )
     racket_ball_face_contact = RewTerm(
         func=mdp.racket_ball_face_contact_exp,
-        weight=12.0,
-        params={"lateral_std": 0.08, "normal_std": 0.08, "normal_axis": 1, "normal_sign": 1.0},
+        weight=3.0,
+        params={"lateral_std": 0.06, "normal_std": 0.05, "normal_axis": 1, "normal_sign": 1.0},
     )
     racket_face_alignment = RewTerm(
         func=mdp.racket_face_alignment,
-        weight=0.5,
+        weight=1.0,
         params={"normal_axis": 1, "normal_sign": 1.0},
     )
-    racket_closing_speed = RewTerm(func=mdp.racket_closing_speed, weight=0.6, params={"max_speed": 6.0})
-    touch_close = RewTerm(
-        func=mdp.racket_ball_face_close,
-        weight=10.0,
+    racket_closing_speed = RewTerm(func=mdp.racket_closing_speed, weight=0.8, params={"max_speed": 6.0})
+    racket_forward_swing = RewTerm(
+        func=mdp.racket_forward_swing,
+        weight=1.0,
+        params={"max_speed": 4.0, "hit_x": -0.10, "max_time": 0.45},
+    )
+    racket_timed_forward_swing = RewTerm(
+        func=mdp.racket_timed_forward_swing,
+        weight=2.0,
+        params={"max_speed": 4.0, "hit_x": -0.10, "min_time": 0.02, "max_time": 0.18},
+    )
+    first_contact = RewTerm(func=mdp.racket_ball_first_contact, weight=60.0)
+    contact_forward_bonus = RewTerm(
+        func=mdp.contact_ball_forward, weight=20.0, params={"min_forward_velocity": 0.2}
+    )
+    face_forward_touch = RewTerm(
+        func=mdp.racket_face_ball_forward,
+        weight=35.0,
         params={
+            "min_forward_velocity": 0.2,
             "lateral_threshold": 0.10,
             "normal_threshold": 0.10,
             "normal_axis": 1,
             "normal_sign": 1.0,
         },
     )
-    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
+    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.003)
 
 
 @configclass
 class HitFixedBaseTouchTerminationsCfg:
-    """Terminate once the racket gets close to the ball, regardless of return direction."""
+    """Terminate once the racket physically contacts the ball."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     touch_success = DoneTerm(
-        func=mdp.ball_close_to_racket_face,
+        func=mdp.ball_returned_from_racket_face,
         params={
+            "min_forward_velocity": 0.2,
             "lateral_threshold": 0.10,
             "normal_threshold": 0.10,
             "normal_axis": 1,

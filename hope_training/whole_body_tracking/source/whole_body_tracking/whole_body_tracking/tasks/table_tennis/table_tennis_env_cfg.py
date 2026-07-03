@@ -33,6 +33,7 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sensors import ContactSensorCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
@@ -115,6 +116,7 @@ def build_ball_cfg(mats: BounceMaterials) -> RigidObjectCfg:
         init_state=RigidObjectCfg.InitialStateCfg(pos=(geometry.P2_HALF_CENTER[0], geometry.P2_HALF_CENTER[1], 0.35)),
         spawn=sim_utils.SphereCfg(
             radius=geometry.BALL_RADIUS,
+            activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
                 linear_damping=0.0,
@@ -193,6 +195,15 @@ class TableTennisSceneCfg(InteractiveSceneCfg):
 
     # Robot — filled per robot (see config/<robot>/table_tennis_env_cfg.py).
     robot: ArticulationCfg = MISSING
+
+    racket_ball_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Ball",
+        update_period=0.0,
+        history_length=4,
+        track_air_time=True,
+        force_threshold=0.05,
+        debug_vis=False,
+    )
 
     # Lights.
     light = AssetBaseCfg(
