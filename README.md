@@ -24,6 +24,16 @@ tracked. If you switch branches in an existing checkout and still see an ignored
 local folder, that usually means it is an untracked folder left on disk; it is
 not part of the tracked public starter contents.
 
+For two-person or team development, keep machine-specific paths in ignored local
+files and keep shared environment definitions in Git. See
+[docs/dev_environment.md](docs/dev_environment.md),
+[docs/development_workflow.md](docs/development_workflow.md), and
+[docs/dependency_policy.md](docs/dependency_policy.md). Before merging, run:
+
+```bash
+./scripts/check.sh
+```
+
 ## Public Starter Quickstart
 
 Start here:
