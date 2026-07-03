@@ -139,8 +139,11 @@ def _run_play(cfg, simulation_app):
     touch_term = getattr(getattr(env_cfg, "terminations", None), "touch_success", None)
     touch_params = getattr(touch_term, "params", {}) or {}
     touch_distance_threshold = float(touch_params.get("distance_threshold", 0.07))
-    face_lateral_threshold = float(touch_params.get("lateral_threshold", touch_distance_threshold))
-    face_normal_threshold = float(touch_params.get("normal_threshold", touch_distance_threshold))
+    # Contact-based touch tasks use ball_contacted_by_racket(), whose default geometry gate is 0.10 m.
+    # Older distance-based tasks used 0.07 m. Keep both paths aligned with their termination terms.
+    contact_gate_default = 0.10 if "racket_ball_contact" in env.unwrapped.scene.sensors else touch_distance_threshold
+    face_lateral_threshold = float(touch_params.get("lateral_threshold", contact_gate_default))
+    face_normal_threshold = float(touch_params.get("normal_threshold", contact_gate_default))
     normal_axis = int(touch_params.get("normal_axis", 1))
     normal_sign = float(touch_params.get("normal_sign", 1.0))
     touch_forward_velocity = float(touch_params.get("min_forward_velocity", 0.2))
@@ -149,9 +152,13 @@ def _run_play(cfg, simulation_app):
     min_face_normal_distance = float("inf")
     max_face_contact_score = float("-inf")
     max_ball_forward_velocity = float("-inf")
+    max_contact_force = 0.0
     close_count = 0
     face_close_count = 0
     forward_touch_like_count = 0
+    face_forward_count = 0
+    first_contact_count = 0
+    contact_forward_count = 0
     timestep = 0
     while simulation_app.is_running():
         with torch.inference_mode():
@@ -185,6 +192,18 @@ def _run_play(cfg, simulation_app):
             close_count += int(torch.sum(close).item())
             face_close_count += int(torch.sum(face_close).item())
             forward_touch_like_count += int(torch.sum(close & (ball_forward_velocity > touch_forward_velocity)).item())
+            face_forward_count += int(torch.sum(face_close & (ball_forward_velocity > touch_forward_velocity)).item())
+            contact_sensor = None
+            if "racket_ball_contact" in env.unwrapped.scene.sensors:
+                contact_sensor = env.unwrapped.scene.sensors["racket_ball_contact"]
+            if contact_sensor is not None:
+                contact_force = torch.linalg.norm(contact_sensor.data.net_forces_w, dim=-1).amax(dim=-1)
+                racket_contact = (contact_force > 0.05) & face_close
+                max_contact_force = max(max_contact_force, float(torch.max(contact_force).item()))
+                first_contact_count += int(torch.sum(racket_contact).item())
+                contact_forward_count += int(
+                    torch.sum(racket_contact & (ball_forward_velocity > touch_forward_velocity)).item()
+                )
         if cfg.video:
             frame = env.unwrapped.render()
             if frame is not None:
@@ -220,9 +239,13 @@ def _run_play(cfg, simulation_app):
         f"min_face_normal_distance={min_face_normal_distance:.4f} m, "
         f"max_face_contact_score={max_face_contact_score:.4f}, "
         f"max_ball_forward_velocity={max_ball_forward_velocity:.4f} m/s, "
+        f"max_contact_force={max_contact_force:.4f} N, "
         f"close_count={close_count}, "
         f"face_close_count={face_close_count}, "
-        f"forward_touch_like_count={forward_touch_like_count} "
+        f"forward_touch_like_count={forward_touch_like_count}, "
+        f"face_forward_count={face_forward_count}, "
+        f"first_contact_count={first_contact_count}, "
+        f"contact_forward_count={contact_forward_count} "
         f"(thresholds: distance<{touch_distance_threshold:.3f} m, "
         f"face_lateral<{face_lateral_threshold:.3f} m, "
         f"face_normal<{face_normal_threshold:.3f} m, vx>{touch_forward_velocity:.3f} m/s)",

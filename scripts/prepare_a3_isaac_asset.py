@@ -16,6 +16,18 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE = REPO_ROOT / "agibot" / "URDF" / "A3T2.5-URDF-std-pingpang"
+DEFAULT_MUJOCO_SOURCE = (
+    REPO_ROOT
+    / "agibot"
+    / "A3_MuJoCo_Sim"
+    / "aimrt_mujoco_sim"
+    / "src"
+    / "models"
+    / "bin"
+    / "cfg"
+    / "model"
+    / "a3_pingpong"
+)
 DEFAULT_DEST = (
     REPO_ROOT
     / "hope_training"
@@ -28,6 +40,7 @@ DEFAULT_DEST = (
 )
 SOURCE_URDF = "URDF-JOINT-LINK.urdf"
 DEST_URDF = "model.urdf"
+RACKET_FACE_COLLISION_MESH = "right_racket_face_collision.STL"
 REQUIRED_MESHES = (
     "pelvis_link.STL",
     "torso_Link.STL",
@@ -35,6 +48,7 @@ REQUIRED_MESHES = (
     "pingpang_red_Link.STL",
     "pingpang_black_Link.STL",
     "pingbang_ball_Link.STL",
+    RACKET_FACE_COLLISION_MESH,
 )
 
 
@@ -67,6 +81,53 @@ def _sanitize_fixed_joint_axes(text: str) -> str:
     return re.sub(r"<joint\b[^>]*>.*?</joint>", _fix_joint, text, flags=re.DOTALL)
 
 
+def _patch_racket_collision(text: str) -> str:
+    """Use a single stable racket-face collision mesh for Isaac PhysX.
+
+    The original URDF uses two very thin visual face meshes plus an orange marker sphere as collision
+    meshes. In Isaac/PhysX this makes racket-ball contact unreliable and can let the ball pass through
+    a visually aligned paddle. The MuJoCo asset ships a dedicated centered racket-face collision mesh;
+    use it on the red paddle link and remove the overlapping black/marker collisions.
+    """
+
+    def _replace_link_collision(match: re.Match) -> str:
+        block = match.group(0)
+        return re.sub(
+            r"<collision>.*?</collision>",
+            (
+                "<collision>\n"
+                '      <origin xyz="0 0 0" rpy="0 0 0"/>\n'
+                "      <geometry>\n"
+                f'        <mesh filename="../meshes/{RACKET_FACE_COLLISION_MESH}"/>\n'
+                "      </geometry>\n"
+                "    </collision>"
+            ),
+            block,
+            count=1,
+            flags=re.DOTALL,
+        )
+
+    def _remove_link_collision(match: re.Match) -> str:
+        return re.sub(r"\n    <collision>.*?</collision>", "", match.group(0), count=1, flags=re.DOTALL)
+
+    text = re.sub(
+        r'<link name="pingpang_red_Link">.*?</link>',
+        _replace_link_collision,
+        text,
+        count=1,
+        flags=re.DOTALL,
+    )
+    for link_name in ("pingpang_black_Link", "pingbang_ball_Link"):
+        text = re.sub(
+            rf'<link name="{link_name}">.*?</link>',
+            _remove_link_collision,
+            text,
+            count=1,
+            flags=re.DOTALL,
+        )
+    return text
+
+
 def prepare(source: Path, dest: Path, force: bool) -> Path:
     if not source.exists():
         raise FileNotFoundError(f"source package not found: {source}")
@@ -84,6 +145,12 @@ def prepare(source: Path, dest: Path, force: bool) -> Path:
         if src.exists():
             shutil.copytree(src, dest / name, dirs_exist_ok=True)
 
+    racket_collision_src = (
+        DEFAULT_MUJOCO_SOURCE / "meshes" / "collision_optimized" / RACKET_FACE_COLLISION_MESH
+    )
+    if racket_collision_src.exists():
+        shutil.copy2(racket_collision_src, dest / "meshes" / RACKET_FACE_COLLISION_MESH)
+
     if (source / "package.xml").exists():
         shutil.copy2(source / "package.xml", dest / "package.xml")
 
@@ -91,6 +158,7 @@ def prepare(source: Path, dest: Path, force: bool) -> Path:
     urdf_dest_dir.mkdir(parents=True, exist_ok=True)
     text = _rewrite_mesh_paths(source_urdf.read_text(encoding="utf-8"))
     text = _sanitize_fixed_joint_axes(text)
+    text = _patch_racket_collision(text)
     model_urdf = urdf_dest_dir / DEST_URDF
     model_urdf.write_text(text, encoding="utf-8")
     return model_urdf
