@@ -3,9 +3,51 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WBT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_DIR="$(cd "${WBT_DIR}/../.." && pwd)"
 
-ROS_SETUP="${HOPE_ROS_WS_SETUP:-/home/bruce/hope_ws_hopett_ros/setup_hope_ros.sh}"
-ROS310_PREFIX="${HOPE_ROS310:-/workspace/anaconda3/envs/hope_ros310}"
+ROS_SETUP_CANDIDATES=()
+if [ -n "${HOPE_ROS_WS_SETUP:-}" ]; then
+  ROS_SETUP_CANDIDATES+=("${HOPE_ROS_WS_SETUP}")
+else
+  ROS_SETUP_CANDIDATES+=(
+    "${REPO_DIR}/hope_ws/install/setup.bash"
+    "${REPO_DIR}/hope_ws/install/setup.sh"
+  )
+fi
+
+ROS_SETUP=""
+for candidate in "${ROS_SETUP_CANDIDATES[@]}"; do
+  if [[ "${candidate}" != /* ]]; then
+    candidate="${REPO_DIR}/${candidate}"
+  fi
+  if [ -f "${candidate}" ]; then
+    ROS_SETUP="${candidate}"
+    break
+  fi
+done
+
+ROS310_CANDIDATES=()
+if [ -n "${HOPE_ROS310:-}" ]; then
+  ROS310_CANDIDATES+=("${HOPE_ROS310}")
+else
+  ROS310_CANDIDATES+=(
+    "${REPO_DIR}/hope_ws/install/hope_planner"
+    "${REPO_DIR}/hope_ws/install"
+    "/home/gzy/isaac_venv"
+  )
+fi
+
+ROS310_PREFIX=""
+for candidate in "${ROS310_CANDIDATES[@]}"; do
+  if [[ "${candidate}" != /* ]]; then
+    candidate="${REPO_DIR}/${candidate}"
+  fi
+  if [ -d "${candidate}/lib/python3.10/site-packages" ]; then
+    ROS310_PREFIX="${candidate}"
+    break
+  fi
+done
+
 BALL_TOPIC="${HOPE_BALL_TOPIC:-/ball/point}"
 START_PLANNER=1
 PLANNER_PID=""
@@ -30,13 +72,25 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-if [ ! -f "${ROS_SETUP}" ]; then
-  echo "[hope_ros_run] ROS setup not found: ${ROS_SETUP}" >&2
+if [ -z "${ROS_SETUP}" ]; then
+  echo "[hope_ros_run] ROS setup not found. Tried:" >&2
+  for candidate in "${ROS_SETUP_CANDIDATES[@]}"; do
+    if [[ "${candidate}" != /* ]]; then
+      candidate="${REPO_DIR}/${candidate}"
+    fi
+    echo "  - ${candidate}" >&2
+  done
   exit 1
 fi
 
-if [ ! -d "${ROS310_PREFIX}/lib/python3.10/site-packages" ]; then
-  echo "[hope_ros_run] ROS Python 3.10 packages not found under: ${ROS310_PREFIX}" >&2
+if [ -z "${ROS310_PREFIX}" ]; then
+  echo "[hope_ros_run] ROS Python 3.10 packages not found. Tried:" >&2
+  for candidate in "${ROS310_CANDIDATES[@]}"; do
+    if [[ "${candidate}" != /* ]]; then
+      candidate="${REPO_DIR}/${candidate}"
+    fi
+    echo "  - ${candidate}/lib/python3.10/site-packages" >&2
+  done
   exit 1
 fi
 
