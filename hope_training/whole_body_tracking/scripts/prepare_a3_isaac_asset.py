@@ -14,7 +14,7 @@ import shutil
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_SOURCE = REPO_ROOT / "agibot" / "URDF" / "A3T2.5-URDF-std-pingpang"
 DEFAULT_MUJOCO_SOURCE = (
     REPO_ROOT

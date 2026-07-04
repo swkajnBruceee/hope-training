@@ -23,7 +23,7 @@ Run:
 
 ```bash
 git status --short
-./scripts/check.sh
+./check.sh
 ```
 
 Review the file list before committing. Do not commit:

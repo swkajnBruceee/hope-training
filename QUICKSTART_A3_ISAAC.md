@@ -52,8 +52,8 @@ Isaac Lab loads a prepared copy under the Python package asset directory.
 From the repository root:
 
 ```bash
-python3 scripts/prepare_a3_isaac_asset.py --force
-python3 scripts/prepare_a3_isaac_asset.py --check
+python3 hope_training/whole_body_tracking/scripts/prepare_a3_isaac_asset.py --force
+python3 hope_training/whole_body_tracking/scripts/prepare_a3_isaac_asset.py --check
 ```
 
 The check verifies that

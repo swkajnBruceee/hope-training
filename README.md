@@ -12,7 +12,7 @@ repository is organized into four layers:
 
 | Layer | What to read or run | Purpose |
 |-------|---------------------|---------|
-| Required starter path | `QUICKSTART_A3_ISAAC.md`, `scripts/prepare_a3_isaac_asset.py`, `agibot/URDF/A3T2.5-URDF-std-pingpang/`, `hope_training/whole_body_tracking/` | Prepare the A3 Isaac asset, import the task package, launch the table-tennis scene, and run local-motion PPO smoke training. |
+| Required starter path | `QUICKSTART_A3_ISAAC.md`, `hope_training/whole_body_tracking/scripts/prepare_a3_isaac_asset.py`, `agibot/URDF/A3T2.5-URDF-std-pingpang/`, `hope_training/whole_body_tracking/` | Prepare the A3 Isaac asset, import the task package, launch the table-tennis scene, and run local-motion PPO smoke training. |
 | Stable public contracts | `A3_ASSETS.md`, `docs/interfaces/` | Explain frame conventions, joint order, observations/actions, ROS topics, and asset expectations that other teams should keep stable when integrating their own code. |
 | Agibot A3 reference bundle | `agibot/` | Agibot-provided A3 URDF variants, MuJoCo/AimRT simulation reference, and deployment example. Only the racket-equipped URDF is required for the Isaac quickstart. |
 | Optional or background material | `hope_ws/`, `data/mocap/`, `HOPE_*_Reference_Setup.md`, `ROADMAP.md` | Preserve broader HOPE architecture, ROS/mocap/planner context, and future work. These are not required before the Isaac smoke run. |
@@ -31,7 +31,7 @@ files and keep shared environment definitions in Git. See
 [docs/dependency_policy.md](docs/dependency_policy.md). Before merging, run:
 
 ```bash
-./scripts/check.sh
+./check.sh
 ```
 
 ## Public Starter Quickstart
@@ -39,7 +39,7 @@ files and keep shared environment definitions in Git. See
 Start here:
 
 ```bash
-python3 scripts/prepare_a3_isaac_asset.py --force
+python3 hope_training/whole_body_tracking/scripts/prepare_a3_isaac_asset.py --force
 cd hope_training/whole_body_tracking
 source setup_train_env.sh
 hope_isaac_py -c "import whole_body_tracking.tasks; print('HOPE tasks import ok')"
@@ -74,7 +74,7 @@ Each document contains a **Section 0 prologue** listing all implementation diffe
 | [A3_ASSETS.md](A3_ASSETS.md) | Asset map for the racket-equipped A3 URDF, generated Isaac copy, joint order, and Agibot-provided A3 reference materials. |
 | [REFERENCE_DOCS.md](REFERENCE_DOCS.md) | Index of preserved architecture, rules, mocap, training, and deployment reference documents. |
 | [ROADMAP.md](ROADMAP.md) | Current starter scope, optional integrations, and future work. |
-| `scripts/` | Small setup and smoke-run helpers. The main public entry is `prepare_a3_isaac_asset.py`. |
+| `check.sh` | Repository-level checks. Runs lightweight validation before pushing or merging. |
 | `agibot/` | Public Agibot A3 reference bundle. `agibot/URDF/A3T2.5-URDF-std-pingpang/` is the racket-equipped variant required for Isaac; `agibot/A3_MuJoCo_Sim/` contains the Agibot MuJoCo/AimRT simulation reference; `agibot/code_deployment/` contains the Agibot A3 deploy example. |
 | `agibot/code_deployment/` | Optional Agibot A3 deployment example for connecting exported policies to A3 body-drive state/command topics. Not required for Isaac smoke training. |
 | `hope_training/config/` | Shared robot configuration, including the public A3 joint order. |

@@ -32,7 +32,7 @@ A from-scratch Isaac Sim/Lab install is out of scope here; follow the upstream
 ### A3 asset and motions
 
 - The source A3 ping-pong URDF lives at `../../agibot/URDF/A3T2.5-URDF-std-pingpang/`.
-  Generate the Isaac-ready copy with `../../scripts/prepare_a3_isaac_asset.py`; see
+  Generate the Isaac-ready copy with `scripts/prepare_a3_isaac_asset.py`; see
   `../../A3_ASSETS.md`.
 - Motion flow: GVHMR (video → SMPL-X) → GMR (`--robot agibot_a3`; the default robot is `g1`, A3 NEEDS
   `--robot agibot_a3`) → `scripts/csv_to_npz.py --robot agibot_a3` → local `motion_file=...`.

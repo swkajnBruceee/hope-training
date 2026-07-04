@@ -42,7 +42,7 @@ Commit templates instead:
 From the repository root:
 
 ```bash
-python3 scripts/prepare_a3_isaac_asset.py --force
+python3 hope_training/whole_body_tracking/scripts/prepare_a3_isaac_asset.py --force
 cd hope_training/whole_body_tracking
 source setup_train_env.sh
 hope_isaac_py -c "import whole_body_tracking.tasks; print('HOPE tasks import ok')"
@@ -57,7 +57,7 @@ This path depends on local Isaac installation paths, but those paths must stay i
 Before pushing or merging, run:
 
 ```bash
-./scripts/check.sh
+./check.sh
 ```
 
 The check is intentionally lightweight: it validates local-file ignore rules,
