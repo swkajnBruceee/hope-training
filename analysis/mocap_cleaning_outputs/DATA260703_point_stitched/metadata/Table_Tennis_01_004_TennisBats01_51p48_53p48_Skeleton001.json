@@ -1,0 +1,73 @@
+{
+  "episode_id": "Table_Tennis_01_004_TennisBats01_51p48_53p48_Skeleton001",
+  "sample_path": "analysis/mocap_cleaning_outputs/DATA260703_point_stitched/samples/Table_Tennis_01_004_TennisBats01_51p48_53p48_Skeleton001.npz",
+  "source": {
+    "source_npz": "analysis/mocap_cleaning_outputs/DATA260703_point_stitched/cleaned_windows/Table_Tennis_01_004_TennisBats01_51p48_53p48_Skeleton001_PointStitched_cleaned.npz",
+    "debug_npz": "analysis/mocap_cleaning_outputs/DATA260703_point_stitched/hit_debug/Table_Tennis_01_004_TennisBats01_51p48_53p48_Skeleton001_hit_debug.npz",
+    "source_csv": "Csv/Point/Table Tennis_01_004.csv",
+    "source_bvh": "analysis/mocap_cleaning_outputs/DATA260703_point_stitched/Table_Tennis_01_004_TennisBats01_51p48_53p48_Skeleton001.bvh",
+    "racket": "TennisBats01",
+    "candidate": "PointStitched",
+    "handedness": "right",
+    "hit_metadata": {
+      "hit_index": 360,
+      "hit_time": 52.477778,
+      "hit_time_rel": 1.0,
+      "score_at_hit": 0.7695654404993817,
+      "dist_at_hit_m": 0.031154808179853742,
+      "racket_speed_at_hit_mps": 2.437179483262743,
+      "ball_dv_at_hit_mps": 11.019037023083973,
+      "valid_hit": true,
+      "quality_flags": {
+        "has_finite_data": true,
+        "hit_distance_ok": true,
+        "racket_speed_ok": true,
+        "ball_velocity_change_ok": true
+      },
+      "reason": "valid hit"
+    },
+    "pre_hit_s": 0.6,
+    "post_hit_s": 0.4,
+    "target_fps": 200.0
+  },
+  "frames": 201,
+  "hit_index": 120,
+  "hit_time": 52.477778,
+  "hit_time_rel": 1.0,
+  "quality_flags": {
+    "has_finite_data": true,
+    "hit_distance_ok": true,
+    "racket_speed_ok": true,
+    "ball_velocity_change_ok": true,
+    "cleaning_usable": true,
+    "missing_near_hit": false,
+    "racket_quat_available": true,
+    "racket_omega_available": true,
+    "ball_speed_reasonable": true,
+    "racket_speed_reasonable": true,
+    "racket_omega_reasonable": true,
+    "max_ball_speed_mps": 8.260375885131154,
+    "max_racket_speed_mps": 3.178283392215591,
+    "max_racket_omega_radps": 14.276127826648356,
+    "coordinate_transform_available": false,
+    "coordinate_frame": "motive_global_m",
+    "table_config_available": false,
+    "landing_detected": false,
+    "success_label_reliable": false,
+    "success_label_reason": "missing_table_calibration",
+    "stroke_type": "unknown",
+    "stroke_label_source": "rule",
+    "stroke_label_confidence": 0.05055282211362793,
+    "stroke_label_reason": "low_lateral_separation",
+    "stroke_lateral_offset_m": 0.012132677307270703,
+    "stroke_handedness": "right",
+    "usable_for_training": true
+  },
+  "fields": {
+    "quat_order": "xyzw",
+    "position_unit": "m",
+    "coordinate_frame": "motive_global_m",
+    "sample_fps": 200.0,
+    "success_encoding": "-1 unknown, 0 false, 1 true"
+  }
+}

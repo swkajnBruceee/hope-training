@@ -1,0 +1,497 @@
+{
+  "config": "analysis/mocap_cleaning/configs/DATA260703.yaml",
+  "candidate_report": "analysis/mocap_cleaning_outputs/DATA260703_point/point_ball_marker_candidates.json",
+  "include_uncertain": false,
+  "top_n": 30,
+  "cluster_radius_m": 0.08,
+  "min_markers": 2,
+  "files": [
+    {
+      "csv": "/workspace/DATA260703/Csv/Point/Table Tennis_01_012.csv",
+      "markers_used": [
+        "Unlabeled 25933",
+        "Unlabeled 25961",
+        "Unlabeled 25976",
+        "Unlabeled 25980",
+        "Unlabeled 26000",
+        "Unlabeled 26015",
+        "Unlabeled 26446",
+        "Unlabeled 26457",
+        "Unlabeled 26940",
+        "Unlabeled 26956",
+        "Unlabeled 26973",
+        "Unlabeled 27010",
+        "Unlabeled 27019",
+        "Unlabeled 27460",
+        "Unlabeled 27472"
+      ],
+      "marker_count": 15,
+      "cluster_radius_m": 0.08,
+      "min_markers": 2,
+      "raw_valid_ratio": 0.00012272615703493606,
+      "clean_valid_ratio": 0.00017727111571712984,
+      "cluster_count_distribution": {
+        "2": 9
+      },
+      "cluster_spread_p95_m": 0.03335966160458357,
+      "speed_median_mps": 2.5909228255834074,
+      "speed_p95_mps": 3.266735540989934,
+      "speed_max_mps": 3.4356887198415658,
+      "near_racket_events": {
+        "TennisBats01": 13,
+        "TennisBats02": 0
+      },
+      "candidate_hit_frames": {
+        "TennisBats01": 0,
+        "TennisBats02": 0
+      },
+      "cleaning": {
+        "frames": 73334,
+        "raw_valid_ratio": 0.00012272615703493606,
+        "cleaned_valid_ratio": 0.00017727111571712984,
+        "outlier_frames": 0,
+        "short_gaps_filled": 1,
+        "long_gaps": 7,
+        "max_gap_s": 127.03055599999999,
+        "raw_max_speed_mps": NaN,
+        "cleaned_max_speed_mps": 3.4356887198415658,
+        "cleaned_p95_speed_mps": 3.266735540989934,
+        "usable": false,
+        "reasons": [
+          "cleaned valid ratio below threshold (0.000 < 0.500)",
+          "7 unfilled gaps remain"
+        ],
+        "gaps": [
+          {
+            "start": 0,
+            "end": 6120,
+            "duration_s": 16.997222,
+            "filled": false
+          },
+          {
+            "start": 6121,
+            "end": 6593,
+            "duration_s": 1.308333000000001,
+            "filled": false
+          },
+          {
+            "start": 6595,
+            "end": 10825,
+            "duration_s": 11.747222999999998,
+            "filled": false
+          },
+          {
+            "start": 10826,
+            "end": 18002,
+            "duration_s": 19.930556,
+            "filled": false
+          },
+          {
+            "start": 18003,
+            "end": 18520,
+            "duration_s": 1.433334000000002,
+            "filled": false
+          },
+          {
+            "start": 18521,
+            "end": 27595,
+            "duration_s": 25.20277800000001,
+            "filled": false
+          },
+          {
+            "start": 27596,
+            "end": 27600,
+            "duration_s": 0.008332999999993262,
+            "filled": true
+          },
+          {
+            "start": 27602,
+            "end": 73334,
+            "duration_s": 127.03055599999999,
+            "filled": false
+          }
+        ]
+      },
+      "decision": "analysis_only"
+    },
+    {
+      "csv": "/workspace/DATA260703/Csv/Point/Table Tennis_01_013.csv",
+      "markers_used": [
+        "Unlabeled 27596",
+        "Unlabeled 27629",
+        "Unlabeled 27636",
+        "Unlabeled 27663",
+        "Unlabeled 27676",
+        "Unlabeled 27720",
+        "Unlabeled 27735",
+        "Unlabeled 27760",
+        "Unlabeled 27778",
+        "Unlabeled 27784",
+        "Unlabeled 27799",
+        "Unlabeled 27809",
+        "Unlabeled 27812"
+      ],
+      "marker_count": 13,
+      "cluster_radius_m": 0.08,
+      "min_markers": 2,
+      "raw_valid_ratio": 0.0029531992992408444,
+      "clean_valid_ratio": 0.0030699924918661885,
+      "cluster_count_distribution": {
+        "2": 177
+      },
+      "cluster_spread_p95_m": 0.03101278453321046,
+      "speed_median_mps": 1.1672937183078953,
+      "speed_p95_mps": 4.22163773202915,
+      "speed_max_mps": 5.196666258990705,
+      "near_racket_events": {
+        "TennisBats01": 28,
+        "TennisBats02": 1
+      },
+      "candidate_hit_frames": {
+        "TennisBats01": 3,
+        "TennisBats02": 0
+      },
+      "cleaning": {
+        "frames": 59935,
+        "raw_valid_ratio": 0.0029531992992408444,
+        "cleaned_valid_ratio": 0.0030699924918661885,
+        "outlier_frames": 0,
+        "short_gaps_filled": 2,
+        "long_gaps": 14,
+        "max_gap_s": 50.125,
+        "raw_max_speed_mps": 5.196666258990705,
+        "cleaned_max_speed_mps": 5.196666258990705,
+        "cleaned_p95_speed_mps": 4.22163773202915,
+        "usable": false,
+        "reasons": [
+          "cleaned valid ratio below threshold (0.003 < 0.500)",
+          "14 unfilled gaps remain"
+        ],
+        "gaps": [
+          {
+            "start": 0,
+            "end": 18046,
+            "duration_s": 50.125,
+            "filled": false
+          },
+          {
+            "start": 18048,
+            "end": 32514,
+            "duration_s": 40.180556,
+            "filled": false
+          },
+          {
+            "start": 32531,
+            "end": 35794,
+            "duration_s": 9.061110999999997,
+            "filled": false
+          },
+          {
+            "start": 35877,
+            "end": 38065,
+            "duration_s": 6.075000000000003,
+            "filled": false
+          },
+          {
+            "start": 38118,
+            "end": 45488,
+            "duration_s": 20.469445000000007,
+            "filled": false
+          },
+          {
+            "start": 45489,
+            "end": 45898,
+            "duration_s": 1.133334000000005,
+            "filled": false
+          },
+          {
+            "start": 45899,
+            "end": 45900,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 45901,
+            "end": 46115,
+            "duration_s": 0.5916660000000036,
+            "filled": false
+          },
+          {
+            "start": 46116,
+            "end": 46343,
+            "duration_s": 0.6277780000000064,
+            "filled": false
+          },
+          {
+            "start": 46344,
+            "end": 48094,
+            "duration_s": 4.8583340000000135,
+            "filled": false
+          },
+          {
+            "start": 48097,
+            "end": 49455,
+            "duration_s": 3.769443999999993,
+            "filled": false
+          },
+          {
+            "start": 49456,
+            "end": 49462,
+            "duration_s": 0.013889000000006035,
+            "filled": true
+          },
+          {
+            "start": 49465,
+            "end": 51149,
+            "duration_s": 4.674999999999983,
+            "filled": false
+          },
+          {
+            "start": 51153,
+            "end": 52477,
+            "duration_s": 3.6750000000000114,
+            "filled": false
+          },
+          {
+            "start": 52482,
+            "end": 53792,
+            "duration_s": 3.6361109999999996,
+            "filled": false
+          },
+          {
+            "start": 53793,
+            "end": 59935,
+            "duration_s": 17.058332999999976,
+            "filled": false
+          }
+        ]
+      },
+      "decision": "analysis_only"
+    },
+    {
+      "csv": "/workspace/DATA260703/Csv/Point/Table Tennis_01_014.csv",
+      "markers_used": [
+        "Unlabeled 27961",
+        "Unlabeled 27968",
+        "Unlabeled 28012",
+        "Unlabeled 28046",
+        "Unlabeled 28082",
+        "Unlabeled 28089",
+        "Unlabeled 28115",
+        "Unlabeled 28177",
+        "Unlabeled 28212",
+        "Unlabeled 28228",
+        "Unlabeled 28303",
+        "Unlabeled 28314"
+      ],
+      "marker_count": 12,
+      "cluster_radius_m": 0.08,
+      "min_markers": 2,
+      "raw_valid_ratio": 0.0009587364862307779,
+      "clean_valid_ratio": 0.0014002598680475835,
+      "cluster_count_distribution": {
+        "2": 76
+      },
+      "cluster_spread_p95_m": 0.03324774420679252,
+      "speed_median_mps": 2.0955732966981895,
+      "speed_p95_mps": 3.3039942705342575,
+      "speed_max_mps": 4.030779174684754,
+      "near_racket_events": {
+        "TennisBats01": 75,
+        "TennisBats02": 0
+      },
+      "candidate_hit_frames": {
+        "TennisBats01": 5,
+        "TennisBats02": 0
+      },
+      "cleaning": {
+        "frames": 79271,
+        "raw_valid_ratio": 0.0009587364862307779,
+        "cleaned_valid_ratio": 0.0014002598680475835,
+        "outlier_frames": 0,
+        "short_gaps_filled": 8,
+        "long_gaps": 20,
+        "max_gap_s": 77.425,
+        "raw_max_speed_mps": 3.533754060030006,
+        "cleaned_max_speed_mps": 4.030779174684754,
+        "cleaned_p95_speed_mps": 3.3039942705342575,
+        "usable": false,
+        "reasons": [
+          "cleaned valid ratio below threshold (0.001 < 0.500)",
+          "20 unfilled gaps remain"
+        ],
+        "gaps": [
+          {
+            "start": 0,
+            "end": 1244,
+            "duration_s": 3.452778,
+            "filled": false
+          },
+          {
+            "start": 1245,
+            "end": 2087,
+            "duration_s": 2.3361110000000003,
+            "filled": false
+          },
+          {
+            "start": 2089,
+            "end": 2093,
+            "duration_s": 0.008333000000000368,
+            "filled": true
+          },
+          {
+            "start": 2095,
+            "end": 3848,
+            "duration_s": 4.8666670000000005,
+            "filled": false
+          },
+          {
+            "start": 3851,
+            "end": 7034,
+            "duration_s": 8.838888999999998,
+            "filled": false
+          },
+          {
+            "start": 7036,
+            "end": 7038,
+            "duration_s": 0.0027780000000028338,
+            "filled": true
+          },
+          {
+            "start": 7039,
+            "end": 34913,
+            "duration_s": 77.425,
+            "filled": false
+          },
+          {
+            "start": 34944,
+            "end": 55837,
+            "duration_s": 58.033333,
+            "filled": false
+          },
+          {
+            "start": 55838,
+            "end": 57195,
+            "duration_s": 3.7666659999999865,
+            "filled": false
+          },
+          {
+            "start": 57196,
+            "end": 57202,
+            "duration_s": 0.013889000000006035,
+            "filled": true
+          },
+          {
+            "start": 57204,
+            "end": 57636,
+            "duration_s": 1.1972219999999822,
+            "filled": false
+          },
+          {
+            "start": 57638,
+            "end": 57643,
+            "duration_s": 0.011110999999999649,
+            "filled": true
+          },
+          {
+            "start": 57644,
+            "end": 58131,
+            "duration_s": 1.3499999999999943,
+            "filled": false
+          },
+          {
+            "start": 58133,
+            "end": 58138,
+            "duration_s": 0.011110999999999649,
+            "filled": true
+          },
+          {
+            "start": 58139,
+            "end": 61596,
+            "duration_s": 9.599999999999994,
+            "filled": false
+          },
+          {
+            "start": 61598,
+            "end": 61599,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 61600,
+            "end": 62046,
+            "duration_s": 1.236110999999994,
+            "filled": false
+          },
+          {
+            "start": 62048,
+            "end": 62510,
+            "duration_s": 1.2805549999999926,
+            "filled": false
+          },
+          {
+            "start": 62511,
+            "end": 62517,
+            "duration_s": 0.013888999999977614,
+            "filled": true
+          },
+          {
+            "start": 62519,
+            "end": 63009,
+            "duration_s": 1.3583329999999876,
+            "filled": false
+          },
+          {
+            "start": 63010,
+            "end": 63447,
+            "duration_s": 1.2111109999999883,
+            "filled": false
+          },
+          {
+            "start": 63449,
+            "end": 66191,
+            "duration_s": 7.613889,
+            "filled": false
+          },
+          {
+            "start": 66194,
+            "end": 67085,
+            "duration_s": 2.4722220000000164,
+            "filled": false
+          },
+          {
+            "start": 67086,
+            "end": 67532,
+            "duration_s": 1.236110999999994,
+            "filled": false
+          },
+          {
+            "start": 67533,
+            "end": 67539,
+            "duration_s": 0.013889000000006035,
+            "filled": true
+          },
+          {
+            "start": 67541,
+            "end": 67982,
+            "duration_s": 1.222221999999988,
+            "filled": false
+          },
+          {
+            "start": 67983,
+            "end": 73519,
+            "duration_s": 15.375,
+            "filled": false
+          },
+          {
+            "start": 73524,
+            "end": 79271,
+            "duration_s": 15.961111000000017,
+            "filled": false
+          }
+        ]
+      },
+      "decision": "analysis_only"
+    }
+  ]
+}

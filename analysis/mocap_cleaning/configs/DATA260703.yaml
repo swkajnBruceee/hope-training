@@ -1,0 +1,65 @@
+dataset_id: DATA260703
+dataset_root: /workspace/DATA260703
+position_unit: mm
+quat_order: xyzw
+source_frame: motive_global
+target_frame: motive_global_m
+
+fps:
+  raw: 360
+  clean_sample: 200
+
+gap_policy:
+  interpolate_max_s: 0.03
+  warn_max_s: 0.05
+  reject_max_s: 0.15
+  hit_guard_s: 0.10
+
+speed_thresholds:
+  human_hand_mps: 15.0
+  racket_mps: 25.0
+  racket_omega_radps: 40.0
+  ball_mps: 50.0
+  hip_mps: 8.0
+
+filter:
+  racket_window_ms: 25
+  ball_window_ms: 15
+  body_window_ms: 35
+  polyorder: 3
+
+hit_detection:
+  max_distance_m: 0.15
+  distance_ok_m: 0.12
+  min_racket_speed_mps: 1.0
+  min_ball_dv_mps: 1.0
+  weights:
+    distance: 0.5
+    ball_dv: 0.3
+    racket_speed: 0.2
+
+episode:
+  pre_hit_s: 0.6
+  post_hit_s: 0.4
+
+table:
+  enabled: false
+  coordinate_frame: motive_global_m
+  table_z_m: null
+  z_tolerance_m: 0.03
+  opponent_x_min_m: null
+  opponent_x_max_m: null
+  y_min_m: null
+  y_max_m: null
+
+entities:
+  rackets:
+    TennisBats01:
+      expected_skeleton: "Skeleton 001"
+      expected_hand: RHand
+      handedness: right
+    TennisBats02:
+      expected_skeleton: "Skeleton 002"
+      expected_hand: RHand
+      handedness: right
+  ball_candidates: [Tennis]
