@@ -38,7 +38,7 @@ Then source the helper in every new training shell:
 ```bash
 cd hope_training/whole_body_tracking
 source setup_train_env.sh
-hope_isaac_py -c "import whole_body_tracking.tasks; print('HOPE tasks import ok')"
+hope_isaac_py -c "import training.tasks; print('HOPE tasks import ok')"
 ```
 
 WandB is optional. The smoke path below uses a local motion file and
@@ -57,7 +57,7 @@ python3 hope_training/whole_body_tracking/scripts/prepare_a3_isaac_asset.py --ch
 ```
 
 The check verifies that
-`hope_training/whole_body_tracking/source/whole_body_tracking/whole_body_tracking/assets/agibot_a3/urdf/model.urdf`
+`hope_training/whole_body_tracking/training/assets/agibot_a3/urdf/model.urdf`
 exists and no stale `package://.../meshes` references remain.
 
 ## 3. Run the Table-Tennis Scene Smoke Test

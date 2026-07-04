@@ -42,7 +42,7 @@ Start here:
 python3 hope_training/whole_body_tracking/scripts/prepare_a3_isaac_asset.py --force
 cd hope_training/whole_body_tracking
 source setup_train_env.sh
-hope_isaac_py -c "import whole_body_tracking.tasks; print('HOPE tasks import ok')"
+hope_isaac_py -c "import training.tasks; print('HOPE tasks import ok')"
 hope_isaac_py scripts/play_table_tennis.py --headless --steps 300
 hope_isaac_py scripts/create_smoke_motion.py --headless --frames 120 \
   --output sample_motions/agibot_a3_smoke_stand.npz

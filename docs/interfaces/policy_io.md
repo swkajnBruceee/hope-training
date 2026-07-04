@@ -37,7 +37,7 @@ features from the BeyondMimic-style environment. The ping-pong task additionally
 contains racket target command terms. See the Isaac Lab env configs under:
 
 ```text
-hope_training/whole_body_tracking/source/whole_body_tracking/whole_body_tracking/tasks/
+hope_training/whole_body_tracking/training/tasks/
 ```
 
 ## A3 Deployment Reference IO

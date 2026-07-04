@@ -41,8 +41,12 @@ if [ -n "${tracked_data}" ]; then
   fail_msg "generated data/model artifacts are tracked outside approved reference folders"
 fi
 
-step "compiling Python sources (training overlays only)"
-python3 -m compileall -q hope_training/whole_body_tracking/scripts \
+step "compiling Python sources"
+python3 -m compileall -q \
+  hope_training/whole_body_tracking/scripts \
+  hope_training/whole_body_tracking/show \
+  hope_training/whole_body_tracking/training \
+  data/analysis/mocap_cleaning \
   || fail_msg "Python compile check failed"
 
 step "compiling C++ headers with cppcheck (when available)"

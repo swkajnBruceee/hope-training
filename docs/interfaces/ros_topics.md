@@ -24,7 +24,7 @@ this starter branch.
 
 The starter message package includes:
 
-- `hope_msgs/msg/RacketCommand.msg`
+- `msgs/msg/RacketCommand.msg`
 
 QoS convention:
 

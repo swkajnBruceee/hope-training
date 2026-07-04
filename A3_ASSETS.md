@@ -12,7 +12,7 @@ material for teams studying deployment or optional MuJoCo/AimRT simulation.
 |------|--------------------------|------|
 | `agibot/URDF/A3T2.5-URDF-std-pingpang/` | Yes | Source A3 ping-pong URDF, meshes, joint config, and metadata. |
 | `hope_training/whole_body_tracking/scripts/prepare_a3_isaac_asset.py` | Yes | Copies the source URDF package into the Isaac Lab Python package and rewrites mesh paths for local loading. |
-| `hope_training/whole_body_tracking/source/whole_body_tracking/whole_body_tracking/assets/agibot_a3/` | Generated locally | Derived Isaac-ready copy. It is ignored by git and can be regenerated. |
+| `hope_training/whole_body_tracking/training/assets/agibot_a3/` | Generated locally | Derived Isaac-ready copy. It is ignored by git and can be regenerated. |
 | `hope_training/config/joint_order_agibot_a3.yaml` | Yes | Canonical public A3 policy joint order. |
 | `agibot/code_deployment/` | No | Agibot A3 deployment example for ONNX policy runtime and body-drive I/O. |
 | `agibot/A3_MuJoCo_Sim/` | No | Agibot MuJoCo/AimRT simulation reference. Not required for Isaac smoke training. |
@@ -39,7 +39,7 @@ uses the racket-equipped package above.
 Isaac Lab loads the prepared asset from:
 
 ```text
-hope_training/whole_body_tracking/source/whole_body_tracking/whole_body_tracking/assets/agibot_a3/
+hope_training/whole_body_tracking/training/assets/agibot_a3/
 ```
 
 Generate it with:

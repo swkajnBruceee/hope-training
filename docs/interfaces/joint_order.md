@@ -2,7 +2,7 @@
 
 The public A3 starter uses 31 active joints, excluding hands. This order matches
 `hope_training/config/joint_order_agibot_a3.yaml` and
-`whole_body_tracking.robots.agibot_a3.AGIBOT_A3_JOINT_NAMES`.
+`training.robots.agibot_a3.AGIBOT_A3_JOINT_NAMES`.
 
 ```text
 waist_yaw_joint

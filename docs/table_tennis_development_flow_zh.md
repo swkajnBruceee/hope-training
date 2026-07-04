@@ -50,10 +50,10 @@ hope_isaac_py scripts/play_table_tennis.py --fix_base --steps 300
 相关文件：
 
 - `hope_training/whole_body_tracking/scripts/play_table_tennis.py`
-- `hope_training/whole_body_tracking/source/whole_body_tracking/whole_body_tracking/tasks/table_tennis/table_tennis_env_cfg.py`
-- `hope_training/whole_body_tracking/source/whole_body_tracking/whole_body_tracking/tasks/table_tennis/table_tennis_env.py`
-- `hope_training/whole_body_tracking/source/whole_body_tracking/whole_body_tracking/tasks/table_tennis/ball.py`
-- `hope_training/whole_body_tracking/source/whole_body_tracking/whole_body_tracking/tasks/table_tennis/geometry.py`
+- `hope_training/whole_body_tracking/training/tasks/table_tennis/table_tennis_env_cfg.py`
+- `hope_training/whole_body_tracking/training/tasks/table_tennis/table_tennis_env.py`
+- `hope_training/whole_body_tracking/training/tasks/table_tennis/ball.py`
+- `hope_training/whole_body_tracking/training/tasks/table_tennis/geometry.py`
 
 ## 阶段 1：固定底座击球任务
 

@@ -32,9 +32,7 @@ DEFAULT_DEST = (
     REPO_ROOT
     / "hope_training"
     / "whole_body_tracking"
-    / "source"
-    / "whole_body_tracking"
-    / "whole_body_tracking"
+    / "training"
     / "assets"
     / "agibot_a3"
 )
