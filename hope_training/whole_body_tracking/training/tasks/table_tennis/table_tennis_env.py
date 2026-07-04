@@ -87,12 +87,12 @@ class TableTennisEnv(ManagerBasedRLEnv):
     cfg: TableTennisEnvCfg
 
     def __init__(self, cfg: TableTennisEnvCfg, render_mode: str | None = None, **kwargs):
-        super().__init__(cfg, render_mode, **kwargs)
         self._aero_active = False
         self._ball_truth_active = False
         self._ball_truth_publisher: BallTruthUdpPublisher | None = None
         self._ball_truth_env_index = 0
         self._ball_truth_sim_time_s = 0.0
+        super().__init__(cfg, render_mode, **kwargs)
         self._setup_ball_aerodynamics()
         self._setup_ball_truth_publisher()
 
@@ -196,6 +196,8 @@ class TableTennisEnv(ManagerBasedRLEnv):
         if self._ball_truth_publisher is not None:
             self._ball_truth_publisher.close()
             self._ball_truth_publisher = None
+        if not hasattr(self, "command_manager"):
+            return
         super().close()
 
     # --------------------------------------------------------------------- #

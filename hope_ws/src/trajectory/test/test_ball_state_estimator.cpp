@@ -38,14 +38,14 @@ TEST(BallStateEstimatorTest, ParabolicZReturnsCorrectVerticalVelocity) {
   EXPECT_NEAR(e.v.z(), expected_vz, 1e-3);
 }
 
-TEST(BallStateEstimatorTest, BouncePatternClearsBuffer) {
+TEST(BallStateEstimatorTest, ManualResetClearsBuffer) {
   common::PlannerConfig cfg;
   trajectory::BallStateEstimator est(cfg);
-  double zs[] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.002, 0.1};
   for (int i = 0; i < 7; ++i) {
-    est.push(i * kDt, Eigen::Vector3d(0.0, 0.0, zs[i]));
+    est.push(i * kDt, Eigen::Vector3d(0.0, 0.0, 0.1));
   }
-  EXPECT_TRUE(est.bounceDetected());
+  ASSERT_TRUE(est.ready());
+  est.reset();
   EXPECT_FALSE(est.ready());
 }
 

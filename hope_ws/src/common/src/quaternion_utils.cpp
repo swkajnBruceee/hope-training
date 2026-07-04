@@ -36,12 +36,12 @@ Eigen::Quaterniond normalToQuaternion(
     if (cos_angle > 0.0) {
       q = Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0);
     } else {
-      q = Eigen::Quaterniond(0.0, 1.0, 0.0, 0.0);
+      q = Eigen::Quaterniond(0.0, 0.0, 1.0, 0.0);
     }
   } else {
     axis /= sin_angle;
-    double half_angle = std::atan2(sin_angle, cos_angle) / 2.0;
-    q = quatFromAxisAngle(axis, half_angle);
+    double angle = std::atan2(sin_angle, cos_angle);
+    q = quatFromAxisAngle(axis, angle);
   }
 
   if (!constrain_up) {
@@ -61,9 +61,9 @@ Eigen::Quaterniond normalToQuaternion(
   double cos_roll = std::clamp(current_y.dot(desired_y), -1.0, 1.0);
   Eigen::Vector3d cross_y = current_y.cross(desired_y);
   double sin_roll = cross_y.dot(n);
-  double roll_half = std::atan2(sin_roll, cos_roll) / 2.0;
+  double roll_angle = std::atan2(sin_roll, cos_roll);
 
-  Eigen::Quaterniond q_roll(Eigen::AngleAxisd(roll_half, n));
+  Eigen::Quaterniond q_roll(Eigen::AngleAxisd(roll_angle, n));
   Eigen::Quaterniond q_combined = quatMultiply(q_roll, q);
   return q_combined;
 }

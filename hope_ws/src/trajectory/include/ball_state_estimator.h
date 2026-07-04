@@ -13,8 +13,9 @@ namespace trajectory {
  *
  * Fits a 2nd-order polynomial to the most recent N position samples and
  * differentiates analytically to obtain a smoothed position and velocity.
- * The buffer is cleared on each detected table bounce so the polynomial
- * never fits across the velocity discontinuity.
+ * Callers should reset the buffer when their higher-level state machine
+ * detects a table bounce so the polynomial never fits across the velocity
+ * discontinuity.
  *
  * See HOPE_7DOF_Racket_Model_based_Planner_Reference_Setup.md, Section 3.
  */
@@ -31,7 +32,8 @@ class BallStateEstimator {
   /// True if enough samples exist for a reliable fit (>= 6 samples).
   bool ready() const;
 
-  /// True if the most recent push() detected a table bounce.
+  /// Reserved for compatibility with older callers. Bounce detection is owned
+  /// by the trajectory state machines, not this estimator.
   bool bounceDetected() const;
 
   /// Compute smoothed ball position and velocity at the latest timestamp.

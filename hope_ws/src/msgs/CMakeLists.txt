@@ -29,6 +29,9 @@ if(BUILD_TESTING)
   # comment the line when this package is in a git repo and when
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
+  # xmllint fetches the ROS package schema over the network in this conda ROS
+  # environment, which makes offline test runs fail despite valid package XML.
+  set(ament_cmake_xmllint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
 
