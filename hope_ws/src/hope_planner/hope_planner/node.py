@@ -1,7 +1,6 @@
 """ROS 2 node wrapping the HOPE 7-DOF racket planner.
 
-Subscribes to ball position from the mocap `/poses` stream (the avatar_pro relay
-on the Avatar Pro / Chingmu VRPN path) and publishes the desired racket state on
+Subscribes to ball position from the deployment `/ball/point` stream and publishes the desired racket state on
 `/racket/command` as the shared
 hope_msgs/RacketCommand. Diagnostics are published at 10 Hz.
 
@@ -13,7 +12,7 @@ kinematics. See HOPE_7DOF_Racket_Model_based_Planner_Reference_Setup.md.
 import numpy as np
 import rclpy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
-from geometry_msgs.msg import PoseArray
+from geometry_msgs.msg import PointStamped, PoseArray
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
@@ -30,6 +29,7 @@ class HOPEPlannerNode(Node):
         super().__init__("hope_planner")
 
         self.declare_parameter("ball_rigid_body_name", "pingpong_ball")
+        self.declare_parameter("ball_topic", "/ball/point")
         self.declare_parameter("ball_pose_index", 0)
         self.declare_parameter("x_hit", 0.0)
         self.declare_parameter("target_land_x", 2.055)
@@ -59,6 +59,7 @@ class HOPEPlannerNode(Node):
         )
 
         self.planner = HOPEPlanner(physics=physics, config=config)
+        self._ball_topic = str(self.get_parameter("ball_topic").value)
 
         # Best-effort, depth-1 QoS for high-rate mocap topics (REP-2003 sensor style).
         mocap_qos = QoSProfile(
@@ -75,6 +76,9 @@ class HOPEPlannerNode(Node):
             history=HistoryPolicy.KEEP_LAST,
             depth=10,
         )
+        self.create_subscription(PointStamped, self._ball_topic, self._ball_point_cb, mocap_qos)
+        # Backwards-compatible mocap aggregate input. The HOPE deployment topic
+        # map uses /ball/point; /poses is kept for older relay setups.
         self.create_subscription(PoseArray, "/poses", self._poses_cb, mocap_qos)
         self.cmd_pub = self.create_publisher(RacketCommand, "/racket/command", command_qos)
         self.diag_pub = self.create_publisher(DiagnosticArray, "/planner/diagnostics", 1)
@@ -87,22 +91,28 @@ class HOPEPlannerNode(Node):
         self.create_timer(0.1, self._publish_diagnostics)
 
         self.get_logger().info(
-            f"HOPE planner started - x_hit={config.x_hit:.2f}, "
-            f"target={config.target_land}, ball_pose_index={self._ball_index}"
+            f"HOPE planner started - ball_topic={self._ball_topic}, x_hit={config.x_hit:.2f}, "
+            f"target={config.target_land}, fallback ball_pose_index={self._ball_index}"
         )
 
+    def _ball_point_cb(self, msg: PointStamped) -> None:
+        p_ball = np.array([msg.point.x, msg.point.y, msg.point.z])
+        self._process_ball_sample(msg.header, p_ball)
+
     def _poses_cb(self, msg: PoseArray) -> None:
-        self._n_received += 1
-        t = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         if len(msg.poses) <= self._ball_index:
             return
 
         # NOTE: PoseArray carries no names. Configure ball_pose_index to match
         # the ball's slot in the /poses ordering (the avatar_pro relay puts the
-        # ball first), or swap this for a /tf lookup keyed on ball_rigid_body_name.
+        # ball first). The preferred deployment input is /ball/point.
         pose = msg.poses[self._ball_index]
         p_ball = np.array([pose.position.x, pose.position.y, pose.position.z])
+        self._process_ball_sample(msg.header, p_ball)
 
+    def _process_ball_sample(self, header, p_ball: np.ndarray) -> None:
+        self._n_received += 1
+        t = header.stamp.sec + header.stamp.nanosec * 1e-9
         cmd = self.planner.update(t, p_ball)
         if cmd is None:
             self._last_valid = False
@@ -116,7 +126,7 @@ class HOPEPlannerNode(Node):
             self._n_valid += 1
 
         out = RacketCommand()
-        out.header = msg.header
+        out.header = header
         out.header.frame_id = "world"
         out.position.x = float(cmd.p_intercept[0])
         out.position.y = float(cmd.p_intercept[1])
@@ -149,7 +159,7 @@ class HOPEPlannerNode(Node):
         status.hardware_id = "hope_planner"
         if self._n_received == 0:
             status.level = DiagnosticStatus.WARN
-            status.message = "no /poses received yet"
+            status.message = f"no {self._ball_topic} received yet"
         elif self._last_valid:
             status.level = DiagnosticStatus.OK
             status.message = "valid racket command"
@@ -157,7 +167,7 @@ class HOPEPlannerNode(Node):
             status.level = DiagnosticStatus.OK
             status.message = "running; no valid strike"
         status.values = [
-            KeyValue(key="poses_received", value=str(self._n_received)),
+            KeyValue(key="ball_samples_received", value=str(self._n_received)),
             KeyValue(key="valid_commands", value=str(self._n_valid)),
             KeyValue(key="last_valid", value=str(self._last_valid)),
             KeyValue(key="time_to_strike_s", value=f"{self._last_tts:.4f}"),
