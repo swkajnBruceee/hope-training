@@ -1,0 +1,79 @@
+# DATA260703 Point Marker Hit Candidate Manifest
+
+Ball marker: `FKA-Markerset 001_Marker 001`
+Selected candidates: `72`
+
+| CSV | Racket | Skeleton | Center (s) | Window (s) | Dist | Racket Speed | Ball dV | Score |
+|---|---|---:|---:|---|---:|---:|---:|---:|
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 0.669 | 0.000-1.669 | 0.067 | 2.76 | 3.76 | 0.385 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 2.311 | 1.311-3.311 | 0.070 | 2.98 | 6.22 | 0.427 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 3.708 | 2.708-4.708 | 0.036 | 2.25 | 17.76 | 0.700 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 9.394 | 8.394-10.394 | 0.074 | 3.16 | 6.35 | 0.425 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 10.656 | 9.656-11.656 | 0.036 | 3.58 | 9.40 | 0.614 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 11.939 | 10.939-12.939 | 0.088 | 3.61 | 8.87 | 0.452 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 17.800 | 16.800-18.800 | 0.070 | 2.72 | 8.99 | 0.462 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 22.336 | 21.336-23.336 | 0.047 | 2.36 | 7.56 | 0.494 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 23.661 | 22.661-24.661 | 0.050 | 3.56 | 6.79 | 0.518 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 27.964 | 26.964-28.964 | 0.040 | 3.25 | 5.96 | 0.528 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 29.528 | 28.528-30.528 | 0.070 | 3.61 | 4.48 | 0.420 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 37.217 | 36.217-38.217 | 0.059 | 2.45 | 5.50 | 0.425 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 38.494 | 37.494-39.494 | 0.042 | 4.21 | 6.77 | 0.570 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 47.344 | 46.344-48.344 | 0.040 | 2.97 | 4.39 | 0.490 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 48.997 | 47.997-49.997 | 0.046 | 3.74 | 5.58 | 0.516 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 50.233 | 49.233-51.233 | 0.033 | 4.00 | 17.90 | 0.783 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 52.478 | 51.478-53.478 | 0.031 | 2.44 | 11.02 | 0.616 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 53.858 | 52.858-54.858 | 0.048 | 2.39 | 6.82 | 0.480 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 63.706 | 62.706-64.706 | 0.044 | 2.90 | 5.15 | 0.486 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 65.081 | 64.081-66.081 | 0.052 | 1.40 | 8.29 | 0.451 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 69.536 | 68.536-70.536 | 0.047 | 3.14 | 10.01 | 0.565 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 70.856 | 69.856-71.856 | 0.042 | 3.61 | 9.27 | 0.588 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 72.125 | 71.125-73.125 | 0.034 | 4.13 | 11.22 | 0.671 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 73.383 | 72.383-74.383 | 0.044 | 4.03 | 9.65 | 0.604 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 74.653 | 73.653-75.653 | 0.031 | 4.03 | 11.49 | 0.684 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 75.881 | 74.881-76.881 | 0.066 | 4.06 | 8.27 | 0.512 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 82.239 | 81.239-83.239 | 0.085 | 2.92 | 8.13 | 0.419 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 92.089 | 91.089-93.089 | 0.074 | 2.97 | 6.11 | 0.413 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 93.356 | 92.356-94.356 | 0.037 | 4.21 | 9.65 | 0.635 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 94.572 | 93.572-95.572 | 0.050 | 3.98 | 7.70 | 0.548 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 95.800 | 94.800-96.800 | 0.062 | 4.24 | 8.68 | 0.537 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 97.222 | 96.222-98.222 | 0.079 | 3.98 | 6.63 | 0.450 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 98.536 | 97.536-99.536 | 0.034 | 3.52 | 11.56 | 0.653 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 99.914 | 98.914-100.914 | 0.027 | 3.25 | 9.80 | 0.644 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 101.175 | 100.175-102.175 | 0.057 | 4.00 | 9.56 | 0.558 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats01 | 001 | 102.422 | 101.422-103.422 | 0.038 | 4.72 | 3.60 | 0.550 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 1.600 | 0.600-2.600 | 0.064 | 3.07 | 9.91 | 0.500 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 3.044 | 2.044-4.044 | 0.036 | 3.01 | 9.32 | 0.581 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 4.389 | 3.389-5.389 | 0.080 | 3.57 | 7.51 | 0.437 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 8.558 | 7.558-9.558 | 0.039 | 3.39 | 6.89 | 0.543 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 10.044 | 9.044-11.044 | 0.029 | 3.19 | 10.30 | 0.633 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 11.278 | 10.278-12.278 | 0.050 | 3.01 | 11.10 | 0.560 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 16.981 | 15.981-17.981 | 0.040 | 3.47 | 7.13 | 0.547 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 18.458 | 17.458-19.458 | 0.033 | 1.79 | 9.20 | 0.548 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 21.503 | 20.503-22.503 | 0.048 | 3.41 | 5.53 | 0.489 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 22.925 | 21.925-23.925 | 0.031 | 1.86 | 7.31 | 0.527 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 28.800 | 27.800-29.800 | 0.049 | 2.03 | 6.37 | 0.450 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 36.356 | 35.356-37.356 | 0.052 | 3.03 | 5.88 | 0.467 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 37.778 | 36.778-38.778 | 0.037 | 2.08 | 8.12 | 0.525 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 39.364 | 38.364-40.364 | 0.117 | 1.77 | 3.39 | 0.236 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 48.317 | 47.317-49.317 | 0.054 | 3.37 | 9.47 | 0.533 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 49.625 | 48.625-50.625 | 0.030 | 3.57 | 11.00 | 0.655 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 51.919 | 50.919-52.919 | 0.037 | 2.73 | 10.58 | 0.588 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 53.153 | 52.153-54.153 | 0.070 | 3.92 | 8.16 | 0.485 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 62.925 | 61.925-63.925 | 0.047 | 3.74 | 7.67 | 0.541 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 64.325 | 63.325-65.325 | 0.077 | 2.50 | 8.52 | 0.422 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 66.261 | 65.261-67.261 | 0.075 | 1.70 | 2.91 | 0.306 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 68.686 | 67.686-69.686 | 0.059 | 3.77 | 3.76 | 0.437 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 70.208 | 69.208-71.208 | 0.037 | 3.34 | 9.02 | 0.584 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 71.492 | 70.492-72.492 | 0.065 | 3.38 | 6.43 | 0.450 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 72.739 | 71.739-73.739 | 0.041 | 2.95 | 11.67 | 0.601 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 73.981 | 72.981-74.981 | 0.041 | 2.91 | 11.51 | 0.597 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 75.250 | 74.250-76.250 | 0.039 | 3.20 | 18.01 | 0.723 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 81.425 | 80.425-82.425 | 0.052 | 3.71 | 6.25 | 0.498 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 91.447 | 90.447-92.447 | 0.030 | 3.27 | 9.55 | 0.618 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 92.750 | 91.750-93.750 | 0.056 | 3.36 | 10.12 | 0.536 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 95.158 | 94.158-96.158 | 0.042 | 2.55 | 10.57 | 0.561 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 96.478 | 95.478-97.478 | 0.073 | 2.96 | 9.15 | 0.458 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 97.889 | 96.889-98.889 | 0.068 | 2.88 | 9.71 | 0.479 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 99.178 | 98.178-100.178 | 0.049 | 3.74 | 9.85 | 0.570 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 100.556 | 99.556-101.556 | 0.055 | 3.13 | 12.88 | 0.578 |
+| `Csv/Point/Table Tennis_01_004.csv` | TennisBats02 | 002 | 101.803 | 100.803-102.803 | 0.040 | 3.45 | 11.00 | 0.610 |

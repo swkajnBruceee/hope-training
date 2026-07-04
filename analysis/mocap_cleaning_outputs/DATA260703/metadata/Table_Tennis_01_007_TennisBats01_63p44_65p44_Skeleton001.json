@@ -1,0 +1,68 @@
+{
+  "episode_id": "Table_Tennis_01_007_TennisBats01_63p44_65p44_Skeleton001",
+  "sample_path": "analysis/mocap_cleaning_outputs/DATA260703/samples/Table_Tennis_01_007_TennisBats01_63p44_65p44_Skeleton001.npz",
+  "source": {
+    "source_npz": "analysis/mocap_cleaning_outputs/DATA260703/cleaned_windows/Table_Tennis_01_007_TennisBats01_63p44_65p44_Skeleton001_Tennis_cleaned.npz",
+    "debug_npz": "analysis/mocap_cleaning_outputs/DATA260703/hit_debug/Table_Tennis_01_007_TennisBats01_63p44_65p44_Skeleton001_hit_debug.npz",
+    "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+    "source_bvh": "analysis/mocap/selected_clips/Table_Tennis_01_007_TennisBats01_63p44_65p44_Skeleton001.bvh",
+    "racket": "TennisBats01",
+    "candidate": "Tennis",
+    "handedness": "right",
+    "hit_metadata": {
+      "hit_index": 343,
+      "hit_time": 64.4,
+      "hit_time_rel": 0.9527780000000092,
+      "score_at_hit": 0.6861275126446577,
+      "dist_at_hit_m": 0.05078394988461245,
+      "racket_speed_at_hit_mps": 4.348719410375154,
+      "ball_dv_at_hit_mps": 17.193275457854437,
+      "valid_hit": true,
+      "quality_flags": {
+        "has_finite_data": true,
+        "hit_distance_ok": true,
+        "racket_speed_ok": true,
+        "ball_velocity_change_ok": true
+      },
+      "reason": "valid hit"
+    },
+    "pre_hit_s": 0.6,
+    "post_hit_s": 0.4,
+    "target_fps": 200.0
+  },
+  "frames": 201,
+  "hit_index": 120,
+  "hit_time": 64.4,
+  "hit_time_rel": 0.9527780000000092,
+  "quality_flags": {
+    "has_finite_data": true,
+    "hit_distance_ok": true,
+    "racket_speed_ok": true,
+    "ball_velocity_change_ok": true,
+    "cleaning_usable": true,
+    "missing_near_hit": false,
+    "racket_quat_available": true,
+    "racket_omega_available": true,
+    "coordinate_transform_available": false,
+    "coordinate_frame": "motive_global_m",
+    "table_config_available": false,
+    "landing_detected": false,
+    "success_label_reliable": false,
+    "success_label_reason": "missing_table_calibration",
+    "stroke_type": "forehand",
+    "stroke_label_source": "rule",
+    "stroke_label_confidence": 1.0,
+    "stroke_label_reason": "body_lateral_offset_rule",
+    "stroke_lateral_offset_m": 0.37725642574476437,
+    "stroke_handedness": "right",
+    "stroke_pre_hit_ball_speed_mps": 3.486011012748978,
+    "usable_for_training": true
+  },
+  "fields": {
+    "quat_order": "xyzw",
+    "position_unit": "m",
+    "coordinate_frame": "motive_global_m",
+    "sample_fps": 200.0,
+    "success_encoding": "-1 unknown, 0 false, 1 true"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "config": "analysis/mocap_cleaning/configs/DATA260703.yaml",
+  "csv": "/workspace/DATA260703/Csv/Rige Body/Table Tennis_01_005.csv",
+  "take_name": "Table Tennis_01_005",
+  "fps": 360.0,
+  "frames": 33431,
+  "time_monotonic": true,
+  "position_unit": "millimeters",
+  "coordinate_space": "global",
+  "quat_order": "xyzw",
+  "available_entity_counts": {
+    "Bone": 102,
+    "Rigid Body": 3,
+    "Marker": 887
+  },
+  "loaded_rigid_bodies": {
+    "TennisBats01": {
+      "pos_shape": [
+        33431,
+        3
+      ],
+      "quat_shape": [
+        33431,
+        4
+      ]
+    },
+    "TennisBats02": {
+      "pos_shape": [
+        33431,
+        3
+      ],
+      "quat_shape": [
+        33431,
+        4
+      ]
+    },
+    "Tennis": {
+      "pos_shape": [
+        33431,
+        3
+      ],
+      "quat_shape": [
+        33431,
+        4
+      ]
+    }
+  },
+  "loaded_bones": {
+    "Skeleton 001:RHand": {
+      "pos_shape": [
+        33431,
+        3
+      ],
+      "quat_shape": [
+        33431,
+        4
+      ]
+    },
+    "Skeleton 001:Hip": {
+      "pos_shape": [
+        33431,
+        3
+      ],
+      "quat_shape": [
+        33431,
+        4
+      ]
+    },
+    "Skeleton 001:LHand": {
+      "pos_shape": [
+        33431,
+        3
+      ],
+      "quat_shape": [
+        33431,
+        4
+      ]
+    }
+  },
+  "racket_hand_match": {
+    "racket": "TennisBats01",
+    "hand": "Skeleton 001:RHand",
+    "median_distance_m": 0.20882567057044485,
+    "min_distance_m": 0.1954606090265834,
+    "max_distance_m": 0.2286830490407286,
+    "ok": true
+  }
+}
