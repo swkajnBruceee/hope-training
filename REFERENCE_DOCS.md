@@ -25,9 +25,9 @@ under `agibot/`, but they are optional for the starter smoke run.
 
 ## Motion Capture
 
-- `mocap/HOPE_Motion_Capture_System_and_Coordinates_Reference_Setup.md`
-- `mocap/HOPE_Motion_Capture_System_and_Coordinates_Reference_Setup_ZH.md`
-- `mocap/two_ball_types.jpeg`
+- `data/mocap/HOPE_Motion_Capture_System_and_Coordinates_Reference_Setup.md`
+- `data/mocap/HOPE_Motion_Capture_System_and_Coordinates_Reference_Setup_ZH.md`
+- `data/mocap/two_ball_types.jpeg`
 
 ## Starter-Specific Docs
 

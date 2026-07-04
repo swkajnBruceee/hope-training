@@ -7,7 +7,7 @@ The HOPE world frame (ROS 2 REP-103, identical to the planner / mocap reference 
 * **Y** — left, from P1's perspective, along the table width:        ``y in [-1.525, 0] m``.
 * **Z** — up; **z = 0 is the table surface** (the floor is therefore at ``z = -0.76 m``).
 
-Key landmarks (see ``mocap/HOPE_Motion_Capture_System_and_Coordinates_Reference_Setup.md`` §2.1
+Key landmarks (see ``data/mocap/HOPE_Motion_Capture_System_and_Coordinates_Reference_Setup.md`` §2.1
 and ``hope_ws/.../hope_world_frame.yaml``)::
 
     Origin (P1 near-side left corner)   ( 0.0  ,  0.0   ,  0.0 )

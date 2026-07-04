@@ -15,7 +15,7 @@
 ## Optional: ROS and Mocap
 
 - Keep the ROS 2 Jazzy workspace skeleton under `hope_ws/`.
-- Keep motion-capture reference docs under `mocap/`.
+- Keep motion-capture reference docs under `data/mocap/`.
 - Do not vendor the upstream `vrpn_mocap` package in v1. Teams that need live
   VRPN should install or clone it separately into their ROS 2 workspace.
 - Treat real arena calibration, OptiTrack deployment, and live planner wiring as

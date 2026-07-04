@@ -15,7 +15,7 @@ repository is organized into four layers:
 | Required starter path | `QUICKSTART_A3_ISAAC.md`, `scripts/prepare_a3_isaac_asset.py`, `agibot/URDF/A3T2.5-URDF-std-pingpang/`, `hope_training/whole_body_tracking/` | Prepare the A3 Isaac asset, import the task package, launch the table-tennis scene, and run local-motion PPO smoke training. |
 | Stable public contracts | `A3_ASSETS.md`, `docs/interfaces/` | Explain frame conventions, joint order, observations/actions, ROS topics, and asset expectations that other teams should keep stable when integrating their own code. |
 | Agibot A3 reference bundle | `agibot/` | Agibot-provided A3 URDF variants, MuJoCo/AimRT simulation reference, and deployment example. Only the racket-equipped URDF is required for the Isaac quickstart. |
-| Optional or background material | `hope_ws/`, `mocap/`, `HOPE_*_Reference_Setup.md`, `ROADMAP.md` | Preserve broader HOPE architecture, ROS/mocap/planner context, and future work. These are not required before the Isaac smoke run. |
+| Optional or background material | `hope_ws/`, `data/mocap/`, `HOPE_*_Reference_Setup.md`, `ROADMAP.md` | Preserve broader HOPE architecture, ROS/mocap/planner context, and future work. These are not required before the Isaac smoke run. |
 
 A fresh clone contains only tracked files. Developer-local folders such as
 `external_repos/`, `vendor_assets/`, generated Isaac assets, logs, checkpoints,
@@ -58,7 +58,7 @@ See [QUICKSTART_A3_ISAAC.md](QUICKSTART_A3_ISAAC.md) for the full path. WandB is
 
 | Document | Description | Version |
 |----------|-------------|---------|
-| [Motion Capture System Reference Setup](mocap/HOPE_Motion_Capture_System_and_Coordinates_Reference_Setup.md) | OptiTrack/ROS 2 arena configuration, coordinate frames, tracked object taxonomy, humanoid base_link marker setup, ball tracking, and streaming pipeline | v0.3 |
+| [Motion Capture System Reference Setup](data/mocap/HOPE_Motion_Capture_System_and_Coordinates_Reference_Setup.md) | OptiTrack/ROS 2 arena configuration, coordinate frames, tracked object taxonomy, humanoid base_link marker setup, ball tracking, and streaming pipeline | v0.3 |
 | [7DOF Racket Model-based Planner Reference Setup](HOPE_7DOF_Racket_Model_based_Planner_Reference_Setup.md) | Ball state estimation, trajectory prediction, and racket target planning (Stages 1–3 of the HITTER framework), reimplemented in the HOPE canonical frame | v0.1 |
 | [WBC Simulation Training Reference Setup](HOPE_WBC_Simulation_Training_Reference_Setup.md) | SMPL-X motion acquisition, GMR retargeting, BeyondMimic RL training pipeline for whole-body control (Stage 4), with dual-backend support for Isaac Lab and mjlab | v0.5 |
 | [Hardware Deployment Reference Setup](HOPE_Hardware_Deployment_Reference_Setup.md) | Real-robot deployment via `legged_control2` (G1) or AimRT (A3): ONNX inference, ROS 2 node graph, PD gain tuning, safety procedures, and competition workflow | v0.1 |
@@ -81,7 +81,7 @@ Each document contains a **Section 0 prologue** listing all implementation diffe
 | `hope_training/whole_body_tracking/` | Isaac Lab whole-body tracking starter, table-tennis scene, PPO entry points, and smoke-motion generator. |
 | `docs/interfaces/` | Compact contracts for frames, joint order, policy IO, and ROS topics. These are the public interface docs, not an internal gate system. |
 | `hope_ws/` | Optional ROS 2 workspace skeleton for future mocap/planner integration. Not required for the Isaac quickstart. |
-| `mocap/` | Preserved motion-capture reference docs and assets. Useful when building a real arena pipeline. |
+| `data/mocap/` | Preserved motion-capture reference docs and assets. Useful when building a real arena pipeline. |
 | `external_repos/`, `vendor_assets/`, generated assets/logs/checkpoints | Local-only ignored folders. They may exist in a developer checkout but are not tracked starter contents. |
 
 ## System Architecture
