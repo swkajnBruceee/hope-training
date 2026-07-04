@@ -1,0 +1,73 @@
+{
+  "dataset_path": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/packed/DATA260703_combined_train.npz",
+  "samples": 792,
+  "frames": 201,
+  "fps_min": 199.99999999989768,
+  "fps_max": 200.0000000001819,
+  "fps_expected": 200.0,
+  "fps_ok": true,
+  "hit_index_unique": [
+    120
+  ],
+  "hit_index_ok": true,
+  "time_rel_at_hit_max_abs": 0.0,
+  "finite_fields": {
+    "time": true,
+    "time_rel": true,
+    "ball_pos": true,
+    "ball_vel": true,
+    "racket_pos": true,
+    "racket_quat": true,
+    "racket_vel": true,
+    "racket_omega": true,
+    "body_center": true,
+    "body_right_axis": true,
+    "hit_pos": true,
+    "racket_pose_at_hit": true,
+    "racket_vel_at_hit": true,
+    "ball_in_vel": true,
+    "ball_out_vel": true,
+    "dist": true,
+    "ball_dv": true,
+    "score": true
+  },
+  "all_finite_required": true,
+  "quat_norm_min": 0.9999999999999997,
+  "quat_norm_max": 1.0000000000000002,
+  "body_axis_norm_min": 0.9999999999999998,
+  "body_axis_norm_max": 1.0000000000000002,
+  "success_counts": {
+    "-1": 792
+  },
+  "stroke_counts": {
+    "forehand": 726,
+    "unknown": 66
+  },
+  "source_csv_counts": {
+    "Csv/Rige Body/Table Tennis_01_005.csv": 35,
+    "Csv/Rige Body/Table Tennis_01_006.csv": 82,
+    "Csv/Rige Body/Table Tennis_01_007.csv": 62,
+    "Csv/Rige Body/Table Tennis_01_008.csv": 58,
+    "Csv/Rige Body/Table Tennis_01_009.csv": 114,
+    "Csv/Point/Table Tennis_01_004.csv": 70,
+    "Csv/Point/Table Tennis_01_012.csv": 49,
+    "Csv/Point/Table Tennis_01_013.csv": 152,
+    "Csv/Point/Table Tennis_01_014.csv": 170
+  },
+  "usable_for_training_flags": {
+    "true": 792,
+    "false": 0
+  },
+  "racket_omega_reasonable": {
+    "true": 792,
+    "false": 0
+  },
+  "ball_speed_reasonable": {
+    "true": 792,
+    "false": 0
+  },
+  "racket_speed_reasonable": {
+    "true": 792,
+    "false": 0
+  }
+}

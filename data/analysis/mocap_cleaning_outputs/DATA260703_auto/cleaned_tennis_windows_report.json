@@ -1,0 +1,3703 @@
+{
+  "config": "data/analysis/mocap_cleaning/configs/DATA260703.yaml",
+  "selected_manifest": "data/analysis/mocap/auto_hit_candidates/manifest.json",
+  "candidate": "Tennis",
+  "max_speed_mps": 50.0,
+  "max_gap_s": 0.03,
+  "windows": [
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats01_1p36_3p36_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats01_1p36_3p36_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 1.355556,
+      "end_s": 3.355556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats01_1p36_3p36_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 33.264027415826,
+        "cleaned_max_speed_mps": 33.264027415826,
+        "cleaned_p95_speed_mps": 6.307475758951227,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.01596661767602951,
+        "near_020_frames": 27
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats01_48p52_50p52_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats01_48p52_50p52_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 48.516667,
+      "end_s": 50.516667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats01_48p52_50p52_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.002777999999999281,
+        "raw_max_speed_mps": 523.8119694120663,
+        "cleaned_max_speed_mps": 349.0943966354901,
+        "cleaned_p95_speed_mps": 6.009674003055782,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 358,
+            "end": 360,
+            "duration_s": 0.002777999999999281,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.13341576269210229,
+        "near_020_frames": 12
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats01_50p01_52p01_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats01_50p01_52p01_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 50.008333,
+      "end_s": 52.008333,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats01_50p01_52p01_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 23.29786790386313,
+        "cleaned_max_speed_mps": 23.29786790386313,
+        "cleaned_p95_speed_mps": 7.1297798477188,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.0266843914830289,
+        "near_020_frames": 27
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats01_52p65_54p65_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats01_52p65_54p65_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 52.647222,
+      "end_s": 54.647222,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats01_52p65_54p65_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 35.15515678050846,
+        "cleaned_max_speed_mps": 35.15515678050846,
+        "cleaned_p95_speed_mps": 6.887829039207017,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.0218224508316639,
+        "near_020_frames": 29
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats01_53p93_55p93_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats01_53p93_55p93_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 53.933333,
+      "end_s": 55.933333,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats01_53p93_55p93_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 23.74809615151189,
+        "cleaned_max_speed_mps": 23.74809615151189,
+        "cleaned_p95_speed_mps": 6.436495511888206,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02396747857138975,
+        "near_020_frames": 28
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats01_74p84_76p84_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats01_74p84_76p84_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 74.841667,
+      "end_s": 76.841667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats01_74p84_76p84_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 39.63935643393902,
+        "cleaned_max_speed_mps": 39.63935643393902,
+        "cleaned_p95_speed_mps": 7.1939697000842,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.029205158526592025,
+        "near_020_frames": 28
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats01_77p36_79p36_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats01_77p36_79p36_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 77.363889,
+      "end_s": 79.363889,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats01_77p36_79p36_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 26.716207425825484,
+        "cleaned_max_speed_mps": 26.716207425825484,
+        "cleaned_p95_speed_mps": 7.368614366178057,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.021965797698989393,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats01_84p98_86p98_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats01_84p98_86p98_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 84.977778,
+      "end_s": 86.977778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats01_84p98_86p98_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.0027780000000063865,
+        "raw_max_speed_mps": 72.55422019360213,
+        "cleaned_max_speed_mps": 48.36657784413502,
+        "cleaned_p95_speed_mps": 6.606034562909384,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": [
+          {
+            "start": 139,
+            "end": 141,
+            "duration_s": 0.0027780000000063865,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.024528294248310566,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats02_0p70_2p70_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats02_0p70_2p70_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 0.697222,
+      "end_s": 2.697222,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats02_0p70_2p70_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 4,
+        "short_gaps_filled": 2,
+        "long_gaps": 0,
+        "max_gap_s": 0.002778000000000058,
+        "raw_max_speed_mps": 84.04454603857887,
+        "cleaned_max_speed_mps": 56.02969735905297,
+        "cleaned_p95_speed_mps": 6.449605181032518,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 58,
+            "end": 60,
+            "duration_s": 0.002777999999999947,
+            "filled": true
+          },
+          {
+            "start": 91,
+            "end": 93,
+            "duration_s": 0.002778000000000058,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02958530469696229,
+        "near_020_frames": 31
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats02_28p77_30p77_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats02_28p77_30p77_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 28.775,
+      "end_s": 30.775,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats02_28p77_30p77_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 4,
+        "short_gaps_filled": 2,
+        "long_gaps": 0,
+        "max_gap_s": 0.002777999999999281,
+        "raw_max_speed_mps": 507.5666628370311,
+        "cleaned_max_speed_mps": 338.3777752246874,
+        "cleaned_p95_speed_mps": 6.374002421712358,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 80,
+            "end": 82,
+            "duration_s": 0.002777999999999281,
+            "filled": true
+          },
+          {
+            "start": 380,
+            "end": 382,
+            "duration_s": 0.002776999999998253,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.033258433314550785,
+        "near_020_frames": 38
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats02_39p62_41p62_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats02_39p62_41p62_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 39.619444,
+      "end_s": 41.619444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats02_39p62_41p62_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 25.60551655153364,
+        "cleaned_max_speed_mps": 25.60551655153364,
+        "cleaned_p95_speed_mps": 7.802391791446199,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03532893542615121,
+        "near_020_frames": 28
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats02_49p29_51p29_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats02_49p29_51p29_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 49.286111,
+      "end_s": 51.286111,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats02_49p29_51p29_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.002777999999999281,
+        "raw_max_speed_mps": 523.8119694120663,
+        "cleaned_max_speed_mps": 349.0943966354901,
+        "cleaned_p95_speed_mps": 7.1602370100843205,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 81,
+            "end": 83,
+            "duration_s": 0.002777999999999281,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02900012750044153,
+        "near_020_frames": 29
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats02_51p91_53p91_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats02_51p91_53p91_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 51.905556,
+      "end_s": 53.905556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats02_51p91_53p91_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 35.15515678050846,
+        "cleaned_max_speed_mps": 35.15515678050846,
+        "cleaned_p95_speed_mps": 7.404735770015936,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03147999314887529,
+        "near_020_frames": 29
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats02_71p21_73p21_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats02_71p21_73p21_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 71.213889,
+      "end_s": 73.213889,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats02_71p21_73p21_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.0027780000000063865,
+        "raw_max_speed_mps": 142.21986389667893,
+        "cleaned_max_speed_mps": 94.80755357576446,
+        "cleaned_p95_speed_mps": 5.402448518199337,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 293,
+            "end": 295,
+            "duration_s": 0.0027780000000063865,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.04101159278346072,
+        "near_020_frames": 54
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats02_85p49_87p49_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats02_85p49_87p49_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 85.488889,
+      "end_s": 87.488889,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats02_85p49_87p49_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 1,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 50.49424278997757,
+        "cleaned_max_speed_mps": 50.49424278997757,
+        "cleaned_p95_speed_mps": 6.9167045645076515,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 618,
+            "end": 619,
+            "duration_s": 0.0,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03130231759102392,
+        "near_020_frames": 29
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_005_TennisBats02_88p05_90p05_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_005_TennisBats02_88p05_90p05_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_005.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 88.052778,
+      "end_s": 90.052778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_005_TennisBats02_88p05_90p05_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 48.024892903626984,
+        "cleaned_max_speed_mps": 48.024892903626984,
+        "cleaned_p95_speed_mps": 7.584511195704657,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.024981456941622487,
+        "near_020_frames": 28
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats01_4p05_6p05_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats01_4p05_6p05_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 4.047222,
+      "end_s": 6.047222,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats01_4p05_6p05_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 22.992542396720886,
+        "cleaned_max_speed_mps": 22.992542396720886,
+        "cleaned_p95_speed_mps": 6.749225777200979,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.030552000492374984,
+        "near_020_frames": 29
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats01_10p72_12p72_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats01_10p72_12p72_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 10.719444,
+      "end_s": 12.719444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats01_10p72_12p72_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 19.118540695301206,
+        "cleaned_max_speed_mps": 19.118540695301206,
+        "cleaned_p95_speed_mps": 7.305282940135874,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.0353396894433304,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats01_22p89_24p89_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats01_22p89_24p89_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 22.894444,
+      "end_s": 24.894444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats01_22p89_24p89_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 15.482134954099202,
+        "cleaned_max_speed_mps": 15.482134954099202,
+        "cleaned_p95_speed_mps": 6.482148953551447,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.025269713581886722,
+        "near_020_frames": 29
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats01_49p56_51p56_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats01_49p56_51p56_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 49.555556,
+      "end_s": 51.555556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats01_49p56_51p56_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.002777999999999281,
+        "raw_max_speed_mps": 77.6763797764899,
+        "cleaned_max_speed_mps": 51.784253184348664,
+        "cleaned_p95_speed_mps": 6.540040745107411,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 42,
+            "end": 44,
+            "duration_s": 0.002777999999999281,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02380262993862621,
+        "near_020_frames": 22
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats01_52p28_54p28_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats01_52p28_54p28_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 52.280556,
+      "end_s": 54.280556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats01_52p28_54p28_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 20.09770568412928,
+        "cleaned_max_speed_mps": 20.09770568412928,
+        "cleaned_p95_speed_mps": 7.173840481260007,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.024075386687778994,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats01_55p43_57p43_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats01_55p43_57p43_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 55.430556,
+      "end_s": 57.430556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats01_55p43_57p43_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.002777999999999281,
+        "raw_max_speed_mps": 108.14963958588119,
+        "cleaned_max_speed_mps": 72.10841204115852,
+        "cleaned_p95_speed_mps": 6.123103277650557,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 262,
+            "end": 264,
+            "duration_s": 0.002777999999999281,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.022425751698493604,
+        "near_020_frames": 33
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats01_59p42_61p42_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats01_59p42_61p42_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 59.422222,
+      "end_s": 61.422222,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats01_59p42_61p42_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 17.13004652740278,
+        "cleaned_max_speed_mps": 17.13004652740278,
+        "cleaned_p95_speed_mps": 7.035900859918305,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.01485164886106955,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats01_70p92_72p92_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats01_70p92_72p92_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 70.919444,
+      "end_s": 72.919444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats01_70p92_72p92_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 28.29901537503338,
+        "cleaned_max_speed_mps": 28.29901537503338,
+        "cleaned_p95_speed_mps": 5.667811587009269,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.0194488446044473,
+        "near_020_frames": 34
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats02_13p93_15p93_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats02_13p93_15p93_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 13.933333,
+      "end_s": 15.933333,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats02_13p93_15p93_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 9.70953276053813,
+        "cleaned_max_speed_mps": 9.70953276053813,
+        "cleaned_p95_speed_mps": 6.910469387608232,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03353644550160086,
+        "near_020_frames": 30
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats02_18p68_20p68_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats02_18p68_20p68_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 18.675,
+      "end_s": 20.675,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats02_18p68_20p68_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.002777999999999281,
+        "raw_max_speed_mps": 116.33608128224384,
+        "cleaned_max_speed_mps": 77.3705867266009,
+        "cleaned_p95_speed_mps": 6.641547243571167,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 206,
+            "end": 208,
+            "duration_s": 0.002777999999999281,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.032239354934528654,
+        "near_020_frames": 43
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats02_21p91_23p91_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats02_21p91_23p91_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 21.908333,
+      "end_s": 23.908333,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats02_21p91_23p91_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 12.17265999962532,
+        "cleaned_max_speed_mps": 12.17265999962532,
+        "cleaned_p95_speed_mps": 5.480847241336465,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.041320873832913524,
+        "near_020_frames": 55
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats02_23p47_25p47_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats02_23p47_25p47_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 23.469444,
+      "end_s": 25.469444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats02_23p47_25p47_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 33.525049065338415,
+        "cleaned_max_speed_mps": 33.525049065338415,
+        "cleaned_p95_speed_mps": 6.95737138302918,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02409838164840609,
+        "near_020_frames": 28
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats02_38p94_40p94_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats02_38p94_40p94_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 38.941667,
+      "end_s": 40.941667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats02_38p94_40p94_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 11.907555385841336,
+        "cleaned_max_speed_mps": 11.907555385841336,
+        "cleaned_p95_speed_mps": 6.701802805056641,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02853444291050615,
+        "near_020_frames": 29
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats02_74p06_76p06_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats02_74p06_76p06_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 74.055556,
+      "end_s": 76.055556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats02_74p06_76p06_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 9.796618066990188,
+        "cleaned_max_speed_mps": 9.796618066990188,
+        "cleaned_p95_speed_mps": 6.883232748395276,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.025980838462533403,
+        "near_020_frames": 27
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats02_92p55_94p55_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats02_92p55_94p55_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 92.547222,
+      "end_s": 94.547222,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats02_92p55_94p55_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 4,
+        "short_gaps_filled": 2,
+        "long_gaps": 0,
+        "max_gap_s": 0.0027780000000063865,
+        "raw_max_speed_mps": 70.01418442399391,
+        "cleaned_max_speed_mps": 46.68172430816323,
+        "cleaned_p95_speed_mps": 6.428426696810141,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": [
+          {
+            "start": 197,
+            "end": 199,
+            "duration_s": 0.0027780000000063865,
+            "filled": true
+          },
+          {
+            "start": 242,
+            "end": 244,
+            "duration_s": 0.0027780000000063865,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03681474713487605,
+        "near_020_frames": 95
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_006_TennisBats02_95p25_97p25_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_006_TennisBats02_95p25_97p25_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_006.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 95.252778,
+      "end_s": 97.252778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_006_TennisBats02_95p25_97p25_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 14.228564406611635,
+        "cleaned_max_speed_mps": 14.228564406611635,
+        "cleaned_p95_speed_mps": 7.018645932097155,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.027955674686173174,
+        "near_020_frames": 28
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats01_6p00_8p00_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats01_6p00_8p00_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 6.002778,
+      "end_s": 8.002778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats01_6p00_8p00_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 0.9029126213592233,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 70,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 14.88660214629783,
+        "cleaned_max_speed_mps": 17.206834100660092,
+        "cleaned_p95_speed_mps": 7.048166805829875,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": [
+          {
+            "start": 12,
+            "end": 13,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 29,
+            "end": 30,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 43,
+            "end": 44,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 53,
+            "end": 54,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 59,
+            "end": 60,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 68,
+            "end": 69,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 98,
+            "end": 99,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 103,
+            "end": 104,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 109,
+            "end": 110,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 119,
+            "end": 120,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 131,
+            "end": 132,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 143,
+            "end": 144,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 158,
+            "end": 159,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 168,
+            "end": 169,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 177,
+            "end": 178,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 190,
+            "end": 191,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 208,
+            "end": 209,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 211,
+            "end": 212,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 220,
+            "end": 221,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 245,
+            "end": 246,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 255,
+            "end": 256,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 263,
+            "end": 264,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 270,
+            "end": 271,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 277,
+            "end": 278,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 283,
+            "end": 284,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 289,
+            "end": 290,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 298,
+            "end": 299,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 305,
+            "end": 306,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 311,
+            "end": 312,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 318,
+            "end": 319,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 324,
+            "end": 325,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 337,
+            "end": 338,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 346,
+            "end": 347,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 353,
+            "end": 354,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 358,
+            "end": 359,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 362,
+            "end": 363,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 369,
+            "end": 370,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 377,
+            "end": 378,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 384,
+            "end": 385,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 391,
+            "end": 392,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 402,
+            "end": 403,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 408,
+            "end": 409,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 412,
+            "end": 413,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 420,
+            "end": 421,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 462,
+            "end": 463,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 491,
+            "end": 492,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 510,
+            "end": 511,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 552,
+            "end": 553,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 558,
+            "end": 559,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 564,
+            "end": 565,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 573,
+            "end": 574,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 580,
+            "end": 581,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 588,
+            "end": 589,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 593,
+            "end": 594,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 601,
+            "end": 602,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 611,
+            "end": 612,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 614,
+            "end": 615,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 629,
+            "end": 630,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 638,
+            "end": 639,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 647,
+            "end": 648,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 652,
+            "end": 653,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 660,
+            "end": 661,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 666,
+            "end": 667,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 674,
+            "end": 675,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 680,
+            "end": 681,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 688,
+            "end": 689,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 695,
+            "end": 696,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 702,
+            "end": 703,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 710,
+            "end": 711,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 715,
+            "end": 716,
+            "duration_s": 0.0,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.014821127839430273,
+        "near_020_frames": 21
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats01_31p10_33p10_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats01_31p10_33p10_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 31.097222000000002,
+      "end_s": 33.097222,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats01_31p10_33p10_Skeleton001_Tennis_cleaned.npz",
+      "samples": 720,
+      "cleaning": {
+        "frames": 720,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 22.70636392677409,
+        "cleaned_max_speed_mps": 22.70636392677409,
+        "cleaned_p95_speed_mps": 7.334121986166783,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.0234186183975181,
+        "near_020_frames": 28
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats01_51p85_53p85_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats01_51p85_53p85_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 51.85,
+      "end_s": 53.85,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats01_51p85_53p85_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 25.63228999246808,
+        "cleaned_max_speed_mps": 25.63228999246808,
+        "cleaned_p95_speed_mps": 6.0453596720945395,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.01915480841080746,
+        "near_020_frames": 33
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats01_54p65_56p65_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats01_54p65_56p65_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 54.652778,
+      "end_s": 56.652778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats01_54p65_56p65_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 18.42041854684768,
+        "cleaned_max_speed_mps": 18.42041854684768,
+        "cleaned_p95_speed_mps": 7.290421532302567,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.021718974980600273,
+        "near_020_frames": 25
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats01_55p90_57p90_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats01_55p90_57p90_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 55.902778,
+      "end_s": 57.902778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats01_55p90_57p90_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 16.72294336605086,
+        "cleaned_max_speed_mps": 16.72294336605086,
+        "cleaned_p95_speed_mps": 7.41517688502212,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.023499462439121224,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats01_57p16_59p16_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats01_57p16_59p16_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 57.161111,
+      "end_s": 59.161111,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats01_57p16_59p16_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 17.664031517959646,
+        "cleaned_max_speed_mps": 17.664031517959646,
+        "cleaned_p95_speed_mps": 7.369157722986262,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.030327111572896782,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats01_79p19_81p19_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats01_79p19_81p19_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 79.191667,
+      "end_s": 81.191667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats01_79p19_81p19_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 10.979951194068487,
+        "cleaned_max_speed_mps": 10.979951194068487,
+        "cleaned_p95_speed_mps": 6.88044401788517,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02761987338874728,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats01_80p40_82p40_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats01_80p40_82p40_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 80.397222,
+      "end_s": 82.397222,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats01_80p40_82p40_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 10.027480098567844,
+        "cleaned_max_speed_mps": 10.027480098567844,
+        "cleaned_p95_speed_mps": 7.941681620662664,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02823715743378103,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats02_5p34_7p34_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats02_5p34_7p34_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 5.344444,
+      "end_s": 7.344444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats02_5p34_7p34_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 0.9001386962552012,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 72,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 14.88660214629783,
+        "cleaned_max_speed_mps": 17.206834100660092,
+        "cleaned_p95_speed_mps": 7.0610573640437915,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": [
+          {
+            "start": 7,
+            "end": 8,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 22,
+            "end": 23,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 32,
+            "end": 33,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 38,
+            "end": 39,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 44,
+            "end": 45,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 67,
+            "end": 68,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 80,
+            "end": 81,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 89,
+            "end": 90,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 96,
+            "end": 97,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 105,
+            "end": 106,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 112,
+            "end": 113,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 121,
+            "end": 122,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 129,
+            "end": 130,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 136,
+            "end": 137,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 143,
+            "end": 144,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 149,
+            "end": 150,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 159,
+            "end": 160,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 164,
+            "end": 165,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 170,
+            "end": 171,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 179,
+            "end": 180,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 188,
+            "end": 189,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 194,
+            "end": 195,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 200,
+            "end": 201,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 210,
+            "end": 211,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 218,
+            "end": 219,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 224,
+            "end": 225,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 236,
+            "end": 237,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 249,
+            "end": 250,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 266,
+            "end": 267,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 280,
+            "end": 281,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 290,
+            "end": 291,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 296,
+            "end": 297,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 305,
+            "end": 306,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 335,
+            "end": 336,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 340,
+            "end": 341,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 346,
+            "end": 347,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 356,
+            "end": 357,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 368,
+            "end": 369,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 380,
+            "end": 381,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 395,
+            "end": 396,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 405,
+            "end": 406,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 414,
+            "end": 415,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 427,
+            "end": 428,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 445,
+            "end": 446,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 448,
+            "end": 449,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 457,
+            "end": 458,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 482,
+            "end": 483,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 492,
+            "end": 493,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 500,
+            "end": 501,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 507,
+            "end": 508,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 514,
+            "end": 515,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 520,
+            "end": 521,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 526,
+            "end": 527,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 535,
+            "end": 536,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 542,
+            "end": 543,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 548,
+            "end": 549,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 555,
+            "end": 556,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 561,
+            "end": 562,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 574,
+            "end": 575,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 583,
+            "end": 584,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 590,
+            "end": 591,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 595,
+            "end": 596,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 599,
+            "end": 600,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 606,
+            "end": 607,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 614,
+            "end": 615,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 621,
+            "end": 622,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 628,
+            "end": 629,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 639,
+            "end": 640,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 645,
+            "end": 646,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 649,
+            "end": 650,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 657,
+            "end": 658,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 699,
+            "end": 700,
+            "duration_s": 0.0,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03659251987281328,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats02_11p42_13p42_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats02_11p42_13p42_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 11.416667,
+      "end_s": 13.416667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats02_11p42_13p42_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 0.957004160887656,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 25,
+        "long_gaps": 0,
+        "max_gap_s": 0.008333000000000368,
+        "raw_max_speed_mps": 9.877497304651062,
+        "cleaned_max_speed_mps": 9.877497304651062,
+        "cleaned_p95_speed_mps": 7.126805594594171,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": [
+          {
+            "start": 25,
+            "end": 26,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 71,
+            "end": 72,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 82,
+            "end": 83,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 168,
+            "end": 169,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 174,
+            "end": 178,
+            "duration_s": 0.008333000000000368,
+            "filled": true
+          },
+          {
+            "start": 179,
+            "end": 180,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 189,
+            "end": 190,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 222,
+            "end": 223,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 230,
+            "end": 231,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 249,
+            "end": 250,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 431,
+            "end": 432,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 436,
+            "end": 437,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 452,
+            "end": 453,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 463,
+            "end": 464,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 475,
+            "end": 476,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 483,
+            "end": 484,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 513,
+            "end": 514,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 529,
+            "end": 530,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 543,
+            "end": 547,
+            "duration_s": 0.008332999999998592,
+            "filled": true
+          },
+          {
+            "start": 573,
+            "end": 574,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 597,
+            "end": 598,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 619,
+            "end": 620,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 633,
+            "end": 634,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 657,
+            "end": 658,
+            "duration_s": 0.0,
+            "filled": true
+          },
+          {
+            "start": 670,
+            "end": 671,
+            "duration_s": 0.0,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03667816435023549,
+        "near_020_frames": 27
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats02_20p31_22p31_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats02_20p31_22p31_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 20.311111,
+      "end_s": 22.311111,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats02_20p31_22p31_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 14.01029226930735,
+        "cleaned_max_speed_mps": 14.01029226930735,
+        "cleaned_p95_speed_mps": 6.085972195866768,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03626134673524678,
+        "near_020_frames": 43
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats02_45p84_47p84_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats02_45p84_47p84_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 45.836111,
+      "end_s": 47.836111,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats02_45p84_47p84_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 16.417594320217557,
+        "cleaned_max_speed_mps": 16.417594320217557,
+        "cleaned_p95_speed_mps": 7.482869574245001,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03850218789656602,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats02_53p98_55p98_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats02_53p98_55p98_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 53.980556,
+      "end_s": 55.980556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats02_53p98_55p98_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 18.42041854684768,
+        "cleaned_max_speed_mps": 18.42041854684768,
+        "cleaned_p95_speed_mps": 7.507312701567604,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02704942457713532,
+        "near_020_frames": 27
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats02_55p19_57p19_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats02_55p19_57p19_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 55.191667,
+      "end_s": 57.191667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats02_55p19_57p19_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 18.42041854684768,
+        "cleaned_max_speed_mps": 18.42041854684768,
+        "cleaned_p95_speed_mps": 7.6689759514674485,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.032778090892912705,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats02_61p49_63p49_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats02_61p49_63p49_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 61.486111,
+      "end_s": 63.486111,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats02_61p49_63p49_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 25.748559112909927,
+        "cleaned_max_speed_mps": 25.748559112909927,
+        "cleaned_p95_speed_mps": 7.562155167160201,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.026740557897098477,
+        "near_020_frames": 27
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_007_TennisBats02_78p50_80p50_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_007_TennisBats02_78p50_80p50_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_007.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 78.497222,
+      "end_s": 80.497222,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_007_TennisBats02_78p50_80p50_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 10.979951194068487,
+        "cleaned_max_speed_mps": 10.979951194068487,
+        "cleaned_p95_speed_mps": 6.789523890213219,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03225855876080801,
+        "near_020_frames": 31
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats01_34p40_36p40_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats01_34p40_36p40_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 34.4,
+      "end_s": 36.4,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats01_34p40_36p40_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 37.537451859472846,
+        "cleaned_max_speed_mps": 37.537451859472846,
+        "cleaned_p95_speed_mps": 6.138882990528116,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02397662105218375,
+        "near_020_frames": 33
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats01_37p06_39p06_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats01_37p06_39p06_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 37.055556,
+      "end_s": 39.055556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats01_37p06_39p06_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 25.912589162407027,
+        "cleaned_max_speed_mps": 25.912589162407027,
+        "cleaned_p95_speed_mps": 7.518235425676407,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.022229771871518998,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats01_39p36_41p36_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats01_39p36_41p36_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 39.363889,
+      "end_s": 41.363889,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats01_39p36_41p36_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 26.323434223869246,
+        "cleaned_max_speed_mps": 26.323434223869246,
+        "cleaned_p95_speed_mps": 7.365984365929847,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.023302298979387168,
+        "near_020_frames": 27
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats01_48p43_50p43_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats01_48p43_50p43_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 48.427778,
+      "end_s": 50.427778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats01_48p43_50p43_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 26.86280922176441,
+        "cleaned_max_speed_mps": 26.86280922176441,
+        "cleaned_p95_speed_mps": 7.274411499642929,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.024782260151930857,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats01_60p81_62p81_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats01_60p81_62p81_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 60.811111,
+      "end_s": 62.811111,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats01_60p81_62p81_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 31.597272776382102,
+        "cleaned_max_speed_mps": 31.597272776382102,
+        "cleaned_p95_speed_mps": 7.099552632707291,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02713779590209993,
+        "near_020_frames": 25
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats01_79p05_81p05_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats01_79p05_81p05_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 79.052778,
+      "end_s": 81.052778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats01_79p05_81p05_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 20.01746391407564,
+        "cleaned_max_speed_mps": 20.01746391407564,
+        "cleaned_p95_speed_mps": 7.72856394304647,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.005900194656767908,
+        "near_020_frames": 23
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats01_81p44_83p44_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats01_81p44_83p44_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 81.438889,
+      "end_s": 83.438889,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats01_81p44_83p44_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 30.944104885323412,
+        "cleaned_max_speed_mps": 30.944104885323412,
+        "cleaned_p95_speed_mps": 7.398774556207833,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.018252781492732285,
+        "near_020_frames": 25
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats01_118p94_120p94_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats01_118p94_120p94_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 118.938889,
+      "end_s": 120.938889,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats01_118p94_120p94_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 21.93180738427445,
+        "cleaned_max_speed_mps": 21.93180738427445,
+        "cleaned_p95_speed_mps": 6.796217221412792,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.016782533622149324,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats02_48p97_50p97_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats02_48p97_50p97_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 48.966667,
+      "end_s": 50.966667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats02_48p97_50p97_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 26.86280922176441,
+        "cleaned_max_speed_mps": 26.86280922176441,
+        "cleaned_p95_speed_mps": 7.735969434900355,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.028501741317889965,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats02_63p74_65p74_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats02_63p74_65p74_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 63.736110999999994,
+      "end_s": 65.736111,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats02_63p74_65p74_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 26.447571488312,
+        "cleaned_max_speed_mps": 26.447571488312,
+        "cleaned_p95_speed_mps": 7.482535011861026,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.030316824571964576,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats02_79p61_81p61_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats02_79p61_81p61_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 79.613889,
+      "end_s": 81.613889,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats02_79p61_81p61_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 20.01746391407564,
+        "cleaned_max_speed_mps": 20.01746391407564,
+        "cleaned_p95_speed_mps": 7.870620404792308,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.005825265337569215,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats02_89p12_91p12_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats02_89p12_91p12_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 89.119444,
+      "end_s": 91.119444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats02_89p12_91p12_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 4,
+        "short_gaps_filled": 2,
+        "long_gaps": 0,
+        "max_gap_s": 0.0027779999999921756,
+        "raw_max_speed_mps": 152.18834159609094,
+        "cleaned_max_speed_mps": 101.36764800614043,
+        "cleaned_p95_speed_mps": 6.359278922655589,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 139,
+            "end": 141,
+            "duration_s": 0.0027769999999947004,
+            "filled": true
+          },
+          {
+            "start": 195,
+            "end": 197,
+            "duration_s": 0.0027779999999921756,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.032184566609105875,
+        "near_020_frames": 97
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats02_98p92_100p92_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats02_98p92_100p92_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 98.925,
+      "end_s": 100.925,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats02_98p92_100p92_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.0027769999999947004,
+        "raw_max_speed_mps": 77.6606001621017,
+        "cleaned_max_speed_mps": 51.31936713991856,
+        "cleaned_p95_speed_mps": 6.80260502812388,
+        "usable": false,
+        "reasons": [
+          "cleaned trajectory still exceeds 50.0 m/s"
+        ],
+        "gaps": [
+          {
+            "start": 65,
+            "end": 67,
+            "duration_s": 0.0027769999999947004,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.01240391383255738,
+        "near_020_frames": 27
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats02_108p65_110p65_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats02_108p65_110p65_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 108.652778,
+      "end_s": 110.652778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats02_108p65_110p65_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 8.949453871057157,
+        "cleaned_max_speed_mps": 8.949453871057157,
+        "cleaned_p95_speed_mps": 5.947178008532177,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.045784280440688455,
+        "near_020_frames": 43
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats02_110p20_112p20_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats02_110p20_112p20_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 110.202778,
+      "end_s": 112.202778,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats02_110p20_112p20_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 14.540832156405221,
+        "cleaned_max_speed_mps": 14.540832156405221,
+        "cleaned_p95_speed_mps": 6.473625518395178,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03303950289767504,
+        "near_020_frames": 29
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_008_TennisBats02_111p44_113p44_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_008_TennisBats02_111p44_113p44_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_008.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 111.444444,
+      "end_s": 113.444444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_008_TennisBats02_111p44_113p44_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 21.677693782226257,
+        "cleaned_max_speed_mps": 21.677693782226257,
+        "cleaned_p95_speed_mps": 7.164894066684561,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.023375793073333685,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats01_4p46_6p46_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats01_4p46_6p46_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 4.455556,
+      "end_s": 6.455556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats01_4p46_6p46_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 16.09684012179055,
+        "cleaned_max_speed_mps": 16.09684012179055,
+        "cleaned_p95_speed_mps": 7.140057298475652,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.021804051738014515,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats01_15p43_17p43_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats01_15p43_17p43_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 15.430556,
+      "end_s": 17.430556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats01_15p43_17p43_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 25.74565016681097,
+        "cleaned_max_speed_mps": 25.74565016681097,
+        "cleaned_p95_speed_mps": 7.591294604796306,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.025775758928054487,
+        "near_020_frames": 25
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats01_27p77_29p77_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats01_27p77_29p77_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 27.769444,
+      "end_s": 29.769444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats01_27p77_29p77_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 15.472786150500518,
+        "cleaned_max_speed_mps": 15.472786150500518,
+        "cleaned_p95_speed_mps": 7.941603075081276,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.028327434850980427,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats01_58p98_60p98_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats01_58p98_60p98_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 58.975,
+      "end_s": 60.975,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats01_58p98_60p98_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 29.073378058708656,
+        "cleaned_max_speed_mps": 29.073378058708656,
+        "cleaned_p95_speed_mps": 7.146979973764385,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02180788655487109,
+        "near_020_frames": 25
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats01_63p68_65p68_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats01_63p68_65p68_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 63.680555999999996,
+      "end_s": 65.680556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats01_63p68_65p68_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 36.55781299444171,
+        "cleaned_max_speed_mps": 36.55781299444171,
+        "cleaned_p95_speed_mps": 7.509613568921589,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.01973030726080718,
+        "near_020_frames": 26
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats01_101p17_103p17_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats01_101p17_103p17_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 101.166667,
+      "end_s": 103.166667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats01_101p17_103p17_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.0027770000000089112,
+        "raw_max_speed_mps": 53.588385437665174,
+        "cleaned_max_speed_mps": 35.72344667065028,
+        "cleaned_p95_speed_mps": 6.127207688822832,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": [
+          {
+            "start": 50,
+            "end": 52,
+            "duration_s": 0.0027770000000089112,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.01571857284483154,
+        "near_020_frames": 30
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats01_126p77_128p77_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats01_126p77_128p77_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 126.766667,
+      "end_s": 128.76666699999998,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats01_126p77_128p77_Skeleton001_Tennis_cleaned.npz",
+      "samples": 720,
+      "cleaning": {
+        "frames": 720,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 15.319312099187881,
+        "cleaned_max_speed_mps": 15.319312099187881,
+        "cleaned_p95_speed_mps": 6.34967005322535,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02347452572060512,
+        "near_020_frames": 31
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats01_128p04_130p04_Skeleton001",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats01_128p04_130p04_Skeleton001.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats01",
+      "start_s": 128.038889,
+      "end_s": 130.038889,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats01_128p04_130p04_Skeleton001_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 25.146605214636786,
+        "cleaned_max_speed_mps": 25.146605214636786,
+        "cleaned_p95_speed_mps": 7.487927942591203,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02598491594454121,
+        "near_020_frames": 28
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats02_77p43_79p43_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats02_77p43_79p43_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 77.433333,
+      "end_s": 79.433333,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats02_77p43_79p43_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 43.68015308339406,
+        "cleaned_max_speed_mps": 43.68015308339406,
+        "cleaned_p95_speed_mps": 5.9345540976678315,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03006934484867876,
+        "near_020_frames": 54
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats02_81p41_83p41_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats02_81p41_83p41_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 81.405556,
+      "end_s": 83.405556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats02_81p41_83p41_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 18.39104008464534,
+        "cleaned_max_speed_mps": 18.39104008464534,
+        "cleaned_p95_speed_mps": 6.876666579427629,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02591081400620986,
+        "near_020_frames": 27
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats02_82p78_84p78_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats02_82p78_84p78_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 82.780556,
+      "end_s": 84.780556,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats02_82p78_84p78_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 14.542286605606494,
+        "cleaned_max_speed_mps": 14.542286605606494,
+        "cleaned_p95_speed_mps": 7.749073365454458,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.03182224622441827,
+        "near_020_frames": 23
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats02_93p32_95p32_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats02_93p32_95p32_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 93.319444,
+      "end_s": 95.319444,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats02_93p32_95p32_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 27.7224996194687,
+        "cleaned_max_speed_mps": 27.7224996194687,
+        "cleaned_p95_speed_mps": 7.8719303780290675,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.022483275377352126,
+        "near_020_frames": 24
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats02_100p26_102p26_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats02_100p26_102p26_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 100.263889,
+      "end_s": 102.263889,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats02_100p26_102p26_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 2,
+        "short_gaps_filled": 1,
+        "long_gaps": 0,
+        "max_gap_s": 0.0027770000000089112,
+        "raw_max_speed_mps": 53.588385437665174,
+        "cleaned_max_speed_mps": 35.72344667065028,
+        "cleaned_p95_speed_mps": 5.786113905686339,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": [
+          {
+            "start": 375,
+            "end": 377,
+            "duration_s": 0.0027770000000089112,
+            "filled": true
+          }
+        ]
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.02958087863814019,
+        "near_020_frames": 50
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats02_121p22_123p22_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats02_121p22_123p22_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 121.216667,
+      "end_s": 123.216667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats02_121p22_123p22_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 19.69860822644546,
+        "cleaned_max_speed_mps": 19.69860822644546,
+        "cleaned_p95_speed_mps": 6.527210568606194,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.021210954309977027,
+        "near_020_frames": 30
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats02_135p34_137p34_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats02_135p34_137p34_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 135.341667,
+      "end_s": 137.341667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats02_135p34_137p34_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 18.10079301799214,
+        "cleaned_max_speed_mps": 18.10079301799214,
+        "cleaned_p95_speed_mps": 5.591877771821023,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.022777962042013593,
+        "near_020_frames": 33
+      }
+    },
+    {
+      "episode_id": "Table_Tennis_01_009_TennisBats02_138p04_140p04_Skeleton002",
+      "selected_path": "data/analysis/mocap/auto_hit_candidates/Table_Tennis_01_009_TennisBats02_138p04_140p04_Skeleton002.bvh",
+      "source_csv": "Csv/Rige Body/Table Tennis_01_009.csv",
+      "candidate": "Tennis",
+      "racket": "TennisBats02",
+      "start_s": 138.041667,
+      "end_s": 140.041667,
+      "npz_path": "data/analysis/mocap_cleaning_outputs/DATA260703_auto/cleaned_windows/Table_Tennis_01_009_TennisBats02_138p04_140p04_Skeleton002_Tennis_cleaned.npz",
+      "samples": 721,
+      "cleaning": {
+        "frames": 721,
+        "raw_valid_ratio": 1.0,
+        "cleaned_valid_ratio": 1.0,
+        "outlier_frames": 0,
+        "short_gaps_filled": 0,
+        "long_gaps": 0,
+        "max_gap_s": 0.0,
+        "raw_max_speed_mps": 18.62454850050376,
+        "cleaned_max_speed_mps": 18.62454850050376,
+        "cleaned_p95_speed_mps": 6.326229095228518,
+        "usable": true,
+        "reasons": [
+          "trajectory cleaned successfully"
+        ],
+        "gaps": []
+      },
+      "distance_after_cleaning": {
+        "min_distance_m": 0.024447655675837485,
+        "near_020_frames": 29
+      }
+    }
+  ]
+}
