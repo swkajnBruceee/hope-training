@@ -13,10 +13,28 @@ script reuses BeyondMimic's training mechanics (Isaac Lab + rsl_rl). A local `mo
 is preferred for public smoke runs; WandB registry loading is optional.
 """
 
+import os
 import sys
 
 import hydra
 from omegaconf import OmegaConf
+
+
+# Make the ``training`` package importable regardless of how this script was
+# invoked. Without this, the script silently relies on PYTHONPATH being set
+# by an external wrapper (e.g. ``hope_isaac_py`` from setup_train_env.sh),
+# and a forgotten ``source setup_train_env.sh`` makes ``import training``
+# fail with ModuleNotFoundError deep inside _run(). Resolve paths relative
+# to THIS FILE so the script works from any cwd and any checkout location.
+_HERE = os.path.dirname(os.path.abspath(__file__))                # .../scripts
+_REPO_ROOT = os.path.normpath(os.path.join(_HERE, ".."))          # .../whole_body_tracking
+for _p in (
+    _REPO_ROOT,
+    os.path.normpath(os.path.join(_REPO_ROOT, "show")),
+):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+del _HERE, _REPO_ROOT, _p
 
 
 def dump_pickle(filename: str, data):
@@ -53,7 +71,7 @@ class _OverrideError(AttributeError):
 
 def _require(cond, target):
     # The YAML explicitly set a value, but the target attribute is missing on the composed env cfg.
-    # That is NEVER a benign no-op: either a STALE/shadowed whole_body_tracking was imported (so the
+    # That is NEVER a benign no-op: either a STALE/shadowed training was imported (so the
     # cfg classes differ from the working tree) or the Hydra base groups failed to compose. Fail loud
     # instead of silently dropping the override (the old behaviour that hid the std/curriculum edits).
     if not cond:
@@ -276,19 +294,19 @@ def _run(cfg):
     from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
     from isaaclab_tasks.utils import parse_env_cfg
 
-    import whole_body_tracking  # noqa: F401
-    import whole_body_tracking.tasks  # noqa: F401  -- registers the gym tasks
-    from whole_body_tracking.utils.my_on_policy_runner import MotionOnPolicyRunner, MyOnPolicyRunner
-    from whole_body_tracking.utils.ppo_cfg import runner_kwargs
+    import training  # noqa: F401
+    import training.tasks  # noqa: F401  -- registers the gym tasks
+    from training.utils.my_on_policy_runner import MotionOnPolicyRunner, MyOnPolicyRunner
+    from training.utils.ppo_cfg import runner_kwargs
 
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
 
     # Provenance: confirm we imported the WORKING TREE, not a stale install. If this path points into
-    # site-packages instead of .../source/whole_body_tracking, a shadow copy is overriding your edits
+    # site-packages instead of .../training, a shadow copy is overriding your edits
     # (fix PYTHONPATH ordering in setup_train_env.sh / reinstall editable) and the YAML edits below are
     # being applied onto the wrong cfg classes.
-    print(f"[train.py] whole_body_tracking imported from: {whole_body_tracking.__file__}", flush=True)
+    print(f"[train.py] training imported from: {training.__file__}", flush=True)
 
     task_id = str(cfg.task.gym_task)
     num_envs = int(cfg.num_envs) if cfg.num_envs is not None else int(cfg.task.env.num_envs)

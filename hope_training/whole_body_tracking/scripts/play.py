@@ -13,6 +13,18 @@ import sys
 # allow `from train import _apply_task_overrides` (sibling script; no isaaclab imported at its top)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Also make ``training`` (and the ``trajectory`` overlay, resolvable as ``from show.trajectory``) importable regardless
+# of how this script was launched. Paths are relative to THIS FILE so the
+# script is independent of PYTHONPATH / cwd / checkout location.
+_REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+for _p in (
+    _REPO_ROOT,
+    os.path.normpath(os.path.join(_REPO_ROOT, "show")),
+):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+del _REPO_ROOT, _p
+
 import hydra
 from omegaconf import OmegaConf
 
@@ -30,10 +42,10 @@ def _run_play(cfg, simulation_app):
     from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper, export_policy_as_onnx
     from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 
-    import whole_body_tracking.tasks  # noqa: F401  -- registers the gym tasks
-    from whole_body_tracking.tasks.table_tennis.mdp.racket import racket_normal_w, racket_state_w
-    from whole_body_tracking.utils.exporter import attach_onnx_metadata, export_motion_policy_as_onnx
-    from whole_body_tracking.utils.ppo_cfg import runner_kwargs
+    import training.tasks  # noqa: F401  -- registers the gym tasks
+    from training.tasks.table_tennis.mdp.racket import racket_normal_w, racket_state_w
+    from training.utils.exporter import attach_onnx_metadata, export_motion_policy_as_onnx
+    from training.utils.ppo_cfg import runner_kwargs
 
     def _obs_to_device(obs, device):
         if isinstance(obs, tuple):

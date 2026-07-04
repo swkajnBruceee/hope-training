@@ -8,8 +8,22 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
-import sys
+import os
 import pickle
+import sys
+
+# Make ``training`` importable regardless of how this script was launched.
+# Paths are resolved relative to THIS FILE so the script is independent of the
+# caller's PYTHONPATH / cwd / checkout location.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.normpath(os.path.join(_HERE, "..", ".."))
+for _p in (
+    _REPO_ROOT,
+    os.path.normpath(os.path.join(_REPO_ROOT, "show")),
+):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+del _HERE, _REPO_ROOT, _p
 
 from isaaclab.app import AppLauncher
 
@@ -65,8 +79,8 @@ from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
 # Import extensions to set up environment tasks
-import whole_body_tracking.tasks  # noqa: F401
-from whole_body_tracking.utils.my_on_policy_runner import MotionOnPolicyRunner as OnPolicyRunner
+import training.tasks  # noqa: F401
+from training.utils.my_on_policy_runner import MotionOnPolicyRunner as OnPolicyRunner
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True

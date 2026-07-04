@@ -1,7 +1,7 @@
 """Standalone regression tests for the table-tennis geometry and ball-aerodynamics math.
 
 These cover the pure-Python / pure-torch pieces that do NOT need Isaac Sim, so they can run on a plain
-dev machine. Modules are loaded by file path to avoid importing ``whole_body_tracking.tasks`` (which
+dev machine. Modules are loaded by file path to avoid importing ``training.tasks`` (which
 pulls in Isaac Lab). The ball-aerodynamics tests are skipped automatically if ``torch`` is unavailable.
 
 Run:  python tests/test_table_tennis_geometry.py
@@ -16,9 +16,7 @@ import sys
 
 _PKG = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),  # whole_body_tracking/ (parent of tests/)
-    "source",
-    "whole_body_tracking",
-    "whole_body_tracking",
+    "training",
     "tasks",
     "table_tennis",
 )

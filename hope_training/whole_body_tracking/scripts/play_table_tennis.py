@@ -28,6 +28,8 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
+import sys
 
 from isaaclab.app import AppLauncher
 
@@ -77,6 +79,18 @@ parser.set_defaults(publish_ball_truth=True)
 parser.add_argument("--ball-truth-topic", type=str, default="/ball/point", help="ROS 2 topic for ball truth.")
 parser.add_argument("--ball-truth-frame-id", type=str, default="world", help="Frame id for ball truth.")
 parser.add_argument("--ball-truth-env-index", type=int, default=0, help="Which env index to publish.")
+parser.add_argument(
+    "--ball-truth-udp-host",
+    type=str,
+    default="127.0.0.1",
+    help="Local UDP host for the external C++ ROS 2 truth bridge.",
+)
+parser.add_argument(
+    "--ball-truth-udp-port",
+    type=int,
+    default=19531,
+    help="Local UDP port for the external C++ ROS 2 truth bridge.",
+)
 trajectory_group = parser.add_mutually_exclusive_group()
 trajectory_group.add_argument(
     "--draw-trajectory",
@@ -94,23 +108,27 @@ parser.set_defaults(draw_trajectory=True)
 parser.add_argument("--trajectory-env-index", type=int, default=0, help="Which env index to draw.")
 parser.add_argument("--trajectory-horizon", type=float, default=1.2, help="Prediction horizon in seconds.")
 parser.add_argument("--trajectory-draw-period", type=float, default=0.03, help="Overlay refresh period in seconds.")
-parser.add_argument("--racket-plane-x", type=float, default=0.0, help="Racket marker plane X, parallel to the net.")
-parser.add_argument(
-    "--racket-plane-tolerance",
-    type=float,
-    default=0.12,
-    help="Half-width around the racket ball-center contact plane used for red overlay segments.",
+parser.add_argument("--trajectory-udp-host", type=str, default="127.0.0.1", help="Local UDP host for trajectory overlay.")
+parser.add_argument("--trajectory-udp-port", type=int, default=19532, help="Local UDP port for trajectory overlay.")
+hit_overlay_group = parser.add_mutually_exclusive_group()
+hit_overlay_group.add_argument(
+    "--hit-overlay",
+    dest="hit_overlay",
+    action="store_true",
+    help="Draw the externally-received /hit/state (hit point, target, racket velocity/normal) "
+         "in the Isaac viewport.",
 )
-parser.add_argument(
-    "--racket-marker-plane-gap",
-    type=float,
-    default=0.0365,
-    help="Ball-center to racket marker-plane contact gap in meters.",
+hit_overlay_group.add_argument(
+    "--no-hit-overlay",
+    dest="hit_overlay",
+    action="store_false",
+    help="Disable the Isaac viewport hit overlay.",
 )
-parser.add_argument("--hit-zone-y-min", type=float, default=-1.525, help="Strikeable plane minimum Y.")
-parser.add_argument("--hit-zone-y-max", type=float, default=0.0, help="Strikeable plane maximum Y.")
-parser.add_argument("--hit-zone-z-min", type=float, default=0.06, help="Strikeable plane minimum Z.")
-parser.add_argument("--hit-zone-z-max", type=float, default=0.80, help="Strikeable plane maximum Z.")
+parser.set_defaults(hit_overlay=True)
+parser.add_argument("--hit-overlay-udp-host", type=str, default="127.0.0.1",
+                    help="Local UDP host for hit overlay (served by hit_state_udp_bridge).")
+parser.add_argument("--hit-overlay-udp-port", type=int, default=19533,
+                    help="Local UDP port for hit overlay (served by hit_state_udp_bridge).")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -140,15 +158,35 @@ def main() -> None:
     import gymnasium as gym
     import torch
 
-    import whole_body_tracking.tasks.table_tennis.config.agibot_a3  # noqa: F401 -- registers table-tennis Gym tasks
-    from whole_body_tracking.tasks.table_tennis.config.agibot_a3.table_tennis_env_cfg import (
+    # The ``training`` package lives under ``<repo>/training`` and must be
+    # imported via its parent.  The standalone trajectory overlay package lives
+    # under ``<repo>/show/trajectory`` and is imported from ``<repo>/show``.
+    _repo_root = os.path.normpath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..",
+    ))
+    if _repo_root not in sys.path:
+        sys.path.insert(0, _repo_root)
+    for _sub in ("training", "show"):
+        _p = os.path.normpath(os.path.join(_repo_root, _sub))
+        if _p not in sys.path:
+            sys.path.insert(0, _p)
+
+    import training.tasks.table_tennis.config.agibot_a3  # noqa: F401 -- registers table-tennis Gym tasks
+    from training.tasks.table_tennis.config.agibot_a3.table_tennis_env_cfg import (
         AgibotA3TableTennisEnvCfg,
     )
-    from whole_body_tracking.tasks.table_tennis.geometry import ServeConfig
-    from whole_body_tracking.tasks.table_tennis.trajectory_overlay import (
+    from training.tasks.table_tennis.geometry import ServeConfig
+    from trajectory import (  # type: ignore[import-not-found]
         IsaacTrajectoryOverlay,
-        RacketHitPlane,
         TrajectoryOverlayConfig,
+    )
+    from hit import (  # type: ignore[import-not-found]
+        IsaacHitOverlay,
+        HitOverlayConfig,
+    )
+    from shared_debug_draw import (  # type: ignore[import-not-found]
+        clear_shared_debug_draw,
+        flush_shared_debug_draw,
     )
 
     task_id = "HOPE-TableTennis-AgibotA3-v0"
@@ -169,10 +207,14 @@ def main() -> None:
     env_cfg = AgibotA3TableTennisEnvCfg()
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.sim.device = args_cli.device
+    # Publish the simulated ball truth from the physics callback so the point
+    # stream follows the full sim step rate instead of the lower control rate.
     env_cfg.publish_ball_truth = bool(args_cli.publish_ball_truth)
     env_cfg.ball_truth_topic = args_cli.ball_truth_topic
     env_cfg.ball_truth_frame_id = args_cli.ball_truth_frame_id
     env_cfg.ball_truth_env_index = int(args_cli.ball_truth_env_index)
+    env_cfg.ball_truth_udp_host = args_cli.ball_truth_udp_host
+    env_cfg.ball_truth_udp_port = int(args_cli.ball_truth_udp_port)
 
     if env_cfg.publish_ball_truth and env_cfg.scene.num_envs != 1:
         print(
@@ -196,10 +238,10 @@ def main() -> None:
         # Match HitFixedBaseTouch: keep speed/height fixed and randomize only the forehand-lane x/y spawn.
         env_cfg.events.serve_ball.params["serve_cfg"] = ServeConfig(
             pos_x_range=(2.00, 2.20),
-            pos_y_range=(-1.40, -0.70),
+            pos_y_range=(-0.9625, -0.5625),
             pos_z_range=(0.64, 0.64),
-            vel_x_range=(-5.0, -5.0),
-            vel_y_range=(0.0, 0.0),
+            vel_x_range=(-6.5, -5.5),
+            vel_y_range=(-0.5, 0.5),
             vel_z_range=(0.08, 0.08),
         )
 
@@ -266,28 +308,40 @@ def main() -> None:
     if args_cli.hide_robot:
         _hide_robot_visuals()
 
+    if args_cli.publish_ball_truth:
+        print(
+            "[play_table_tennis] ball truth UDP active: "
+            f"udp://{args_cli.ball_truth_udp_host}:{args_cli.ball_truth_udp_port} "
+            "(physics callback rate)"
+        )
+
     # Zero action in the joint-position-with-default-offset space = hold the standing pose.
     zero_action = torch.zeros(env.action_space.shape, device=env.unwrapped.device)
 
-    trajectory_overlay = IsaacTrajectoryOverlay(
-        TrajectoryOverlayConfig(
-            enabled=bool(args_cli.draw_trajectory),
-            env_index=int(args_cli.trajectory_env_index),
-            draw_period_s=float(args_cli.trajectory_draw_period),
-            horizon_s=float(args_cli.trajectory_horizon),
-            hit_plane=RacketHitPlane(
-                x=float(args_cli.racket_plane_x),
-                tolerance=float(args_cli.racket_plane_tolerance),
-                marker_plane_gap=float(args_cli.racket_marker_plane_gap),
-                y_min=float(args_cli.hit_zone_y_min),
-                y_max=float(args_cli.hit_zone_y_max),
-                z_min=float(args_cli.hit_zone_z_min),
-                z_max=float(args_cli.hit_zone_z_max),
-            ),
-        )
-    )
+    trajectory_overlay = None
     if args_cli.draw_trajectory:
+        trajectory_overlay = IsaacTrajectoryOverlay(
+            TrajectoryOverlayConfig(
+                enabled=True,
+                env_index=int(args_cli.trajectory_env_index),
+                draw_period_s=float(args_cli.trajectory_draw_period),
+                horizon_s=float(args_cli.trajectory_horizon),
+                udp_host=args_cli.trajectory_udp_host,
+                udp_port=int(args_cli.trajectory_udp_port),
+            )
+        )
         print(f"[play_table_tennis] trajectory overlay active: {trajectory_overlay.available}")
+
+    hit_overlay = None
+    if args_cli.hit_overlay:
+        hit_overlay = IsaacHitOverlay(
+            HitOverlayConfig(
+                enabled=True,
+                udp_host=args_cli.hit_overlay_udp_host,
+                udp_port=int(args_cli.hit_overlay_udp_port),
+            )
+        )
+        print(f"[play_table_tennis] hit overlay active: {hit_overlay.available}")
 
     control_dt = float(env_cfg.sim.dt * env_cfg.decimation)
     step = 0
@@ -295,23 +349,46 @@ def main() -> None:
         while simulation_app.is_running():
             with torch.inference_mode():
                 obs, rew, terminated, truncated, info = env.step(zero_action)
-                if trajectory_overlay.available:
+                ball = env.unwrapped.scene["ball"]
+                sim_t = step * control_dt
+                if trajectory_overlay is not None and trajectory_overlay.available:
                     env_index = int(args_cli.trajectory_env_index)
                     if 0 <= env_index < env.unwrapped.num_envs:
-                        ball = env.unwrapped.scene["ball"]
                         pos_w = ball.data.root_pos_w[env_index].detach().cpu().numpy()
                         origin = env.unwrapped.scene.env_origins[env_index].detach().cpu().numpy()
                         trajectory_overlay.push(step * control_dt, pos_w - origin)
+                if hit_overlay is not None and hit_overlay.available:
+                    hit_overlay.push(step * control_dt)
+                if (
+                    (trajectory_overlay is not None and trajectory_overlay.available)
+                    or (hit_overlay is not None and hit_overlay.available)
+                ):
+                    flush_shared_debug_draw()
             step += 1
             if args_cli.steps and step >= args_cli.steps:
                 break
     finally:
-        trajectory_overlay.close()
+        if trajectory_overlay is not None:
+            trajectory_overlay.close()
+        if hit_overlay is not None:
+            hit_overlay.close()
+        clear_shared_debug_draw()
         env.close()
 
 
 if __name__ == "__main__":
+    failed = False
     try:
         main()
+    except Exception:
+        import traceback
+
+        print("\n[play_table_tennis.py] ERROR during run:", flush=True)
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        failed = True
     finally:
         simulation_app.close()
+    if failed:
+        sys.exit(1)

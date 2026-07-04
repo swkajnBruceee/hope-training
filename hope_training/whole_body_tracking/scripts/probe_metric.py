@@ -16,6 +16,18 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Also make ``training`` (and the ``trajectory`` overlay, resolvable as ``from show.trajectory``) importable regardless
+# of how this script was launched. Paths are relative to THIS FILE so the
+# script is independent of PYTHONPATH / cwd / checkout location.
+_REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+for _p in (
+    _REPO_ROOT,
+    os.path.normpath(os.path.join(_REPO_ROOT, "show")),
+):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+del _REPO_ROOT, _p
+
 import hydra
 from omegaconf import OmegaConf
 
@@ -30,8 +42,8 @@ def _run(cfg, simulation_app):
     from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
     from isaaclab_tasks.utils import parse_env_cfg
 
-    import whole_body_tracking.tasks  # noqa: F401  -- registers the gym tasks
-    from whole_body_tracking.utils.ppo_cfg import runner_kwargs
+    import training.tasks  # noqa: F401  -- registers the gym tasks
+    from training.utils.ppo_cfg import runner_kwargs
 
     task_id = str(cfg.task.gym_task)
     num_envs = int(cfg.num_envs) if cfg.num_envs is not None else int(cfg.task.env.num_envs)

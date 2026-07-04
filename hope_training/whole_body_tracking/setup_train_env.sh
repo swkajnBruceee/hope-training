@@ -43,11 +43,13 @@ fi
 : "${HOPE_ISAACLAB_ROOT:=/opt/IsaacLab}"               # EDIT: Isaac Lab checkout (has source/isaaclab*)
 : "${HOPE_ISAAC_VENV_SITE:=}"                          # EDIT (optional): venv site-packages with hydra/omegaconf
 
-# Training PYTHONPATH: this package source comes FIRST so the working tree wins over any stale
-# site-packages install. Then append optional venv deps (hydra/omegaconf) and the four Isaac Lab
-# source dirs. isaaclab_rl is required for training (replay/csv_to_npz did not need it).
+# Training PYTHONPATH: the package parent comes FIRST so ``import training`` and
+# the sibling ``show/*`` overlays resolve from the working tree instead of any
+# stale site-packages install. Then append optional venv deps (hydra/omegaconf)
+# and the four Isaac Lab source dirs. isaaclab_rl is required for training
+# (replay/csv_to_npz did not need it).
 _il="${HOPE_ISAACLAB_ROOT}/source"
-HOPE_WBT_PYTHONPATH="${_WBT_DIR}/source/whole_body_tracking"
+HOPE_WBT_PYTHONPATH="${_WBT_DIR}"
 if [ -n "${HOPE_ISAAC_VENV_SITE}" ]; then
   HOPE_WBT_PYTHONPATH="${HOPE_WBT_PYTHONPATH}:${HOPE_ISAAC_VENV_SITE}"
 fi

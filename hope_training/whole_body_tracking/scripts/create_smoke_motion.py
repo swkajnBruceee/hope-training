@@ -37,7 +37,7 @@ from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
 from isaaclab.sim import SimulationContext
 from isaaclab.utils import configclass
 
-from whole_body_tracking.robots.agibot_a3 import AGIBOT_A3_CFG
+from training.robots.agibot_a3 import AGIBOT_A3_CFG
 
 
 @configclass

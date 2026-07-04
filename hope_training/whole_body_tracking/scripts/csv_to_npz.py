@@ -81,8 +81,8 @@ from isaaclab.utils.math import axis_angle_from_quat, quat_conjugate, quat_mul, 
 ##
 # Pre-defined configs
 ##
-from whole_body_tracking.robots.agibot_a3 import AGIBOT_A3_CFG, AGIBOT_A3_JOINT_NAMES
-from whole_body_tracking.robots.g1 import G1_CYLINDER_CFG
+from training.robots.agibot_a3 import AGIBOT_A3_CFG, AGIBOT_A3_JOINT_NAMES
+from training.robots.g1 import G1_CYLINDER_CFG
 
 # G1 retargeting CSV DOF-column order (29 joints).
 G1_JOINT_NAMES = [

@@ -22,7 +22,7 @@ A from-scratch Isaac Sim/Lab install is out of scope here; follow the upstream
 ### HOPE environment (GPU/Isaac box)
 
 - Isaac Sim 4.5.0, Isaac Lab 2.1.0, Python 3.10, NVIDIA CUDA GPU; `rsl_rl` comes via Isaac Lab.
-- Install into the Isaac Lab python: `python -m pip install -e source/whole_body_tracking`.
+- Install into the Isaac Lab python: `python -m pip install -e training`.
 - Extra pip deps must be importable in the Isaac Lab python: `hydra`, `omegaconf`, `onnxscript`,
   and `psutil`. Install `wandb` only if you use WandB logging or a motion registry.
 - `source setup_train_env.sh` (must be **sourced**, in the GPU/Isaac shell) to get the `hope_isaac_py`
@@ -104,14 +104,14 @@ git clone https://github.com/HybridRobotics/whole_body_tracking.git
 cd whole_body_tracking
 # Rename all occurrences of whole_body_tracking (in files/directories) to your_fancy_extension_name
 curl -L -o unitree_description.tar.gz https://storage.googleapis.com/qiayuanl_robot_descriptions/unitree_description.tar.gz && \
-tar -xzf unitree_description.tar.gz -C source/whole_body_tracking/whole_body_tracking/assets/ && \
+tar -xzf unitree_description.tar.gz -C training/assets/ && \
 rm unitree_description.tar.gz
 ```
 
 - Using a Python interpreter that has Isaac Lab installed, install the library
 
 ```bash
-python -m pip install -e source/whole_body_tracking
+python -m pip install -e training
 ```
 
 ## Motion Tracking
@@ -181,7 +181,7 @@ with a unique 8-character identifier. Note that run_name is different from run_p
 
 Below is an overview of the code structure for this repository:
 
-- **`source/whole_body_tracking/whole_body_tracking/tasks/tracking/mdp`**
+- **`training/tasks/tracking/mdp`**
   This directory contains the atomic functions to define the MDP for BeyondMimic. Below is a breakdown of the functions:
 
     - **`commands.py`**
@@ -201,13 +201,13 @@ Below is an overview of the code structure for this repository:
     - **`terminations.py`**
       Implements early terminations and timeouts.
 
-- **`source/whole_body_tracking/whole_body_tracking/tasks/tracking/tracking_env_cfg.py`**
+- **`training/tasks/tracking/tracking_env_cfg.py`**
   Contains the environment (MDP) hyperparameters configuration for the tracking task.
 
-- **`source/whole_body_tracking/whole_body_tracking/tasks/tracking/config/g1/agents/rsl_rl_ppo_cfg.py`**
+- **`training/tasks/tracking/config/g1/agents/rsl_rl_ppo_cfg.py`**
   Contains the PPO hyperparameters for the tracking task.
 
-- **`source/whole_body_tracking/whole_body_tracking/robots`**
+- **`training/robots`**
   Contains robot-specific settings, including armature parameters, joint stiffness/damping calculation, and action scale
   calculation.
 
