@@ -29,7 +29,9 @@ HitPlanSolver::HitPlanSolver(
 
 HitPlan HitPlanSolver::solve(
   const trajectory::StrikeTarget & strike,
-  const SolveTarget & target) const
+  const SolveTarget & target,
+  const Eigen::Vector3d & velocity_correction,
+  const Eigen::Vector3d & estimated_landing_error) const
 {
   HitPlan plan;
   plan.p_hit = strike.p_ball;
@@ -52,7 +54,9 @@ HitPlan HitPlanSolver::solve(
   }
 
   plan.v_out = racket_solver_.computeOutgoingVelocity(
-    strike.p_ball, target.target_land, target.delta_t_flight);
+    strike.p_ball, target.target_land, target.delta_t_flight) + velocity_correction;
+  plan.velocity_correction = velocity_correction;
+  plan.estimated_landing_error = estimated_landing_error;
   auto [racket_velocity, racket_normal] =
     racket_solver_.computeRacketVelocity(strike.v_ball, plan.v_out, config_.C_r);
   plan.racket_velocity = racket_velocity;

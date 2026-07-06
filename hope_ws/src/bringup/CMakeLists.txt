@@ -7,6 +7,7 @@ endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/hope_ros_bootstrap.cmake)
 find_package(ament_cmake REQUIRED)
+find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -38,6 +39,13 @@ ament_target_dependencies(landing_candidates_udp_bridge
   rclcpp
 )
 
+add_executable(landing_feedback_sim_node src/landing_feedback_sim_node.cpp)
+target_link_libraries(landing_feedback_sim_node Eigen3::Eigen)
+ament_target_dependencies(landing_feedback_sim_node
+  msgs
+  rclcpp
+)
+
 install(DIRECTORY
   config
   launch
@@ -49,6 +57,7 @@ install(TARGETS
   ball_truth_udp_bridge
   hit_state_udp_bridge
   landing_candidates_udp_bridge
+  landing_feedback_sim_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

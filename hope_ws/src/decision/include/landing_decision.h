@@ -51,6 +51,7 @@ struct LandingCandidate {
   double ball_speed_score = 0.0;
   double flight_time_score = 0.0;
   double competitiveness_score = 0.0;
+  double tactical_score = 0.0;
 };
 
 struct LandingDecisionResult {
@@ -105,7 +106,9 @@ class SoftConstraintScorer {
     const common::PlannerConfig & planner_config,
     const common::TableParams & table);
 
-  LandingCandidate score(const LandingCandidate & candidate) const;
+  LandingCandidate score(
+    const LandingCandidate & candidate,
+    const trajectory::StrikeTarget & strike) const;
 
  private:
   double clamp01(double value) const;
@@ -113,6 +116,9 @@ class SoftConstraintScorer {
   double edgeMarginScore(const Eigen::Vector3d & p) const;
   double netClearanceScore(const LandingCandidate & candidate) const;
   double competitivenessScore(const Eigen::Vector3d & p) const;
+  double tacticalPlacementScore(
+    const Eigen::Vector3d & p,
+    const trajectory::StrikeTarget & strike) const;
 
   LandingDecisionConfig decision_config_;
   common::BallPhysics physics_;

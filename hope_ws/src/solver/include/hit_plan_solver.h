@@ -20,7 +20,9 @@ class HitPlanSolver {
 
   HitPlan solve(
     const trajectory::StrikeTarget & strike,
-    const SolveTarget & target) const;
+    const SolveTarget & target,
+    const Eigen::Vector3d & velocity_correction = Eigen::Vector3d::Zero(),
+    const Eigen::Vector3d & estimated_landing_error = Eigen::Vector3d::Zero()) const;
 
  private:
   geometry_msgs::msg::Quaternion normalToQuaternion(const Eigen::Vector3d & normal) const;

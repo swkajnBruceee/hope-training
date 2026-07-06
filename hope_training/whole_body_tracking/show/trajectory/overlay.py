@@ -54,6 +54,7 @@ class TrajectoryOverlayConfig:
     return_table_tangential_retention: float = 0.649
     return_table_length: float = 2.74
     return_table_width: float = 1.525
+    return_stale_keep_s: float = 0.35
 
     # --- new tuning knobs ---
     use_debug_draw: bool = True            # try omni.isaac.debug_draw first
@@ -365,7 +366,14 @@ class _DebugDrawTrajectoryAdapter:
     def clear(self) -> None:
         drop_debug_draw_owner(self._owner_id)
 
-    def draw_polyline(self, points, color, width_px: float = None, owner_id: str | None = None) -> bool:
+    def draw_polyline(
+        self,
+        points,
+        color,
+        width_px: float = None,
+        owner_id: str | None = None,
+        stale_keep_s: float | None = None,
+    ) -> bool:
         """Draw a polyline.
 
         Returns True iff the line geometry was actually pushed to the
@@ -438,7 +446,7 @@ class _DebugDrawTrajectoryAdapter:
             segments,
             colors,
             widths,
-            stale_keep_s=self._stale_keep_s,
+            stale_keep_s=self._stale_keep_s if stale_keep_s is None else float(stale_keep_s),
         )
         self._last_valid_draw_t = now
         self._draw_calls += 1
@@ -579,12 +587,35 @@ class IsaacTrajectoryOverlay:
             self._draw.clear()
             self._draw = None
 
+    def _update_return_overlay(self, now: float) -> None:
+        if self._hit_receiver is not None:
+            hit_plan = self._hit_receiver.poll()
+            if hit_plan is not None:
+                self._last_return_points = _sample_return_trajectory(hit_plan, self.cfg)
+                self._last_return_t = now
+
+        if self._last_return_points is not None and (
+            now - self._last_return_t <= float(self.cfg.return_stale_keep_s)
+        ):
+            self._draw.draw_polyline(
+                self._last_return_points,
+                (0.05, 0.05, 0.05, 1.0),
+                width_px=self.cfg.return_line_width,
+                owner_id="trajectory_overlay_return",
+                stale_keep_s=float(self.cfg.return_stale_keep_s),
+            )
+        else:
+            self._last_return_points = None
+            drop_debug_draw_owner("trajectory_overlay_return")
+
     def push(self, t: float, p) -> None:
         del t, p
         if not self.available:
             return
 
         now = time.monotonic()
+        self._update_return_overlay(now)
+
         polled = self._receiver.poll()
         if polled is None:
             # No UDP packet this frame.  Emit a throttled heartbeat (every 3s)
@@ -598,7 +629,6 @@ class IsaacTrajectoryOverlay:
             return
 
         points, after_p1_bounce, sequence, drained = polled
-        hit_plan = self._hit_receiver.poll() if self._hit_receiver is not None else None
         self._total_recv_packets += 1
         self._last_packet_seq = sequence
 
@@ -627,27 +657,6 @@ class IsaacTrajectoryOverlay:
                 width_px=self.cfg.line_width,
                 owner_id="trajectory_overlay_main",
             )
-
-        # Refresh the black planned return trajectory whenever a valid hit
-        # plan arrives. The line represents planner output, so tying it to the
-        # incoming-ball phase makes it flicker during normal pre/post-bounce
-        # transitions.
-        if hit_plan is not None:
-            self._last_return_points = _sample_return_trajectory(hit_plan, self.cfg)
-            self._last_return_t = now
-
-        if self._last_return_points is not None and (
-            now - self._last_return_t <= float(self.cfg.stale_keep_s)
-        ):
-            self._draw.draw_polyline(
-                self._last_return_points,
-                (0.05, 0.05, 0.05, 1.0),
-                width_px=self.cfg.return_line_width,
-                owner_id="trajectory_overlay_return",
-            )
-        else:
-            self._last_return_points = None
-            drop_debug_draw_owner("trajectory_overlay_return")
 
         # Throttled diagnostics (default 1 Hz).  Per-iteration we only update
         # counters; printing happens once per log_period_s.

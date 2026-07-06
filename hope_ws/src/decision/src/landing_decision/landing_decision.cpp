@@ -181,7 +181,10 @@ SoftConstraintScorer::SoftConstraintScorer(
 {
 }
 
-LandingCandidate SoftConstraintScorer::score(const LandingCandidate & candidate) const {
+LandingCandidate SoftConstraintScorer::score(
+  const LandingCandidate & candidate,
+  const trajectory::StrikeTarget & strike) const
+{
   LandingCandidate out = candidate;
 
   out.edge_score = edgeMarginScore(out.target_land);
@@ -210,14 +213,16 @@ LandingCandidate SoftConstraintScorer::score(const LandingCandidate & candidate)
   out.flight_time_score = 1.0 - flight_penalty;
 
   out.competitiveness_score = competitivenessScore(out.target_land);
+  out.tactical_score = tacticalPlacementScore(out.target_land, strike);
 
   out.total_score =
-    0.28 * out.edge_score +
-    0.18 * out.net_score +
-    0.18 * out.racket_speed_score +
-    0.14 * out.ball_speed_score +
-    0.12 * out.flight_time_score +
-    0.10 * out.competitiveness_score;
+    0.16 * out.edge_score +
+    0.13 * out.net_score +
+    0.13 * out.racket_speed_score +
+    0.09 * out.ball_speed_score +
+    0.07 * out.flight_time_score +
+    0.07 * out.competitiveness_score +
+    0.35 * out.tactical_score;
   return out;
 }
 
@@ -278,6 +283,24 @@ double SoftConstraintScorer::competitivenessScore(const Eigen::Vector3d & p) con
   return 1.0 - clamp01(std::abs(competitiveness - target));
 }
 
+double SoftConstraintScorer::tacticalPlacementScore(
+  const Eigen::Vector3d & p,
+  const trajectory::StrikeTarget & strike) const
+{
+  const double center_y = -0.5 * table_.width;
+  const double incoming_offset_y = strike.p_ball.y() - center_y;
+  const double side_threshold = 0.05;
+  if (std::abs(incoming_offset_y) < side_threshold) {
+    return 1.0 - clamp01(std::abs(p.y() - center_y) / (0.5 * table_.width));
+  }
+
+  const double desired_y = center_y - 1.40 * incoming_offset_y;
+  const double clamped_desired_y =
+    std::max(-table_.width + 0.25, std::min(-0.25, desired_y));
+  const double y_error = std::abs(p.y() - clamped_desired_y);
+  return 1.0 - clamp01(y_error / (0.5 * table_.width));
+}
+
 LandingDecisionPlanner::LandingDecisionPlanner(
   const LandingDecisionConfig & decision_config,
   const common::BallPhysics & physics,
@@ -310,7 +333,7 @@ LandingDecisionResult LandingDecisionPlanner::select(
       continue;
     }
     result.hard_valid_count++;
-    auto scored = scorer_.score(evaluated);
+    auto scored = scorer_.score(evaluated, strike);
     result.candidates.push_back(scored);
     if (!has_best || scored.total_score > best.total_score) {
       best = scored;
@@ -336,7 +359,7 @@ LandingDecisionResult LandingDecisionPlanner::select(
   if (evaluated.hard_valid) {
     result.used_fallback = true;
     result.hard_valid_count++;
-    result.selected = scorer_.score(evaluated);
+    result.selected = scorer_.score(evaluated, strike);
     result.target = candidateToTarget(result.selected, "fallback_fixed_center");
     return result;
   }

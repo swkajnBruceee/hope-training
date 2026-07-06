@@ -257,14 +257,15 @@ def main() -> None:
             "y": (0.0, 0.0),
             "yaw": (0.0, 0.0),
         }
-        # Match HitFixedBaseTouch: keep speed/height fixed and randomize only the forehand-lane x/y spawn.
+        # Keep the visualization serve returnable: the previous fast/high serve
+        # drove the first bounce to the P1 near edge or beyond it.
         env_cfg.events.serve_ball.params["serve_cfg"] = ServeConfig(
             pos_x_range=(2.00, 2.20),
-            pos_y_range=(-0.9625, -0.5625),
-            pos_z_range=(0.64, 0.64),
-            vel_x_range=(-6.5, -5.5),
-            vel_y_range=(-0.5, 0.5),
-            vel_z_range=(0.08, 0.08),
+            pos_y_range=(-0.92, -0.60),
+            pos_z_range=(0.50, 0.60),
+            vel_x_range=(-4.2, -3.4),
+            vel_y_range=(-0.25, 0.25),
+            vel_z_range=(-0.05, 0.20),
         )
 
     if args_cli.hide_robot:

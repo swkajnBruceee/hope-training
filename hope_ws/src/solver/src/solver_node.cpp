@@ -1,4 +1,5 @@
 #include <chrono>
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <optional>
@@ -12,6 +13,7 @@
 #include <std_msgs/msg/header.hpp>
 
 #include "msgs/msg/hit_state.hpp"
+#include "msgs/msg/landing_feedback.hpp"
 #include "msgs/msg/predicted_strike.hpp"
 #include "msgs/msg/racket_command.hpp"
 #include "msgs/msg/target_decision.hpp"
@@ -20,6 +22,7 @@
 #include "ball_trajectory_predictor.h"
 #include "hit_plan.h"
 #include "hit_plan_solver.h"
+#include "landing_error_corrector.h"
 
 namespace solver {
 
@@ -40,10 +43,17 @@ class HOPESolverNode : public rclcpp::Node {
     this->declare_parameter("desired_ball_speed", -1.0);
     this->declare_parameter("decision_topic", std::string("/target_decision"));
     this->declare_parameter("hit_state_topic", std::string("/hit/state"));
+    this->declare_parameter("landing_feedback_topic", std::string("/planner/landing_feedback"));
     this->declare_parameter("drag_k", 0.09375);
     this->declare_parameter("restitution_h", 0.649);
     this->declare_parameter("restitution_v", 0.906);
     this->declare_parameter("restitution_racket", 0.842);
+    this->declare_parameter("landing_error_correction.enabled", true);
+    this->declare_parameter("landing_error_correction.max_history", 200);
+    this->declare_parameter("landing_error_correction.min_samples", 3);
+    this->declare_parameter("landing_error_correction.distance_sigma", 1.0);
+    this->declare_parameter("landing_error_correction.correction_gain", 0.65);
+    this->declare_parameter("landing_error_correction.max_delta_v", 1.5);
 
     common::PlannerConfig config;
     config.x_hit = this->get_parameter("x_hit").as_double();
@@ -75,6 +85,20 @@ class HOPESolverNode : public rclcpp::Node {
     }
     decision_topic_ = this->get_parameter("decision_topic").as_string();
     hit_state_topic_ = this->get_parameter("hit_state_topic").as_string();
+    landing_feedback_topic_ = this->get_parameter("landing_feedback_topic").as_string();
+
+    LandingErrorCorrectionConfig correction_config;
+    correction_config.enabled = this->get_parameter("landing_error_correction.enabled").as_bool();
+    correction_config.max_history =
+      static_cast<std::size_t>(
+        std::max<int64_t>(0, this->get_parameter("landing_error_correction.max_history").as_int()));
+    correction_config.min_samples =
+      static_cast<std::size_t>(
+        std::max<int64_t>(0, this->get_parameter("landing_error_correction.min_samples").as_int()));
+    correction_config.distance_sigma = this->get_parameter("landing_error_correction.distance_sigma").as_double();
+    correction_config.correction_gain = this->get_parameter("landing_error_correction.correction_gain").as_double();
+    correction_config.max_delta_v = this->get_parameter("landing_error_correction.max_delta_v").as_double();
+    landing_corrector_ = std::make_unique<LandingErrorCorrector>(correction_config);
 
     auto command_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
 
@@ -91,6 +115,9 @@ class HOPESolverNode : public rclcpp::Node {
     decision_sub_ = this->create_subscription<msgs::msg::TargetDecision>(
       decision_topic_, command_qos,
       std::bind(&HOPESolverNode::targetDecisionCb, this, std::placeholders::_1));
+    landing_feedback_sub_ = this->create_subscription<msgs::msg::LandingFeedback>(
+      landing_feedback_topic_, command_qos,
+      std::bind(&HOPESolverNode::landingFeedbackCb, this, std::placeholders::_1));
 
     cmd_pub_ = this->create_publisher<msgs::msg::RacketCommand>(
       "/racket/command", command_qos);
@@ -182,7 +209,11 @@ class HOPESolverNode : public rclcpp::Node {
     strike.num_bounces = msg.predicted_bounces;
     strike.valid = msg.valid;
 
-    const auto plan = solver_->solve(strike, latest_target_);
+    const auto correction = landing_corrector_->correctionFor(
+      strike.p_ball, strike.v_ball, latest_target_.target_land, latest_target_.delta_t_flight);
+    last_correction_ = correction;
+    const auto plan = solver_->solve(
+      strike, latest_target_, correction.delta_v_out, correction.estimated_landing_error);
     last_valid_ = plan.valid;
     last_plan_reason_ = plan.reason;
     last_phase_ = strikeSourceName(source);
@@ -207,6 +238,25 @@ class HOPESolverNode : public rclcpp::Node {
       plan.valid ? (std::string("ready:") + strikeSourceName(source)) : (std::string("invalid:") + strikeSourceName(source)),
       msg.reason.empty() ? plan.reason : (msg.reason + "|" + plan.reason),
       strike.num_bounces);
+  }
+
+  void landingFeedbackCb(const msgs::msg::LandingFeedback::SharedPtr msg) {
+    if (!msg->valid) {
+      return;
+    }
+    LandingFeedbackSample sample;
+    sample.hit_position = Eigen::Vector3d(
+      msg->hit_position.x, msg->hit_position.y, msg->hit_position.z);
+    sample.ball_velocity_incoming = Eigen::Vector3d(
+      msg->ball_velocity_incoming.x, msg->ball_velocity_incoming.y, msg->ball_velocity_incoming.z);
+    sample.ball_velocity_outgoing = Eigen::Vector3d(
+      msg->ball_velocity_outgoing.x, msg->ball_velocity_outgoing.y, msg->ball_velocity_outgoing.z);
+    sample.target_land = Eigen::Vector3d(
+      msg->target_land.x, msg->target_land.y, msg->target_land.z);
+    sample.actual_landing = Eigen::Vector3d(
+      msg->actual_landing.x, msg->actual_landing.y, msg->actual_landing.z);
+    sample.return_flight_time = msg->return_flight_time;
+    landing_corrector_->addSample(sample);
   }
 
   void targetDecisionCb(const msgs::msg::TargetDecision::SharedPtr msg) {
@@ -345,12 +395,36 @@ class HOPESolverNode : public rclcpp::Node {
     diagnostic_msgs::msg::KeyValue kv8;
     kv8.key = "active_phase";
     kv8.value = last_phase_;
-    status.values = {kv1, kv2, kv3, kv4, kv5, kv6, kv7, kv8};
+    diagnostic_msgs::msg::KeyValue kv9;
+    kv9.key = "landing_feedback_samples";
+    kv9.value = std::to_string(landing_corrector_ ? landing_corrector_->historySize() : 0);
+    diagnostic_msgs::msg::KeyValue kv10;
+    kv10.key = "landing_error_correction_active";
+    kv10.value = last_correction_.active ? "true" : "false";
+    diagnostic_msgs::msg::KeyValue kv11;
+    kv11.key = "delta_v_out";
+    char correction_buf[96];
+    std::snprintf(
+      correction_buf, sizeof(correction_buf), "%.4f,%.4f,%.4f",
+      last_correction_.delta_v_out.x(), last_correction_.delta_v_out.y(), last_correction_.delta_v_out.z());
+    kv11.value = correction_buf;
+    diagnostic_msgs::msg::KeyValue kv12;
+    kv12.key = "estimated_landing_error";
+    char error_buf[96];
+    std::snprintf(
+      error_buf, sizeof(error_buf), "%.4f,%.4f,%.4f",
+      last_correction_.estimated_landing_error.x(),
+      last_correction_.estimated_landing_error.y(),
+      last_correction_.estimated_landing_error.z());
+    kv12.value = error_buf;
+    status.values = {kv1, kv2, kv3, kv4, kv5, kv6, kv7, kv8, kv9, kv10, kv11, kv12};
     arr.status = {status};
     diag_pub_->publish(arr);
   }
 
   std::unique_ptr<HitPlanSolver> solver_;
+  std::unique_ptr<LandingErrorCorrector> landing_corrector_;
+  LandingErrorCorrection last_correction_;
   SolveTarget latest_target_;
   msgs::msg::PredictedStrike latest_strike_msg_;
   msgs::msg::PredictedStrike latest_pre_aim_msg_;
@@ -359,9 +433,11 @@ class HOPESolverNode : public rclcpp::Node {
   std::string strike_adjust_topic_;
   std::string decision_topic_;
   std::string hit_state_topic_;
+  std::string landing_feedback_topic_;
   rclcpp::Subscription<msgs::msg::PredictedStrike>::SharedPtr pre_aim_sub_;
   rclcpp::Subscription<msgs::msg::PredictedStrike>::SharedPtr strike_adjust_sub_;
   rclcpp::Subscription<msgs::msg::TargetDecision>::SharedPtr decision_sub_;
+  rclcpp::Subscription<msgs::msg::LandingFeedback>::SharedPtr landing_feedback_sub_;
   rclcpp::Publisher<msgs::msg::RacketCommand>::SharedPtr cmd_pub_;
   rclcpp::Publisher<msgs::msg::HitState>::SharedPtr hit_state_pub_;
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diag_pub_;

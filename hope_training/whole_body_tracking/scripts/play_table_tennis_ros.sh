@@ -80,6 +80,7 @@ START_TRUTH_BRIDGE=1
 START_TRAJECTORY_OVERLAY=1
 START_HIT_BRIDGE=1
 START_LANDING_CANDIDATE_BRIDGE=1
+START_LANDING_FEEDBACK_SIM=1
 PLANNER_PID=""
 DECISION_PID=""
 STRIKE_PREDICTOR_PID=""
@@ -87,6 +88,7 @@ TRUTH_BRIDGE_PID=""
 TRAJECTORY_OVERLAY_PID=""
 HIT_BRIDGE_PID=""
 LANDING_CANDIDATE_BRIDGE_PID=""
+LANDING_FEEDBACK_SIM_PID=""
 
 ARGS=()
 for arg in "$@"; do
@@ -108,6 +110,9 @@ for arg in "$@"; do
     --no-landing-candidate-overlay)
       START_LANDING_CANDIDATE_BRIDGE=0
       ARGS+=("--no-landing-candidate-overlay")
+      ;;
+    --no-landing-feedback-sim)
+      START_LANDING_FEEDBACK_SIM=0
       ;;
     *)
       ARGS+=("${arg}")
@@ -144,6 +149,10 @@ cleanup() {
     kill -- "-${LANDING_CANDIDATE_BRIDGE_PID}" 2>/dev/null || kill "${LANDING_CANDIDATE_BRIDGE_PID}" 2>/dev/null || true
     wait "${LANDING_CANDIDATE_BRIDGE_PID}" 2>/dev/null || true
   fi
+  if [ -n "${LANDING_FEEDBACK_SIM_PID}" ]; then
+    kill -- "-${LANDING_FEEDBACK_SIM_PID}" 2>/dev/null || kill "${LANDING_FEEDBACK_SIM_PID}" 2>/dev/null || true
+    wait "${LANDING_FEEDBACK_SIM_PID}" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT INT TERM
 
@@ -176,6 +185,7 @@ STRIKE_PREDICTION_NODE="${ROS_PREFIX}/trajectory/lib/trajectory/strike_predictio
 TRAJECTORY_OVERLAY_NODE="${ROS_PREFIX}/trajectory/lib/trajectory/trajectory_overlay_udp_node"
 HIT_BRIDGE_NODE="${ROS_PREFIX}/bringup/lib/bringup/hit_state_udp_bridge"
 LANDING_CANDIDATE_BRIDGE_NODE="${ROS_PREFIX}/bringup/lib/bringup/landing_candidates_udp_bridge"
+LANDING_FEEDBACK_SIM_NODE="${ROS_PREFIX}/bringup/lib/bringup/landing_feedback_sim_node"
 
 if [ "${START_PLANNER}" -eq 1 ] && [ ! -x "${DECISION_NODE}" ]; then
   echo "[hope_ros_run] decision executable not found: ${DECISION_NODE}" >&2
@@ -207,6 +217,10 @@ if [ "${START_HIT_BRIDGE}" -eq 1 ] && [ ! -x "${HIT_BRIDGE_NODE}" ]; then
 fi
 if [ "${START_LANDING_CANDIDATE_BRIDGE}" -eq 1 ] && [ ! -x "${LANDING_CANDIDATE_BRIDGE_NODE}" ]; then
   echo "[hope_ros_run] landing candidate bridge executable not found: ${LANDING_CANDIDATE_BRIDGE_NODE}" >&2
+  exit 1
+fi
+if [ "${START_LANDING_FEEDBACK_SIM}" -eq 1 ] && [ ! -x "${LANDING_FEEDBACK_SIM_NODE}" ]; then
+  echo "[hope_ros_run] landing feedback sim executable not found: ${LANDING_FEEDBACK_SIM_NODE}" >&2
   exit 1
 fi
 
@@ -365,6 +379,29 @@ if [ "${START_LANDING_CANDIDATE_BRIDGE}" -eq 1 ]; then
   sleep 1
 else
   echo "[hope_ros_run] landing candidate bridge startup skipped."
+fi
+
+if [ "${START_LANDING_FEEDBACK_SIM}" -eq 1 ]; then
+  setsid bash -lc '
+    set -eo pipefail
+    set +u
+    source "$1"
+    source "$2"
+    set -u
+    shift 2
+    exec "$@"
+  ' _ "${ROS_UNDERLAY_SETUP}" "${ROS_SETUP}" \
+    "${LANDING_FEEDBACK_SIM_NODE}" --ros-args \
+    -p "hit_state_topic:=${HOPE_HIT_STATE_TOPIC:-/hit/state}" \
+    -p "feedback_topic:=${HOPE_LANDING_FEEDBACK_TOPIC:-/planner/landing_feedback}" \
+    -p "drag_k:=${HOPE_LANDING_FEEDBACK_DRAG_COEFFICIENT:-${TRAJECTORY_DRAG_COEFFICIENT}}" \
+    -p "systematic_landing_bias_x:=${HOPE_LANDING_FEEDBACK_BIAS_X:-0.0}" \
+    -p "systematic_landing_bias_y:=${HOPE_LANDING_FEEDBACK_BIAS_Y:-0.0}" &
+  LANDING_FEEDBACK_SIM_PID=$!
+  echo "[hope_ros_run] landing feedback sim started: pid=${LANDING_FEEDBACK_SIM_PID}"
+  sleep 1
+else
+  echo "[hope_ros_run] landing feedback sim startup skipped."
 fi
 
 cd "${WBT_DIR}"

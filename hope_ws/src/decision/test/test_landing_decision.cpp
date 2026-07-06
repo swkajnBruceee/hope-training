@@ -88,10 +88,22 @@ TEST(SoftConstraintScorerTest, DoesNotRewardBallSpeedBeingBelowComfortRange) {
   auto comfort = slow;
   comfort.plan.v_out = Eigen::Vector3d(6.0, 0.0, 1.0);
 
-  const auto slow_scored = scorer.score(slow);
-  const auto comfort_scored = scorer.score(comfort);
+  const auto slow_scored = scorer.score(slow, makeStrike());
+  const auto comfort_scored = scorer.score(comfort, makeStrike());
 
   EXPECT_LT(slow_scored.ball_speed_score, comfort_scored.ball_speed_score);
+}
+
+TEST(LandingDecisionPlannerTest, OffCenterIncomingBallPrefersOppositeSideTarget) {
+  decision::LandingDecisionPlanner planner{
+    makeDecisionConfig(), common::BallPhysics(), common::PlannerConfig(), common::TableParams()};
+
+  auto strike = makeStrike();
+  strike.p_ball.y() = -1.00;
+  const auto result = planner.select(strike, 0.30);
+
+  EXPECT_TRUE(result.target.valid);
+  EXPECT_GT(result.target.target_land.y(), -0.7625);
 }
 
 TEST(LandingDecisionPlannerTest, SelectsValidDynamicTargetForNormalStrike) {

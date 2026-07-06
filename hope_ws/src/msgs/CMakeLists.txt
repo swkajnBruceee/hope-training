@@ -16,6 +16,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/HitState.msg"
   "msg/LandingCandidate.msg"
   "msg/LandingCandidateArray.msg"
+  "msg/LandingFeedback.msg"
   "msg/PredictedStrike.msg"
   "msg/RacketCommand.msg"
   "msg/TargetDecision.msg"

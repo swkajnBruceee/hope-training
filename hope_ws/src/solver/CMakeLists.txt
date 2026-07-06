@@ -18,6 +18,7 @@ find_package(msgs REQUIRED)
 
 add_library(solver_lib SHARED
   src/hit_plan_solver.cpp
+  src/landing_error_corrector.cpp
   src/racket_target_solver.cpp
   src/solver_pipeline.cpp
 )
@@ -92,6 +93,8 @@ if(BUILD_TESTING)
   target_link_libraries(test_racket_target_solver solver_lib)
   ament_add_gtest(test_hit_plan_solver test/test_hit_plan_solver.cpp)
   target_link_libraries(test_hit_plan_solver solver_lib)
+  ament_add_gtest(test_landing_error_corrector test/test_landing_error_corrector.cpp)
+  target_link_libraries(test_landing_error_corrector solver_lib)
 endif()
 
 ament_package()

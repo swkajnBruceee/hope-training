@@ -50,6 +50,8 @@ struct HitPlan {
   double flight_time = 0.0;
 
   Eigen::Vector3d v_out = Eigen::Vector3d::Zero();
+  Eigen::Vector3d velocity_correction = Eigen::Vector3d::Zero();
+  Eigen::Vector3d estimated_landing_error = Eigen::Vector3d::Zero();
   Eigen::Vector3d racket_normal = Eigen::Vector3d::UnitX();
   Eigen::Vector3d racket_velocity = Eigen::Vector3d::Zero();
   geometry_msgs::msg::Quaternion racket_orientation;

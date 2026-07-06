@@ -1,0 +1,9 @@
+std_msgs/Header header
+geometry_msgs/Point target_land
+geometry_msgs/Point actual_landing
+geometry_msgs/Point hit_position
+geometry_msgs/Vector3 ball_velocity_incoming
+geometry_msgs/Vector3 ball_velocity_outgoing
+float64 return_flight_time
+bool valid
+string source
