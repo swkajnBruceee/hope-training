@@ -14,6 +14,8 @@ find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/HitState.msg"
+  "msg/LandingCandidate.msg"
+  "msg/LandingCandidateArray.msg"
   "msg/PredictedStrike.msg"
   "msg/RacketCommand.msg"
   "msg/TargetDecision.msg"

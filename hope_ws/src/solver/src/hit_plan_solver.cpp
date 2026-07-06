@@ -71,6 +71,10 @@ HitPlan HitPlanSolver::solve(
     plan.reason = "non_finite_solution";
     return plan;
   }
+  if (plan.bypasses_net_posts) {
+    plan.reason = "net_post_bypass";
+    return plan;
+  }
   if (!plan.clears_net) {
     plan.reason = "net_not_clear";
     return plan;

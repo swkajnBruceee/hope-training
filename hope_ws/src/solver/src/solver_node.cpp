@@ -211,6 +211,12 @@ class HOPESolverNode : public rclcpp::Node {
 
   void targetDecisionCb(const msgs::msg::TargetDecision::SharedPtr msg) {
     if (!msg->valid) {
+      if (msg->mode == "no_feasible_landing") {
+        latest_target_.valid = false;
+        latest_target_.mode = msg->mode;
+        last_target_reason_ = "no_feasible_landing";
+        return;
+      }
       last_target_reason_ = "invalid_decision_ignored";
       return;
     }

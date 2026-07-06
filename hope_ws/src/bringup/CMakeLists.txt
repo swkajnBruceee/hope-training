@@ -32,6 +32,12 @@ ament_target_dependencies(hit_state_udp_bridge
   rclcpp
 )
 
+add_executable(landing_candidates_udp_bridge src/landing_candidates_udp_bridge.cpp)
+ament_target_dependencies(landing_candidates_udp_bridge
+  msgs
+  rclcpp
+)
+
 install(DIRECTORY
   config
   launch
@@ -42,6 +48,7 @@ install(TARGETS
   avatar_pro_vrpn_relay
   ball_truth_udp_bridge
   hit_state_udp_bridge
+  landing_candidates_udp_bridge
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -58,7 +58,7 @@ class TrajectoryOverlayConfig:
     # --- new tuning knobs ---
     use_debug_draw: bool = True            # try omni.isaac.debug_draw first
     usd_curve_width_m: float = 0.03        # USD BasisCurves width (meters)
-    stale_keep_s: float = 0.3              # keep last valid frame this long
+    stale_keep_s: float = 2.0              # keep last valid frame this long
     log_period_s: float = 1.0              # throttled diagnostic log cadence
 
 
@@ -628,16 +628,13 @@ class IsaacTrajectoryOverlay:
                 owner_id="trajectory_overlay_main",
             )
 
-        # Only refresh the black return trajectory once the main trajectory has
-        # switched to the post-bounce green phase. This makes the return line
-        # follow the same post-bounce "real/adjusted" solve instead of the
-        # earlier pre-aim solve.
-        if after_p1_bounce and hit_plan is not None:
+        # Refresh the black planned return trajectory whenever a valid hit
+        # plan arrives. The line represents planner output, so tying it to the
+        # incoming-ball phase makes it flicker during normal pre/post-bounce
+        # transitions.
+        if hit_plan is not None:
             self._last_return_points = _sample_return_trajectory(hit_plan, self.cfg)
             self._last_return_t = now
-        elif not after_p1_bounce:
-            self._last_return_points = None
-            self._last_return_t = 0.0
 
         if self._last_return_points is not None and (
             now - self._last_return_t <= float(self.cfg.stale_keep_s)

@@ -129,6 +129,24 @@ parser.add_argument("--hit-overlay-udp-host", type=str, default="127.0.0.1",
                     help="Local UDP host for hit overlay (served by hit_state_udp_bridge).")
 parser.add_argument("--hit-overlay-udp-port", type=int, default=19533,
                     help="Local UDP port for hit overlay (served by hit_state_udp_bridge).")
+candidate_overlay_group = parser.add_mutually_exclusive_group()
+candidate_overlay_group.add_argument(
+    "--landing-candidate-overlay",
+    dest="landing_candidate_overlay",
+    action="store_true",
+    help="Draw landing decision candidates in the Isaac viewport.",
+)
+candidate_overlay_group.add_argument(
+    "--no-landing-candidate-overlay",
+    dest="landing_candidate_overlay",
+    action="store_false",
+    help="Disable landing candidate overlay.",
+)
+parser.set_defaults(landing_candidate_overlay=True)
+parser.add_argument("--landing-candidate-udp-host", type=str, default="127.0.0.1",
+                    help="Local UDP host for landing candidate overlay.")
+parser.add_argument("--landing-candidate-udp-port", type=int, default=19534,
+                    help="Local UDP port for landing candidate overlay.")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -183,6 +201,10 @@ def main() -> None:
     from hit import (  # type: ignore[import-not-found]
         IsaacHitOverlay,
         HitOverlayConfig,
+    )
+    from landing_candidates import (  # type: ignore[import-not-found]
+        IsaacLandingCandidateOverlay,
+        LandingCandidateOverlayConfig,
     )
     from shared_debug_draw import (  # type: ignore[import-not-found]
         clear_shared_debug_draw,
@@ -343,6 +365,16 @@ def main() -> None:
         )
         print(f"[play_table_tennis] hit overlay active: {hit_overlay.available}")
 
+    landing_candidate_overlay = None
+    if args_cli.landing_candidate_overlay:
+        landing_candidate_overlay = IsaacLandingCandidateOverlay(
+            LandingCandidateOverlayConfig(
+                udp_host=args_cli.landing_candidate_udp_host,
+                udp_port=int(args_cli.landing_candidate_udp_port),
+            )
+        )
+        print(f"[play_table_tennis] landing candidate overlay active: {landing_candidate_overlay.available}")
+
     control_dt = float(env_cfg.sim.dt * env_cfg.decimation)
     step = 0
     try:
@@ -359,9 +391,12 @@ def main() -> None:
                         trajectory_overlay.push(step * control_dt, pos_w - origin)
                 if hit_overlay is not None and hit_overlay.available:
                     hit_overlay.push(step * control_dt)
+                if landing_candidate_overlay is not None and landing_candidate_overlay.available:
+                    landing_candidate_overlay.push(step * control_dt)
                 if (
                     (trajectory_overlay is not None and trajectory_overlay.available)
                     or (hit_overlay is not None and hit_overlay.available)
+                    or (landing_candidate_overlay is not None and landing_candidate_overlay.available)
                 ):
                     flush_shared_debug_draw()
             step += 1
@@ -372,6 +407,8 @@ def main() -> None:
             trajectory_overlay.close()
         if hit_overlay is not None:
             hit_overlay.close()
+        if landing_candidate_overlay is not None:
+            landing_candidate_overlay.close()
         clear_shared_debug_draw()
         env.close()
 

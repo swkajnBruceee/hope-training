@@ -72,16 +72,21 @@ TRAJECTORY_TABLE_NET_X="${HOPE_TRAJECTORY_TABLE_NET_X:-1.37}"
 TRAJECTORY_DT_INTEGRATE="${HOPE_TRAJECTORY_DT_INTEGRATE:-0.001}"
 HIT_UDP_HOST="${HOPE_HIT_UDP_HOST:-127.0.0.1}"
 HIT_UDP_PORT="${HOPE_HIT_UDP_PORT:-19533}"
+LANDING_CANDIDATE_UDP_HOST="${HOPE_LANDING_CANDIDATE_UDP_HOST:-127.0.0.1}"
+LANDING_CANDIDATE_UDP_PORT="${HOPE_LANDING_CANDIDATE_UDP_PORT:-19534}"
 START_PLANNER=1
 START_STRIKE_PREDICTOR=1
 START_TRUTH_BRIDGE=1
 START_TRAJECTORY_OVERLAY=1
 START_HIT_BRIDGE=1
+START_LANDING_CANDIDATE_BRIDGE=1
 PLANNER_PID=""
+DECISION_PID=""
 STRIKE_PREDICTOR_PID=""
 TRUTH_BRIDGE_PID=""
 TRAJECTORY_OVERLAY_PID=""
 HIT_BRIDGE_PID=""
+LANDING_CANDIDATE_BRIDGE_PID=""
 
 ARGS=()
 for arg in "$@"; do
@@ -100,6 +105,10 @@ for arg in "$@"; do
       START_HIT_BRIDGE=0
       ARGS+=("--no-hit-overlay")
       ;;
+    --no-landing-candidate-overlay)
+      START_LANDING_CANDIDATE_BRIDGE=0
+      ARGS+=("--no-landing-candidate-overlay")
+      ;;
     *)
       ARGS+=("${arg}")
       ;;
@@ -107,6 +116,10 @@ for arg in "$@"; do
 done
 
 cleanup() {
+  if [ -n "${DECISION_PID}" ]; then
+    kill -- "-${DECISION_PID}" 2>/dev/null || kill "${DECISION_PID}" 2>/dev/null || true
+    wait "${DECISION_PID}" 2>/dev/null || true
+  fi
   if [ -n "${PLANNER_PID}" ]; then
     kill -- "-${PLANNER_PID}" 2>/dev/null || kill "${PLANNER_PID}" 2>/dev/null || true
     wait "${PLANNER_PID}" 2>/dev/null || true
@@ -126,6 +139,10 @@ cleanup() {
   if [ -n "${HIT_BRIDGE_PID}" ]; then
     kill -- "-${HIT_BRIDGE_PID}" 2>/dev/null || kill "${HIT_BRIDGE_PID}" 2>/dev/null || true
     wait "${HIT_BRIDGE_PID}" 2>/dev/null || true
+  fi
+  if [ -n "${LANDING_CANDIDATE_BRIDGE_PID}" ]; then
+    kill -- "-${LANDING_CANDIDATE_BRIDGE_PID}" 2>/dev/null || kill "${LANDING_CANDIDATE_BRIDGE_PID}" 2>/dev/null || true
+    wait "${LANDING_CANDIDATE_BRIDGE_PID}" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT INT TERM
@@ -150,13 +167,20 @@ if [ -z "${ROS_UNDERLAY_SETUP}" ]; then
   exit 1
 fi
 
-SOLVER_NODE="${REPO_DIR}/hope_ws/install/solver/lib/solver/solver_node"
-SOLVER_CONFIG="${REPO_DIR}/hope_ws/install/solver/share/solver/config/solver.yaml"
-TRUTH_BRIDGE_NODE="${REPO_DIR}/hope_ws/install/bringup/lib/bringup/ball_truth_udp_bridge"
-STRIKE_PREDICTION_NODE="${REPO_DIR}/hope_ws/install/trajectory/lib/trajectory/strike_prediction_node"
-TRAJECTORY_OVERLAY_NODE="${REPO_DIR}/hope_ws/install/trajectory/lib/trajectory/trajectory_overlay_udp_node"
-HIT_BRIDGE_NODE="${REPO_DIR}/hope_ws/install/bringup/lib/bringup/hit_state_udp_bridge"
+ROS_PREFIX="$(cd "$(dirname "${ROS_SETUP}")" && pwd)"
+DECISION_NODE="${ROS_PREFIX}/decision/lib/decision/decision_node"
+SOLVER_NODE="${ROS_PREFIX}/solver/lib/solver/solver_node"
+SOLVER_CONFIG="${ROS_PREFIX}/solver/share/solver/config/solver.yaml"
+TRUTH_BRIDGE_NODE="${ROS_PREFIX}/bringup/lib/bringup/ball_truth_udp_bridge"
+STRIKE_PREDICTION_NODE="${ROS_PREFIX}/trajectory/lib/trajectory/strike_prediction_node"
+TRAJECTORY_OVERLAY_NODE="${ROS_PREFIX}/trajectory/lib/trajectory/trajectory_overlay_udp_node"
+HIT_BRIDGE_NODE="${ROS_PREFIX}/bringup/lib/bringup/hit_state_udp_bridge"
+LANDING_CANDIDATE_BRIDGE_NODE="${ROS_PREFIX}/bringup/lib/bringup/landing_candidates_udp_bridge"
 
+if [ "${START_PLANNER}" -eq 1 ] && [ ! -x "${DECISION_NODE}" ]; then
+  echo "[hope_ros_run] decision executable not found: ${DECISION_NODE}" >&2
+  exit 1
+fi
 if [ ! -x "${SOLVER_NODE}" ]; then
   echo "[hope_ros_run] solver executable not found: ${SOLVER_NODE}" >&2
   exit 1
@@ -181,8 +205,28 @@ if [ "${START_HIT_BRIDGE}" -eq 1 ] && [ ! -x "${HIT_BRIDGE_NODE}" ]; then
   echo "[hope_ros_run] hit state bridge executable not found: ${HIT_BRIDGE_NODE}" >&2
   exit 1
 fi
+if [ "${START_LANDING_CANDIDATE_BRIDGE}" -eq 1 ] && [ ! -x "${LANDING_CANDIDATE_BRIDGE_NODE}" ]; then
+  echo "[hope_ros_run] landing candidate bridge executable not found: ${LANDING_CANDIDATE_BRIDGE_NODE}" >&2
+  exit 1
+fi
 
 if [ "${START_PLANNER}" -eq 1 ]; then
+  setsid bash -lc '
+    set -eo pipefail
+    set +u
+    source "$1"
+    source "$2"
+    set -u
+    shift 2
+    exec "$@"
+  ' _ "${ROS_UNDERLAY_SETUP}" "${ROS_SETUP}" \
+    "${DECISION_NODE}" --ros-args \
+    -p "pre_aim_strike_topic:=${PREDICTED_STRIKE_TOPIC}" \
+    -p "strike_adjust_topic:=${POST_BOUNCE_PREDICTED_STRIKE_TOPIC}" &
+  DECISION_PID=$!
+  echo "[hope_ros_run] landing decision started: pid=${DECISION_PID}"
+  sleep 1
+
   setsid bash -lc '
     set -eo pipefail
     set +u
@@ -196,7 +240,7 @@ if [ "${START_PLANNER}" -eq 1 ]; then
     -p "pre_aim_strike_topic:=${PREDICTED_STRIKE_TOPIC}" \
     -p "strike_adjust_topic:=${POST_BOUNCE_PREDICTED_STRIKE_TOPIC}" &
   PLANNER_PID=$!
-  echo "[hope_ros_run] planner started: pid=${PLANNER_PID}"
+  echo "[hope_ros_run] solver started: pid=${PLANNER_PID}"
   sleep 2
 else
   echo "[hope_ros_run] planner startup skipped."
@@ -302,6 +346,27 @@ else
   echo "[hope_ros_run] hit state bridge startup skipped."
 fi
 
+if [ "${START_LANDING_CANDIDATE_BRIDGE}" -eq 1 ]; then
+  setsid bash -lc '
+    set -eo pipefail
+    set +u
+    source "$1"
+    source "$2"
+    set -u
+    shift 2
+    exec "$@"
+  ' _ "${ROS_UNDERLAY_SETUP}" "${ROS_SETUP}" \
+    "${LANDING_CANDIDATE_BRIDGE_NODE}" --ros-args \
+    -p "candidates_topic:=${HOPE_LANDING_CANDIDATES_TOPIC:-/planner/landing_candidates}" \
+    -p "udp_host:=${LANDING_CANDIDATE_UDP_HOST}" \
+    -p "udp_port:=${LANDING_CANDIDATE_UDP_PORT}" &
+  LANDING_CANDIDATE_BRIDGE_PID=$!
+  echo "[hope_ros_run] landing candidate bridge started: pid=${LANDING_CANDIDATE_BRIDGE_PID}"
+  sleep 1
+else
+  echo "[hope_ros_run] landing candidate bridge startup skipped."
+fi
+
 cd "${WBT_DIR}"
 set +u
 # shellcheck disable=SC1091
@@ -314,6 +379,7 @@ echo "[hope_ros_run] starting Isaac table-tennis sim"
 echo "[hope_ros_run] publishing ball truth on ${BALL_TOPIC} via udp://${BALL_UDP_HOST}:${BALL_UDP_PORT}"
 echo "[hope_ros_run] receiving trajectory overlay on udp://${TRAJECTORY_UDP_HOST}:${TRAJECTORY_UDP_PORT}"
 echo "[hope_ros_run] receiving hit state on udp://${HIT_UDP_HOST}:${HIT_UDP_PORT}"
+echo "[hope_ros_run] receiving landing candidates on udp://${LANDING_CANDIDATE_UDP_HOST}:${LANDING_CANDIDATE_UDP_PORT}"
 "${HOPE_ISAAC_PYTHON}" "${SCRIPT_DIR}/play_table_tennis.py" \
   --publish-ball-truth \
   --ball-truth-topic "${BALL_TOPIC}" \
@@ -324,4 +390,6 @@ echo "[hope_ros_run] receiving hit state on udp://${HIT_UDP_HOST}:${HIT_UDP_PORT
   --trajectory-udp-port "${TRAJECTORY_UDP_PORT}" \
   --hit-overlay-udp-host "${HIT_UDP_HOST}" \
   --hit-overlay-udp-port "${HIT_UDP_PORT}" \
+  --landing-candidate-udp-host "${LANDING_CANDIDATE_UDP_HOST}" \
+  --landing-candidate-udp-port "${LANDING_CANDIDATE_UDP_PORT}" \
   "${ARGS[@]}"

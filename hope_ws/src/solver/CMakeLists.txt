@@ -55,9 +55,14 @@ ament_target_dependencies(solver_node
     trajectory
 )
 
-install(TARGETS solver_lib solver_node
+install(TARGETS solver_lib
+  EXPORT export_solver
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS solver_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -67,6 +72,18 @@ install(DIRECTORY include/
 
 install(DIRECTORY config/
   DESTINATION share/${PROJECT_NAME}/config
+)
+
+ament_export_targets(export_solver HAS_LIBRARY_TARGET)
+ament_export_dependencies(
+  Eigen3
+  common
+  trajectory
+  rclcpp
+  geometry_msgs
+  std_msgs
+  diagnostic_msgs
+  msgs
 )
 
 if(BUILD_TESTING)
