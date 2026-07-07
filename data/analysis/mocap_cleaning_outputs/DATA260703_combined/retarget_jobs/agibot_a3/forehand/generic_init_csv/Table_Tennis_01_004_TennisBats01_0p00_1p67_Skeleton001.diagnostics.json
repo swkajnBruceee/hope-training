@@ -1,0 +1,833 @@
+{
+  "max_velocity_radps": 33.42371689305058,
+  "max_velocity_joint": "right_shoulder_yaw_joint",
+  "max_velocity_frame_index": 188,
+  "max_acceleration_radps2": 843.357707672448,
+  "max_acceleration_joint": "right_shoulder_yaw_joint",
+  "max_acceleration_frame_index": 195,
+  "max_acceleration_neighbor_values": {
+    "q": [
+      1.0945147986052821,
+      0.9706328708121763,
+      0.8659402456994044,
+      0.7821372412259855,
+      0.7197582430361824,
+      0.6779773824070396,
+      0.6544142141959385
+    ],
+    "qdot": [
+      -26.42812300452335,
+      -22.857455290587747,
+      -18.849562958619064,
+      -14.618200266322187,
+      -10.415985881894576,
+      -6.534402884024387,
+      -3.3037987618917044
+    ],
+    "qddot": [
+      652.9220962625226,
+      757.8560045904279,
+      823.9255024265553,
+      843.357707672448,
+      808.3797382297793,
+      711.2187120002866,
+      544.1017468854527
+    ]
+  },
+  "anchor_frames": [
+    0,
+    72,
+    110,
+    120,
+    132,
+    176,
+    200
+  ],
+  "stroke_profile": {
+    "pre_near_frames": 10.0,
+    "post_near_frames": 12.0,
+    "pre_far_frames": 48.0,
+    "post_far_frames": 56.0,
+    "pre_near_scale": 1.0,
+    "post_near_scale": 1.25,
+    "post_far_scale": 1.55,
+    "post_far_alpha_schedule": [
+      1.0,
+      0.8,
+      0.6,
+      0.4
+    ]
+  },
+  "swing_direction_targets": {
+    "hit_target_velocity_direction_w": [
+      -0.023936604610033434,
+      0.13191798948987687,
+      0.9909715853689709
+    ],
+    "pre_near_target_pos": [
+      -0.4206622108304924,
+      1.1418090469689905,
+      2.2435210964131675
+    ],
+    "hit_target_pos": [
+      -0.424163116,
+      1.1611030270000002,
+      2.388458008
+    ],
+    "post_near_target_pos": [
+      -0.4288928883083393,
+      1.187169466406343,
+      2.5842698217133218
+    ],
+    "post_far_target_pos": [
+      -0.44070326742731974,
+      1.252258124295443,
+      3.073217619866731
+    ]
+  },
+  "anchor_joint_values": {
+    "waist_yaw_joint": [
+      -0.07537226157049715,
+      -1.0665417083168136,
+      -0.9616232803415331,
+      -0.8689578237320243,
+      -1.0374153627268252,
+      -1.7923547041478538,
+      0.04016910107673484
+    ],
+    "right_shoulder_pitch_joint": [
+      0.7035568237025936,
+      0.889675827941971,
+      0.7728461535615867,
+      0.8768322887435613,
+      1.0265723234056066,
+      1.6976295157799521,
+      0.2521343960896843
+    ],
+    "right_shoulder_yaw_joint": [
+      0.3429628967619181,
+      2.1435513385620646,
+      2.56182927442934,
+      2.489698021642382,
+      2.6011453447043085,
+      2.792526802599791,
+      0.6434803600442399
+    ],
+    "right_elbow_joint": [
+      0.21069660858788405,
+      0.6357530956479418,
+      0.3708631686857633,
+      0.3708577661448126,
+      0.19002967440596893,
+      0.7223322812465544,
+      0.35072294134520554
+    ]
+  },
+  "boundary_feasibility_repair": {
+    "skipped": true,
+    "reason": "generic_init_preserves_hit_corridor; temporal_repair_handles_boundary_dynamics"
+  },
+  "post_followthrough_repair": {
+    "alpha": 1.0,
+    "target_pos": [
+      -0.44070326742731974,
+      1.252258124295443,
+      3.073217619866731
+    ],
+    "ratios_to_cap": {
+      "waist_yaw_joint": 0.9999999999998455,
+      "waist_roll_joint": 0.0,
+      "waist_pitch_joint": 0.03809741836855511,
+      "right_shoulder_pitch_joint": 0.9999999999999915,
+      "right_shoulder_roll_joint": 0.5185847228755949,
+      "right_shoulder_yaw_joint": 0.1901293064836317,
+      "right_elbow_joint": 0.5288199107214483,
+      "right_wrist_roll_joint": 0.7448288357112418,
+      "right_wrist_pitch_joint": 0.5504867095084419,
+      "right_wrist_yaw_joint": 0.13181221323765674
+    },
+    "feasible": true
+  },
+  "active_segment_report": {
+    "waist_yaw_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": -0.07537226157049715,
+        "q_end": -1.0665417083168136,
+        "delta_q": 0.9911694467463165,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.15487022605411196,
+        "required_t_for_acc_limit": 0.21830879711481788,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": -1.0665417083168136,
+        "q_end": -0.9616232803415331,
+        "delta_q": 0.1049184279752805,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.01639350437113758,
+        "required_t_for_acc_limit": 0.0710269508365996,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": -0.9616232803415331,
+        "q_end": -0.8689578237320243,
+        "delta_q": 0.09266545660950876,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 0.014478977595235745,
+        "required_t_for_acc_limit": 0.0667507605847345,
+        "feasible": false
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": -0.8689578237320243,
+        "q_end": -1.0374153627268252,
+        "delta_q": 0.16845753899480087,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 0.026321490467937636,
+        "required_t_for_acc_limit": 0.09000000000000005,
+        "feasible": false
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": -1.0374153627268252,
+        "q_end": -1.7923547041478538,
+        "delta_q": 0.7549393414210286,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.11795927209703572,
+        "required_t_for_acc_limit": 0.19052558883256196,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": -1.7923547041478538,
+        "q_end": 0.04016910107673484,
+        "delta_q": 1.8325238052245887,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.286331844566342,
+        "required_t_for_acc_limit": 0.2968397765931687,
+        "feasible": false
+      }
+    },
+    "waist_roll_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": -0.018239318285645637,
+        "q_end": 0.34906585039886584,
+        "delta_q": 0.36730516868451146,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.057391432606954916,
+        "required_t_for_acc_limit": 0.13289566155790636,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": 0.34906585039886584,
+        "q_end": -0.19285542166031436,
+        "delta_q": 0.5419212720591802,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.0846751987592469,
+        "required_t_for_acc_limit": 0.1614229883407118,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": -0.19285542166031436,
+        "q_end": -0.348834624433278,
+        "delta_q": 0.15597920277296365,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 0.02437175043327557,
+        "required_t_for_acc_limit": 0.08660254037844388,
+        "feasible": false
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": -0.348834624433278,
+        "q_end": -0.3490658503988659,
+        "delta_q": 0.000231225965587889,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 3.6129057123107655e-05,
+        "required_t_for_acc_limit": 0.0033343837779542308,
+        "feasible": true
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": -0.3490658503988659,
+        "q_end": -0.3490658503988659,
+        "delta_q": 0.0,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.0,
+        "required_t_for_acc_limit": 0.0,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": -0.3490658503988659,
+        "q_end": -0.003959582685808074,
+        "delta_q": 0.3451062677130578,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.05392285433016528,
+        "required_t_for_acc_limit": 0.12881715610068997,
+        "feasible": false
+      }
+    },
+    "waist_pitch_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": 0.046802706979234596,
+        "q_end": 0.21148707754894713,
+        "delta_q": 0.16468437056971252,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.025731932901517582,
+        "required_t_for_acc_limit": 0.08898636684848796,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": 0.21148707754894713,
+        "q_end": 0.26289979143826336,
+        "delta_q": 0.05141271388931623,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.008033236545205661,
+        "required_t_for_acc_limit": 0.04972016351050435,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": 0.26289979143826336,
+        "q_end": 0.4188789942112272,
+        "delta_q": 0.15597920277296384,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 0.024371750433275597,
+        "required_t_for_acc_limit": 0.08660254037844393,
+        "feasible": false
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": 0.4188789942112272,
+        "q_end": 0.4188790204786391,
+        "delta_q": 2.6267411912250793e-08,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 4.1042831112891864e-09,
+        "required_t_for_acc_limit": 3.5539059115017744e-05,
+        "feasible": true
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": 0.4188790204786391,
+        "q_end": 0.38053070056796867,
+        "delta_q": 0.03834831991067045,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.005991924986042257,
+        "required_t_for_acc_limit": 0.04294083195558827,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": 0.38053070056796867,
+        "q_end": 0.09389903515169767,
+        "delta_q": 0.286631665416271,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.04478619772129234,
+        "required_t_for_acc_limit": 0.11739764014706185,
+        "feasible": true
+      }
+    },
+    "right_shoulder_pitch_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": 0.7035568237025936,
+        "q_end": 0.889675827941971,
+        "delta_q": 0.18611900423937733,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.029081094412402708,
+        "required_t_for_acc_limit": 0.09460032833193581,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": 0.889675827941971,
+        "q_end": 0.7728461535615867,
+        "delta_q": 0.11682967438038427,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.018254636621935043,
+        "required_t_for_acc_limit": 0.07495038476523527,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": 0.7728461535615867,
+        "q_end": 0.8768322887435613,
+        "delta_q": 0.10398613518197464,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 0.016247833622183537,
+        "required_t_for_acc_limit": 0.07071067811865438,
+        "feasible": false
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": 0.8768322887435613,
+        "q_end": 1.0265723234056066,
+        "delta_q": 0.14974003466204522,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 0.023396880415944565,
+        "required_t_for_acc_limit": 0.08485281374238575,
+        "feasible": false
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": 1.0265723234056066,
+        "q_end": 1.6976295157799521,
+        "delta_q": 0.6710571923743456,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.1048526863084915,
+        "required_t_for_acc_limit": 0.1796292478040991,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": 1.6976295157799521,
+        "q_end": 0.2521343960896843,
+        "delta_q": 1.445495119690268,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.22585861245160435,
+        "required_t_for_acc_limit": 0.26363653705769563,
+        "feasible": false
+      }
+    },
+    "right_shoulder_roll_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": 0.01182800206282908,
+        "q_end": -0.9328356826680911,
+        "delta_q": 0.9446636847309202,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.14760370073920628,
+        "required_t_for_acc_limit": 0.21312573481588687,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": -0.9328356826680911,
+        "q_end": -0.9013206790232099,
+        "delta_q": 0.031515003644881245,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.004924219319512695,
+        "required_t_for_acc_limit": 0.03892745079321326,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": -0.9013206790232099,
+        "q_end": -0.7870024555729352,
+        "delta_q": 0.11431822345027465,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 0.017862222414105414,
+        "required_t_for_acc_limit": 0.07414041572741577,
+        "feasible": false
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": -0.7870024555729352,
+        "q_end": -0.7369230148961693,
+        "delta_q": 0.05007944067676595,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 0.00782491260574468,
+        "required_t_for_acc_limit": 0.0490712384111898,
+        "feasible": true
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": -0.7369230148961693,
+        "q_end": -0.21492300268447762,
+        "delta_q": 0.5220000122116917,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.08156250190807683,
+        "required_t_for_acc_limit": 0.15842821903682072,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": -0.21492300268447762,
+        "q_end": -0.05997950513990625,
+        "delta_q": 0.15494349754457137,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.02420992149133928,
+        "required_t_for_acc_limit": 0.08631454014398814,
+        "feasible": true
+      }
+    },
+    "right_shoulder_yaw_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": 0.3429628967619181,
+        "q_end": 2.1435513385620646,
+        "delta_q": 1.8005884418001465,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.2813419440312729,
+        "required_t_for_acc_limit": 0.2942418974980003,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": 2.1435513385620646,
+        "q_end": 2.56182927442934,
+        "delta_q": 0.41827793586727546,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.06535592747926179,
+        "required_t_for_acc_limit": 0.1418174792339958,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": 2.56182927442934,
+        "q_end": 2.489698021642382,
+        "delta_q": 0.0721312527869582,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 0.011270508247962219,
+        "required_t_for_acc_limit": 0.058892368533675396,
+        "feasible": false
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": 2.489698021642382,
+        "q_end": 2.6011453447043085,
+        "delta_q": 0.11144732306192662,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 0.017413644228426034,
+        "required_t_for_acc_limit": 0.07320354352006674,
+        "feasible": false
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": 2.6011453447043085,
+        "q_end": 2.792526802599791,
+        "delta_q": 0.19138145789548267,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.029903352796169166,
+        "required_t_for_acc_limit": 0.09592840264388744,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": 2.792526802599791,
+        "q_end": 0.6434803600442399,
+        "delta_q": 2.149046442555551,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.3357885066493049,
+        "required_t_for_acc_limit": 0.3214549990997383,
+        "feasible": false
+      }
+    },
+    "right_elbow_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": 0.21069660858788405,
+        "q_end": 0.6357530956479418,
+        "delta_q": 0.4250564870600577,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.06641507610313402,
+        "required_t_for_acc_limit": 0.1429619975825899,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": 0.6357530956479418,
+        "q_end": 0.3708631686857633,
+        "delta_q": 0.2648899269621785,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.04138905108784039,
+        "required_t_for_acc_limit": 0.11285739078485178,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": 0.3708631686857633,
+        "q_end": 0.3708577661448126,
+        "delta_q": 5.40254095071635e-06,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 8.441470235494297e-07,
+        "required_t_for_acc_limit": 0.0005096785039417278,
+        "feasible": true
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": 0.3708577661448126,
+        "q_end": 0.19002967440596893,
+        "delta_q": 0.18082809173884365,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 0.02825438933419432,
+        "required_t_for_acc_limit": 0.09324600479971995,
+        "feasible": false
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": 0.19002967440596893,
+        "q_end": 0.7223322812465544,
+        "delta_q": 0.5323026068405854,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.08317228231884147,
+        "required_t_for_acc_limit": 0.1599840106976886,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": 0.7223322812465544,
+        "q_end": 0.35072294134520554,
+        "delta_q": 0.3716093399013488,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.05806395935958575,
+        "required_t_for_acc_limit": 0.13367204554526918,
+        "feasible": false
+      }
+    },
+    "right_wrist_roll_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": 0.05296916883522919,
+        "q_end": -0.8210371952329002,
+        "delta_q": 0.8740063640681294,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.13656349438564522,
+        "required_t_for_acc_limit": 0.20500033985079769,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": -0.8210371952329002,
+        "q_end": -0.5279422084733404,
+        "delta_q": 0.2930949867595598,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.04579609168118123,
+        "required_t_for_acc_limit": 0.11871387428051042,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": -0.5279422084733404,
+        "q_end": -0.6839214112463042,
+        "delta_q": 0.15597920277296384,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 0.024371750433275597,
+        "required_t_for_acc_limit": 0.08660254037844393,
+        "feasible": false
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": -0.6839214112463042,
+        "q_end": -0.7044667629979471,
+        "delta_q": 0.02054535175164285,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 0.003210211211194195,
+        "required_t_for_acc_limit": 0.031430701499088866,
+        "feasible": true
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": -0.7044667629979471,
+        "q_end": 0.04526735793981729,
+        "delta_q": 0.7497341209377644,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.11714595639652568,
+        "required_t_for_acc_limit": 0.18986762664663023,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": 0.04526735793981729,
+        "q_end": 0.0817154421472612,
+        "delta_q": 0.036448084207443915,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.005695013157413112,
+        "required_t_for_acc_limit": 0.04186341340965794,
+        "feasible": true
+      }
+    },
+    "right_wrist_pitch_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": -0.03038281239700947,
+        "q_end": -0.7156213025488124,
+        "delta_q": 0.6852384901518029,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.1070685140862192,
+        "required_t_for_acc_limit": 0.18151735656625015,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": -0.7156213025488124,
+        "q_end": -0.4736409363545591,
+        "delta_q": 0.24198036619425328,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.037809432217852074,
+        "required_t_for_acc_limit": 0.10786668905570591,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": -0.4736409363545591,
+        "q_end": -0.3176617335815956,
+        "delta_q": 0.1559792027729635,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 0.02437175043327555,
+        "required_t_for_acc_limit": 0.08660254037844384,
+        "feasible": false
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": -0.3176617335815956,
+        "q_end": -0.09305168158852764,
+        "delta_q": 0.22461005199306797,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 0.03509532062391687,
+        "required_t_for_acc_limit": 0.10392304845413272,
+        "feasible": false
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": -0.09305168158852764,
+        "q_end": 0.4610604169946677,
+        "delta_q": 0.5541120985831953,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.08658001540362427,
+        "required_t_for_acc_limit": 0.1632285414387099,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": 0.4610604169946677,
+        "q_end": -0.06939521362098647,
+        "delta_q": 0.5304556306156542,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.08288369228369596,
+        "required_t_for_acc_limit": 0.15970621436073185,
+        "feasible": false
+      }
+    },
+    "right_wrist_yaw_joint": {
+      "boundary_start_to_pre_far": {
+        "frame_start": 0,
+        "frame_end": 72,
+        "q_start": -0.513822459752537,
+        "q_end": -0.6595542951001028,
+        "delta_q": 0.14573183534756573,
+        "duration_s": 0.3600000000000003,
+        "required_t_for_vel_limit": 0.022770599273057145,
+        "required_t_for_acc_limit": 0.08370945237125525,
+        "feasible": true
+      },
+      "pre_far_to_pre_near": {
+        "frame_start": 72,
+        "frame_end": 110,
+        "q_start": -0.6595542951001028,
+        "q_end": -0.7171795277827603,
+        "delta_q": 0.05762523268265751,
+        "duration_s": 0.19000000000000017,
+        "required_t_for_vel_limit": 0.009003942606665236,
+        "required_t_for_acc_limit": 0.052638515095803334,
+        "feasible": true
+      },
+      "pre_near_to_hit": {
+        "frame_start": 110,
+        "frame_end": 120,
+        "q_start": -0.7171795277827603,
+        "q_end": -0.6837140696279245,
+        "delta_q": 0.033465458154835814,
+        "duration_s": 0.050000000000000044,
+        "required_t_for_vel_limit": 0.005228977836693096,
+        "required_t_for_acc_limit": 0.040113972373871036,
+        "feasible": true
+      },
+      "hit_to_post_near": {
+        "frame_start": 120,
+        "frame_end": 132,
+        "q_start": -0.6837140696279245,
+        "q_end": -0.5705424810954012,
+        "delta_q": 0.11317158853252329,
+        "duration_s": 0.06000000000000005,
+        "required_t_for_vel_limit": 0.017683060708206765,
+        "required_t_for_acc_limit": 0.07376765697290487,
+        "feasible": false
+      },
+      "post_near_to_post_far": {
+        "frame_start": 132,
+        "frame_end": 176,
+        "q_start": -0.5705424810954012,
+        "q_end": -0.4378621804915343,
+        "delta_q": 0.13268030060386687,
+        "duration_s": 0.2200000000000002,
+        "required_t_for_vel_limit": 0.0207312969693542,
+        "required_t_for_acc_limit": 0.07987309384706842,
+        "feasible": true
+      },
+      "post_far_to_boundary_end": {
+        "frame_start": 176,
+        "frame_end": 200,
+        "q_start": -0.4378621804915343,
+        "q_end": -0.7507842209676732,
+        "delta_q": 0.31292204047613886,
+        "duration_s": 0.1200000000000001,
+        "required_t_for_vel_limit": 0.048894068824396696,
+        "required_t_for_acc_limit": 0.12266350223094484,
+        "feasible": false
+      }
+    }
+  }
+}

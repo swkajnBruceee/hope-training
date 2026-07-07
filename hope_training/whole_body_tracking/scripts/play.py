@@ -171,58 +171,65 @@ def _run_play(cfg, simulation_app):
     face_forward_count = 0
     first_contact_count = 0
     contact_forward_count = 0
+    has_ball = "ball" in env.unwrapped.scene.rigid_objects
     timestep = 0
     while simulation_app.is_running():
         with torch.inference_mode():
             actions = policy(obs)
             obs, _, _, _ = env.step(actions.to(env.unwrapped.device))
             obs = _obs_to_device(obs, agent_cfg.device)
-            ball = env.unwrapped.scene["ball"]
-            racket_pos_w, _, _ = racket_state_w(env.unwrapped)
-            normal_w = racket_normal_w(env.unwrapped, normal_axis=normal_axis, normal_sign=normal_sign)
-            racket_ball_distance = torch.norm(ball.data.root_pos_w - racket_pos_w, dim=-1)
-            rel = ball.data.root_pos_w - racket_pos_w
-            signed_normal_dist = torch.sum(rel * normal_w, dim=-1)
-            lateral = rel - signed_normal_dist.unsqueeze(-1) * normal_w
-            lateral_dist = torch.norm(lateral, dim=-1)
-            face_contact_score = torch.exp(
-                -(torch.square(lateral_dist) / max(face_lateral_threshold, 1.0e-6) ** 2)
-                - (torch.square(signed_normal_dist) / max(face_normal_threshold, 1.0e-6) ** 2)
-            )
-            ball_forward_velocity = ball.data.root_lin_vel_w[:, 0]
-            min_racket_ball_distance = min(min_racket_ball_distance, float(torch.min(racket_ball_distance).item()))
-            min_face_lateral_distance = min(min_face_lateral_distance, float(torch.min(lateral_dist).item()))
-            min_face_normal_distance = min(
-                min_face_normal_distance, float(torch.min(torch.abs(signed_normal_dist)).item())
-            )
-            max_face_contact_score = max(max_face_contact_score, float(torch.max(face_contact_score).item()))
-            max_ball_forward_velocity = max(max_ball_forward_velocity, float(torch.max(ball_forward_velocity).item()))
-            close = racket_ball_distance < touch_distance_threshold
-            face_close = (lateral_dist < face_lateral_threshold) & (
-                torch.abs(signed_normal_dist) < face_normal_threshold
-            )
-            close_count += int(torch.sum(close).item())
-            face_close_count += int(torch.sum(face_close).item())
-            forward_touch_like_count += int(torch.sum(close & (ball_forward_velocity > touch_forward_velocity)).item())
-            face_forward_count += int(torch.sum(face_close & (ball_forward_velocity > touch_forward_velocity)).item())
-            contact_sensor = None
-            if "racket_ball_contact" in env.unwrapped.scene.sensors:
-                contact_sensor = env.unwrapped.scene.sensors["racket_ball_contact"]
-            if contact_sensor is not None:
-                contact_force = torch.linalg.norm(contact_sensor.data.net_forces_w, dim=-1).amax(dim=-1)
-                racket_contact = (contact_force > 0.05) & face_close
-                max_contact_force = max(max_contact_force, float(torch.max(contact_force).item()))
-                first_contact_count += int(torch.sum(racket_contact).item())
-                contact_forward_count += int(
-                    torch.sum(racket_contact & (ball_forward_velocity > touch_forward_velocity)).item()
+            if has_ball:
+                ball = env.unwrapped.scene["ball"]
+                racket_pos_w, _, _ = racket_state_w(env.unwrapped)
+                normal_w = racket_normal_w(env.unwrapped, normal_axis=normal_axis, normal_sign=normal_sign)
+                racket_ball_distance = torch.norm(ball.data.root_pos_w - racket_pos_w, dim=-1)
+                rel = ball.data.root_pos_w - racket_pos_w
+                signed_normal_dist = torch.sum(rel * normal_w, dim=-1)
+                lateral = rel - signed_normal_dist.unsqueeze(-1) * normal_w
+                lateral_dist = torch.norm(lateral, dim=-1)
+                face_contact_score = torch.exp(
+                    -(torch.square(lateral_dist) / max(face_lateral_threshold, 1.0e-6) ** 2)
+                    - (torch.square(signed_normal_dist) / max(face_normal_threshold, 1.0e-6) ** 2)
                 )
+                ball_forward_velocity = ball.data.root_lin_vel_w[:, 0]
+                min_racket_ball_distance = min(min_racket_ball_distance, float(torch.min(racket_ball_distance).item()))
+                min_face_lateral_distance = min(min_face_lateral_distance, float(torch.min(lateral_dist).item()))
+                min_face_normal_distance = min(
+                    min_face_normal_distance, float(torch.min(torch.abs(signed_normal_dist)).item())
+                )
+                max_face_contact_score = max(max_face_contact_score, float(torch.max(face_contact_score).item()))
+                max_ball_forward_velocity = max(max_ball_forward_velocity, float(torch.max(ball_forward_velocity).item()))
+                close = racket_ball_distance < touch_distance_threshold
+                face_close = (lateral_dist < face_lateral_threshold) & (
+                    torch.abs(signed_normal_dist) < face_normal_threshold
+                )
+                close_count += int(torch.sum(close).item())
+                face_close_count += int(torch.sum(face_close).item())
+                forward_touch_like_count += int(
+                    torch.sum(close & (ball_forward_velocity > touch_forward_velocity)).item()
+                )
+                face_forward_count += int(torch.sum(face_close & (ball_forward_velocity > touch_forward_velocity)).item())
+                contact_sensor = None
+                if "racket_ball_contact" in env.unwrapped.scene.sensors:
+                    contact_sensor = env.unwrapped.scene.sensors["racket_ball_contact"]
+                if contact_sensor is not None:
+                    contact_force = torch.linalg.norm(contact_sensor.data.net_forces_w, dim=-1).amax(dim=-1)
+                    racket_contact = (contact_force > 0.05) & face_close
+                    max_contact_force = max(max_contact_force, float(torch.max(contact_force).item()))
+                    first_contact_count += int(torch.sum(racket_contact).item())
+                    contact_forward_count += int(
+                        torch.sum(racket_contact & (ball_forward_velocity > touch_forward_velocity)).item()
+                    )
         if cfg.video:
             frame = env.unwrapped.render()
             if frame is not None:
                 frames.append(frame)
-            timestep += 1
             if timestep >= int(cfg.video_length):
                 break
+        timestep += 1
+        max_steps = cfg.get("max_steps", None)
+        if max_steps is not None and timestep >= int(max_steps):
+            break
         # non-video: keep stepping until the Isaac Sim window is closed (live viewing)
 
     if cfg.video:
@@ -244,25 +251,28 @@ def _run_play(cfg, simulation_app):
                 "enable_cameras=True (it ties to video) and render_mode='rgb_array'.",
                 flush=True,
             )
-    print(
-        "[INFO] replay metrics: "
-        f"min_racket_ball_distance={min_racket_ball_distance:.4f} m, "
-        f"min_face_lateral_distance={min_face_lateral_distance:.4f} m, "
-        f"min_face_normal_distance={min_face_normal_distance:.4f} m, "
-        f"max_face_contact_score={max_face_contact_score:.4f}, "
-        f"max_ball_forward_velocity={max_ball_forward_velocity:.4f} m/s, "
-        f"max_contact_force={max_contact_force:.4f} N, "
-        f"close_count={close_count}, "
-        f"face_close_count={face_close_count}, "
-        f"forward_touch_like_count={forward_touch_like_count}, "
-        f"face_forward_count={face_forward_count}, "
-        f"first_contact_count={first_contact_count}, "
-        f"contact_forward_count={contact_forward_count} "
-        f"(thresholds: distance<{touch_distance_threshold:.3f} m, "
-        f"face_lateral<{face_lateral_threshold:.3f} m, "
-        f"face_normal<{face_normal_threshold:.3f} m, vx>{touch_forward_velocity:.3f} m/s)",
-        flush=True,
-    )
+    if has_ball:
+        print(
+            "[INFO] replay metrics: "
+            f"min_racket_ball_distance={min_racket_ball_distance:.4f} m, "
+            f"min_face_lateral_distance={min_face_lateral_distance:.4f} m, "
+            f"min_face_normal_distance={min_face_normal_distance:.4f} m, "
+            f"max_face_contact_score={max_face_contact_score:.4f}, "
+            f"max_ball_forward_velocity={max_ball_forward_velocity:.4f} m/s, "
+            f"max_contact_force={max_contact_force:.4f} N, "
+            f"close_count={close_count}, "
+            f"face_close_count={face_close_count}, "
+            f"forward_touch_like_count={forward_touch_like_count}, "
+            f"face_forward_count={face_forward_count}, "
+            f"first_contact_count={first_contact_count}, "
+            f"contact_forward_count={contact_forward_count} "
+            f"(thresholds: distance<{touch_distance_threshold:.3f} m, "
+            f"face_lateral<{face_lateral_threshold:.3f} m, "
+            f"face_normal<{face_normal_threshold:.3f} m, vx>{touch_forward_velocity:.3f} m/s)",
+            flush=True,
+        )
+    else:
+        print("[INFO] replay metrics: scene has no ball entity; skipped table-tennis contact metrics.", flush=True)
 
     env.close()
 

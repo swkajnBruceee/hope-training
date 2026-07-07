@@ -1,0 +1,102 @@
+{
+  "manifest": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/refinement_spec_manifest.json",
+  "selected_count": 4,
+  "per_label": 2,
+  "status_counts": {
+    "failed_quality_reject": 4
+  },
+  "reject_reason_counts": {
+    "max_joint_velocity_radps>12.0": 2,
+    "max_joint_acceleration_radps2>120.0": 4,
+    "ik_residual_rms>0.03": 2
+  },
+  "medians": {
+    "racket_position_error_at_hit_m": 0.00024792005409945083,
+    "racket_orientation_error_at_hit_deg": 0.01865179811033726,
+    "racket_velocity_direction_error_at_hit_deg": 8.775329758680758,
+    "max_joint_velocity_radps": 12.739368955011585,
+    "max_joint_acceleration_radps2": 324.956673000297
+  },
+  "results": [
+    {
+      "episode_id": "Table_Tennis_01_012_TennisBats02_148p16_150p16_Skeleton002",
+      "label": "backhand",
+      "source_csv": "Csv/Point/Table Tennis_01_012.csv",
+      "status": "failed_quality_reject",
+      "kept_generic_init_baseline": true,
+      "generic_init_max_velocity_radps": 36.900297177847875,
+      "generic_init_max_acceleration_radps2": 801.8968152983084,
+      "temporal_repair_max_velocity_radps": 36.90029717999999,
+      "temporal_repair_max_acceleration_radps2": 801.896815,
+      "racket_position_error_at_hit_m": 0.0004335403039247504,
+      "racket_orientation_error_at_hit_deg": 0.029816950137980976,
+      "racket_velocity_direction_error_at_hit_deg": 14.828854126374708,
+      "max_joint_velocity_radps": 36.90029718003355,
+      "max_joint_acceleration_radps2": 801.8968150014587,
+      "validation_reject_reasons": [
+        "max_joint_velocity_radps>12.0",
+        "max_joint_acceleration_radps2>120.0"
+      ]
+    },
+    {
+      "episode_id": "Table_Tennis_01_013_TennisBats02_100p44_102p44_Skeleton002",
+      "label": "backhand",
+      "source_csv": "Csv/Point/Table Tennis_01_013.csv",
+      "status": "failed_quality_reject",
+      "kept_generic_init_baseline": true,
+      "generic_init_max_velocity_radps": 36.206137879588105,
+      "generic_init_max_acceleration_radps2": 786.811729996654,
+      "temporal_repair_max_velocity_radps": 0.0,
+      "temporal_repair_max_acceleration_radps2": 0.0,
+      "racket_position_error_at_hit_m": 0.0022042360774878946,
+      "racket_orientation_error_at_hit_deg": 0.10061439231510172,
+      "racket_velocity_direction_error_at_hit_deg": 7.773654777308699,
+      "max_joint_velocity_radps": 15.836559170014405,
+      "max_joint_acceleration_radps2": 308.10706800056136,
+      "validation_reject_reasons": [
+        "ik_residual_rms>0.03",
+        "max_joint_velocity_radps>12.0",
+        "max_joint_acceleration_radps2>120.0"
+      ]
+    },
+    {
+      "episode_id": "Table_Tennis_01_004_TennisBats01_0p00_1p67_Skeleton001",
+      "label": "forehand",
+      "source_csv": "Csv/Point/Table Tennis_01_004.csv",
+      "status": "failed_quality_reject",
+      "kept_generic_init_baseline": true,
+      "generic_init_max_velocity_radps": 33.42371689305058,
+      "generic_init_max_acceleration_radps2": 843.357707672448,
+      "temporal_repair_max_velocity_radps": 0.11427643000000015,
+      "temporal_repair_max_acceleration_radps2": 79.72270399999994,
+      "racket_position_error_at_hit_m": 5.0905272808900085e-05,
+      "racket_orientation_error_at_hit_deg": 0.0036353255776212486,
+      "racket_velocity_direction_error_at_hit_deg": 9.777004740052817,
+      "max_joint_velocity_radps": 9.373241810000001,
+      "max_joint_acceleration_radps2": 324.95667299999974,
+      "validation_reject_reasons": [
+        "ik_residual_rms>0.03",
+        "max_joint_acceleration_radps2>120.0"
+      ]
+    },
+    {
+      "episode_id": "Table_Tennis_01_012_TennisBats01_163p98_165p98_Skeleton001",
+      "label": "forehand",
+      "source_csv": "Csv/Point/Table Tennis_01_012.csv",
+      "status": "failed_quality_reject",
+      "kept_generic_init_baseline": true,
+      "generic_init_max_velocity_radps": 37.68788542132157,
+      "generic_init_max_acceleration_radps2": 950.9525453940503,
+      "temporal_repair_max_velocity_radps": 4.030887303952269,
+      "temporal_repair_max_acceleration_radps2": 76.32385906710559,
+      "racket_position_error_at_hit_m": 6.229980427415122e-05,
+      "racket_orientation_error_at_hit_deg": 0.007486646082693545,
+      "racket_velocity_direction_error_at_hit_deg": 5.213684667603615,
+      "max_joint_velocity_radps": 9.642178740008765,
+      "max_joint_acceleration_radps2": 324.95667300059415,
+      "validation_reject_reasons": [
+        "max_joint_acceleration_radps2>120.0"
+      ]
+    }
+  ]
+}

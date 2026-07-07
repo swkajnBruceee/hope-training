@@ -1,5 +1,6 @@
 dataset_id: DATA260703
-dataset_root: data/DATA260703
+dataset_root: /home/bruce/DATA260703
+
 position_unit: mm
 quat_order: xyzw
 source_frame: motive_global
@@ -8,6 +9,12 @@ target_frame: motive_global_m
 fps:
   raw: 360
   clean_sample: 200
+
+source_layout:
+  csv_point_dir: Csv/Point
+  csv_rigid_body_dir: Csv/Rige Body
+  bvh_point_dir: Bvh/Point
+  bvh_rigid_body_dir: Bvh/Rige Body
 
 gap_policy:
   interpolate_max_s: 0.03
@@ -42,24 +49,39 @@ episode:
   pre_hit_s: 0.6
   post_hit_s: 0.4
 
-table:
-  enabled: false
-  coordinate_frame: motive_global_m
-  table_z_m: null
-  z_tolerance_m: 0.03
-  opponent_x_min_m: null
-  opponent_x_max_m: null
-  y_min_m: null
-  y_max_m: null
-
 entities:
   rackets:
     TennisBats01:
       expected_skeleton: "Skeleton 001"
       expected_hand: RHand
-      handedness: right
+      source_csvs:
+        - "Csv/Point/Table Tennis_01_004.csv"
+        - "Csv/Rige Body/Table Tennis_01_005.csv"
+        - "Csv/Rige Body/Table Tennis_01_006.csv"
+        - "Csv/Rige Body/Table Tennis_01_007.csv"
+        - "Csv/Rige Body/Table Tennis_01_008.csv"
+        - "Csv/Rige Body/Table Tennis_01_009.csv"
+        - "Csv/Point/Table Tennis_01_012.csv"
+        - "Csv/Point/Table Tennis_01_013.csv"
+        - "Csv/Point/Table Tennis_01_014.csv"
     TennisBats02:
       expected_skeleton: "Skeleton 002"
       expected_hand: RHand
-      handedness: right
-  ball_candidates: [Tennis]
+      source_csvs:
+        - "Csv/Point/Table Tennis_01_004.csv"
+        - "Csv/Rige Body/Table Tennis_01_005.csv"
+        - "Csv/Rige Body/Table Tennis_01_006.csv"
+        - "Csv/Rige Body/Table Tennis_01_007.csv"
+        - "Csv/Rige Body/Table Tennis_01_008.csv"
+        - "Csv/Rige Body/Table Tennis_01_009.csv"
+        - "Csv/Point/Table Tennis_01_012.csv"
+        - "Csv/Point/Table Tennis_01_013.csv"
+        - "Csv/Point/Table Tennis_01_014.csv"
+  ball_candidates:
+    - "Tennis"
+
+quality:
+  coordinate_transform_available: false
+  table_config_available: false
+  landing_label_reliable: false
+  success_label_reliable: false

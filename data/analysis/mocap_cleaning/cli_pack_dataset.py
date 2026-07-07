@@ -40,8 +40,27 @@ SCALAR_FIELDS = ["hit_index", "hit_time", "success"]
 STRING_FIELDS = ["episode_id", "stroke_type", "quality_flags_json", "source_json"]
 
 
+def _resolve_existing_path(path: str | Path) -> Path:
+    candidate = Path(path)
+    if candidate.exists():
+        return candidate
+
+    text = str(candidate)
+    replacements = (
+        ("data/analysis/mocap_cleaning_outputs/", "analysis/mocap_cleaning_outputs/"),
+        ("analysis/mocap_cleaning_outputs/", "data/analysis/mocap_cleaning_outputs/"),
+    )
+    for src, dst in replacements:
+        if text.startswith(src):
+            alt = Path(dst + text[len(src):])
+            if alt.exists():
+                return alt
+
+    raise FileNotFoundError(f"cannot resolve dataset path: {candidate}")
+
+
 def _read_npz(path: str | Path) -> dict[str, np.ndarray]:
-    data = np.load(path, allow_pickle=False)
+    data = np.load(_resolve_existing_path(path), allow_pickle=False)
     return {name: data[name] for name in data.files}
 
 

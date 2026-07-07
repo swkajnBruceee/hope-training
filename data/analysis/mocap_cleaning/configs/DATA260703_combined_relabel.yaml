@@ -1,0 +1,76 @@
+dataset_id: DATA260703_combined_train_stroke_relabel
+dataset_file: analysis/mocap_cleaning_outputs/DATA260703_combined/stroke_relabel/DATA260703_combined_train_stroke_relabel.npz
+label_field: stroke_type_rule_v2
+base_label_field: stroke_type
+
+format: npz
+fps: 200
+frames_per_sample: 201
+source_samples: 792
+packed_samples: 792
+
+stroke_distribution:
+  forehand: 419
+  backhand: 298
+  unknown: 75
+
+source_csv_distribution:
+  Csv/Point/Table Tennis_01_004.csv: 70
+  Csv/Point/Table Tennis_01_012.csv: 49
+  Csv/Point/Table Tennis_01_013.csv: 152
+  Csv/Point/Table Tennis_01_014.csv: 170
+  Csv/Rige Body/Table Tennis_01_005.csv: 35
+  Csv/Rige Body/Table Tennis_01_006.csv: 82
+  Csv/Rige Body/Table Tennis_01_007.csv: 62
+  Csv/Rige Body/Table Tennis_01_008.csv: 58
+  Csv/Rige Body/Table Tennis_01_009.csv: 114
+
+fields:
+  time: [792, 201]
+  time_rel: [792, 201]
+  valid_mask: [792, 201]
+  ball_pos: [792, 201, 3]
+  ball_vel: [792, 201, 3]
+  racket_pos: [792, 201, 3]
+  racket_quat: [792, 201, 4]
+  racket_vel: [792, 201, 3]
+  racket_omega: [792, 201, 3]
+  body_center: [792, 201, 3]
+  body_right_axis: [792, 201, 3]
+  hit_pos: [792, 3]
+  racket_pose_at_hit: [792, 7]
+  racket_vel_at_hit: [792, 3]
+  ball_in_vel: [792, 3]
+  ball_out_vel: [792, 3]
+  landing_pos: [792, 3]
+  dist: [792, 201]
+  ball_dv: [792, 201]
+  score: [792, 201]
+  hit_index: [792]
+  hit_time: [792]
+  success: [792]
+  episode_id: [792]
+  stroke_type: [792]
+  quality_flags_json: [792]
+  source_json: [792]
+  sample_path: [792]
+  dataset_attrs_json: [792]
+  stroke_lateral_offset_m: [792]
+  stroke_lateral_velocity_hit_mps: [792]
+  stroke_lateral_velocity_window_mps: [792]
+  stroke_pre_lateral_offset_m: [792]
+  stroke_hit_lateral_offset_window_m: [792]
+  stroke_pre_to_hit_lateral_delta_m: [792]
+  stroke_body_right_axis_at_hit: [792, 3]
+  stroke_type_rule_v2: [792]
+  stroke_confidence_rule_v2: [792]
+  stroke_score_forehand_rule_v2: [792]
+  stroke_score_backhand_rule_v2: [792]
+  stroke_label_reason_rule_v2: [792]
+  stroke_type_original: [792]
+
+quality:
+  preferred_label_field: stroke_type_rule_v2
+  fallback_label_field: stroke_type
+  unknown_kept: true
+  confidence_threshold_for_training: 0.85

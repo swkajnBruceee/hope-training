@@ -1,0 +1,108 @@
+{
+  "manifest": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/refinement_spec_manifest.json",
+  "selected_count": 4,
+  "per_label": 2,
+  "status_counts": {
+    "failed_quality_reject": 4
+  },
+  "reject_reason_counts": {
+    "racket_position_error_at_hit_m>0.05": 4,
+    "racket_orientation_error_at_hit_deg>15.0": 3,
+    "racket_velocity_direction_error_at_hit_deg>20.0": 2,
+    "ik_residual_rms>0.03": 4,
+    "max_joint_velocity_radps>12.0": 2,
+    "max_joint_acceleration_radps2>120.0": 4
+  },
+  "medians": {
+    "racket_position_error_at_hit_m": 0.343153810738565,
+    "racket_orientation_error_at_hit_deg": 16.112285916634796,
+    "racket_velocity_direction_error_at_hit_deg": 45.56153554239936,
+    "max_joint_velocity_radps": 13.19635111000721,
+    "max_joint_acceleration_radps2": 291.41848354606805
+  },
+  "results": [
+    {
+      "episode_id": "Table_Tennis_01_012_TennisBats02_148p16_150p16_Skeleton002",
+      "label": "backhand",
+      "source_csv": "Csv/Point/Table Tennis_01_012.csv",
+      "status": "failed_quality_reject",
+      "kept_generic_init_baseline": true,
+      "generic_init_max_velocity_radps": 15.881002190685455,
+      "generic_init_max_acceleration_radps2": 231.6063994128443,
+      "racket_position_error_at_hit_m": 0.330130389668063,
+      "racket_orientation_error_at_hit_deg": 15.575619073512236,
+      "racket_velocity_direction_error_at_hit_deg": 90.0,
+      "max_joint_velocity_radps": 15.881002190014437,
+      "max_joint_acceleration_radps2": 231.60640000041874,
+      "validation_reject_reasons": [
+        "racket_position_error_at_hit_m>0.05",
+        "racket_orientation_error_at_hit_deg>15.0",
+        "racket_velocity_direction_error_at_hit_deg>20.0",
+        "ik_residual_rms>0.03",
+        "max_joint_velocity_radps>12.0",
+        "max_joint_acceleration_radps2>120.0"
+      ]
+    },
+    {
+      "episode_id": "Table_Tennis_01_013_TennisBats02_100p44_102p44_Skeleton002",
+      "label": "backhand",
+      "source_csv": "Csv/Point/Table Tennis_01_013.csv",
+      "status": "failed_quality_reject",
+      "kept_generic_init_baseline": true,
+      "generic_init_max_velocity_radps": 15.986313004167968,
+      "generic_init_max_acceleration_radps2": 233.14223814877795,
+      "racket_position_error_at_hit_m": 0.3144790106266569,
+      "racket_orientation_error_at_hit_deg": 9.231658927565965,
+      "racket_velocity_direction_error_at_hit_deg": 90.0,
+      "max_joint_velocity_radps": 15.986313010014536,
+      "max_joint_acceleration_radps2": 233.1422390004277,
+      "validation_reject_reasons": [
+        "racket_position_error_at_hit_m>0.05",
+        "racket_velocity_direction_error_at_hit_deg>20.0",
+        "ik_residual_rms>0.03",
+        "max_joint_velocity_radps>12.0",
+        "max_joint_acceleration_radps2>120.0"
+      ]
+    },
+    {
+      "episode_id": "Table_Tennis_01_004_TennisBats01_0p00_1p67_Skeleton001",
+      "label": "forehand",
+      "source_csv": "Csv/Point/Table Tennis_01_004.csv",
+      "status": "failed_quality_reject",
+      "kept_generic_init_baseline": false,
+      "generic_init_max_velocity_radps": 10.511700027540396,
+      "generic_init_max_acceleration_radps2": 146.27097467422053,
+      "racket_position_error_at_hit_m": 0.4180634174630388,
+      "racket_orientation_error_at_hit_deg": 34.386789908301466,
+      "racket_velocity_direction_error_at_hit_deg": 0.7128800459187681,
+      "max_joint_velocity_radps": 10.511700029999984,
+      "max_joint_acceleration_radps2": 359.27516317685036,
+      "validation_reject_reasons": [
+        "racket_position_error_at_hit_m>0.05",
+        "racket_orientation_error_at_hit_deg>15.0",
+        "ik_residual_rms>0.03",
+        "max_joint_acceleration_radps2>120.0"
+      ]
+    },
+    {
+      "episode_id": "Table_Tennis_01_012_TennisBats01_163p98_165p98_Skeleton001",
+      "label": "forehand",
+      "source_csv": "Csv/Point/Table Tennis_01_012.csv",
+      "status": "failed_quality_reject",
+      "kept_generic_init_baseline": false,
+      "generic_init_max_velocity_radps": 10.231386642470321,
+      "generic_init_max_acceleration_radps2": 142.37039608657884,
+      "racket_position_error_at_hit_m": 0.35617723180906696,
+      "racket_orientation_error_at_hit_deg": 16.648952759757353,
+      "racket_velocity_direction_error_at_hit_deg": 1.1230710847987282,
+      "max_joint_velocity_radps": 10.231386640009312,
+      "max_joint_acceleration_radps2": 349.6947280917084,
+      "validation_reject_reasons": [
+        "racket_position_error_at_hit_m>0.05",
+        "racket_orientation_error_at_hit_deg>15.0",
+        "ik_residual_rms>0.03",
+        "max_joint_acceleration_radps2>120.0"
+      ]
+    }
+  ]
+}

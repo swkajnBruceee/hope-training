@@ -1,0 +1,51 @@
+{
+  "job_id": "agibot_a3__backhand__Table_Tennis_01_014_TennisBats02_0p64_2p64_Skeleton002",
+  "mode": "refine",
+  "validation_status": "reject",
+  "warnings": [
+    "solver_v0_uses_racket_fk_objectives_only_in_hit_window",
+    "solver_v0_does_not_yet_track_full_wrist_elbow_torso_reference_terms"
+  ],
+  "reject_reasons": [
+    "racket_position_error_at_hit_m>0.05",
+    "racket_orientation_error_at_hit_deg>15.0",
+    "racket_velocity_direction_error_at_hit_deg>20.0",
+    "ik_residual_rms>0.03",
+    "max_joint_acceleration_radps2>120.0"
+  ],
+  "optimizer_cost": 185.12898087836118,
+  "optimizer_nfev": 24,
+  "optimizer_status": 0,
+  "optimizer_success": false,
+  "kept_generic_init_baseline": true,
+  "baseline_score": 4.364014797856403,
+  "refined_score": 17.27406501907096,
+  "window_frame_start": 96,
+  "window_frame_end": 140,
+  "active_joint_count": 10,
+  "locked_joint_count": 21,
+  "max_joint_limit_violation_before_clamp_rad": 0.027042508600283524,
+  "max_joint_velocity_radps": 6.021892430000128,
+  "max_joint_acceleration_radps2": 620.9869000000265,
+  "ik_residual_rms": 0.25759362071507974,
+  "racket_position_error_at_hit_m": 0.8719179654647694,
+  "racket_orientation_error_at_hit_deg": 118.23716607111325,
+  "racket_velocity_direction_error_at_hit_deg": 24.237534430265832,
+  "csv_to_npz_passed": null,
+  "validation_warnings": [
+    "racket_position_error_at_hit_m>0.035",
+    "racket_orientation_error_at_hit_deg>10.0",
+    "racket_velocity_direction_error_at_hit_deg>12.0",
+    "ik_residual_rms>0.02",
+    "max_joint_acceleration_radps2>90.0",
+    "optimizer_nonconverged"
+  ],
+  "validation_reject_reasons": [
+    "racket_position_error_at_hit_m>0.05",
+    "racket_orientation_error_at_hit_deg>15.0",
+    "racket_velocity_direction_error_at_hit_deg>20.0",
+    "ik_residual_rms>0.03",
+    "max_joint_acceleration_radps2>120.0"
+  ],
+  "status": "failed_quality_reject"
+}

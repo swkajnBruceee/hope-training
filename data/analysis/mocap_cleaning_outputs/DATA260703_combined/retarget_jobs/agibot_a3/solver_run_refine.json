@@ -1,0 +1,89 @@
+{
+  "mode": "refine",
+  "manifest": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/refinement_spec_manifest.json",
+  "processed": 1,
+  "succeeded": 0,
+  "skipped": 0,
+  "failed": 1,
+  "status_counts": {
+    "failed_quality_reject": 1
+  },
+  "failures": [
+    {
+      "job_id": "agibot_a3__backhand__Table_Tennis_01_012_TennisBats02_148p16_150p16_Skeleton002",
+      "mode": "refine",
+      "validation_status": "reject",
+      "warnings": [
+        "solver_v0_uses_racket_fk_objectives_only_in_hit_window",
+        "solver_v0_does_not_yet_track_full_wrist_elbow_torso_reference_terms"
+      ],
+      "reject_reasons": [
+        "racket_position_error_at_hit_m>0.05",
+        "racket_orientation_error_at_hit_deg>15.0",
+        "racket_velocity_direction_error_at_hit_deg>20.0",
+        "ik_residual_rms>0.03",
+        "max_joint_velocity_radps>12.0",
+        "max_joint_acceleration_radps2>120.0"
+      ],
+      "optimizer_cost": 7140.979815658563,
+      "optimizer_nfev": 24,
+      "optimizer_status": 0,
+      "optimizer_success": false,
+      "kept_generic_init_baseline": true,
+      "baseline_score": 1.9246784925560332,
+      "refined_score": 3.3802979571722065,
+      "window_frame_start": 96,
+      "window_frame_end": 140,
+      "active_joint_count": 10,
+      "locked_joint_count": 21,
+      "max_joint_limit_violation_before_clamp_rad": 4.5273562676584334e-11,
+      "max_joint_velocity_radps": 15.881002190014437,
+      "max_joint_acceleration_radps2": 231.60640000041874,
+      "max_velocity_joint": "waist_yaw_joint",
+      "max_velocity_frame": 151,
+      "max_velocity_phase": "boundary",
+      "max_acceleration_joint": "waist_yaw_joint",
+      "max_acceleration_frame": 139,
+      "max_acceleration_phase": "boundary",
+      "generic_init_max_vel": 15.881002190014437,
+      "generic_init_max_vel_joint": "waist_yaw_joint",
+      "generic_init_max_vel_frame": 151,
+      "generic_init_max_vel_phase": "boundary",
+      "generic_init_max_acc": 231.60640000041874,
+      "generic_init_max_acc_joint": "waist_yaw_joint",
+      "generic_init_max_acc_frame": 139,
+      "generic_init_max_acc_phase": "boundary",
+      "refined_max_vel": 15.881002190014437,
+      "refined_max_vel_joint": "waist_yaw_joint",
+      "refined_max_vel_frame": 151,
+      "refined_max_vel_phase": "boundary",
+      "refined_max_acc": 231.60640000041874,
+      "refined_max_acc_joint": "waist_yaw_joint",
+      "refined_max_acc_frame": 139,
+      "refined_max_acc_phase": "boundary",
+      "ik_residual_rms": 1.588494388562387,
+      "racket_position_error_at_hit_m": 0.330130389668063,
+      "racket_orientation_error_at_hit_deg": 15.575619073512236,
+      "racket_velocity_direction_error_at_hit_deg": 90.0,
+      "csv_to_npz_passed": null,
+      "validation_warnings": [
+        "racket_position_error_at_hit_m>0.035",
+        "racket_orientation_error_at_hit_deg>10.0",
+        "racket_velocity_direction_error_at_hit_deg>12.0",
+        "ik_residual_rms>0.02",
+        "max_joint_velocity_radps>10.0",
+        "max_joint_acceleration_radps2>90.0",
+        "optimizer_nonconverged"
+      ],
+      "validation_reject_reasons": [
+        "racket_position_error_at_hit_m>0.05",
+        "racket_orientation_error_at_hit_deg>15.0",
+        "racket_velocity_direction_error_at_hit_deg>20.0",
+        "ik_residual_rms>0.03",
+        "max_joint_velocity_radps>12.0",
+        "max_joint_acceleration_radps2>120.0"
+      ],
+      "status": "failed_quality_reject"
+    }
+  ]
+}

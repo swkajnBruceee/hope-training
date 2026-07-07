@@ -1,0 +1,62 @@
+{
+  "job_id": "agibot_a3__forehand__Table_Tennis_01_012_TennisBats01_163p98_165p98_Skeleton001",
+  "mode": "refine",
+  "validation_status": "reject",
+  "warnings": [
+    "solver_v0_uses_racket_fk_objectives_only_in_hit_window",
+    "solver_v0_does_not_yet_track_full_wrist_elbow_torso_reference_terms"
+  ],
+  "reject_reasons": [
+    "max_joint_acceleration_radps2>120.0"
+  ],
+  "optimizer_cost": 2.4145536278136626,
+  "optimizer_nfev": 24,
+  "optimizer_status": 0,
+  "optimizer_success": false,
+  "kept_generic_init_baseline": true,
+  "baseline_score": 0.4439433344029544,
+  "refined_score": 5.670852914893229,
+  "window_frame_start": 96,
+  "window_frame_end": 140,
+  "active_joint_count": 10,
+  "locked_joint_count": 21,
+  "max_joint_limit_violation_before_clamp_rad": 2.1360857527241706e-11,
+  "max_joint_velocity_radps": 9.642178740008765,
+  "max_joint_acceleration_radps2": 324.95667300059415,
+  "max_velocity_joint": "right_shoulder_yaw_joint",
+  "max_velocity_frame": 36,
+  "max_velocity_phase": "post_hit",
+  "max_acceleration_joint": "right_shoulder_roll_joint",
+  "max_acceleration_frame": 123,
+  "max_acceleration_phase": "boundary",
+  "generic_init_max_vel": 9.642178740008765,
+  "generic_init_max_vel_joint": "right_shoulder_yaw_joint",
+  "generic_init_max_vel_frame": 36,
+  "generic_init_max_vel_phase": "post_hit",
+  "generic_init_max_acc": 324.95667300059415,
+  "generic_init_max_acc_joint": "right_shoulder_roll_joint",
+  "generic_init_max_acc_frame": 123,
+  "generic_init_max_acc_phase": "boundary",
+  "refined_max_vel": 9.642178740008765,
+  "refined_max_vel_joint": "right_shoulder_yaw_joint",
+  "refined_max_vel_frame": 36,
+  "refined_max_vel_phase": "post_hit",
+  "refined_max_acc": 324.95667300059415,
+  "refined_max_acc_joint": "right_shoulder_roll_joint",
+  "refined_max_acc_frame": 123,
+  "refined_max_acc_phase": "boundary",
+  "ik_residual_rms": 0.029209573118613223,
+  "racket_position_error_at_hit_m": 6.229980427415122e-05,
+  "racket_orientation_error_at_hit_deg": 0.007486646082693545,
+  "racket_velocity_direction_error_at_hit_deg": 5.213684667603615,
+  "csv_to_npz_passed": null,
+  "validation_warnings": [
+    "ik_residual_rms>0.02",
+    "max_joint_acceleration_radps2>90.0",
+    "optimizer_nonconverged"
+  ],
+  "validation_reject_reasons": [
+    "max_joint_acceleration_radps2>120.0"
+  ],
+  "status": "failed_quality_reject"
+}

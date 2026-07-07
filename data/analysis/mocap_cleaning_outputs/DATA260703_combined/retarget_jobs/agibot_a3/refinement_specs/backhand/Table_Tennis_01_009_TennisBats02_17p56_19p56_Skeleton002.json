@@ -1,0 +1,356 @@
+{
+  "spec_version": "1.1.0",
+  "contract_version": "a3_refinement_contract_v1",
+  "job_id": "agibot_a3__backhand__Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002",
+  "episode_id": "Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002",
+  "label": "backhand",
+  "confidence": 1.0,
+  "robot": "agibot_a3",
+  "coordinate_contract": {
+    "position_frame": "motive_global_m",
+    "orientation_frame": "motive_global_m",
+    "position_unit": "m",
+    "angle_unit": "rad",
+    "time_unit": "s",
+    "quat_order": "xyzw",
+    "fps": 200.0000000000398,
+    "dt": 0.004999999999999005,
+    "hit_index": 120,
+    "hit_timestamp_rel_s": 0.0,
+    "sequence_length_frames": 201
+  },
+  "a3_joint_order": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "head_yaw_joint",
+    "head_pitch_joint",
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "left_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "left_wrist_yaw_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint",
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint"
+  ],
+  "joint_masks": {
+    "active_joints_first_pass": [
+      "waist_yaw_joint",
+      "waist_roll_joint",
+      "waist_pitch_joint",
+      "right_shoulder_pitch_joint",
+      "right_shoulder_roll_joint",
+      "right_shoulder_yaw_joint",
+      "right_elbow_joint",
+      "right_wrist_roll_joint",
+      "right_wrist_pitch_joint",
+      "right_wrist_yaw_joint"
+    ],
+    "locked_joints_first_pass": [
+      "head_yaw_joint",
+      "head_pitch_joint",
+      "left_shoulder_pitch_joint",
+      "left_shoulder_roll_joint",
+      "left_shoulder_yaw_joint",
+      "left_elbow_joint",
+      "left_wrist_roll_joint",
+      "left_wrist_pitch_joint",
+      "left_wrist_yaw_joint",
+      "left_hip_pitch_joint",
+      "left_hip_roll_joint",
+      "left_hip_yaw_joint",
+      "left_knee_joint",
+      "left_ankle_pitch_joint",
+      "left_ankle_roll_joint",
+      "right_hip_pitch_joint",
+      "right_hip_roll_joint",
+      "right_hip_yaw_joint",
+      "right_knee_joint",
+      "right_ankle_pitch_joint",
+      "right_ankle_roll_joint"
+    ],
+    "weak_track_joints_first_pass": [
+      "waist_yaw_joint",
+      "waist_roll_joint",
+      "waist_pitch_joint"
+    ]
+  },
+  "a3_bodies": {
+    "wrist_body": "right_wrist_yaw_Link",
+    "racket_body": "pingpang_red_Link",
+    "wrist_to_racket_pos_m": [
+      0.210211399202899,
+      0.0320784994676765,
+      0.0320358706296689
+    ],
+    "wrist_to_racket_quat_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "racket_center_body": "pingpang_red_Link",
+    "racket_normal_axis": 1,
+    "racket_normal_sign": 1.0,
+    "racket_tangent_axis": 0,
+    "racket_up_axis": 2
+  },
+  "inputs": {
+    "source_motion_id": "Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002",
+    "source_bvh": "analysis/mocap/auto_hit_candidates_max/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.bvh",
+    "source_sample_npz": "analysis/mocap_cleaning_outputs/DATA260703_max/samples/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.npz",
+    "source_clean_npz": "analysis/mocap_cleaning_outputs/DATA260703_max/cleaned_windows/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002_Tennis_cleaned.npz",
+    "source_debug_npz": "analysis/mocap_cleaning_outputs/DATA260703_max/hit_debug/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002_hit_debug.npz",
+    "generic_retarget_csv": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/generic_init_csv/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.csv",
+    "expected_refined_retarget_csv": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/retarget_csv/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.csv"
+  },
+  "input_fingerprints": {
+    "source_sample_npz": {
+      "path": "analysis/mocap_cleaning_outputs/DATA260703_max/samples/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.npz",
+      "exists": true,
+      "size_bytes": 68798,
+      "mtime_ns": 1783147267947694839
+    },
+    "source_clean_npz": {
+      "path": "analysis/mocap_cleaning_outputs/DATA260703_max/cleaned_windows/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002_Tennis_cleaned.npz",
+      "exists": true,
+      "size_bytes": 143114,
+      "mtime_ns": 1783147254958657333
+    },
+    "source_debug_npz": {
+      "path": "analysis/mocap_cleaning_outputs/DATA260703_max/hit_debug/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002_hit_debug.npz",
+      "exists": true,
+      "size_bytes": 108281,
+      "mtime_ns": 1783147260537673517
+    },
+    "source_bvh": {
+      "path": "analysis/mocap/auto_hit_candidates_max/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.bvh",
+      "exists": false
+    },
+    "generic_retarget_csv": {
+      "path": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/generic_init_csv/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.csv",
+      "exists": false
+    }
+  },
+  "hit_target": {
+    "hit_index": 120,
+    "time_rel_s": 0.0,
+    "racket_position_m": [
+      0.229329315,
+      1.12396167,
+      5.196015625
+    ],
+    "racket_quat_xyzw": [
+      -0.5231707798816956,
+      0.840527646357313,
+      -0.03701298442719722,
+      -0.13577794287293612
+    ],
+    "racket_normal_w": [
+      -0.8895301022839888,
+      0.44984474812354097,
+      0.07984923115662872
+    ],
+    "racket_tangent_w": [
+      -0.4157133706143443,
+      -0.8694279147435372,
+      0.26697845335750503
+    ],
+    "racket_up_w": [
+      -0.18952200564340171,
+      -0.20429097789763648,
+      -0.9603887784259715
+    ],
+    "racket_velocity_mps": [
+      -0.25662256940244654,
+      0.16215051234701355,
+      -1.5747608710942742
+    ],
+    "racket_velocity_direction_w": [
+      -0.1600138965053452,
+      0.1011069889971118,
+      -0.9819230772831009
+    ],
+    "body_center_w": [
+      0.4376467745,
+      1.09595608525,
+      5.91057946775
+    ],
+    "body_right_axis_w": [
+      0.6977378154975608,
+      -0.21539320032916678,
+      -0.6832040032645091
+    ]
+  },
+  "windows": {
+    "pre_hit": {
+      "frame_start": 96,
+      "frame_end": 116,
+      "time_rel_start_s": -0.120000000000001,
+      "time_rel_end_s": -0.019999999999999574
+    },
+    "hit": {
+      "frame_start": 117,
+      "frame_end": 123,
+      "time_rel_start_s": -0.015000000000000568,
+      "time_rel_end_s": 0.015000000000000568
+    },
+    "post_hit": {
+      "frame_start": 124,
+      "frame_end": 140,
+      "time_rel_start_s": 0.019999999999999574,
+      "time_rel_end_s": 0.10000000000000142
+    }
+  },
+  "refinement_policy": {
+    "generic_retarget_output_used_as_init": true,
+    "run_upper_body_and_torso_refinement": true,
+    "allow_small_torso_motion": true,
+    "lock_legs_first_pass": true,
+    "post_refinement_limit_enforcement": true
+  },
+  "phase_weights": {
+    "pre_hit": {
+      "frame_window": [
+        -24,
+        -4
+      ],
+      "weights": {
+        "racket_pose": 2.0,
+        "racket_velocity": 2.5,
+        "arm_posture": 1.0,
+        "torso_support": 1.2,
+        "leg_tracking": 0.3
+      }
+    },
+    "hit": {
+      "frame_window": [
+        -3,
+        3
+      ],
+      "weights": {
+        "racket_pose": 5.0,
+        "racket_velocity": 5.0,
+        "arm_posture": 1.2,
+        "torso_support": 1.5,
+        "leg_tracking": 0.2
+      }
+    },
+    "post_hit": {
+      "frame_window": [
+        4,
+        20
+      ],
+      "weights": {
+        "racket_pose": 1.5,
+        "racket_velocity": 1.0,
+        "arm_posture": 1.0,
+        "torso_support": 1.0,
+        "leg_tracking": 0.3
+      }
+    }
+  },
+  "constraints": {
+    "hard": [
+      "a3_joint_order",
+      "joint_limits",
+      "retarget_csv_schema",
+      "motion_npz_schema",
+      "position_unit_m",
+      "fps_consistency",
+      "finite_values_only"
+    ],
+    "strong_soft": [
+      "racket_center_position",
+      "racket_face_normal",
+      "racket_velocity_direction",
+      "hit_frame_alignment"
+    ],
+    "medium_soft": [
+      "right_wrist_trajectory",
+      "right_elbow_trajectory",
+      "right_shoulder_trajectory",
+      "torso_yaw_and_lean"
+    ],
+    "weak_soft": [
+      "pelvis_tracking",
+      "leg_tracking",
+      "head_orientation",
+      "global_motion_naturalness"
+    ]
+  },
+  "quality_template": {
+    "racket_position_error_at_hit_m": null,
+    "racket_orientation_error_at_hit_deg": null,
+    "racket_velocity_direction_error_at_hit_deg": null,
+    "max_joint_limit_violation_before_clamp_rad": null,
+    "max_joint_velocity_radps": null,
+    "max_joint_acceleration_radps2": null,
+    "ik_residual_rms": null,
+    "csv_to_npz_passed": null,
+    "racket_position_error_at_hit_m_max": null,
+    "racket_orientation_error_at_hit_deg_max": null,
+    "racket_velocity_direction_error_at_hit_deg_max": null,
+    "ik_residual_rms_max": null,
+    "max_joint_limit_violation_before_clamp_rad_max": null,
+    "max_joint_velocity_radps_max": null,
+    "max_joint_acceleration_radps2_max": null,
+    "validation_status": null,
+    "validation_warnings": [],
+    "validation_reject_reasons": []
+  },
+  "quality_thresholds": {
+    "warning": {
+      "racket_position_error_at_hit_m_max": 0.035,
+      "racket_orientation_error_at_hit_deg_max": 10.0,
+      "racket_velocity_direction_error_at_hit_deg_max": 12.0,
+      "ik_residual_rms_max": 0.02,
+      "max_joint_limit_violation_before_clamp_rad_max": 0.04,
+      "max_joint_velocity_radps_max": 10.0,
+      "max_joint_acceleration_radps2_max": 90.0
+    },
+    "reject": {
+      "racket_position_error_at_hit_m_max": 0.05,
+      "racket_orientation_error_at_hit_deg_max": 15.0,
+      "racket_velocity_direction_error_at_hit_deg_max": 20.0,
+      "ik_residual_rms_max": 0.03,
+      "max_joint_limit_violation_before_clamp_rad_max": 0.1,
+      "max_joint_velocity_radps_max": 12.0,
+      "max_joint_acceleration_radps2_max": 120.0
+    }
+  },
+  "artifacts": {
+    "generic_retarget_csv": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/generic_init_csv/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.csv",
+    "refined_retarget_csv": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/retarget_csv/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.csv",
+    "retarget_csv": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/retarget_csv/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.csv",
+    "motion_npz": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/motion_npz/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.npz",
+    "quality_report_json": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/quality_reports/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.json",
+    "refinement_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/refinement_specs/Table_Tennis_01_009_TennisBats02_17p56_19p56_Skeleton002.json"
+  },
+  "notes": [
+    "Use generic retarget output as the initialization for refinement.",
+    "Prioritize racket pose/normal/velocity at hit over human arm shape fidelity.",
+    "Allow torso participation; keep legs fixed in the first pass unless reachability fails.",
+    "Calibrate human_wrist_to_racket_center and a3_ee_to_racket_center before trusting hit-point errors.",
+    "Solver should read active/locked/weak-track joint masks from this spec, not hard-code them internally."
+  ]
+}

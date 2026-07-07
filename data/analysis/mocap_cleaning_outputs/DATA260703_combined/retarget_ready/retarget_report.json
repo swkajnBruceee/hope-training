@@ -1,0 +1,50 @@
+{
+  "dataset_path": "analysis/mocap_cleaning_outputs/DATA260703_combined/stroke_relabel/DATA260703_combined_train_stroke_relabel.npz",
+  "label_field": "stroke_type_rule_v2",
+  "min_confidence": 0.85,
+  "keep_unknown": false,
+  "selected_count": 705,
+  "stats": {
+    "dataset_path": "analysis/mocap_cleaning_outputs/DATA260703_combined/stroke_relabel/DATA260703_combined_train_stroke_relabel.npz",
+    "label_field": "stroke_type_rule_v2",
+    "confidence_field": "stroke_confidence_rule_v2",
+    "total_samples": 792,
+    "label_seen": {
+      "forehand": 419,
+      "backhand": 298,
+      "unknown": 75
+    },
+    "label_kept": {
+      "forehand": 418,
+      "backhand": 287
+    },
+    "skipped": {
+      "unknown": 75,
+      "low_confidence": 12
+    }
+  },
+  "source_csv_counts": {
+    "Csv/Point/Table Tennis_01_012.csv": 41,
+    "Csv/Point/Table Tennis_01_013.csv": 134,
+    "Csv/Point/Table Tennis_01_014.csv": 159,
+    "Csv/Rige Body/Table Tennis_01_005.csv": 32,
+    "Csv/Rige Body/Table Tennis_01_006.csv": 72,
+    "Csv/Rige Body/Table Tennis_01_007.csv": 50,
+    "Csv/Rige Body/Table Tennis_01_008.csv": 50,
+    "Csv/Rige Body/Table Tennis_01_009.csv": 105,
+    "Csv/Point/Table Tennis_01_004.csv": 62
+  },
+  "review_counts": {
+    "unknown": 75,
+    "low_confidence": 12
+  },
+  "outputs": {
+    "retarget_manifest_json": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_ready/retarget_manifest.json",
+    "retarget_samples_csv": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_ready/retarget_samples.csv",
+    "backhand_manifest_json": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_ready/backhand_manifest.json",
+    "forehand_manifest_json": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_ready/forehand_manifest.json",
+    "low_confidence_review_manifest_json": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_ready/low_confidence_review_manifest.json",
+    "unknown_review_manifest_json": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_ready/unknown_review_manifest.json",
+    "retarget_summary_md": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_ready/retarget_summary.md"
+  }
+}

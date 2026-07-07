@@ -16,6 +16,7 @@ It excludes:
 - `DATA260703_combined_train.npz`: compressed training dataset.
 - `pack_report.md`: packing summary and field shapes.
 - `validation_report.md`: validation summary.
+- `analysis/mocap_cleaning_outputs/DATA260703_combined/stroke_relabel/DATA260703_combined_train_stroke_relabel.npz`: preferred label-rebuilt training dataset with `stroke_type_rule_v2`.
 
 ## Read Example
 
@@ -63,4 +64,3 @@ stroke_type = data["stroke_type"]    # [792]
 - `success` is unknown for all samples.
 - Coordinates are still in Motive global meters, not robot base or table frame.
 - `stroke_type` is rule-based and still needs improved backhand detection.
-

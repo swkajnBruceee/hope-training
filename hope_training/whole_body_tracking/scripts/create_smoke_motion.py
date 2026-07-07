@@ -8,7 +8,10 @@ for pipeline verification; use retargeted ping-pong motions for real training.
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
+import sys
+import traceback
 
 import numpy as np
 
@@ -90,7 +93,7 @@ def main() -> None:
         "body_ang_vel_w": [],
     }
 
-    print(f"[create_smoke_motion] recording {args_cli.frames} frames at {args_cli.fps} fps")
+    print(f"[create_smoke_motion] recording {args_cli.frames} frames at {args_cli.fps} fps", flush=True)
     with torch.inference_mode():
         for _ in range(int(args_cli.frames)):
             robot.write_root_state_to_sim(root_state)
@@ -103,11 +106,18 @@ def main() -> None:
         log[key] = np.stack(log[key], axis=0)
 
     np.savez(output, **log)
-    print(f"[create_smoke_motion] wrote {output}")
+    print(f"[create_smoke_motion] wrote {output}", flush=True)
 
 
 if __name__ == "__main__":
     try:
         main()
-    finally:
-        simulation_app.close()
+    except Exception:
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)
+    else:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(0)
