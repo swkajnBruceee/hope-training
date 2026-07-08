@@ -9,14 +9,22 @@ Example:
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import json
 import numpy as np
+from dataclasses import dataclass
 from pathlib import Path
 
 from isaaclab.app import AppLauncher
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Replay motion from csv file and output to npz file.")
-parser.add_argument("--input_file", type=str, required=True, help="The path to the input motion csv file.")
+parser.add_argument("--input_file", type=str, default=None, help="The path to the input motion csv file.")
+parser.add_argument(
+    "--batch_jobs_json",
+    type=str,
+    default=None,
+    help="JSON file containing a list of csv->npz jobs to process in one Isaac session.",
+)
 parser.add_argument("--input_fps", type=int, default=30, help="The fps of the input motion.")
 parser.add_argument(
     "--frame_range",
@@ -55,12 +63,15 @@ parser.add_argument(
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
 args_cli = parser.parse_args()
-if args_cli.output_file is None and args_cli.output_name is None:
-    parser.error("at least one of --output_file or --output_name is required")
-if args_cli.output_file is None:
-    args_cli.output_file = f"{args_cli.output_name}.npz"
-if args_cli.output_name is None:
-    args_cli.output_name = Path(args_cli.output_file).stem
+if bool(args_cli.input_file) == bool(args_cli.batch_jobs_json):
+    parser.error("exactly one of --input_file or --batch_jobs_json is required")
+if args_cli.batch_jobs_json is None:
+    if args_cli.output_file is None and args_cli.output_name is None:
+        parser.error("at least one of --output_file or --output_name is required")
+    if args_cli.output_file is None:
+        args_cli.output_file = f"{args_cli.output_name}.npz"
+    if args_cli.output_name is None:
+        args_cli.output_name = Path(args_cli.output_file).stem
 
 # launch omniverse app
 app_launcher = AppLauncher(args_cli)
@@ -75,7 +86,6 @@ from isaaclab.assets import ArticulationCfg, AssetBaseCfg
 from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
 from isaaclab.sim import SimulationContext
 from isaaclab.utils import configclass
-from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 from isaaclab.utils.math import axis_angle_from_quat, quat_conjugate, quat_mul, quat_slerp
 
 ##
@@ -129,20 +139,25 @@ _ROBOT_CFG, _JOINT_NAMES = _ROBOTS[args_cli.robot]
 class ReplayMotionsSceneCfg(InteractiveSceneCfg):
     """Configuration for a replay motions scene."""
 
-    # ground plane
-    ground = AssetBaseCfg(prim_path="/World/defaultGroundPlane", spawn=sim_utils.GroundPlaneCfg())
-
-    # lights
+    # Minimal local-only scene for FK replay. Ground/Nucleus assets are not
+    # required because this script never steps physics.
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
-        spawn=sim_utils.DomeLightCfg(
-            intensity=750.0,
-            texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",
-        ),
+        spawn=sim_utils.DomeLightCfg(intensity=750.0),
     )
 
     # articulation (selected by --robot)
     robot: ArticulationCfg = _ROBOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+
+
+@dataclass(frozen=True)
+class MotionJob:
+    input_file: str
+    output_file: str
+    output_name: str
+    input_fps: int
+    output_fps: int
+    frame_range: tuple[int, int] | None
 
 
 class MotionLoader:
@@ -282,24 +297,113 @@ class MotionLoader:
         return state, reset_flag
 
 
-def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, joint_names: list[str]):
-    """Runs the simulation loop."""
-    # Load motion
-    motion = MotionLoader(
-        motion_file=args_cli.input_file,
-        input_fps=args_cli.input_fps,
-        output_fps=args_cli.output_fps,
-        device=sim.device,
-        frame_range=args_cli.frame_range,
-    )
+def _parse_frame_range(value: object) -> tuple[int, int] | None:
+    if value is None:
+        return None
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        raise ValueError(f"invalid frame_range: {value!r}")
+    start, end = int(value[0]), int(value[1])
+    return start, end
 
-    # Extract scene entities
-    robot = scene["robot"]
-    robot_joint_indexes = robot.find_joints(joint_names, preserve_order=True)[0]
+
+def _load_jobs() -> list[MotionJob]:
+    if args_cli.batch_jobs_json is None:
+        return [
+            MotionJob(
+                input_file=str(args_cli.input_file),
+                output_file=str(args_cli.output_file),
+                output_name=str(args_cli.output_name),
+                input_fps=int(args_cli.input_fps),
+                output_fps=int(args_cli.output_fps),
+                frame_range=tuple(args_cli.frame_range) if args_cli.frame_range is not None else None,
+            )
+        ]
+
+    payload = json.loads(Path(args_cli.batch_jobs_json).read_text(encoding="utf-8"))
+    jobs_raw = payload["jobs"] if isinstance(payload, dict) else payload
+    if not isinstance(jobs_raw, list) or not jobs_raw:
+        raise ValueError("batch_jobs_json must contain a non-empty jobs list")
+    jobs: list[MotionJob] = []
+    for idx, item in enumerate(jobs_raw):
+        if not isinstance(item, dict):
+            raise ValueError(f"job[{idx}] must be an object")
+        input_file = str(item["input_file"])
+        output_file = item.get("output_file")
+        output_name = item.get("output_name")
+        if output_file is None and output_name is None:
+            raise ValueError(f"job[{idx}] requires output_file or output_name")
+        if output_file is None:
+            output_file = f"{output_name}.npz"
+        if output_name is None:
+            output_name = Path(str(output_file)).stem
+        job_output_fps = int(item.get("output_fps", args_cli.output_fps))
+        if job_output_fps != int(args_cli.output_fps):
+            raise ValueError(
+                f"job[{idx}] output_fps={job_output_fps} does not match launcher output_fps={args_cli.output_fps}"
+            )
+        jobs.append(
+            MotionJob(
+                input_file=input_file,
+                output_file=str(output_file),
+                output_name=str(output_name),
+                input_fps=int(item.get("input_fps", args_cli.input_fps)),
+                output_fps=job_output_fps,
+                frame_range=_parse_frame_range(item.get("frame_range", args_cli.frame_range)),
+            )
+        )
+    return jobs
+
+
+def _save_motion_log(log: dict[str, list | np.ndarray], output_path: str | Path) -> Path:
+    for key in (
+        "joint_pos",
+        "joint_vel",
+        "body_pos_w",
+        "body_quat_w",
+        "body_lin_vel_w",
+        "body_ang_vel_w",
+    ):
+        log[key] = np.stack(log[key], axis=0)
+    path = Path(output_path).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(path, **log)
+    print(f"[INFO]: Motion saved locally: {path}")
+    return path
+
+
+def _maybe_upload_wandb(output_path: Path, output_name: str) -> None:
+    if not args_cli.upload_wandb:
+        return
+    import wandb
+
+    run = wandb.init(project="csv_to_npz", name=output_name)
+    print(f"[INFO]: Logging motion to wandb: {output_name}")
+    registry = args_cli.wandb_registry
+    logged_artifact = run.log_artifact(artifact_or_path=str(output_path), name=output_name, type=registry)
+    run.link_artifact(artifact=logged_artifact, target_path=f"wandb-registry-{registry}/{output_name}")
+    run.finish()
+    print(f"[INFO]: Motion saved to wandb registry: {registry}/{output_name}")
+
+
+def _run_motion_job(
+    sim: sim_utils.SimulationContext,
+    scene: InteractiveScene,
+    robot,
+    robot_joint_indexes: torch.Tensor,
+    job: MotionJob,
+) -> Path:
+    """Replay one motion job inside an already-initialized Isaac session."""
+    motion = MotionLoader(
+        motion_file=job.input_file,
+        input_fps=job.input_fps,
+        output_fps=job.output_fps,
+        device=sim.device,
+        frame_range=job.frame_range,
+    )
 
     # ------- data logger -------------------------------------------------------
     log = {
-        "fps": [args_cli.output_fps],
+        "fps": np.asarray([job.output_fps], dtype=np.int64),
         "joint_pos": [],
         "joint_vel": [],
         "body_pos_w": [],
@@ -355,39 +459,16 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, joi
 
         if reset_flag and not file_saved:
             file_saved = True
-            for k in (
-                "joint_pos",
-                "joint_vel",
-                "body_pos_w",
-                "body_quat_w",
-                "body_lin_vel_w",
-                "body_ang_vel_w",
-            ):
-                log[k] = np.stack(log[k], axis=0)
+            output_path = _save_motion_log(log, job.output_file)
+            _maybe_upload_wandb(output_path, job.output_name)
+            return output_path
 
-            output_path = Path(args_cli.output_file).expanduser()
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            np.savez(output_path, **log)
-            print(f"[INFO]: Motion saved locally: {output_path}")
-
-            if not args_cli.upload_wandb:
-                return
-
-            import wandb
-
-            COLLECTION = args_cli.output_name
-            run = wandb.init(project="csv_to_npz", name=COLLECTION)
-            print(f"[INFO]: Logging motion to wandb: {COLLECTION}")
-            REGISTRY = args_cli.wandb_registry
-            logged_artifact = run.log_artifact(artifact_or_path=str(output_path), name=COLLECTION, type=REGISTRY)
-            run.link_artifact(artifact=logged_artifact, target_path=f"wandb-registry-{REGISTRY}/{COLLECTION}")
-            run.finish()
-            print(f"[INFO]: Motion saved to wandb registry: {REGISTRY}/{COLLECTION}")
-            return
+    raise RuntimeError(f"simulation app stopped before job completed: {job.input_file}")
 
 
 def main():
     """Main function."""
+    jobs = _load_jobs()
     # Load kit helper
     sim_cfg = sim_utils.SimulationCfg(device=args_cli.device)
     sim_cfg.dt = 1.0 / args_cli.output_fps
@@ -397,10 +478,25 @@ def main():
     scene = InteractiveScene(scene_cfg)
     # Play the simulator
     sim.reset()
-    # Now we are ready!
+    scene.reset()
     print("[INFO]: Setup complete...")
-    # Run the simulator (joint order selected by --robot)
-    run_simulator(sim, scene, joint_names=_JOINT_NAMES)
+    robot = scene["robot"]
+    robot_joint_indexes = robot.find_joints(_JOINT_NAMES, preserve_order=True)[0]
+    failures: list[tuple[str, str]] = []
+    for index, job in enumerate(jobs, start=1):
+        print(f"[INFO]: Processing job {index}/{len(jobs)} -> {job.output_name}")
+        try:
+            sim.reset()
+            scene.reset()
+            _run_motion_job(sim, scene, robot, robot_joint_indexes, job)
+        except Exception as exc:
+            failures.append((job.output_name, str(exc)))
+            print(f"[ERROR]: Job failed for {job.output_name}: {exc}")
+    if failures:
+        print("[ERROR]: Batch completed with failures:")
+        for output_name, message in failures:
+            print(f"  - {output_name}: {message}")
+        raise RuntimeError(f"{len(failures)} csv_to_npz jobs failed")
 
 
 if __name__ == "__main__":

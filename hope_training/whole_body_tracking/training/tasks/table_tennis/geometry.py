@@ -72,6 +72,12 @@ FLOOR_Z: float = -TABLE_HEIGHT      # the floor surface, in HOPE z
 P1_STAND_X: float = -0.5
 P1_STAND_Y: float = -TABLE_WIDTH / 2.0   # -0.7625, centered on table width
 
+# Robot nominal standing pose, P2 side (HOPE frame), mirrored across the far
+# table end and facing P1.  This is used by the first fixed-base P2 retargeting
+# pass before full-body balance is introduced.
+P2_STAND_X: float = TABLE_LENGTH + 0.5
+P2_STAND_Y: float = -TABLE_WIDTH / 2.0
+
 
 def table_top_center() -> tuple[float, float, float]:
     """Center of the table-top collision/visual slab (its top face is at HOPE z = 0)."""
