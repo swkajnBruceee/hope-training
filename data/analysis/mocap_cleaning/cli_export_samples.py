@@ -95,9 +95,13 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=Path("data/analysis/mocap_cleaning/configs/DATA260703.yaml"))
     parser.add_argument("--hit-report", type=Path, default=Path("data/analysis/mocap_cleaning_outputs/DATA260703/hit_detection_report.json"))
     parser.add_argument("--output-dir", type=Path, default=Path("data/analysis/mocap_cleaning_outputs/DATA260703"))
+    parser.add_argument("--pre-hit-s", type=float, default=None)
+    parser.add_argument("--post-hit-s", type=float, default=None)
     args = parser.parse_args()
 
     config = load_config(args.config)
+    pre_hit_s = float(args.pre_hit_s if args.pre_hit_s is not None else config["episode"]["pre_hit_s"])
+    post_hit_s = float(args.post_hit_s if args.post_hit_s is not None else config["episode"]["post_hit_s"])
     hit_report = json.loads(args.hit_report.read_text())
     samples_dir = args.output_dir / "samples"
     metadata_dir = args.output_dir / "metadata"
@@ -121,8 +125,8 @@ def main() -> None:
             cleaning_usable=item["cleaning_usable"],
             output_npz=str(samples_dir / f"{episode_id}.npz"),
             output_metadata=str(metadata_dir / f"{episode_id}.json"),
-            pre_hit_s=float(config["episode"]["pre_hit_s"]),
-            post_hit_s=float(config["episode"]["post_hit_s"]),
+            pre_hit_s=pre_hit_s,
+            post_hit_s=post_hit_s,
             target_fps=float(config["fps"]["clean_sample"]),
             max_ball_speed_mps=float(config["speed_thresholds"]["ball_mps"]),
             max_racket_speed_mps=float(config["speed_thresholds"]["racket_mps"]),

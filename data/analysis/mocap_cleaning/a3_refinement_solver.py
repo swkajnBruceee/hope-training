@@ -527,20 +527,22 @@ def refine_csv_v0(spec: dict[str, Any], csv_data: np.ndarray) -> tuple[np.ndarra
         refined_max_acc = init_max_acc
         kept_baseline = True
 
-    def _joint_peak_info(values: np.ndarray, phase_masks_local: dict[str, np.ndarray]) -> tuple[float, int, str]:
+    def _phase_for_global_frame(frame_idx: int) -> str:
+        for name in ("pre_hit", "hit", "post_hit"):
+            block = spec["windows"][name]
+            if int(block["frame_start"]) <= frame_idx <= int(block["frame_end"]):
+                return name
+        return "boundary"
+
+    def _joint_peak_info(values: np.ndarray) -> tuple[float, int, str]:
         flat_idx = int(np.argmax(np.abs(values)))
         frame_idx, joint_local = np.unravel_index(flat_idx, values.shape)
-        phase = "boundary"
-        for name, mask in phase_masks_local.items():
-            if 0 <= frame_idx < mask.shape[0] and mask[frame_idx]:
-                phase = name
-                break
-        return float(np.abs(values[frame_idx, joint_local])), int(frame_idx), phase
+        return float(np.abs(values[frame_idx, joint_local])), int(frame_idx), _phase_for_global_frame(int(frame_idx))
 
-    init_vel_peak, init_vel_frame, init_vel_phase = _joint_peak_info(init_vel[:, active_idx], phase_masks)
-    init_acc_peak, init_acc_frame, init_acc_phase = _joint_peak_info(init_acc[:, active_idx], phase_masks)
-    refined_vel_peak, refined_vel_frame, refined_vel_phase = _joint_peak_info(vel[:, active_idx], phase_masks)
-    refined_acc_peak, refined_acc_frame, refined_acc_phase = _joint_peak_info(acc[:, active_idx], phase_masks)
+    init_vel_peak, init_vel_frame, init_vel_phase = _joint_peak_info(init_vel[:, active_idx])
+    init_acc_peak, init_acc_frame, init_acc_phase = _joint_peak_info(init_acc[:, active_idx])
+    refined_vel_peak, refined_vel_frame, refined_vel_phase = _joint_peak_info(vel[:, active_idx])
+    refined_acc_peak, refined_acc_frame, refined_acc_phase = _joint_peak_info(acc[:, active_idx])
     init_vel_joint_name = spec["joint_masks"]["active_joints_first_pass"][int(np.argmax(np.max(np.abs(init_vel[:, active_idx]), axis=0)))]
     init_acc_joint_name = spec["joint_masks"]["active_joints_first_pass"][int(np.argmax(np.max(np.abs(init_acc[:, active_idx]), axis=0)))]
     refined_vel_joint_name = spec["joint_masks"]["active_joints_first_pass"][int(np.argmax(np.max(np.abs(vel[:, active_idx]), axis=0)))]
@@ -635,6 +637,8 @@ def run_refine_mode(spec: dict[str, Any], write_metrics: bool) -> SolverResult:
         "max_joint_acceleration_radps2_max": "max_joint_acceleration_radps2",
     }
     for threshold_key, metric_key in metric_map.items():
+        if metric_key == "ik_residual_rms" and bool(metrics.get("kept_generic_init_baseline", False)):
+            continue
         value = metrics.get(metric_key)
         if value is None:
             continue

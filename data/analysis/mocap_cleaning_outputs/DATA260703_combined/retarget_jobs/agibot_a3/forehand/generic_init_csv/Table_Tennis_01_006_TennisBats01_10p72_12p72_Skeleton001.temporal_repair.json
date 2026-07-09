@@ -1,0 +1,182 @@
+{
+  "source_csv": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/forehand/generic_init_csv/Table_Tennis_01_006_TennisBats01_10p72_12p72_Skeleton001.csv",
+  "source_diagnostics": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/forehand/generic_init_csv/Table_Tennis_01_006_TennisBats01_10p72_12p72_Skeleton001.diagnostics.json",
+  "hit_window_temporal_repair": {
+    "selected_repair": "optimized",
+    "optimizer_success": true,
+    "optimizer_nfev": 10,
+    "before_hit": {
+      "position_error_m": 0.039571156843280005,
+      "orientation_error_deg": 3.009041407315434,
+      "velocity_direction_error_deg": 22.915113750594227
+    },
+    "candidate_hit": {
+      "position_error_m": 0.03957164213577572,
+      "orientation_error_deg": 3.008965736723702,
+      "velocity_direction_error_deg": 13.192557610615882
+    },
+    "before_dynamic_score": 16.221059833333328,
+    "candidate_dynamic_score": 15.14153888455812,
+    "before_max_velocity_radps": 36.834220959999996,
+    "before_max_acceleration_radps2": 1946.5271799999994,
+    "max_velocity_radps": 36.834220959999996,
+    "max_acceleration_radps2": 1816.9846661469744,
+    "peak_acc_joint": "right_shoulder_yaw_joint",
+    "peak_acc_frame": 176,
+    "peak_acc_phase": "boundary"
+  },
+  "spline_control_temporal_repair": {
+    "selected_repair": "optimized",
+    "optimizer_success": true,
+    "optimizer_nfev": 15,
+    "before_hit": {
+      "position_error_m": 0.03957164213577572,
+      "orientation_error_deg": 3.008965736723702,
+      "velocity_direction_error_deg": 13.192557610615882
+    },
+    "candidate_hit": {
+      "position_error_m": 0.03957164213577572,
+      "orientation_error_deg": 3.008965736723702,
+      "velocity_direction_error_deg": 2.201265605577606
+    },
+    "before_dynamic_score": 15.14153888455812,
+    "candidate_dynamic_score": 10.890343721003948,
+    "before_max_velocity_radps": 36.834220959999996,
+    "before_max_acceleration_radps2": 1816.9846661469744,
+    "max_velocity_radps": 31.539839130471048,
+    "max_acceleration_radps2": 1306.8412465204738
+  },
+  "post_temporal_repair": {
+    "optimizer_success": true,
+    "optimizer_nfev": 16,
+    "post_near_frame": 132,
+    "post_far_frame": 176,
+    "boundary_end_frame": 200,
+    "before_max_velocity_radps": 31.539839130471048,
+    "before_max_acceleration_radps2": 1306.8412465204738,
+    "candidate_max_velocity_radps": 5.30069846351604,
+    "candidate_max_acceleration_radps2": 95.31832307734689,
+    "hold_post_near_max_velocity_radps": 2.736420037546683,
+    "hold_post_near_max_acceleration_radps2": 553.7672405236237,
+    "before_dynamic_score": 10.890343721003948,
+    "candidate_dynamic_score": 0.7943193589778907,
+    "hold_post_near_dynamic_score": 4.614727004363531,
+    "selected_repair": "optimized",
+    "max_velocity_radps": 5.30069846351604,
+    "max_acceleration_radps2": 95.31832307734689,
+    "kept_original_post_segment": false,
+    "delta_cap_rad": {
+      "waist_yaw_joint": 0.7549393414211438,
+      "waist_roll_joint": 1.0065857885615253,
+      "waist_pitch_joint": 1.0065857885615253,
+      "right_shoulder_pitch_joint": 0.6710571923743502,
+      "right_shoulder_roll_joint": 1.0065857885615253,
+      "right_shoulder_yaw_joint": 0.553622183708839,
+      "right_elbow_joint": 1.0065857885615253,
+      "right_wrist_roll_joint": 1.0065857885615253,
+      "right_wrist_pitch_joint": 1.0065857885615253,
+      "right_wrist_yaw_joint": 1.0065857885615253
+    },
+    "tail_delta_cap_rad": {
+      "waist_yaw_joint": 0.22461005199306758,
+      "waist_roll_joint": 0.2994800693240901,
+      "waist_pitch_joint": 0.2994800693240901,
+      "right_shoulder_pitch_joint": 0.1996533795493934,
+      "right_shoulder_roll_joint": 0.2994800693240901,
+      "right_shoulder_yaw_joint": 0.16471403812824956,
+      "right_elbow_joint": 0.2994800693240901,
+      "right_wrist_roll_joint": 0.2994800693240901,
+      "right_wrist_pitch_joint": 0.2994800693240901,
+      "right_wrist_yaw_joint": 0.2994800693240901
+    },
+    "peak_acc_joint": "right_shoulder_yaw_joint",
+    "peak_acc_frame": 175,
+    "peak_acc_phase": "boundary"
+  },
+  "local_peak_temporal_repair": {
+    "selected_repair": "optimized",
+    "optimizer_success": true,
+    "optimizer_nfev": 2,
+    "rollback_reason": "hit_constraint_or_peak_not_improved",
+    "peak_acc_joint": "right_shoulder_pitch_joint",
+    "peak_acc_frame": 120,
+    "peak_acc_phase": "hit",
+    "profile_key": "right_shoulder_pitch_joint@hit",
+    "companion_joints": [],
+    "before_hit": {
+      "position_error_m": 0.03957164213577572,
+      "orientation_error_deg": 3.008965736723702,
+      "velocity_direction_error_deg": 2.2045501877430462
+    },
+    "candidate_hit": {
+      "position_error_m": 0.03957164213577572,
+      "orientation_error_deg": 3.008965736723702,
+      "velocity_direction_error_deg": 2.2045503326087563
+    },
+    "before_peak_acceleration_radps2": 121.820482043824,
+    "candidate_peak_acceleration_radps2": 121.82048166394121,
+    "before_max_velocity_radps": 16.084108594303213,
+    "before_max_acceleration_radps2": 121.820482043824,
+    "candidate_max_velocity_radps": 16.084108594303213,
+    "candidate_max_acceleration_radps2": 121.82048166394121,
+    "max_velocity_radps": 16.084108594303213,
+    "max_acceleration_radps2": 121.820482043824,
+    "passes": [
+      {
+        "selected_repair": "optimized",
+        "optimizer_success": true,
+        "optimizer_nfev": 6,
+        "peak_acc_joint": "right_shoulder_pitch_joint",
+        "peak_acc_frame": 120,
+        "peak_acc_phase": "hit",
+        "profile_key": "right_shoulder_pitch_joint@hit",
+        "companion_joints": [],
+        "before_hit": {
+          "position_error_m": 0.03957164213577572,
+          "orientation_error_deg": 3.008965736723702,
+          "velocity_direction_error_deg": 2.201265605577606
+        },
+        "candidate_hit": {
+          "position_error_m": 0.03957164213577572,
+          "orientation_error_deg": 3.008965736723702,
+          "velocity_direction_error_deg": 2.2045501877430462
+        },
+        "before_peak_acceleration_radps2": 137.98287312766888,
+        "candidate_peak_acceleration_radps2": 121.820482043824,
+        "before_max_velocity_radps": 16.084108594303213,
+        "before_max_acceleration_radps2": 137.98287312766888,
+        "max_velocity_radps": 16.084108594303213,
+        "max_acceleration_radps2": 121.820482043824
+      },
+      {
+        "selected_repair": "original",
+        "optimizer_success": true,
+        "optimizer_nfev": 2,
+        "rollback_reason": "hit_constraint_or_peak_not_improved",
+        "peak_acc_joint": "right_shoulder_pitch_joint",
+        "peak_acc_frame": 120,
+        "peak_acc_phase": "hit",
+        "profile_key": "right_shoulder_pitch_joint@hit",
+        "companion_joints": [],
+        "before_hit": {
+          "position_error_m": 0.03957164213577572,
+          "orientation_error_deg": 3.008965736723702,
+          "velocity_direction_error_deg": 2.2045501877430462
+        },
+        "candidate_hit": {
+          "position_error_m": 0.03957164213577572,
+          "orientation_error_deg": 3.008965736723702,
+          "velocity_direction_error_deg": 2.2045503326087563
+        },
+        "before_peak_acceleration_radps2": 121.820482043824,
+        "candidate_peak_acceleration_radps2": 121.82048166394121,
+        "before_max_velocity_radps": 16.084108594303213,
+        "before_max_acceleration_radps2": 121.820482043824,
+        "candidate_max_velocity_radps": 16.084108594303213,
+        "candidate_max_acceleration_radps2": 121.82048166394121,
+        "max_velocity_radps": 16.084108594303213,
+        "max_acceleration_radps2": 121.820482043824
+      }
+    ]
+  }
+}

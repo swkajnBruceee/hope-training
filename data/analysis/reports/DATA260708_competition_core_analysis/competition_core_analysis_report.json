@@ -1,0 +1,274 @@
+{
+  "dataset": "datasets_ready/DATA260708_competition_core.npz",
+  "samples": 1034,
+  "success": 950,
+  "failure": 84,
+  "success_rate": 0.9187620889748549,
+  "success_by_racket": [
+    {
+      "group": "gao01",
+      "total": 520,
+      "success": 475,
+      "failure": 45,
+      "success_rate": 0.9134615384615384
+    },
+    {
+      "group": "liang01",
+      "total": 514,
+      "success": 475,
+      "failure": 39,
+      "success_rate": 0.9241245136186771
+    }
+  ],
+  "success_by_stroke": [
+    {
+      "group": "backhand",
+      "total": 330,
+      "success": 309,
+      "failure": 21,
+      "success_rate": 0.9363636363636364
+    },
+    {
+      "group": "forehand",
+      "total": 497,
+      "success": 439,
+      "failure": 58,
+      "success_rate": 0.8832997987927566
+    },
+    {
+      "group": "unknown",
+      "total": 207,
+      "success": 202,
+      "failure": 5,
+      "success_rate": 0.9758454106280193
+    }
+  ],
+  "summaries": {
+    "hit_x_m": {
+      "p10": -0.07928557585567005,
+      "p50": 2.2449247859572705,
+      "p90": 2.7972195455758015
+    },
+    "hit_y_m": {
+      "p10": -1.2334508533732875,
+      "p50": -0.7272244314745712,
+      "p90": -0.27498445160301793
+    },
+    "hit_z_m": {
+      "p10": 0.20958368894996307,
+      "p50": 0.28986921352059025,
+      "p90": 0.3712520018111764
+    },
+    "landing_x_m": {
+      "p10": 0.49353698601993434,
+      "p50": 1.396516247634703,
+      "p90": 2.256010338011364
+    },
+    "landing_y_m": {
+      "p10": -1.0606978936334397,
+      "p50": -0.7164217317806265,
+      "p90": -0.3913940322663582
+    },
+    "hit_distance_ball_to_racket_center_m": {
+      "p10": 0.02947877282674055,
+      "p50": 0.040309728337328946,
+      "p90": 0.0621145194287031
+    },
+    "racket_speed_at_hit_mps": {
+      "p10": 1.3885128694577682,
+      "p50": 1.9513065484362313,
+      "p90": 2.957100496828478
+    },
+    "ball_in_speed_mps": {
+      "p10": 1.9031069170688513,
+      "p50": 2.79384555465508,
+      "p90": 3.6860000045314916
+    },
+    "ball_out_speed_mps": {
+      "p10": 4.1239073114930145,
+      "p50": 4.878609098802105,
+      "p90": 5.842526687817288
+    }
+  },
+  "landing_zone_counts": [
+    {
+      "x_bin": "1.83-2.28",
+      "y_bin": "-0.76--0.38",
+      "total": 211,
+      "success": 185,
+      "failure": 26
+    },
+    {
+      "x_bin": "0.46-0.91",
+      "y_bin": "-1.14--0.76",
+      "total": 201,
+      "success": 184,
+      "failure": 17
+    },
+    {
+      "x_bin": "0.46-0.91",
+      "y_bin": "-0.76--0.38",
+      "total": 109,
+      "success": 104,
+      "failure": 5
+    },
+    {
+      "x_bin": "1.83-2.28",
+      "y_bin": "-1.14--0.76",
+      "total": 81,
+      "success": 74,
+      "failure": 7
+    },
+    {
+      "x_bin": "2.28-2.74",
+      "y_bin": "-0.76--0.38",
+      "total": 53,
+      "success": 50,
+      "failure": 3
+    },
+    {
+      "x_bin": "0.00-0.46",
+      "y_bin": "-1.14--0.76",
+      "total": 51,
+      "success": 47,
+      "failure": 4
+    },
+    {
+      "x_bin": "1.83-2.28",
+      "y_bin": "-0.38-0.00",
+      "total": 44,
+      "success": 44,
+      "failure": 0
+    },
+    {
+      "x_bin": "1.37-1.83",
+      "y_bin": "-0.76--0.38",
+      "total": 41,
+      "success": 38,
+      "failure": 3
+    },
+    {
+      "x_bin": "0.91-1.37",
+      "y_bin": "-0.76--0.38",
+      "total": 36,
+      "success": 32,
+      "failure": 4
+    },
+    {
+      "x_bin": "0.91-1.37",
+      "y_bin": "-1.14--0.76",
+      "total": 32,
+      "success": 28,
+      "failure": 4
+    },
+    {
+      "x_bin": "0.00-0.46",
+      "y_bin": "-0.76--0.38",
+      "total": 22,
+      "success": 21,
+      "failure": 1
+    },
+    {
+      "x_bin": "1.37-1.83",
+      "y_bin": "-1.14--0.76",
+      "total": 22,
+      "success": 20,
+      "failure": 2
+    },
+    {
+      "x_bin": "0.46-0.91",
+      "y_bin": "-1.52--1.14",
+      "total": 21,
+      "success": 20,
+      "failure": 1
+    },
+    {
+      "x_bin": "0.46-0.91",
+      "y_bin": "-0.38-0.00",
+      "total": 18,
+      "success": 18,
+      "failure": 0
+    },
+    {
+      "x_bin": "2.28-2.74",
+      "y_bin": "-1.14--0.76",
+      "total": 18,
+      "success": 18,
+      "failure": 0
+    },
+    {
+      "x_bin": "1.37-1.83",
+      "y_bin": "-0.38-0.00",
+      "total": 15,
+      "success": 14,
+      "failure": 1
+    },
+    {
+      "x_bin": "2.28-2.74",
+      "y_bin": "-0.38-0.00",
+      "total": 14,
+      "success": 13,
+      "failure": 1
+    },
+    {
+      "x_bin": "1.83-2.28",
+      "y_bin": "-1.52--1.14",
+      "total": 12,
+      "success": 12,
+      "failure": 0
+    },
+    {
+      "x_bin": "0.00-0.46",
+      "y_bin": "-1.52--1.14",
+      "total": 8,
+      "success": 8,
+      "failure": 0
+    },
+    {
+      "x_bin": "0.91-1.37",
+      "y_bin": "-1.52--1.14",
+      "total": 6,
+      "success": 6,
+      "failure": 0
+    },
+    {
+      "x_bin": "0.91-1.37",
+      "y_bin": "-0.38-0.00",
+      "total": 5,
+      "success": 4,
+      "failure": 1
+    },
+    {
+      "x_bin": "1.37-1.83",
+      "y_bin": "-1.52--1.14",
+      "total": 5,
+      "success": 3,
+      "failure": 2
+    },
+    {
+      "x_bin": "2.28-2.74",
+      "y_bin": "-1.52--1.14",
+      "total": 4,
+      "success": 4,
+      "failure": 0
+    },
+    {
+      "x_bin": "0.00-0.46",
+      "y_bin": "-0.38-0.00",
+      "total": 3,
+      "success": 3,
+      "failure": 0
+    }
+  ],
+  "tables": {
+    "success_by_racket": "data/analysis/reports/DATA260708_competition_core_analysis/success_by_racket.csv",
+    "success_by_stroke": "data/analysis/reports/DATA260708_competition_core_analysis/success_by_stroke.csv",
+    "success_by_racket_speed": "data/analysis/reports/DATA260708_competition_core_analysis/success_by_racket_speed.csv",
+    "success_by_ball_out_speed": "data/analysis/reports/DATA260708_competition_core_analysis/success_by_ball_out_speed.csv",
+    "success_by_hit_distance": "data/analysis/reports/DATA260708_competition_core_analysis/success_by_hit_distance.csv",
+    "landing_zones": "data/analysis/reports/DATA260708_competition_core_analysis/landing_zones.csv"
+  },
+  "notes": [
+    "stroke_type_rule_v2=unknown is a conservative rule-label bucket, not a stroke class; do not interpret its high success rate as an action advantage without manual review."
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "csv": "/home/bruce/桌面/HOPETableTennis/DATA_PingPang/DATA260708/CSV/T03_031.csv",
+  "take_name": "T03_031",
+  "markers": [
+    "table:Marker 001",
+    "table:Marker 002",
+    "table:Marker 003",
+    "table:Marker 004"
+  ],
+  "marker_points_motive_m": [
+    [
+      0.0020577575,
+      0.0241769295,
+      0.0122896985
+    ],
+    [
+      2.737949463,
+      0.028261263000000002,
+      -0.02092754
+    ],
+    [
+      2.754013672,
+      0.0298957785,
+      1.491491455
+    ],
+    [
+      0.021869344,
+      0.005498898,
+      1.522084106
+    ]
+  ],
+  "distances": {
+    "m1_m2_m": 2.7360963964994736,
+    "m2_m3_m": 1.5125051890451569,
+    "m3_m4_m": 2.732424518096687,
+    "m4_m1_m": 1.5100399070020099,
+    "diagonal_m1_m3_m": 3.124313028014015,
+    "diagonal_m2_m4_m": 3.123858876098451
+  },
+  "geometry_ok": true,
+  "transform_path": "data/analysis/mocap_cleaning_outputs/DATA260708/competition_table_transforms/T03_031_table_transform.json",
+  "transform": {
+    "origin_motive_m": [
+      0.0020577575,
+      0.0241769295,
+      0.0122896985
+    ],
+    "rotation_table_to_motive": [
+      [
+        0.9999251886740046,
+        -0.012157925449706015,
+        -0.0013423501837296903
+      ],
+      [
+        0.001492759357903269,
+        0.012370672235861364,
+        0.9999223660554516
+      ],
+      [
+        -0.01214037580784716,
+        -0.9998495643431528,
+        0.012387895626455687
+      ]
+    ],
+    "rotation_motive_to_table": [
+      [
+        0.9999251886740046,
+        0.001492759357903269,
+        -0.01214037580784716
+      ],
+      [
+        -0.012157925449706015,
+        0.012370672235861364,
+        -0.9998495643431528
+      ],
+      [
+        -0.0013423501837296903,
+        0.9999223660554516,
+        0.012387895626455687
+      ]
+    ],
+    "coordinate_frame": "competition_table_m",
+    "corner_mapping": {
+      "table:Marker 001": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "table:Marker 002": [
+        2.74,
+        0.0,
+        0.0
+      ],
+      "table:Marker 003": [
+        2.74,
+        -1.525,
+        0.0
+      ],
+      "table:Marker 004": [
+        0.0,
+        -1.525,
+        0.0
+      ]
+    },
+    "transform_note": "p_table = rotation_motive_to_table @ (p_motive - origin_motive_m)"
+  },
+  "reasons": [
+    "ok"
+  ]
+}

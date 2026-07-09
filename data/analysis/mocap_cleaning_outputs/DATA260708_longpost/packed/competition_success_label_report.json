@@ -1,0 +1,23 @@
+{
+  "input_dataset": "data/analysis/mocap_cleaning_outputs/DATA260708_longpost/packed/DATA260708_train_longpost_competition_table_relabel.npz",
+  "output_dataset": "data/analysis/mocap_cleaning_outputs/DATA260708_longpost/packed/DATA260708_train_longpost_competition_table_labeled_relabel.npz",
+  "samples": 1053,
+  "z_tolerance_m": 0.05,
+  "landing_detected": 1032,
+  "success_label_reliable": 1032,
+  "success_counts": {
+    "0": 83,
+    "-1": 21,
+    "1": 949
+  },
+  "landing_side_counts": {
+    "p2_half": 520,
+    "unknown": 21,
+    "p1_half": 512
+  },
+  "success_reason_counts": {
+    "landing_outside_expected_opponent_half": 83,
+    "landing_not_detected_in_episode": 21,
+    "opponent_table_landing_rule": 949
+  }
+}

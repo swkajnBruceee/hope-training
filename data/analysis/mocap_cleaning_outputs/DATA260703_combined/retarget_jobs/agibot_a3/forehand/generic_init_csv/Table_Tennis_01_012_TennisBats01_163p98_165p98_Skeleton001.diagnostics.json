@@ -1,37 +1,37 @@
 {
-  "max_velocity_radps": 37.68788542132157,
+  "max_velocity_radps": 24.88161540545351,
   "max_velocity_joint": "right_shoulder_roll_joint",
-  "max_velocity_frame_index": 188,
-  "max_acceleration_radps2": 950.9525453940503,
-  "max_acceleration_joint": "right_shoulder_roll_joint",
-  "max_acceleration_frame_index": 195,
+  "max_velocity_frame_index": 200,
+  "max_acceleration_radps2": 1095.4768161468419,
+  "max_acceleration_joint": "right_shoulder_yaw_joint",
+  "max_acceleration_frame_index": 176,
   "max_acceleration_neighbor_values": {
     "q": [
-      -0.515940323612703,
-      -0.37625364796935185,
-      -0.2582044294360205,
-      -0.16370991104777632,
-      -0.09337265490135448,
-      -0.046261428665432834,
-      -0.01969209209092589
+      2.792526803190927,
+      2.792526803190927,
+      2.792526803190927,
+      2.7925267642771083,
+      2.739829820541262,
+      2.6829790437488046,
+      2.6221550353369802
     ],
     "qdot": [
-      29.799799791332013,
-      25.773589417691692,
-      21.254373692176884,
-      16.483177453481595,
-      11.74484823824503,
-      7.368056281049561,
-      3.725294514422097
+      0.0,
+      0.0,
+      -3.891381883395426e-06,
+      -5.2696982649713195,
+      -10.954772052840339,
+      -11.767478520438868,
+      -12.544064700588594
     ],
     "qddot": [
-      -736.2213254663387,
-      -854.5426099162902,
-      -929.0411964218547,
-      -950.9525453940503,
-      -911.5121172440323,
-      -801.9553723830228,
-      -613.5177712219678
+      0.0,
+      -0.0003891381883398965,
+      -526.9698264976113,
+      -1095.4768161468419,
+      -649.7780255473458,
+      -158.92926477497008,
+      -151.70520728520276
     ]
   },
   "anchor_frames": [
@@ -126,6 +126,10 @@
   "boundary_feasibility_repair": {
     "skipped": true,
     "reason": "generic_init_preserves_hit_corridor; temporal_repair_handles_boundary_dynamics"
+  },
+  "hit_corridor_timing_repair": {
+    "skipped": true,
+    "reason": "disabled_by_default"
   },
   "post_followthrough_repair": {
     "alpha": 1.0,

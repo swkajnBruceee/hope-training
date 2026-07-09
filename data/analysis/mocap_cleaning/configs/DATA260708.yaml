@@ -1,0 +1,91 @@
+dataset_id: DATA260708
+dataset_root: /home/bruce/桌面/HOPETableTennis/DATA_PingPang/DATA260708
+
+position_unit: mm
+quat_order: xyzw
+source_frame: motive_global
+target_frame: table_m
+
+fps:
+  raw: 360
+  clean_sample: 200
+
+source_layout:
+  csv_dir: CSV
+  bvh_dir: BVH
+  bvh_name_pattern: "{take}_{player}.bvh"
+
+gap_policy:
+  interpolate_max_s: 0.03
+  warn_max_s: 0.05
+  reject_max_s: 0.15
+  hit_guard_s: 0.10
+
+speed_thresholds:
+  human_hand_mps: 15.0
+  racket_mps: 25.0
+  racket_omega_radps: 40.0
+  ball_mps: 50.0
+  hip_mps: 8.0
+
+filter:
+  racket_window_ms: 25
+  ball_window_ms: 15
+  body_window_ms: 35
+  polyorder: 3
+
+hit_detection:
+  max_distance_m: 0.15
+  distance_ok_m: 0.12
+  min_racket_speed_mps: 1.0
+  min_ball_dv_mps: 1.0
+  weights:
+    distance: 0.5
+    ball_dv: 0.3
+    racket_speed: 0.2
+
+episode:
+  pre_hit_s: 0.6
+  post_hit_s: 0.4
+
+table:
+  rigid_body: table
+  markers:
+    - table:Marker 001
+    - table:Marker 002
+    - table:Marker 003
+    - table:Marker 004
+  length_m: 2.74
+  width_m: 1.525
+  geometry_tolerance_m: 0.08
+
+unlabeled_ball:
+  marker_prefix: "Unlabeled "
+  max_id_jump: 2
+  max_link_gap_s: 0.18
+  max_link_error_m: 0.45
+  same_id_bonus_m: 0.20
+  id_jump_bonus_m: 0.12
+  min_segment_frames: 4
+  min_dynamic_speed_mps: 0.8
+  max_static_ratio: 0.95
+
+entities:
+  rackets:
+    gao01:
+      player: gao
+      expected_skeleton: gao
+      expected_hand: RHand
+      handedness: right
+    liang01:
+      player: liang
+      expected_skeleton: liang
+      expected_hand: RHand
+      handedness: right
+  ball_candidates: []
+
+quality:
+  coordinate_transform_available: true
+  table_config_available: true
+  landing_label_reliable: false
+  success_label_reliable: false

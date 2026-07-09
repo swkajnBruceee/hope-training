@@ -1,37 +1,37 @@
 {
-  "max_velocity_radps": 33.42371689305058,
+  "max_velocity_radps": 21.550642622051445,
   "max_velocity_joint": "right_shoulder_yaw_joint",
-  "max_velocity_frame_index": 188,
-  "max_acceleration_radps2": 843.357707672448,
+  "max_velocity_frame_index": 200,
+  "max_acceleration_radps2": 1149.8937104853437,
   "max_acceleration_joint": "right_shoulder_yaw_joint",
-  "max_acceleration_frame_index": 195,
+  "max_acceleration_frame_index": 176,
   "max_acceleration_neighbor_values": {
     "q": [
-      1.0945147986052821,
-      0.9706328708121763,
-      0.8659402456994044,
-      0.7821372412259855,
-      0.7197582430361824,
-      0.6779773824070396,
-      0.6544142141959385
+      2.792526803190927,
+      2.792526803190927,
+      2.792526803190927,
+      2.792526802599791,
+      2.737217270140409,
+      2.6775374309601205,
+      2.613677298394617
     ],
     "qdot": [
-      -26.42812300452335,
-      -22.857455290587747,
-      -18.849562958619064,
-      -14.618200266322187,
-      -10.415985881894576,
-      -6.534402884024387,
-      -3.3037987618917044
+      0.0,
+      0.0,
+      -5.911360290156148e-08,
+      -5.530953305051817,
+      -11.49893716396705,
+      -12.35399717457918,
+      -13.171054518052948
     ],
     "qddot": [
-      652.9220962625226,
-      757.8560045904279,
-      823.9255024265553,
-      843.357707672448,
-      808.3797382297793,
-      711.2187120002866,
-      544.1017468854527
+      0.0,
+      -5.911360290156143e-06,
+      -553.0953305051812,
+      -1149.8937104853437,
+      -682.3043869527356,
+      -167.2117354085897,
+      -159.6112019809223
     ]
   },
   "anchor_frames": [
@@ -126,6 +126,10 @@
   "boundary_feasibility_repair": {
     "skipped": true,
     "reason": "generic_init_preserves_hit_corridor; temporal_repair_handles_boundary_dynamics"
+  },
+  "hit_corridor_timing_repair": {
+    "skipped": true,
+    "reason": "disabled_by_default"
   },
   "post_followthrough_repair": {
     "alpha": 1.0,

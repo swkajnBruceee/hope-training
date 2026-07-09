@@ -1,0 +1,106 @@
+{
+  "generated_at": "2026-07-08",
+  "coordinate_policy": {
+    "table_frame_required_for_competition_analysis": true,
+    "allow_inferred_cross_session_transform": false,
+    "reason": "DATA260703 and DATA260708 do not share a guaranteed identical Motive world-to-table relationship. Without table anchors in DATA260703, using DATA260708 to infer the old transform would be underconstrained and not precise enough.",
+    "competition_table_frame": {
+      "origin": "table:Marker 001, P1/liang-side left corner on the tabletop",
+      "marker_mapping": {
+        "table:Marker 001": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "table:Marker 002": [
+          2.74,
+          0.0,
+          0.0
+        ],
+        "table:Marker 003": [
+          2.74,
+          -1.525,
+          0.0
+        ],
+        "table:Marker 004": [
+          0.0,
+          -1.525,
+          0.0
+        ]
+      },
+      "axis_definition": "X points from P1/liang to P2, Y positive points to P1's left so the P1 right corner has negative Y, Z points upward and tabletop height is 0."
+    }
+  },
+  "datasets": [
+    {
+      "dataset_id": "DATA260703_combined",
+      "raw_root": "/home/bruce/桌面/HOPETableTennis/DATA_PingPang/DATA260703",
+      "processed_dataset": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/packed/DATA260703_combined_train.npz",
+      "category": "local_only_not_table_transformable",
+      "usable_for_table_frame_analysis": false,
+      "usable_for_non_table_analysis": true,
+      "reason": "processed old data exists, but no valid per-take table anchor/rigid body calibration was found; DATA260708 transform must not be reused for it",
+      "recommended_use": [
+        "stroke-type and motion-pattern analysis in local/body-relative coordinates",
+        "racket-player temporal pattern inspection",
+        "algorithm prototyping that does not require landing/success/table-side labels"
+      ]
+    },
+    {
+      "dataset_id": "DATA260708",
+      "raw_root": "/home/bruce/桌面/HOPETableTennis/DATA_PingPang/DATA260708",
+      "processed_dataset_motive_frame": "data/analysis/mocap_cleaning_outputs/DATA260708/packed/DATA260708_train.npz",
+      "processed_dataset_marker_estimated_table_frame": "data/analysis/mocap_cleaning_outputs/DATA260708/packed/DATA260708_train_table.npz",
+      "processed_dataset_competition_table_frame": "data/analysis/mocap_cleaning_outputs/DATA260708/packed/DATA260708_train_competition_table.npz",
+      "processed_dataset_competition_table_frame_relabel": "data/analysis/mocap_cleaning_outputs/DATA260708/stroke_relabel/DATA260708_train_competition_table_relabel.npz",
+      "recommended_dataset_competition_labeled_relabel": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/packed/DATA260708_train_post1p0_competition_table_labeled_relabel.npz",
+      "recommended_analysis_core_subset": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/final_audit_split/DATA260708_train_post1p0_competition_table_labeled_relabel_analysis_core.npz",
+      "qc_review_subset": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/final_audit_split/DATA260708_train_post1p0_competition_table_labeled_relabel_qc_review.npz",
+      "final_audit_report": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/final_audit_split/final_dataset_audit_report.md",
+      "category": "table_transformable",
+      "usable_for_table_frame_analysis": true,
+      "source_samples_before_table_filter": 1099,
+      "table_frame_samples": 1053,
+      "dropped_without_valid_table_transform": 46,
+      "table_marker_files": 89,
+      "valid_table_geometry_files": 86,
+      "invalid_table_geometry_files": 3,
+      "unlabeled_ball_files": 89,
+      "unlabeled_ball_usable_files": 86,
+      "unlabeled_ball_inspect_files": 3,
+      "unlabeled_ball_clean_ratio_ge_0_5_files": 86,
+      "unlabeled_ball_id_rule_links": 63,
+      "unlabeled_ball_non_rule_links": 450,
+      "stroke_relabel_counts": {
+        "forehand": 507,
+        "backhand": 335,
+        "unknown": 211
+      },
+      "competition_success_label_counts": {
+        "success": 950,
+        "failure": 84,
+        "unknown_no_landing_detected_in_window": 19
+      },
+      "final_subset_counts": {
+        "analysis_core": 1034,
+        "training_motion": 0,
+        "qc_review": 19
+      },
+      "racket_reference_point": {
+        "racket_pos": "Motive rigid-body center inside the racket, not the physical ball-contact point on the racket face",
+        "distance_at_hit_m": "ball center to racket rigid-body center distance; nonzero contact distance is expected"
+      },
+      "notes": [
+        "gao and liang are player skeletons; gao01 and liang01 are their rackets",
+        "competition table frame uses Marker001 as origin, Marker002 as P2-left, Marker003 as P2-right, and Marker004 as P1-right",
+        "DATA260708_train_table.npz is retained as an earlier marker-estimated local frame and should not be treated as the final competition frame",
+        "recommended labeled dataset uses a longer -0.6 s to +1.0 s hit-centered window for landing/success labeling",
+        "success labels are reliable only for samples with a detected post-hit table bounce inside the sample window",
+        "racket_pos is the internal racket rigid-body center, so ball-racket distance at hit is not expected to be zero",
+        "ball trajectory is reconstructed from Unlabeled markers with same-id continuity and +1/+2 id-jump preference",
+        "non-rule id links are retained only when motion continuity passes the configured thresholds and should remain auditable"
+      ],
+      "first_analysis_report": "data/analysis/reports/DATA260708_competition_core_analysis/competition_core_analysis_report.md"
+    }
+  ]
+}

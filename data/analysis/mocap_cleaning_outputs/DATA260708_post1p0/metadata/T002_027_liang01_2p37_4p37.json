@@ -1,0 +1,73 @@
+{
+  "episode_id": "T002_027_liang01_2p37_4p37",
+  "sample_path": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/samples/T002_027_liang01_2p37_4p37.npz",
+  "source": {
+    "source_npz": "data/analysis/mocap_cleaning_outputs/DATA260708/cleaned_windows/T002_027_liang01_2p37_4p37_unlabeled_ball_cleaned.npz",
+    "debug_npz": "data/analysis/mocap_cleaning_outputs/DATA260708/hit_debug/T002_027_liang01_2p37_4p37_hit_debug.npz",
+    "source_csv": "CSV/T002_027.csv",
+    "source_bvh": "/home/bruce/桌面/HOPETableTennis/DATA_PingPang/DATA260708/BVH/T002_027_liang.bvh",
+    "racket": "liang01",
+    "candidate": "UnlabeledBall",
+    "handedness": "right",
+    "hit_metadata": {
+      "hit_index": 360,
+      "hit_time": 3.369444,
+      "hit_time_rel": 1.0,
+      "score_at_hit": 0.6933116498761063,
+      "dist_at_hit_m": 0.027452655562569688,
+      "racket_speed_at_hit_mps": 1.307833992828418,
+      "ball_dv_at_hit_mps": 5.072272524404227,
+      "valid_hit": true,
+      "quality_flags": {
+        "has_finite_data": true,
+        "hit_distance_ok": true,
+        "racket_speed_ok": true,
+        "ball_velocity_change_ok": true
+      },
+      "reason": "valid hit"
+    },
+    "pre_hit_s": 0.6,
+    "post_hit_s": 1.0,
+    "target_fps": 200.0
+  },
+  "frames": 321,
+  "hit_index": 120,
+  "hit_time": 3.369444,
+  "hit_time_rel": 1.0,
+  "quality_flags": {
+    "has_finite_data": true,
+    "hit_distance_ok": true,
+    "racket_speed_ok": true,
+    "ball_velocity_change_ok": true,
+    "cleaning_usable": true,
+    "missing_near_hit": false,
+    "racket_quat_available": true,
+    "racket_omega_available": true,
+    "ball_speed_reasonable": true,
+    "racket_speed_reasonable": true,
+    "racket_omega_reasonable": true,
+    "max_ball_speed_mps": 5.5380565815675995,
+    "max_racket_speed_mps": 1.4114842135579901,
+    "max_racket_omega_radps": 3.2099593647829017,
+    "coordinate_transform_available": false,
+    "coordinate_frame": "motive_global_m",
+    "table_config_available": false,
+    "landing_detected": false,
+    "success_label_reliable": false,
+    "success_label_reason": "missing_table_calibration",
+    "stroke_type": "unknown",
+    "stroke_label_source": "rule",
+    "stroke_label_confidence": 0.16720167085174018,
+    "stroke_label_reason": "low_lateral_separation",
+    "stroke_lateral_offset_m": 0.04012840100441764,
+    "stroke_handedness": "right",
+    "usable_for_training": true
+  },
+  "fields": {
+    "quat_order": "xyzw",
+    "position_unit": "m",
+    "coordinate_frame": "motive_global_m",
+    "sample_fps": 200.0,
+    "success_encoding": "-1 unknown, 0 false, 1 true"
+  }
+}

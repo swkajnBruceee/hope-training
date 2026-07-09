@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from scipy.interpolate import CubicSpline
 from scipy.optimize import least_squares
 
 from analysis.mocap_cleaning.a3_metadata import (
@@ -69,7 +70,7 @@ def _episode_to_raw_bvh(spec: dict[str, Any]) -> Path:
         csv_rel = spec["job_id"]
     sample_npz = resolve_existing_path(spec["inputs"]["source_sample_npz"])
     metadata_path = sample_npz.parent.parent / "metadata" / f"{spec['episode_id']}.json"
-    metadata = json.loads(metadata_path.read_text())
+    metadata = json.loads(resolve_existing_path(metadata_path).read_text())
     source_csv_rel = metadata["source"]["source_csv"]
     m = re.search(r"Skeleton(\d+)$", spec["episode_id"])
     if not m:
@@ -110,6 +111,14 @@ def _minimum_jerk(alpha: np.ndarray) -> np.ndarray:
 
 
 def _interpolate_joint_anchors(anchor_values: np.ndarray, anchor_frames: np.ndarray, total_frames: int) -> np.ndarray:
+    if len(anchor_frames) >= 4:
+        t = np.arange(total_frames, dtype=np.float64)
+        out = np.zeros((total_frames, anchor_values.shape[1]), dtype=np.float64)
+        for joint_idx in range(anchor_values.shape[1]):
+            spline = CubicSpline(anchor_frames.astype(np.float64), anchor_values[:, joint_idx], bc_type="natural")
+            out[:, joint_idx] = spline(t)
+        return out
+
     out = np.zeros((total_frames, anchor_values.shape[1]), dtype=np.float64)
     for seg in range(len(anchor_frames) - 1):
         start = int(anchor_frames[seg])
@@ -366,6 +375,66 @@ def _adjust_anchor_frames_from_feasibility(
     return adjusted
 
 
+def _adjust_hit_corridor_anchor_frames(
+    anchor_q: np.ndarray,
+    anchor_frames: np.ndarray,
+    dt: float,
+    joint_order: list[str],
+    active_joint_names: list[str],
+    total_frames: int,
+    safety_scale: float = 1.10,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    report = _active_segment_report(anchor_q, anchor_frames, dt, joint_order, active_joint_names)
+    req_pre = 0.0
+    req_post = 0.0
+    worst: dict[str, Any] = {
+        "pre_near_to_hit": {"ratio": 0.0},
+        "hit_to_post_near": {"ratio": 0.0},
+    }
+    for joint_name, joint_report in report.items():
+        for seg_name, key in (("pre_near_to_hit", "pre_near_to_hit"), ("hit_to_post_near", "hit_to_post_near")):
+            seg = joint_report[seg_name]
+            req = max(seg["required_t_for_vel_limit"], seg["required_t_for_acc_limit"])
+            ratio = req / max(seg["duration_s"], 1e-9)
+            if ratio > worst[key]["ratio"]:
+                worst[key] = {
+                    "ratio": float(ratio),
+                    "joint": joint_name,
+                    "required_time_s": float(req),
+                    "duration_s": float(seg["duration_s"]),
+                    "delta_q": float(seg["delta_q"]),
+                }
+            if seg_name == "pre_near_to_hit":
+                req_pre = max(req_pre, req)
+            else:
+                req_post = max(req_post, req)
+
+    adjusted = anchor_frames.copy()
+    original = anchor_frames.copy()
+    hit = int(original[3])
+    req_pre_frames = int(np.ceil(safety_scale * req_pre / max(dt, 1e-9)))
+    req_post_frames = int(np.ceil(safety_scale * req_post / max(dt, 1e-9)))
+    if req_pre_frames > 0:
+        adjusted[2] = max(int(original[1]) + 4, min(int(original[2]), hit - req_pre_frames))
+    if req_post_frames > 0:
+        adjusted[4] = min(int(original[5]) - 4, max(int(original[4]), hit + req_post_frames))
+
+    adjusted[2] = min(adjusted[2], hit - 1)
+    adjusted[4] = max(adjusted[4], hit + 1)
+    adjusted[1] = min(adjusted[1], adjusted[2] - 1)
+    adjusted[5] = max(adjusted[5], adjusted[4] + 1)
+    adjusted[5] = min(adjusted[5], total_frames - 2)
+    adjusted[6] = total_frames - 1
+    return adjusted, {
+        "original_anchor_frames": [int(x) for x in original.tolist()],
+        "adjusted_anchor_frames": [int(x) for x in adjusted.tolist()],
+        "changed": bool(not np.array_equal(original, adjusted)),
+        "required_pre_frames": int(req_pre_frames),
+        "required_post_frames": int(req_post_frames),
+        "worst_segments": worst,
+    }
+
+
 def _solve_anchor_task_space(
     base_pos: np.ndarray,
     base_quat: np.ndarray,
@@ -490,7 +559,7 @@ def _pick_post_far_anchor(
     return best_q, best_report if best_report is not None else {"alpha": None, "target_pos": None, "ratios_to_cap": {}, "feasible": False}
 
 
-def build_generic_init_csv(spec: dict[str, Any]) -> np.ndarray:
+def build_generic_init_csv(spec: dict[str, Any], enable_timing_repair: bool = False) -> np.ndarray:
     sample_npz_path = resolve_existing_path(spec["inputs"]["source_sample_npz"])
     sample_npz = np.load(sample_npz_path, allow_pickle=False)
     metadata_path = sample_npz_path.parent.parent / "metadata" / f"{spec['episode_id']}.json"
@@ -499,11 +568,7 @@ def build_generic_init_csv(spec: dict[str, Any]) -> np.ndarray:
     source_hit_time = float(metadata["source"]["hit_metadata"]["hit_time"])
     target_times = source_hit_time + sample_npz["time_rel"]
 
-    m = re.search(r"Skeleton(\d+)$", spec["episode_id"])
-    if not m:
-        raise ValueError(f"cannot parse skeleton id from {spec['episode_id']}")
-    skeleton_num = int(m.group(1))
-    raw_bvh = Path("DATA260703") / source_csv_rel.replace("Csv/", "Bvh/").replace(".csv", f"_Skeleton {skeleton_num:03d}.bvh")
+    raw_bvh = resolve_existing_path(_episode_to_raw_bvh(spec))
     motion = load_bvh(raw_bvh)
 
     out = np.zeros((target_times.shape[0], 7 + len(A3_POLICY_JOINT_ORDER)), dtype=np.float64)
@@ -559,12 +624,26 @@ def build_generic_init_csv(spec: dict[str, Any]) -> np.ndarray:
     hit_target_vel_dir = np.asarray(spec["hit_target"]["racket_velocity_direction_w"], dtype=np.float64)
     hit_target_normal = np.asarray(spec["hit_target"]["racket_normal_w"], dtype=np.float64)
     hit_target_tangent = np.asarray(spec["hit_target"]["racket_tangent_w"], dtype=np.float64)
-    pre_near_dist = float(np.linalg.norm(sample_npz["racket_pos"][hit_index].astype(np.float64) - sample_npz["racket_pos"][pre_near].astype(np.float64)))
-    post_near_dist = float(np.linalg.norm(sample_npz["racket_pos"][post_near].astype(np.float64) - sample_npz["racket_pos"][hit_index].astype(np.float64)))
-    post_far_dist = float(np.linalg.norm(sample_npz["racket_pos"][post_far].astype(np.float64) - sample_npz["racket_pos"][hit_index].astype(np.float64)))
-    pre_near_target_pos = hit_target_pos - profile["pre_near_scale"] * pre_near_dist * hit_target_vel_dir
-    post_near_target_pos = hit_target_pos + profile["post_near_scale"] * post_near_dist * hit_target_vel_dir
-    post_far_target_pos = hit_target_pos + profile["post_far_scale"] * post_far_dist * hit_target_vel_dir
+    base_pre_near_dist = float(
+        np.linalg.norm(sample_npz["racket_pos"][hit_index].astype(np.float64) - sample_npz["racket_pos"][pre_near].astype(np.float64))
+    )
+    base_post_near_dist = float(
+        np.linalg.norm(sample_npz["racket_pos"][post_near].astype(np.float64) - sample_npz["racket_pos"][hit_index].astype(np.float64))
+    )
+    base_post_far_dist = float(
+        np.linalg.norm(sample_npz["racket_pos"][post_far].astype(np.float64) - sample_npz["racket_pos"][hit_index].astype(np.float64))
+    )
+
+    def _swing_targets_for_frames(frames: np.ndarray) -> dict[str, np.ndarray]:
+        # Timing repair moves anchor timestamps, not the near-hit spatial
+        # corridor. Recomputing distances from farther source frames would
+        # make the target farther exactly when we are trying to buy time.
+        del frames
+        return {
+            "pre_near": hit_target_pos - profile["pre_near_scale"] * base_pre_near_dist * hit_target_vel_dir,
+            "post_near": hit_target_pos + profile["post_near_scale"] * base_post_near_dist * hit_target_vel_dir,
+            "post_far": hit_target_pos + profile["post_far_scale"] * base_post_far_dist * hit_target_vel_dir,
+        }
 
     def _racket_task_score(q: np.ndarray, target_pos: np.ndarray, target_normal: np.ndarray, target_tangent: np.ndarray) -> float:
         pos, rot = _fk_racket_state(out[hit_index, 0:3], out[hit_index, 3:7], q, joint_map, spec)
@@ -600,6 +679,7 @@ def build_generic_init_csv(spec: dict[str, Any]) -> np.ndarray:
         return min(candidates, key=lambda q: _racket_task_score(q, target_pos, target_normal, target_tangent))
 
     def _solve_anchor_bundle(frames: np.ndarray) -> tuple[np.ndarray, dict[str, Any]]:
+        swing_targets = _swing_targets_for_frames(frames)
         post_far_repair = {"alpha": None, "target_pos": None, "ratios_to_cap": {}, "feasible": False}
         q_start = out[frames[0], 7:].copy()
         q_default = defaults.copy()
@@ -641,7 +721,7 @@ def build_generic_init_csv(spec: dict[str, Any]) -> np.ndarray:
             base_pos=out[frames[2], 0:3],
             base_quat=out[frames[2], 3:7],
             q_init=q_hit,
-            target_pos=pre_near_target_pos,
+            target_pos=swing_targets["pre_near"],
             target_normal=hit_target_normal,
             target_tangent=hit_target_tangent,
             joint_order=A3_POLICY_JOINT_ORDER,
@@ -653,7 +733,7 @@ def build_generic_init_csv(spec: dict[str, Any]) -> np.ndarray:
             base_pos=out[frames[4], 0:3],
             base_quat=out[frames[4], 3:7],
             q_init=q_hit,
-            target_pos=post_near_target_pos,
+            target_pos=swing_targets["post_near"],
             target_normal=hit_target_normal,
             target_tangent=hit_target_tangent,
             joint_order=A3_POLICY_JOINT_ORDER,
@@ -665,8 +745,8 @@ def build_generic_init_csv(spec: dict[str, Any]) -> np.ndarray:
             base_pos=out[frames[5], 0:3],
             base_quat=out[frames[5], 3:7],
             q_post_near=q_post_near,
-            post_near_target_pos=post_near_target_pos,
-            raw_post_far_target_pos=post_far_target_pos,
+            post_near_target_pos=swing_targets["post_near"],
+            raw_post_far_target_pos=swing_targets["post_far"],
             hit_target_normal=hit_target_normal,
             hit_target_tangent=hit_target_tangent,
             profile=profile,
@@ -679,25 +759,45 @@ def build_generic_init_csv(spec: dict[str, Any]) -> np.ndarray:
         return np.asarray(bundle, dtype=np.float64), post_far_repair
 
     anchor_q, post_far_repair = _solve_anchor_bundle(anchor_frames)
+    if enable_timing_repair:
+        anchor_frames, timing_repair = _adjust_hit_corridor_anchor_frames(
+            anchor_q=anchor_q,
+            anchor_frames=anchor_frames,
+            dt=float(spec["coordinate_contract"]["dt"]),
+            joint_order=A3_POLICY_JOINT_ORDER,
+            active_joint_names=A3_ACTIVE_JOINTS_FIRST_PASS,
+            total_frames=target_times.shape[0],
+        )
+        if timing_repair["changed"]:
+            anchor_q, post_far_repair = _solve_anchor_bundle(anchor_frames)
+    else:
+        timing_repair = {"skipped": True, "reason": "disabled_by_default"}
+    swing_targets = _swing_targets_for_frames(anchor_frames)
     boundary_repair = {"skipped": True, "reason": "generic_init_preserves_hit_corridor; temporal_repair_handles_boundary_dynamics"}
     joint_series = _interpolate_joint_anchors(anchor_q, anchor_frames, target_times.shape[0])
     joint_series = _unwrap_joint_series(joint_series, A3_POLICY_JOINT_ORDER)
+    limits = load_a3_joint_limits()
+    for idx_joint, joint_name in enumerate(A3_POLICY_JOINT_ORDER):
+        if joint_name in limits:
+            lo, hi = limits[joint_name]
+            joint_series[:, idx_joint] = np.clip(joint_series[:, idx_joint], lo, hi)
     out[:, 7:] = joint_series
     diagnostics = _joint_diagnostics(out[:, 7:], float(spec["coordinate_contract"]["dt"]), A3_POLICY_JOINT_ORDER)
     diagnostics["anchor_frames"] = [int(x) for x in anchor_frames.tolist()]
     diagnostics["stroke_profile"] = profile
     diagnostics["swing_direction_targets"] = {
         "hit_target_velocity_direction_w": [float(x) for x in hit_target_vel_dir.tolist()],
-        "pre_near_target_pos": [float(x) for x in pre_near_target_pos.tolist()],
+        "pre_near_target_pos": [float(x) for x in swing_targets["pre_near"].tolist()],
         "hit_target_pos": [float(x) for x in hit_target_pos.tolist()],
-        "post_near_target_pos": [float(x) for x in post_near_target_pos.tolist()],
-        "post_far_target_pos": [float(x) for x in post_far_target_pos.tolist()],
+        "post_near_target_pos": [float(x) for x in swing_targets["post_near"].tolist()],
+        "post_far_target_pos": [float(x) for x in swing_targets["post_far"].tolist()],
     }
     diagnostics["anchor_joint_values"] = {
         name: [float(anchor_q[i, A3_POLICY_JOINT_ORDER.index(name)]) for i in range(anchor_q.shape[0])]
         for name in ("waist_yaw_joint", "right_shoulder_pitch_joint", "right_shoulder_yaw_joint", "right_elbow_joint")
     }
     diagnostics["boundary_feasibility_repair"] = boundary_repair
+    diagnostics["hit_corridor_timing_repair"] = timing_repair
     diagnostics["post_followthrough_repair"] = post_far_repair
     diagnostics["active_segment_report"] = _active_segment_report(
         anchor_q=anchor_q,
@@ -713,10 +813,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--spec", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--enable-timing-repair", action="store_true")
     args = parser.parse_args()
 
     spec = json.loads(args.spec.read_text())
-    out, diagnostics = build_generic_init_csv(spec)
+    out, diagnostics = build_generic_init_csv(spec, enable_timing_repair=bool(args.enable_timing_repair))
     output = args.output if args.output is not None else Path(spec["artifacts"]["generic_retarget_csv"])
     output.parent.mkdir(parents=True, exist_ok=True)
     np.savetxt(output, out, delimiter=",", fmt="%.10f")

@@ -89,6 +89,11 @@ def _write_markdown(path: Path, report: dict[str, Any]) -> None:
     lines.extend(["", "## Reject Reasons", ""])
     for key, value in sorted(report["reject_reason_counts"].items()):
         lines.append(f"- `{key}`: {value}")
+    lines.extend(["", "## Failure Modes", ""])
+    for key, value in sorted(report["failure_mode_counts"].items(), key=lambda item: (-item[1], item[0])):
+        lines.append(f"- `{key}`: {value}")
+    lines.extend(["", "## Baseline Retention", ""])
+    lines.append(f"- `kept_generic_init_baseline`: {report['kept_generic_init_baseline_count']}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -105,6 +110,9 @@ def main() -> None:
         type=Path,
         default=Path("data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/subset_eval"),
     )
+    parser.add_argument("--enable-hit-window-repair", action="store_true")
+    parser.add_argument("--enable-timing-repair", action="store_true")
+    parser.add_argument("--disable-spline-control-repair", action="store_true")
     args = parser.parse_args()
 
     spec_manifest = _load_json(args.manifest)
@@ -113,24 +121,41 @@ def main() -> None:
     results = []
     status_counts = Counter()
     reject_reason_counts = Counter()
+    failure_mode_counts = Counter()
+    label_status_counts: dict[str, Counter[str]] = defaultdict(Counter)
     metrics_series: dict[str, list[float]] = defaultdict(list)
+    kept_generic_init_baseline_count = 0
 
     for spec in selected:
-        csv_data, diagnostics = build_generic_init_csv(spec)
+        csv_data, diagnostics = build_generic_init_csv(spec, enable_timing_repair=bool(args.enable_timing_repair))
         write_retarget_csv(spec["artifacts"]["generic_retarget_csv"], csv_data)
         diagnostics_path = Path(spec["artifacts"]["generic_retarget_csv"]).with_suffix(".diagnostics.json")
         diagnostics_path.write_text(json.dumps(diagnostics, indent=2, ensure_ascii=False) + "\n")
         repair_info = write_temporal_repair(
             csv_path=spec["artifacts"]["generic_retarget_csv"],
             diagnostics_path=str(diagnostics_path),
+            spec=spec,
+            enable_hit_window=bool(args.enable_hit_window_repair),
+            enable_spline_control=not bool(args.disable_spline_control_repair),
         )
         result = run_refine_mode(spec, write_metrics=True)
         metrics = result.metrics
         metadata = _sample_metadata(spec)
         source_csv = str(metadata["source"]["source_csv"])
         status_counts[result.status] += 1
+        label_status_counts[spec["label"]][result.status] += 1
+        if bool(metrics.get("kept_generic_init_baseline", False)):
+            kept_generic_init_baseline_count += 1
         for reason in metrics.get("validation_reject_reasons", []):
             reject_reason_counts[reason] += 1
+        max_acc_joint = metrics.get("max_acceleration_joint")
+        max_acc_phase = metrics.get("max_acceleration_phase")
+        if max_acc_joint and max_acc_phase:
+            failure_mode_counts[f"acc:{max_acc_joint}@{max_acc_phase}"] += 1
+        max_vel_joint = metrics.get("max_velocity_joint")
+        max_vel_phase = metrics.get("max_velocity_phase")
+        if max_vel_joint and max_vel_phase:
+            failure_mode_counts[f"vel:{max_vel_joint}@{max_vel_phase}"] += 1
         for key in (
             "racket_position_error_at_hit_m",
             "racket_orientation_error_at_hit_deg",
@@ -150,8 +175,20 @@ def main() -> None:
                 "kept_generic_init_baseline": bool(metrics.get("kept_generic_init_baseline", False)),
                 "generic_init_max_velocity_radps": diagnostics.get("max_velocity_radps"),
                 "generic_init_max_acceleration_radps2": diagnostics.get("max_acceleration_radps2"),
+                "hit_window_repair_selected": repair_info["hit_window_temporal_repair"].get("selected_repair"),
+                "hit_window_repair_max_velocity_radps": repair_info["hit_window_temporal_repair"].get("max_velocity_radps"),
+                "hit_window_repair_max_acceleration_radps2": repair_info["hit_window_temporal_repair"].get("max_acceleration_radps2"),
+                "spline_control_repair_selected": repair_info["spline_control_temporal_repair"].get("selected_repair"),
+                "spline_control_repair_max_velocity_radps": repair_info["spline_control_temporal_repair"].get("max_velocity_radps"),
+                "spline_control_repair_max_acceleration_radps2": repair_info["spline_control_temporal_repair"].get("max_acceleration_radps2"),
+                "post_repair_selected": repair_info["post_temporal_repair"].get("selected_repair"),
                 "temporal_repair_max_velocity_radps": repair_info["post_temporal_repair"]["max_velocity_radps"],
                 "temporal_repair_max_acceleration_radps2": repair_info["post_temporal_repair"]["max_acceleration_radps2"],
+                "local_peak_repair_selected": repair_info["local_peak_temporal_repair"].get("selected_repair"),
+                "local_peak_repair_peak_joint": repair_info["local_peak_temporal_repair"].get("peak_acc_joint"),
+                "local_peak_repair_peak_phase": repair_info["local_peak_temporal_repair"].get("peak_acc_phase"),
+                "local_peak_repair_max_velocity_radps": repair_info["local_peak_temporal_repair"].get("max_velocity_radps"),
+                "local_peak_repair_max_acceleration_radps2": repair_info["local_peak_temporal_repair"].get("max_acceleration_radps2"),
                 "racket_position_error_at_hit_m": metrics.get("racket_position_error_at_hit_m"),
                 "racket_orientation_error_at_hit_deg": metrics.get("racket_orientation_error_at_hit_deg"),
                 "racket_velocity_direction_error_at_hit_deg": metrics.get("racket_velocity_direction_error_at_hit_deg"),
@@ -167,7 +204,10 @@ def main() -> None:
         "selected_count": len(selected),
         "per_label": int(args.per_label),
         "status_counts": dict(status_counts),
+        "label_status_counts": {label: dict(counter) for label, counter in sorted(label_status_counts.items())},
         "reject_reason_counts": dict(reject_reason_counts),
+        "failure_mode_counts": dict(failure_mode_counts),
+        "kept_generic_init_baseline_count": kept_generic_init_baseline_count,
         "medians": medians,
         "results": results,
     }

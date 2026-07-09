@@ -6,16 +6,15 @@
     "failed_quality_reject": 2
   },
   "reject_reason_counts": {
-    "max_joint_velocity_radps>12.0": 1,
-    "max_joint_acceleration_radps2>120.0": 2,
-    "ik_residual_rms>0.03": 1
+    "ik_residual_rms>0.03": 2,
+    "max_joint_acceleration_radps2>120.0": 2
   },
   "medians": {
     "racket_position_error_at_hit_m": 0.00024222278836682524,
     "racket_orientation_error_at_hit_deg": 0.016726137857801113,
-    "racket_velocity_direction_error_at_hit_deg": 12.302929433213762,
-    "max_joint_velocity_radps": 23.136769495016775,
-    "max_joint_acceleration_radps2": 563.4267440007292
+    "racket_velocity_direction_error_at_hit_deg": 0.4750760525212233,
+    "max_joint_velocity_radps": 6.931187455002506,
+    "max_joint_acceleration_radps2": 134.84419950011116
   },
   "results": [
     {
@@ -24,17 +23,24 @@
       "source_csv": "Csv/Point/Table Tennis_01_012.csv",
       "status": "failed_quality_reject",
       "kept_generic_init_baseline": true,
-      "generic_init_max_velocity_radps": 36.900297177847875,
-      "generic_init_max_acceleration_radps2": 801.8968152983084,
-      "temporal_repair_max_velocity_radps": 36.90029717999999,
-      "temporal_repair_max_acceleration_radps2": 801.896815,
+      "generic_init_max_velocity_radps": 24.303251363372357,
+      "generic_init_max_acceleration_radps2": 1157.779314716919,
+      "hit_window_repair_selected": null,
+      "hit_window_repair_max_velocity_radps": null,
+      "hit_window_repair_max_acceleration_radps2": null,
+      "spline_control_repair_selected": "optimized",
+      "spline_control_repair_max_velocity_radps": 20.09830303317749,
+      "spline_control_repair_max_acceleration_radps2": 720.0666322058913,
+      "post_repair_selected": "optimized",
+      "temporal_repair_max_velocity_radps": 2.8911414062541994,
+      "temporal_repair_max_acceleration_radps2": 19.903466615119346,
       "racket_position_error_at_hit_m": 0.0004335403039247504,
       "racket_orientation_error_at_hit_deg": 0.029816950137980976,
-      "racket_velocity_direction_error_at_hit_deg": 14.828854126374708,
-      "max_joint_velocity_radps": 36.90029718003355,
-      "max_joint_acceleration_radps2": 801.8968150014587,
+      "racket_velocity_direction_error_at_hit_deg": 0.2594356216684896,
+      "max_joint_velocity_radps": 5.49859047000501,
+      "max_joint_acceleration_radps2": 120.90855100022291,
       "validation_reject_reasons": [
-        "max_joint_velocity_radps>12.0",
+        "ik_residual_rms>0.03",
         "max_joint_acceleration_radps2>120.0"
       ]
     },
@@ -44,15 +50,22 @@
       "source_csv": "Csv/Point/Table Tennis_01_004.csv",
       "status": "failed_quality_reject",
       "kept_generic_init_baseline": true,
-      "generic_init_max_velocity_radps": 33.42371689305058,
-      "generic_init_max_acceleration_radps2": 843.357707672448,
-      "temporal_repair_max_velocity_radps": 0.11427643000000015,
-      "temporal_repair_max_acceleration_radps2": 79.72270399999994,
+      "generic_init_max_velocity_radps": 21.550642622051445,
+      "generic_init_max_acceleration_radps2": 1149.8937104853437,
+      "hit_window_repair_selected": null,
+      "hit_window_repair_max_velocity_radps": null,
+      "hit_window_repair_max_acceleration_radps2": null,
+      "spline_control_repair_selected": "optimized",
+      "spline_control_repair_max_velocity_radps": 16.745648920238043,
+      "spline_control_repair_max_acceleration_radps2": 680.9180350696353,
+      "post_repair_selected": "optimized",
+      "temporal_repair_max_velocity_radps": 3.2435608545548833,
+      "temporal_repair_max_acceleration_radps2": 35.480832711716204,
       "racket_position_error_at_hit_m": 5.0905272808900085e-05,
       "racket_orientation_error_at_hit_deg": 0.0036353255776212486,
-      "racket_velocity_direction_error_at_hit_deg": 9.777004740052817,
-      "max_joint_velocity_radps": 9.373241810000001,
-      "max_joint_acceleration_radps2": 324.95667299999974,
+      "racket_velocity_direction_error_at_hit_deg": 0.690716483373957,
+      "max_joint_velocity_radps": 8.363784440000003,
+      "max_joint_acceleration_radps2": 148.7798479999994,
       "validation_reject_reasons": [
         "ik_residual_rms>0.03",
         "max_joint_acceleration_radps2>120.0"

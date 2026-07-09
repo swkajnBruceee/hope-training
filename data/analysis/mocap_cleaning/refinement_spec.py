@@ -33,6 +33,8 @@ def resolve_existing_path(path: str | Path) -> Path:
     replacements = (
         ("data/analysis/mocap_cleaning_outputs/", "analysis/mocap_cleaning_outputs/"),
         ("analysis/mocap_cleaning_outputs/", "data/analysis/mocap_cleaning_outputs/"),
+        ("DATA260703/", "DATA_PingPang/DATA260703/"),
+        ("DATA_PingPang/DATA260703/", "DATA260703/"),
     )
     for src, dst in replacements:
         if text.startswith(src):

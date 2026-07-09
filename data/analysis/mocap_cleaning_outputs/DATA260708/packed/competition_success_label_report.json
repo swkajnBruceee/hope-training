@@ -1,0 +1,23 @@
+{
+  "input_dataset": "data/analysis/mocap_cleaning_outputs/DATA260708/packed/DATA260708_train_competition_table.npz",
+  "output_dataset": "data/analysis/mocap_cleaning_outputs/DATA260708/packed/DATA260708_train_competition_table_labeled.npz",
+  "samples": 1053,
+  "z_tolerance_m": 0.05,
+  "landing_detected": 252,
+  "success_label_reliable": 252,
+  "success_counts": {
+    "0": 72,
+    "-1": 801,
+    "1": 180
+  },
+  "landing_side_counts": {
+    "p2_half": 76,
+    "unknown": 801,
+    "p1_half": 176
+  },
+  "success_reason_counts": {
+    "landing_outside_expected_opponent_half": 72,
+    "landing_not_detected_in_episode": 801,
+    "opponent_table_landing_rule": 180
+  }
+}

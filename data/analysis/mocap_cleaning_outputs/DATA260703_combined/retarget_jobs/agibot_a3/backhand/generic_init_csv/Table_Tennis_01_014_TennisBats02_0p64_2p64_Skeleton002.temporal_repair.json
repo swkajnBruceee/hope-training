@@ -1,0 +1,86 @@
+{
+  "source_csv": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/generic_init_csv/Table_Tennis_01_014_TennisBats02_0p64_2p64_Skeleton002.csv",
+  "source_diagnostics": "data/analysis/mocap_cleaning_outputs/DATA260703_combined/retarget_jobs/agibot_a3/backhand/generic_init_csv/Table_Tennis_01_014_TennisBats02_0p64_2p64_Skeleton002.diagnostics.json",
+  "hit_window_temporal_repair": {
+    "skipped": true,
+    "reason": "disabled_or_spec_not_provided"
+  },
+  "spline_control_temporal_repair": {
+    "selected_repair": "optimized",
+    "optimizer_success": true,
+    "optimizer_nfev": 16,
+    "before_hit": {
+      "position_error_m": 0.0007400227782252806,
+      "orientation_error_deg": 0.03622976889041621,
+      "velocity_direction_error_deg": 13.429366064780414
+    },
+    "candidate_hit": {
+      "position_error_m": 0.0007400227786841116,
+      "orientation_error_deg": 0.03622976871939937,
+      "velocity_direction_error_deg": 0.057595110547701014
+    },
+    "before_dynamic_score": 9.51266137499999,
+    "candidate_dynamic_score": 5.901772852295724,
+    "before_max_velocity_radps": 23.85991392,
+    "before_max_acceleration_radps2": 1141.5193649999987,
+    "max_velocity_radps": 19.65790396911544,
+    "max_acceleration_radps2": 708.2127422754869
+  },
+  "post_temporal_repair": {
+    "optimizer_success": true,
+    "optimizer_nfev": 15,
+    "post_near_frame": 130,
+    "post_far_frame": 172,
+    "boundary_end_frame": 200,
+    "before_max_velocity_radps": 19.65790396911544,
+    "before_max_acceleration_radps2": 708.2127422754869,
+    "candidate_max_velocity_radps": 2.126135962926619,
+    "candidate_max_acceleration_radps2": 70.74025562815666,
+    "hold_post_near_max_velocity_radps": 1.1884051632415016,
+    "hold_post_near_max_acceleration_radps2": 243.20484303276712,
+    "before_dynamic_score": 5.901772852295724,
+    "candidate_dynamic_score": 0.5895021302346388,
+    "hold_post_near_dynamic_score": 2.0267070252730592,
+    "selected_repair": "optimized",
+    "max_velocity_radps": 2.126135962926619,
+    "max_acceleration_radps2": 70.74025562815666,
+    "kept_original_post_segment": false,
+    "delta_cap_rad": {
+      "waist_yaw_joint": 0.3783275563258232,
+      "waist_roll_joint": 0.9171577123050261,
+      "waist_pitch_joint": 0.9171577123050261,
+      "right_shoulder_pitch_joint": 0.6114384748700173,
+      "right_shoulder_roll_joint": 0.9171577123050261,
+      "right_shoulder_yaw_joint": 0.9171577123050261,
+      "right_elbow_joint": 0.9171577123050261,
+      "right_wrist_roll_joint": 0.9171577123050261,
+      "right_wrist_pitch_joint": 0.9171577123050261,
+      "right_wrist_yaw_joint": 0.9171577123050261
+    },
+    "tail_delta_cap_rad": {
+      "waist_yaw_joint": 0.16814558058925486,
+      "waist_roll_joint": 0.407625649913345,
+      "waist_pitch_joint": 0.407625649913345,
+      "right_shoulder_pitch_joint": 0.2717504332755633,
+      "right_shoulder_roll_joint": 0.407625649913345,
+      "right_shoulder_yaw_joint": 0.407625649913345,
+      "right_elbow_joint": 0.407625649913345,
+      "right_wrist_roll_joint": 0.407625649913345,
+      "right_wrist_pitch_joint": 0.407625649913345,
+      "right_wrist_yaw_joint": 0.407625649913345
+    },
+    "peak_acc_joint": "waist_yaw_joint",
+    "peak_acc_frame": 171,
+    "peak_acc_phase": "boundary"
+  },
+  "local_peak_temporal_repair": {
+    "selected_repair": "skipped",
+    "reason": "acceleration_within_limit",
+    "passes": [
+      {
+        "selected_repair": "skipped",
+        "reason": "acceleration_within_limit"
+      }
+    ]
+  }
+}

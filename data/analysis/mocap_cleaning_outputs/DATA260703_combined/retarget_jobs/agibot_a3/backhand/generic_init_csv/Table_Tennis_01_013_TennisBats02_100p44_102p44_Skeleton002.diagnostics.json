@@ -1,37 +1,37 @@
 {
-  "max_velocity_radps": 36.206137879588105,
+  "max_velocity_radps": 23.84904663153777,
   "max_velocity_joint": "waist_yaw_joint",
-  "max_velocity_frame_index": 186,
-  "max_acceleration_radps2": 786.811729996654,
+  "max_velocity_frame_index": 200,
+  "max_acceleration_radps2": 1135.4643068134656,
   "max_acceleration_joint": "waist_yaw_joint",
-  "max_acceleration_frame_index": 178,
+  "max_acceleration_frame_index": 172,
   "max_acceleration_neighbor_values": {
     "q": [
-      -2.589762235013221,
-      -2.5548874985851113,
-      -2.5019501371054282,
-      -2.4295221629392048,
-      -2.337196930600987,
-      -2.225475654293776,
-      -2.0956539254479734
+      -2.6179938779914944,
+      -2.6179938779914944,
+      -2.6179938779914944,
+      -2.617993834262677,
+      -2.5635343746855725,
+      -2.5044473598527195,
+      -2.4409041806995164
     ],
     "qdot": [
-      5.424966005023273,
-      8.78120979078724,
-      12.53653356460206,
-      16.47532065045911,
-      20.404650864561443,
-      24.15430051532333,
-      27.57674240337057
+      0.0,
+      0.0,
+      4.372881745599668e-06,
+      5.44595033059714,
+      11.354647441006074,
+      12.263019398616766,
+      13.137113169147698
     ],
     "qddot": [
-      607.5094415262631,
-      711.1567559585254,
-      769.4110859678867,
-      786.811729996654,
-      767.8979864871205,
-      717.209153881565,
-      639.2845306222855
+      0.0,
+      0.0004372881745603645,
+      544.5950330602093,
+      1135.4643068134656,
+      681.7069068025827,
+      178.24657281432448,
+      171.3909353983886
     ]
   },
   "anchor_frames": [
@@ -127,6 +127,10 @@
   "boundary_feasibility_repair": {
     "skipped": true,
     "reason": "generic_init_preserves_hit_corridor; temporal_repair_handles_boundary_dynamics"
+  },
+  "hit_corridor_timing_repair": {
+    "skipped": true,
+    "reason": "disabled_by_default"
   },
   "post_followthrough_repair": {
     "alpha": 1.0,

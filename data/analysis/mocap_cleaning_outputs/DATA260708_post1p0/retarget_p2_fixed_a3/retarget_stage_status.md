@@ -20,6 +20,8 @@
 - Optimized csv_to_npz jobs: `data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3/csv_to_npz_optimized_jobs.json`
 - Optimized motion NPZ manifest: `data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3/optimized_motion_npz_manifest.json`
 - Optimized motion NPZ summary: `data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3/optimized_motion_npz_summary.md`
+- Tracking motion manifest: `data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3/tracking_motion_manifest.json`
+- Tracking motion library: `hope_training/whole_body_tracking/sample_motions/p2_fixed_competition/manifest.json`
 - IK diagnostic csv_to_npz commands: `data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3/csv_to_npz_ik_commands.sh`
 
 ## Current Result
@@ -35,7 +37,29 @@
 - Formal optimized csv_to_npz command count is 16 and includes only `replay_ready=true` samples.
 - All 16 optimized replay-ready CSV trajectories have now been converted to local motion NPZ files.
 - NPZ validation passed for all 16 files: `fps=50`, `joint_pos=(80, 31)`, `body_pos_w=(80, 32, 3)`.
+- Local replay smoke checks passed for representative motions covering forehand and backhand.
+- Tracking/training smoke checks passed for one forehand motion and one backhand motion with `task=TrackingFlat`, `num_envs=8`, `max_iterations=1`.
 - IK csv_to_npz command count is 19 and should be treated as diagnostic replay only, not training data.
+
+## Integration Checks
+
+- Replay smoke samples:
+- `T001_003_gao01_2p92_4p92`
+- `T002_027_gao01_8p51_10p51`
+- `T03_065_gao01_14p31_16p31`
+- Training smoke motions:
+- `forehand`: `sample_motions/p2_fixed_competition/forehand/T001_002_gao01_1p92_3p92.npz`
+- `backhand`: `sample_motions/p2_fixed_competition/backhand/T002_022_gao01_20p68_22p68.npz`
+- Training smoke log directories:
+- `hope_training/whole_body_tracking/logs/rsl_rl/agibot_a3_flat/2026-07-09_00-51-02`
+- `hope_training/whole_body_tracking/logs/rsl_rl/agibot_a3_flat/2026-07-09_00-54-04`
+
+## Expansion Start
+
+- Expansion config: `data/analysis/mocap_cleaning/configs/retarget_DATA260708_p2_a3_fixed_expand.yaml`
+- Expanded export directory: `data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_expand`
+- Current expanded target batch prepared: `200` samples
+- Total candidates under the current P2 fixed-base selection rule: `475`
 
 ## Interpretation
 
