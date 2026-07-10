@@ -19,6 +19,48 @@ from pathlib import Path
 import numpy as np
 
 
+def _hit_metadata(job: dict, fps: int) -> dict:
+    spec_path = Path(str(job.get("target_spec_json", "")))
+    if not spec_path.exists():
+        return {}
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    contract = spec.get("coordinate_contract", {})
+    hit_target = spec.get("hit_target", {})
+    source_fps = float(contract.get("fps", job.get("input_fps", 0)) or 0.0)
+    hit_index = int(contract.get("hit_index", hit_target.get("hit_index", 0)) or 0)
+    hit_time_from_start_s = float(hit_index / source_fps) if source_fps > 0 else None
+    hit_frame_float = float(hit_time_from_start_s * fps) if hit_time_from_start_s is not None else None
+    hit_frame = int(np.floor(hit_frame_float)) if hit_frame_float is not None else None
+    hit_subframe_alpha = float(hit_frame_float - hit_frame) if hit_frame_float is not None and hit_frame is not None else None
+    return {
+        "target_spec_json": str(spec_path),
+        "hit_event": {
+            "source_hit_index": hit_index,
+            "source_fps": source_fps,
+            "hit_time_from_start_s": hit_time_from_start_s,
+            "motion_fps": int(fps),
+            "motion_hit_frame": hit_frame,
+            "motion_hit_subframe_alpha": hit_subframe_alpha,
+        },
+        "strike_target": {
+            key: hit_target[key]
+            for key in (
+                "racket_position_m",
+                "racket_quat_xyzw",
+                "racket_normal_w",
+                "racket_tangent_w",
+                "racket_velocity_mps",
+                "racket_velocity_direction_w",
+                "ball_position_m",
+                "ball_in_velocity_mps",
+                "ball_out_velocity_mps",
+                "ball_to_racket_center_distance_m",
+            )
+            if key in hit_target
+        },
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--jobs-json", type=Path, required=True)
@@ -31,15 +73,18 @@ def main() -> None:
     for job in jobs:
         p = Path(job["output_file"])
         z = np.load(p)
+        fps = int(z["fps"][0])
+        metadata = _hit_metadata(job, fps)
         entries.append(
             {
                 "episode_id": str(job["output_name"]),
                 "motion_npz": str(p),
-                "fps": int(z["fps"][0]),
+                "fps": fps,
                 "joint_pos_shape": list(z["joint_pos"].shape),
                 "joint_vel_shape": list(z["joint_vel"].shape),
                 "body_pos_w_shape": list(z["body_pos_w"].shape),
                 "body_quat_w_shape": list(z["body_quat_w"].shape),
+                **metadata,
             }
         )
 

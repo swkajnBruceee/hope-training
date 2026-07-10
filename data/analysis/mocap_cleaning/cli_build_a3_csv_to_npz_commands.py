@@ -70,6 +70,8 @@ def main() -> None:
                 "output_name": episode_id,
                 "input_fps": int(config["time"]["fps"]),
                 "output_fps": int(args.output_fps),
+                "target_npz": str(item.get("target_npz", "")),
+                "target_spec_json": str(item.get("target_spec_json", "")),
             }
         )
 

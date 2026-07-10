@@ -18,6 +18,55 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 
+def _load_strike_metadata(npz_entry: dict, sample: dict) -> dict:
+    metadata = {}
+    if npz_entry.get("hit_event"):
+        metadata["hit_event"] = npz_entry["hit_event"]
+    if npz_entry.get("strike_target"):
+        metadata["strike_target"] = npz_entry["strike_target"]
+    if metadata:
+        return metadata
+
+    spec_path = Path(str(sample.get("target_spec_json", "")))
+    if not spec_path.exists():
+        return {}
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    contract = spec.get("coordinate_contract", {})
+    hit_target = spec.get("hit_target", {})
+    source_fps = float(contract.get("fps", 0.0) or 0.0)
+    hit_index = int(contract.get("hit_index", 0) or 0)
+    motion_fps = int(npz_entry.get("fps", 50))
+    hit_time_from_start_s = float(hit_index / source_fps) if source_fps > 0 else None
+    hit_frame_float = float(hit_time_from_start_s * motion_fps) if hit_time_from_start_s is not None else None
+    hit_frame = int(hit_frame_float) if hit_frame_float is not None else None
+    return {
+        "hit_event": {
+            "source_hit_index": hit_index,
+            "source_fps": source_fps,
+            "hit_time_from_start_s": hit_time_from_start_s,
+            "motion_fps": motion_fps,
+            "motion_hit_frame": hit_frame,
+            "motion_hit_subframe_alpha": float(hit_frame_float - hit_frame) if hit_frame_float is not None and hit_frame is not None else None,
+        },
+        "strike_target": {
+            key: hit_target[key]
+            for key in (
+                "racket_position_m",
+                "racket_quat_xyzw",
+                "racket_normal_w",
+                "racket_tangent_w",
+                "racket_velocity_mps",
+                "racket_velocity_direction_w",
+                "ball_position_m",
+                "ball_in_velocity_mps",
+                "ball_out_velocity_mps",
+                "ball_to_racket_center_distance_m",
+            )
+            if key in hit_target
+        },
+    }
+
+
 def _write_markdown(report: dict, path: Path) -> None:
     lines = [
         "# Fixed-Base Tracking Motion Manifest",
@@ -81,6 +130,7 @@ def main() -> None:
             "optimized_csv": str(sample["optimized_csv"]),
             "target_npz": str(sample["target_npz"]),
             "target_spec_json": str(sample["target_spec_json"]),
+            **_load_strike_metadata(npz_entry, sample),
         }
         entries.append(entry)
         grouped[entry["stroke_type"]].append(entry)

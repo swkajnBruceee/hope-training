@@ -13,3 +13,15 @@ hope_isaac_py scripts/create_smoke_motion.py \
 
 The smoke clip is only for pipeline verification. Replace it with a retargeted
 ping-pong motion before running meaningful training.
+
+Current retargeted ping-pong training data is documented in:
+
+```text
+README_DATASETS.md
+```
+
+Use the balanced training library:
+
+```text
+p2_fixed_competition_global_funnel_balanced20/manifest.json
+```

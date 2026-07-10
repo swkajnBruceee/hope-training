@@ -64,6 +64,11 @@ def _normalize_rows(values: np.ndarray) -> np.ndarray:
     return np.divide(values, np.maximum(norm, 1e-9))
 
 
+def _config_float(mapping: dict[str, Any], key: str, default: float) -> float:
+    value = mapping.get(key, default)
+    return float(value)
+
+
 def _target_axes(quat_xyzw: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     normals = []
     tangents = []
@@ -307,10 +312,15 @@ def _optimize_one(
             hit_idx = np.asarray([support_lookup[int(frame)] for frame in hit_frames], dtype=np.int64)
             hit_prev = np.asarray([support_lookup[max(0, int(frame) - 1)] for frame in hit_frames], dtype=np.int64)
             hit_next = np.asarray([support_lookup[min(n_frames - 1, int(frame) + 1)] for frame in hit_frames], dtype=np.int64)
-            hit_vel_dir = _normalize_rows((support_pos[hit_next] - support_pos[hit_prev]) / max(2.0 * dt, 1e-9))
+            hit_vel = (support_pos[hit_next] - support_pos[hit_prev]) / max(2.0 * dt, 1e-9)
+            hit_vel_dir = _normalize_rows(hit_vel)
+            hit_speed = np.linalg.norm(hit_vel, axis=1)
+            target_speed = np.linalg.norm(target_vel[hit_frames], axis=1)
+            velocity_scale = max(_config_float(opt_cfg, "velocity_magnitude_scale_mps", 2.0), 1e-9)
             res.append((float(opt_cfg["hit_position_weight"]) * (support_pos[hit_idx] - target_pos[hit_frames])).ravel())
             res.append((float(opt_cfg["hit_normal_weight"]) * (support_normal[hit_idx] - target_normal[hit_frames])).ravel())
             res.append((float(opt_cfg["hit_velocity_direction_weight"]) * (hit_vel_dir - target_vel_dir[hit_frames])).ravel())
+            res.append((_config_float(opt_cfg, "hit_velocity_magnitude_weight", 0.0) * ((hit_speed - target_speed) / velocity_scale)).ravel())
             res.append((0.3 * float(opt_cfg["hit_normal_weight"]) * (support_tangent[hit_idx] - target_tangent[hit_frames])).ravel())
         if np.any(corridor_mask):
             corridor_frames = np.flatnonzero(corridor_mask)
@@ -390,6 +400,9 @@ def _evaluate(
     pos, normal, _ = _racket_series(csv_data, base_pos, base_quat)
     vel = np.gradient(pos, 1.0 / float(config["time"]["fps"]), axis=0)
     vel_dir = _normalize_rows(vel)
+    speed = np.linalg.norm(vel, axis=1)
+    target_speed = np.linalg.norm(target_vel, axis=1)
+    speed_err = np.abs(speed - target_speed)
     q = csv_data[:, 7:]
     joint_vel, joint_acc = compute_joint_vel_acc(q, 1.0 / float(config["time"]["fps"]))
     joint_jerk = _joint_jerk(joint_acc, 1.0 / float(config["time"]["fps"]))
@@ -409,6 +422,10 @@ def _evaluate(
         "racket_orientation_error_p90_deg": float(np.nanpercentile(normal_err_deg, 90)),
         "racket_velocity_direction_error_at_hit_deg": float(vel_err_deg[hit_index]),
         "racket_velocity_direction_error_p90_deg": float(np.nanpercentile(vel_err_deg, 90)),
+        "racket_speed_at_hit_mps": float(speed[hit_index]),
+        "target_racket_speed_at_hit_mps": float(target_speed[hit_index]),
+        "racket_speed_error_at_hit_mps": float(speed_err[hit_index]),
+        "racket_speed_error_p90_mps": float(np.nanpercentile(speed_err, 90)),
         "max_active_joint_velocity_radps": float(np.max(np.abs(joint_vel[:, active_idx]))),
         "max_active_joint_acceleration_radps2": float(np.max(np.abs(joint_acc[:, active_idx]))),
         "max_active_joint_jerk_radps3": float(np.max(np.abs(joint_jerk[:, active_idx]))),
@@ -421,7 +438,12 @@ def _quality_layers(metrics: dict[str, Any], csv_data: np.ndarray, config: dict[
     hit_position_pass = metrics["racket_position_error_at_hit_m"] <= float(thresholds["hit_position_reject_m"])
     hit_orientation_pass = metrics["racket_orientation_error_at_hit_deg"] <= float(thresholds["hit_orientation_reject_deg"])
     hit_velocity_direction_pass = metrics["racket_velocity_direction_error_at_hit_deg"] <= float(thresholds["velocity_direction_reject_deg"])
-    geometry_pass = bool(hit_position_pass and hit_orientation_pass and hit_velocity_direction_pass)
+    hit_velocity_magnitude_pass = metrics["racket_speed_error_at_hit_mps"] <= _config_float(
+        thresholds,
+        "velocity_magnitude_reject_mps",
+        float("inf"),
+    )
+    geometry_pass = bool(hit_position_pass and hit_orientation_pass and hit_velocity_direction_pass and hit_velocity_magnitude_pass)
     dynamics_pass = bool(
         metrics["max_active_joint_velocity_radps"] <= float(thresholds["max_joint_velocity_reject_radps"])
         and metrics["max_active_joint_acceleration_radps2"] <= float(thresholds["max_joint_acceleration_reject_radps2"])
@@ -436,6 +458,7 @@ def _quality_layers(metrics: dict[str, Any], csv_data: np.ndarray, config: dict[
         "hit_position_pass": hit_position_pass,
         "hit_orientation_pass": hit_orientation_pass,
         "hit_velocity_direction_pass": hit_velocity_direction_pass,
+        "hit_velocity_magnitude_pass": hit_velocity_magnitude_pass,
         "replay_precheck": precheck,
         "replay_ready": bool(precheck["replay_ready"]),
     }
@@ -464,6 +487,8 @@ def _reject_reasons(metrics: dict[str, Any], layers: dict[str, Any], config: dic
         reasons.append("hit_orientation_error")
     if not layers["hit_velocity_direction_pass"]:
         reasons.append("hit_velocity_direction_error")
+    if not layers["hit_velocity_magnitude_pass"]:
+        reasons.append("hit_velocity_magnitude_error")
     if metrics["max_active_joint_velocity_radps"] > float(thresholds["max_joint_velocity_reject_radps"]):
         reasons.append("joint_velocity")
     if metrics["max_active_joint_acceleration_radps2"] > float(thresholds["max_joint_acceleration_reject_radps2"]):

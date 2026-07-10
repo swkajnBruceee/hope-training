@@ -1,0 +1,92 @@
+{
+  "source_manifest": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_expand_batch003/optimized_manifest.json",
+  "source_motion_npz_manifest": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_expand_batch003/optimized_motion_npz_manifest.json",
+  "replay_ready_count": 5,
+  "stroke_counts": {
+    "backhand": 1,
+    "forehand": 4
+  },
+  "smoke_picks": {
+    "forehand": "T002_019_gao01_5p83_7p83",
+    "backhand": "T03_031_gao01_5p42_7p42"
+  },
+  "motions": [
+    {
+      "episode_id": "T03_031_gao01_5p42_7p42",
+      "stroke_type": "backhand",
+      "stroke_confidence": 1.0,
+      "motion_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_expand_batch003/optimized_motion_npz/T03_031_gao01_5p42_7p42.npz",
+      "fps": 50,
+      "joint_pos_shape": [
+        80,
+        31
+      ],
+      "body_pos_w_shape": [
+        80,
+        32,
+        3
+      ],
+      "optimized_csv": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_expand_batch003/optimized_csv/T03_031_gao01_5p42_7p42.csv",
+      "target_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_expand_batch003/target_npz/T03_031_gao01_5p42_7p42_target.npz",
+      "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_expand_batch003/target_specs/T03_031_gao01_5p42_7p42_target_spec.json",
+      "hit_event": {
+        "source_hit_index": 120,
+        "source_fps": 200.0,
+        "hit_time_from_start_s": 0.6,
+        "motion_fps": 50,
+        "motion_hit_frame": 30,
+        "motion_hit_subframe_alpha": 0.0
+      },
+      "strike_target": {
+        "racket_position_m": [
+          2.691818484483428,
+          -1.1342320032290256,
+          0.30258692263525416
+        ],
+        "racket_quat_xyzw": [
+          -0.5407410674436635,
+          -0.5930140739633885,
+          -0.4724550589267247,
+          0.3643070454380169
+        ],
+        "racket_normal_w": [
+          0.985571539967835,
+          -0.03122936945113497,
+          0.16635343726269858
+        ],
+        "racket_tangent_w": [
+          -0.14975894924822009,
+          0.297096713488478,
+          0.9430301161439194
+        ],
+        "racket_velocity_mps": [
+          -1.8083920193829153,
+          0.0001007443949146928,
+          0.6493847619904431
+        ],
+        "racket_velocity_direction_w": [
+          -0.9411585199886731,
+          5.2431355922164076e-05,
+          0.33796543832718057
+        ],
+        "ball_position_m": [
+          2.6633734684789827,
+          -1.1437400648859681,
+          0.37505036093598776
+        ],
+        "ball_in_velocity_mps": [
+          2.029557704381762,
+          -0.7943954147461599,
+          1.5887022750823017
+        ],
+        "ball_out_velocity_mps": [
+          -3.7637388928979933,
+          0.7332263514697231,
+          1.4944777863227
+        ],
+        "ball_to_racket_center_distance_m": 0.07842494540852163
+      }
+    }
+  ],
+  "stroke": "backhand"
+}

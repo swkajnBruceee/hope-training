@@ -50,11 +50,48 @@ def _normalize_rows(values: np.ndarray) -> np.ndarray:
     return np.divide(values, np.maximum(norm, 1e-9))
 
 
+def _fill_nonfinite_rows(values: np.ndarray, fallback: np.ndarray) -> tuple[np.ndarray, int]:
+    out = np.asarray(values, dtype=np.float64).copy()
+    bad = ~np.isfinite(out).all(axis=1)
+    bad_count = int(np.sum(bad))
+    if bad_count == 0:
+        return out, 0
+    fallback = np.asarray(fallback, dtype=np.float64)
+    last = fallback.copy()
+    for idx in range(out.shape[0]):
+        if np.isfinite(out[idx]).all():
+            last = out[idx].copy()
+        else:
+            out[idx] = last
+    next_valid = fallback.copy()
+    for idx in range(out.shape[0] - 1, -1, -1):
+        if np.isfinite(values[idx]).all():
+            next_valid = out[idx].copy()
+        elif not np.isfinite(out[idx]).all():
+            out[idx] = next_valid
+    out[~np.isfinite(out)] = np.broadcast_to(fallback, out.shape)[~np.isfinite(out)]
+    return out, bad_count
+
+
 def _target_normals(quat_xyzw: np.ndarray) -> np.ndarray:
     normals = []
     for quat in quat_xyzw:
         normals.append(_quat_xyzw_to_matrix(quat)[:, 1])
     return np.asarray(normals, dtype=np.float64)
+
+
+def _target_axes(quat_xyzw: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    normals = []
+    tangents = []
+    for quat in quat_xyzw:
+        rot = _quat_xyzw_to_matrix(quat)
+        normals.append(rot[:, 1])
+        tangents.append(rot[:, 0])
+    return np.asarray(normals, dtype=np.float64), np.asarray(tangents, dtype=np.float64)
+
+
+def _config_float(mapping: dict[str, Any], key: str, default: float) -> float:
+    return float(mapping.get(key, default))
 
 
 def _solve_frame(
@@ -68,20 +105,24 @@ def _solve_frame(
     base_quat: np.ndarray,
     target_pos: np.ndarray,
     target_normal: np.ndarray,
+    target_tangent: np.ndarray,
     weights: dict[str, float],
 ) -> tuple[np.ndarray, dict[str, Any]]:
     joint_index_by_name = {name: i for i, name in enumerate(A3_POLICY_JOINT_ORDER)}
     target_normal = target_normal / max(float(np.linalg.norm(target_normal)), 1e-9)
+    target_tangent = target_tangent / max(float(np.linalg.norm(target_tangent)), 1e-9)
 
     def residual(q_active: np.ndarray) -> np.ndarray:
         q = q_full_default.copy()
         q[active_idx] = q_active
         pos, rot = _fk_racket_state(base_pos, base_quat, q, joint_index_by_name, {"a3_joint_order": A3_POLICY_JOINT_ORDER})
         normal = rot[:, 1]
+        tangent = rot[:, 0]
         return np.concatenate(
             [
                 float(weights["position_weight"]) * (pos - target_pos),
                 float(weights["normal_weight"]) * (normal - target_normal),
+                _config_float(weights, "tangent_weight", 0.0) * (tangent - target_tangent),
                 float(weights["regularization_weight"]) * (q_active - x0),
             ]
         )
@@ -100,16 +141,21 @@ def _evaluate(csv_data: np.ndarray, target_pos: np.ndarray, target_quat: np.ndar
     joint_index_by_name = {name: i for i, name in enumerate(A3_POLICY_JOINT_ORDER)}
     pos = []
     normal = []
+    tangent = []
     for row in csv_data:
         p, r = _fk_racket_state(base_pos, base_quat, row[7:], joint_index_by_name, {"a3_joint_order": A3_POLICY_JOINT_ORDER})
         pos.append(p)
         normal.append(r[:, 1])
+        tangent.append(r[:, 0])
     pos = np.asarray(pos)
     normal = np.asarray(normal)
-    target_normal = _target_normals(target_quat)
+    tangent = np.asarray(tangent)
+    target_normal, target_tangent = _target_axes(target_quat)
     pos_err = np.linalg.norm(pos - target_pos, axis=1)
     normal_cos = np.sum(_normalize_rows(normal) * _normalize_rows(target_normal), axis=1)
     normal_err_deg = np.degrees(np.arccos(np.clip(normal_cos, -1.0, 1.0)))
+    tangent_cos = np.sum(_normalize_rows(tangent) * _normalize_rows(target_tangent), axis=1)
+    tangent_err_deg = np.degrees(np.arccos(np.clip(tangent_cos, -1.0, 1.0)))
     return {
         "racket_position_error_at_hit_m": float(pos_err[hit_index]),
         "racket_position_error_p50_m": float(np.nanpercentile(pos_err, 50)),
@@ -117,7 +163,28 @@ def _evaluate(csv_data: np.ndarray, target_pos: np.ndarray, target_quat: np.ndar
         "racket_orientation_error_at_hit_deg": float(normal_err_deg[hit_index]),
         "racket_orientation_error_p50_deg": float(np.nanpercentile(normal_err_deg, 50)),
         "racket_orientation_error_p90_deg": float(np.nanpercentile(normal_err_deg, 90)),
+        "racket_tangent_error_at_hit_deg": float(tangent_err_deg[hit_index]),
+        "racket_tangent_error_p50_deg": float(np.nanpercentile(tangent_err_deg, 50)),
+        "racket_tangent_error_p90_deg": float(np.nanpercentile(tangent_err_deg, 90)),
     }
+
+
+def _ik_pose_status(metrics: dict[str, Any], thresholds: dict[str, Any]) -> tuple[str, list[str]]:
+    reasons = []
+    position_ok = metrics["racket_position_error_at_hit_m"] <= float(thresholds["hit_position_reject_m"])
+    normal_ok = metrics["racket_orientation_error_at_hit_deg"] <= float(thresholds["hit_orientation_reject_deg"])
+    tangent_gate = bool(thresholds.get("hit_tangent_gate", False))
+    tangent_ok = (not tangent_gate) or metrics["racket_tangent_error_at_hit_deg"] <= _config_float(thresholds, "hit_tangent_reject_deg", float("inf"))
+    if not position_ok:
+        reasons.append("hit_position_error")
+        return "unreachable", reasons
+    if not normal_ok:
+        reasons.append("hit_orientation_error")
+        return "position_reachable", reasons
+    if not tangent_ok:
+        reasons.append("hit_tangent_error")
+        return "pose_reachable", reasons
+    return "seed_ready", reasons
 
 
 def _write_markdown(report: dict[str, Any], path: Path) -> None:
@@ -170,9 +237,12 @@ def main() -> None:
     status_counts = Counter()
     for item in samples:
         target = np.load(item["target_npz"], allow_pickle=True)
-        target_pos = target["racket_pos"].astype(np.float64)
-        target_quat = target["racket_quat"].astype(np.float64)
-        target_normal = _target_normals(target_quat)
+        target_pos, nonfinite_target_pos_frames = _fill_nonfinite_rows(target["racket_pos"].astype(np.float64), np.zeros(3, dtype=np.float64))
+        target_quat, nonfinite_target_quat_frames = _fill_nonfinite_rows(
+            target["racket_quat"].astype(np.float64),
+            np.asarray([0.0, 0.0, 0.0, 1.0], dtype=np.float64),
+        )
+        target_normal, target_tangent = _target_axes(target_quat)
         hit_index = int(target["hit_index"])
         q_default = _default_joint_vector()
         q_active = q_default[active_idx].copy()
@@ -189,6 +259,7 @@ def main() -> None:
                 base_quat=base_quat,
                 target_pos=target_pos[frame],
                 target_normal=target_normal[frame],
+                target_tangent=target_tangent[frame],
                 weights=weights,
             )
             q_full = q_default.copy()
@@ -200,6 +271,7 @@ def main() -> None:
         csv_path = ik_dir / f"{episode_id}.csv"
         write_retarget_csv(csv_path, csv_data)
         metrics = _evaluate(csv_data, target_pos, target_quat, hit_index, base_pos, base_quat)
+        ik_pose_status, reject_reasons = _ik_pose_status(metrics, config["quality_thresholds"])
         metrics.update(
             {
                 "episode_id": episode_id,
@@ -208,14 +280,26 @@ def main() -> None:
                 "active_joints": active_names,
                 "frame_solver_success_count": int(sum(r["success"] for r in frame_reports)),
                 "frames": int(target_pos.shape[0]),
+                "ik_pose_status": ik_pose_status,
+                "reject_reasons": reject_reasons,
+                "nonfinite_target_pos_frames_filled": nonfinite_target_pos_frames,
+                "nonfinite_target_quat_frames_filled": nonfinite_target_quat_frames,
             }
         )
-        status = "pass" if metrics["racket_position_error_at_hit_m"] <= float(config["quality_thresholds"]["hit_position_reject_m"]) else "reject"
+        status = "pass" if ik_pose_status == "seed_ready" else "reject"
         metrics["status"] = status
         status_counts[status] += 1
         quality_path = quality_dir / f"{episode_id}.json"
         quality_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        entries.append({**item, "ik_init_csv": str(csv_path), "ik_quality_report": str(quality_path), "ik_status": status})
+        entries.append(
+            {
+                **item,
+                "ik_init_csv": str(csv_path),
+                "ik_quality_report": str(quality_path),
+                "ik_status": status,
+                "ik_pose_status": ik_pose_status,
+            }
+        )
 
     out_manifest = {
         **manifest,

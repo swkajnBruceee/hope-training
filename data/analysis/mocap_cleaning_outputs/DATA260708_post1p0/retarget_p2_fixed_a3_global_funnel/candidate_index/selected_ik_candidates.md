@@ -1,0 +1,133 @@
+# Ik Candidate Selection
+
+- source index: `data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel/candidate_index/competition_retarget_candidate_index.json`
+- selected: `120`
+- feature mode: `simple`
+
+## Stroke Counts
+
+- `backhand`: 56
+- `forehand`: 64
+
+## Selected
+
+- `001` `T002_027_gao01_8p51_10p51` `backhand` score=3.337
+- `002` `T03_083_gao01_3p65_5p65` `forehand` score=3.299
+- `003` `T03_075_gao01_13p39_15p39` `backhand` score=3.292
+- `004` `T03_077_gao01_5p72_7p72` `backhand` score=3.297
+- `005` `T03_068_gao01_6p12_8p12` `forehand` score=3.282
+- `006` `T002_019_gao01_12p52_14p52` `forehand` score=3.322
+- `007` `T001_001_gao01_4p06_6p06` `backhand` score=3.290
+- `008` `T001_001_gao01_8p81_10p81` `forehand` score=3.269
+- `009` `T03_045_gao01_3p18_5p18` `forehand` score=3.317
+- `010` `T03_019_gao01_6p54_8p54` `forehand` score=3.213
+- `011` `T03_039_gao01_3p14_5p14` `backhand` score=3.298
+- `012` `T03_065_gao01_15p96_17p96` `forehand` score=3.304
+- `013` `T002_021_gao01_4p94_6p94` `forehand` score=3.314
+- `014` `T03_037_gao01_8p09_10p09` `backhand` score=3.318
+- `015` `T03_008_gao01_7p54_9p54` `backhand` score=3.258
+- `016` `T04_007_gao01_6p85_8p85` `forehand` score=3.274
+- `017` `T03_037_gao01_6p48_8p48` `backhand` score=3.278
+- `018` `T002_021_gao01_16p32_18p32` `backhand` score=3.299
+- `019` `T002_015_gao01_15p25_17p25` `forehand` score=3.192
+- `020` `T_018_gao01_1p62_3p62` `forehand` score=3.314
+- `021` `T03_083_gao01_12p31_14p31` `backhand` score=3.300
+- `022` `T002_008_gao01_26p34_28p34` `backhand` score=3.206
+- `023` `T03_065_gao01_14p31_16p31` `forehand` score=3.323
+- `024` `T03_080_gao01_2p42_4p42` `backhand` score=3.270
+- `025` `T04_009_gao01_31p67_33p67` `forehand` score=3.294
+- `026` `T002_015_gao01_17p03_19p03` `forehand` score=3.284
+- `027` `T04_023_gao01_11p09_13p09` `forehand` score=3.289
+- `028` `T03_002_gao01_11p74_13p74` `backhand` score=3.296
+- `029` `T03_016_gao01_7p84_9p84` `forehand` score=3.307
+- `030` `T_009_gao01_9p72_11p72` `backhand` score=3.321
+- `031` `T002_012_gao01_5p34_7p34` `forehand` score=3.327
+- `032` `T002_023_gao01_20p38_22p38` `backhand` score=3.313
+- `033` `T03_059_gao01_1p87_3p87` `forehand` score=3.305
+- `034` `T03_077_gao01_4p39_6p39` `backhand` score=3.320
+- `035` `T04_021_gao01_16p08_18p08` `forehand` score=3.285
+- `036` `T_020_gao01_10p18_12p18` `forehand` score=3.311
+- `037` `T03_037_gao01_5p14_7p14` `forehand` score=3.315
+- `038` `T_019_gao01_0p67_2p67` `backhand` score=3.112
+- `039` `T002_019_gao01_9p39_11p39` `backhand` score=3.309
+- `040` `T_010_gao01_1p22_3p22` `backhand` score=3.307
+- `041` `T03_084_gao01_3p81_5p81` `forehand` score=3.307
+- `042` `T03_076_gao01_12p96_14p96` `backhand` score=3.312
+- `043` `T03_027_gao01_2p88_4p88` `backhand` score=3.297
+- `044` `T04_018_gao01_10p28_12p28` `forehand` score=3.286
+- `045` `T002_019_gao01_4p38_6p38` `forehand` score=3.288
+- `046` `T03_059_gao01_3p27_5p27` `forehand` score=3.302
+- `047` `T03_078_gao01_0p81_2p81` `forehand` score=3.303
+- `048` `T03_075_gao01_15p00_17p00` `backhand` score=3.313
+- `049` `T04_014_gao01_5p96_7p96` `forehand` score=3.308
+- `050` `T04_010_gao01_4p89_6p89` `backhand` score=3.308
+- `051` `T03_019_gao01_4p80_6p80` `backhand` score=3.306
+- `052` `T002_015_gao01_18p98_20p98` `backhand` score=3.297
+- `053` `T03_012_gao01_2p76_4p76` `forehand` score=3.306
+- `054` `T03_052_gao01_8p26_10p26` `forehand` score=3.317
+- `055` `T03_039_gao01_1p84_3p84` `forehand` score=3.213
+- `056` `T03_034_gao01_4p89_6p89` `backhand` score=3.303
+- `057` `T03_076_gao01_4p57_6p57` `backhand` score=3.282
+- `058` `T_020_gao01_11p83_13p83` `forehand` score=3.301
+- `059` `T002_008_gao01_18p51_20p51` `forehand` score=3.306
+- `060` `T03_022_gao01_19p39_21p39` `backhand` score=3.309
+- `061` `T03_034_gao01_6p12_8p12` `backhand` score=3.299
+- `062` `T03_069_gao01_5p55_7p55` `forehand` score=3.312
+- `063` `T_006_gao01_33p66_35p66` `backhand` score=3.317
+- `064` `T03_072_gao01_3p94_5p94` `backhand` score=3.271
+- `065` `T03_080_gao01_3p97_5p97` `backhand` score=3.300
+- `066` `T001_002_gao01_5p67_7p67` `forehand` score=3.304
+- `067` `T03_050_gao01_8p65_10p65` `forehand` score=3.280
+- `068` `T_019_gao01_5p22_7p22` `forehand` score=3.295
+- `069` `T03_067_gao01_5p75_7p75` `forehand` score=3.317
+- `070` `T002_015_gao01_24p74_26p74` `backhand` score=3.106
+- `071` `T04_021_gao01_10p13_12p13` `forehand` score=3.263
+- `072` `T_021_gao01_6p44_8p44` `forehand` score=3.319
+- `073` `T03_005_gao01_1p51_3p51` `forehand` score=3.313
+- `074` `T_013_gao01_12p92_14p92` `backhand` score=3.317
+- `075` `T03_075_gao01_1p68_3p68` `forehand` score=3.221
+- `076` `T002_015_gao01_10p34_12p34` `forehand` score=3.322
+- `077` `T03_052_gao01_4p20_6p20` `forehand` score=3.301
+- `078` `T_011_gao01_10p78_12p78` `backhand` score=3.291
+- `079` `T04_001_gao01_10p93_12p93` `forehand` score=3.315
+- `080` `T04_009_gao01_19p08_21p08` `forehand` score=3.317
+- `081` `T002_022_gao01_1p61_3p61` `backhand` score=3.318
+- `082` `T03_076_gao01_9p28_11p28` `backhand` score=3.279
+- `083` `T03_022_gao01_23p38_25p38` `forehand` score=3.309
+- `084` `T03_079_gao01_7p46_9p46` `backhand` score=3.322
+- `085` `T03_080_gao01_0p83_2p83` `backhand` score=3.307
+- `086` `T03_083_gao01_1p73_3p73` `forehand` score=3.310
+- `087` `T03_034_gao01_10p94_12p94` `backhand` score=3.317
+- `088` `T03_013_gao01_19p01_21p01` `backhand` score=3.300
+- `089` `T04_021_gao01_0p98_2p98` `forehand` score=3.316
+- `090` `T03_079_gao01_4p36_6p36` `backhand` score=3.291
+- `091` `T_018_gao01_3p20_5p20` `forehand` score=3.323
+- `092` `T03_028_gao01_2p73_4p72` `backhand` score=3.313
+- `093` `T_020_gao01_8p15_10p15` `forehand` score=3.312
+- `094` `T03_038_gao01_3p99_5p99` `backhand` score=3.309
+- `095` `T03_038_gao01_2p71_4p71` `backhand` score=3.294
+- `096` `T03_038_gao01_1p46_3p46` `forehand` score=3.323
+- `097` `T002_021_gao01_8p25_10p25` `forehand` score=3.194
+- `098` `T002_013_gao01_4p18_6p18` `forehand` score=3.182
+- `099` `T001_003_gao01_4p34_6p34` `forehand` score=3.313
+- `100` `T_018_gao01_4p53_6p53` `forehand` score=3.301
+- `101` `T03_076_gao01_3p11_5p11` `backhand` score=3.293
+- `102` `T03_039_gao01_5p62_7p62` `backhand` score=3.304
+- `103` `T03_008_gao01_5p73_7p73` `forehand` score=3.309
+- `104` `T03_008_gao01_9p28_11p28` `backhand` score=3.316
+- `105` `T_006_gao01_8p03_10p03` `backhand` score=3.304
+- `106` `T002_006_gao01_31p77_33p77` `backhand` score=3.288
+- `107` `T_019_gao01_7p08_9p08` `backhand` score=3.307
+- `108` `T03_032_gao01_18p51_20p51` `backhand` score=3.311
+- `109` `T03_052_gao01_2p59_4p59` `forehand` score=3.281
+- `110` `T03_034_gao01_1p26_3p26` `backhand` score=3.294
+- `111` `T002_012_gao01_6p62_8p62` `forehand` score=3.222
+- `112` `T03_075_gao01_7p10_9p10` `backhand` score=3.321
+- `113` `T04_023_gao01_2p76_4p76` `forehand` score=3.311
+- `114` `T002_021_gao01_1p73_3p73` `forehand` score=3.308
+- `115` `T03_067_gao01_4p29_6p29` `forehand` score=3.317
+- `116` `T03_014_gao01_22p32_24p32` `backhand` score=3.308
+- `117` `T03_053_gao01_2p92_4p92` `forehand` score=3.291
+- `118` `T03_076_gao01_1p56_3p56` `backhand` score=3.295
+- `119` `T03_068_gao01_1p67_3p67` `forehand` score=3.314
+- `120` `T_020_gao01_13p62_15p62` `forehand` score=3.297

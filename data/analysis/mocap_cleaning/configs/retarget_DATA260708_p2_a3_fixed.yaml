@@ -15,6 +15,8 @@ selection:
     - forehand
     - backhand
   per_stroke_target: 10
+  diversity_sampling: true
+  allow_unknown: false
 
 time:
   fps: 200
@@ -46,6 +48,7 @@ ik:
     - right_wrist_yaw_joint
   position_weight: 8.0
   normal_weight: 0.8
+  tangent_weight: 0.2
   velocity_direction_weight: 1.2
   regularization_weight: 0.04
   max_nfev_per_frame: 40
@@ -55,6 +58,8 @@ optimization:
   hit_position_weight: 20.0
   hit_normal_weight: 1.2
   hit_velocity_direction_weight: 2.4
+  hit_velocity_magnitude_weight: 1.2
+  velocity_magnitude_scale_mps: 2.0
   near_corridor_position_weight: 5.0
   near_corridor_normal_weight: 0.45
   near_corridor_velocity_direction_weight: 0.9
@@ -94,8 +99,12 @@ quality_thresholds:
   hit_position_reject_m: 0.060
   hit_orientation_warning_deg: 12.0
   hit_orientation_reject_deg: 20.0
+  hit_tangent_warning_deg: 25.0
+  hit_tangent_reject_deg: 45.0
   velocity_direction_warning_deg: 15.0
   velocity_direction_reject_deg: 25.0
+  velocity_magnitude_warning_mps: 0.8
+  velocity_magnitude_reject_mps: 1.5
   max_joint_velocity_warning_radps: 10.0
   max_joint_velocity_reject_radps: 12.0
   max_joint_acceleration_warning_radps2: 90.0
