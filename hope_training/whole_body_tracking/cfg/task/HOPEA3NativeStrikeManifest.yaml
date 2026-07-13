@@ -1,0 +1,97 @@
+# =============================================================================
+# A3 native-MOTION strike policy task.
+#
+# Active deployment contract:
+#   native A3 MOTION / MC = standing, balance, legs
+#   RL policy              = waist + right arm strike command execution
+#   manifest / planner     = racket target pos/vel/normal/time/stroke
+#
+# This is not the old 31-DOF whole-body PPO route.
+# =============================================================================
+
+name: HOPEA3NativeStrikeManifest
+gym_task: HOPE-NativeStrike-AgibotA3-v0
+experiment_name: agibot_a3_native_strike_manifest
+
+registry_name: ${oc.env:WANDB_REGISTRY_ORG,your-wandb-org}/wandb-registry-motions/hope_forehand
+motion_manifest: sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k4_posture_balanced_v2/manifest.json
+manifest_subset_size: 4
+manifest_frame_z_offset: 0.76
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  episode_length_s: 2.0
+
+actions:
+  # Reference-lock default: posture-compatible manifest replay is currently the
+  # only verified usable executor. PPO residual correction is a separate
+  # experiment and must be enabled explicitly from the command line.
+  raw_clip: 0.5
+  soft_limit_margin_frac: 0.0
+  native_residual_scale: 0.0
+  native_joint_scale_multipliers:
+    waist_roll_joint: 0.35
+    waist_pitch_joint: 0.45
+    right_shoulder_roll_joint: 0.50
+    right_elbow_joint: 0.55
+    right_wrist_yaw_joint: 0.50
+
+rewards:
+  # Hit objective kept for residual-correction experiments. In reference-lock
+  # mode the zero residual manifest replay already matches the hit target.
+  racket_position_weight: 4.0
+  racket_position_std: 0.30
+  racket_position_y_weight: 1.0
+  racket_position_y_std: 0.10
+  racket_position_fine_weight: 1.0
+  racket_position_fine_std: 0.08
+  racket_position_y_fine_weight: 0.3
+  racket_position_y_fine_std: 0.045
+  racket_velocity_weight: 1.5
+  racket_velocity_std: 2.0
+  racket_normal_weight: 2.0
+  racket_normal_std: 0.45
+  racket_hit_coupled_weight: 4.0
+  racket_hit_coupled:
+    pos_std: 0.08
+    vel_std: 2.0
+    normal_std: 0.45
+    base: 0.15
+    vel_coeff: 0.25
+    normal_coeff: 0.60
+
+  # Motion is now only an upper strike-chain prior inside the env class.
+  motion_scale: 1.0
+  motion_torso_ori_weight: 1.0
+  motion_torso_ori_std: 0.22
+  motion_native_joint_pos_weight: 0.8
+  motion_native_joint_pos_std: 0.35
+
+  joint_torques_weight: -0.000001
+  action_rate_weight: -0.03
+  action_residual_weight: -1.0
+  joint_limit_weight: -15.0
+
+racket:
+  target_mode: manifest
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  strike_time_std_s: 0.04
+  strike_success_pos_thresh: 0.10
+  strike_success_vel_thresh: 2.0
+  strike_success_normal_thresh_deg: 20.0
+
+  ref_perturb_success_gated: false
+
+  forehand_on_negative_y: true
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0
+
+domain_rand:
+  # Keep this conservative until the native-strike action interface passes K=1.
+  pd_gain_range: null

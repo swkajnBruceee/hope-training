@@ -23,9 +23,18 @@ wandb_path: null      # optional <entity>/<project>/<run_id> trained run to load
 checkpoint: null      # explicit local model_*.pt path (takes precedence over wandb_path / latest-local)
 registry_name: null   # motion override for the local-checkpoint path (falls back to task.registry_name)
 motion_file: null     # explicit motion .npz override
+motion_manifest: null
+manifest_subset_size: null
+manifest_frame_z_offset: null
 
 video: false
 video_length: 200
+max_steps: null
+
+# Optional live/video camera override. These values frame the fixed-base A3
+# native strike scene around the robot at x~=3.15, y~=-0.34.
+camera_eye: [5.0, -2.5, 2.2]
+camera_lookat: [3.15, -0.34, 1.05]
 
 hydra:
   job:

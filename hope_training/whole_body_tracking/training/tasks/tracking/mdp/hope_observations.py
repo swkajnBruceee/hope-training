@@ -4,14 +4,14 @@ These wrap :class:`RacketTargetCommand`. The actor (policy) group should use onl
 quantities the planner provides at deploy time (HITTER actor observation, Table I):
 
 * :func:`racket_target_pos_b`  — desired racket position relative to base (3)
-* :func:`racket_target_vel_w`  — desired racket velocity in world frame (3)
+* :func:`racket_target_vel_b`  — desired racket velocity in base frame (3)
+* :func:`racket_target_normal_b` — desired racket normal in base frame (3)
 * :func:`time_to_strike`       — time remaining until strike (1)
 * :func:`base_target_pos_b`    — desired base XY position relative to base (2)
 
-The desired racket *normal* and the *actual* racket state are privileged/critic-only or used by
-the reward; they are intentionally NOT in the HITTER actor observation (the racket is never sensed
-on hardware). :func:`swing_type` is provided for a unified forehand+backhand policy variant; the
-HOPE default trains separate policies and does not need it.
+The actual racket state can be actor-visible when it is computed from deployable proprioception
+(joint state + fixed racket mount FK). :func:`swing_type` is provided for a unified forehand+backhand
+policy.
 """
 
 from __future__ import annotations
@@ -40,6 +40,14 @@ def racket_target_vel_w(env: ManagerBasedRLEnv, command_name: str) -> torch.Tens
     return _cmd(env, command_name).racket_target_vel_w
 
 
+def racket_target_vel_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    return _cmd(env, command_name).racket_target_vel_b()
+
+
+def racket_target_normal_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    return _cmd(env, command_name).racket_target_normal_b()
+
+
 def time_to_strike(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
     return _cmd(env, command_name).time_to_strike.unsqueeze(-1)
 
@@ -59,18 +67,30 @@ def racket_target_normal_w(env: ManagerBasedRLEnv, command_name: str) -> torch.T
 
 
 def racket_pos_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
-    """Actual racket position relative to base (FK). Privileged — not sensed on hardware."""
+    """Actual racket position relative to base yaw frame (FK from robot joint state)."""
     cmd = _cmd(env, command_name)
     return quat_rotate_inverse(yaw_quat(cmd.base_quat_w), cmd.racket_pos_w - cmd.base_pos_w)
 
 
+def racket_lin_vel_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Actual racket linear velocity in base yaw frame (FK from robot joint state)."""
+    cmd = _cmd(env, command_name)
+    return quat_rotate_inverse(yaw_quat(cmd.base_quat_w), cmd.racket_lin_vel_w)
+
+
+def racket_normal_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Actual racket face normal in base yaw frame (FK from robot joint state)."""
+    cmd = _cmd(env, command_name)
+    return quat_rotate_inverse(yaw_quat(cmd.base_quat_w), cmd.racket_normal_w)
+
+
 def racket_lin_vel_w(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
-    """Actual racket linear velocity (FK), world frame. Privileged."""
+    """Actual racket linear velocity (FK), world frame."""
     return _cmd(env, command_name).racket_lin_vel_w
 
 
 def racket_normal_w(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
-    """Actual racket face normal (FK), world frame. Privileged."""
+    """Actual racket face normal (FK), world frame."""
     return _cmd(env, command_name).racket_normal_w
 
 

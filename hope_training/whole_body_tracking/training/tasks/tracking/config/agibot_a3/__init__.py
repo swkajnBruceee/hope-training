@@ -1,6 +1,6 @@
 import gymnasium as gym
 
-from . import agents, flat_env_cfg, hope_env_cfg
+from . import agents, flat_env_cfg, hope_env_cfg, native_strike_env_cfg
 
 ##
 # Register Gym environments.
@@ -24,6 +24,17 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": hope_env_cfg.HOPEPingPongAgibotA3EnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# A3 native-MOTION strike route: policy commands only waist + right arm.
+gym.register(
+    id="HOPE-NativeStrike-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3NativeStrikeEnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
     },
 )

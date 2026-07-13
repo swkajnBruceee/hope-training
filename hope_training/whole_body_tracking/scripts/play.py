@@ -82,7 +82,14 @@ def _run_play(cfg, simulation_app):
         wandb_run.file(str(fname)).download("./logs/rsl_rl/temp", replace=True)
         resume_path = f"./logs/rsl_rl/temp/{fname}"
         print(f"[INFO] Loading model checkpoint from: {run_path}/{fname}")
-        if has_motion_command and cfg.motion_file is not None:
+        if has_motion_command and cfg.get("motion_manifest", None) is not None:
+            env_cfg.commands.motion.motion_manifest = str(cfg.motion_manifest)
+            env_cfg.commands.motion.motion_file = None
+            if cfg.get("manifest_subset_size", None) is not None:
+                env_cfg.commands.motion.manifest_subset_size = int(cfg.manifest_subset_size)
+            if cfg.get("manifest_frame_z_offset", None) is not None:
+                env_cfg.commands.motion.manifest_frame_z_offset = float(cfg.manifest_frame_z_offset)
+        elif has_motion_command and cfg.motion_file is not None:
             env_cfg.commands.motion.motion_file = str(cfg.motion_file)
         elif has_motion_command:
             art = next((a for a in wandb_run.used_artifacts() if a.type == "motions"), None)
@@ -97,7 +104,32 @@ def _run_play(cfg, simulation_app):
             resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
         print(f"[INFO] Loading model checkpoint from: {resume_path}")
         reg = cfg.registry_name if cfg.registry_name is not None else cfg.task.get("registry_name")
-        if has_motion_command and cfg.motion_file is not None:
+        motion_manifest = cfg.get("motion_manifest", None)
+        if motion_manifest is None:
+            motion_manifest = cfg.task.get("motion_manifest")
+        if has_motion_command and motion_manifest is not None:
+            manifest_path = pathlib.Path(str(motion_manifest)).expanduser()
+            if not manifest_path.is_absolute():
+                manifest_path = pathlib.Path.cwd() / manifest_path
+            env_cfg.commands.motion.motion_manifest = str(manifest_path)
+            env_cfg.commands.motion.motion_file = None
+            subset_size = cfg.get("manifest_subset_size", None)
+            if subset_size is None:
+                subset_size = cfg.task.get("manifest_subset_size")
+            if subset_size is not None:
+                env_cfg.commands.motion.manifest_subset_size = int(subset_size)
+            frame_z_offset = cfg.get("manifest_frame_z_offset", None)
+            if frame_z_offset is None:
+                frame_z_offset = cfg.task.get("manifest_frame_z_offset")
+            if frame_z_offset is not None:
+                env_cfg.commands.motion.manifest_frame_z_offset = float(frame_z_offset)
+            print(
+                f"[INFO] using local motion_manifest: {manifest_path} "
+                f"(subset_size={env_cfg.commands.motion.manifest_subset_size}, "
+                f"frame_z_offset={env_cfg.commands.motion.manifest_frame_z_offset:.4f}m)",
+                flush=True,
+            )
+        elif has_motion_command and cfg.motion_file is not None:
             env_cfg.commands.motion.motion_file = str(cfg.motion_file)
         elif has_motion_command and reg is not None:
             import wandb
@@ -112,7 +144,11 @@ def _run_play(cfg, simulation_app):
 
     render_mode = "rgb_array" if cfg.video else None
     env = gym.make(task_id, cfg=env_cfg, render_mode=render_mode)
-    if cfg.video:
+    camera_eye = cfg.get("camera_eye", None)
+    camera_lookat = cfg.get("camera_lookat", None)
+    if camera_eye is not None and camera_lookat is not None:
+        env.unwrapped.sim.set_camera_view(eye=list(camera_eye), target=list(camera_lookat))
+    elif cfg.video:
         viewer_cfg = getattr(env_cfg, "viewer", None)
         if viewer_cfg is not None:
             env.unwrapped.sim.set_camera_view(eye=viewer_cfg.eye, target=viewer_cfg.lookat)
@@ -172,12 +208,24 @@ def _run_play(cfg, simulation_app):
     first_contact_count = 0
     contact_forward_count = 0
     has_ball = "ball" in env.unwrapped.scene.rigid_objects
+    command_metric_sums = {}
+    command_metric_count = 0
     timestep = 0
     while simulation_app.is_running():
         with torch.inference_mode():
             actions = policy(obs)
             obs, _, _, _ = env.step(actions.to(env.unwrapped.device))
             obs = _obs_to_device(obs, agent_cfg.device)
+            if hasattr(env.unwrapped.command_manager, "get_term"):
+                try:
+                    racket_cmd = env.unwrapped.command_manager.get_term("racket_target")
+                except Exception:
+                    racket_cmd = None
+                if racket_cmd is not None:
+                    for name, value in getattr(racket_cmd, "metrics", {}).items():
+                        if name.startswith(("racket_", "strike_", "exact_", "action_", "joint_")):
+                            command_metric_sums[name] = command_metric_sums.get(name, 0.0) + float(value.mean().item())
+                    command_metric_count += 1
             if has_ball:
                 ball = env.unwrapped.scene["ball"]
                 racket_pos_w, _, _ = racket_state_w(env.unwrapped)
@@ -273,6 +321,10 @@ def _run_play(cfg, simulation_app):
         )
     else:
         print("[INFO] replay metrics: scene has no ball entity; skipped table-tennis contact metrics.", flush=True)
+    if command_metric_count:
+        print("[INFO] manifest command metrics:", flush=True)
+        for name in sorted(command_metric_sums):
+            print(f"[INFO]   {name}={command_metric_sums[name] / command_metric_count:.4f}", flush=True)
 
     env.close()
 

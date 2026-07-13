@@ -5,7 +5,7 @@ This environment extends the A3 motion-tracking baseline
 
 * a :class:`RacketTargetCommand` that samples the desired racket state (position/velocity/normal)
   and desired base XY each swing, and computes the actual racket state by FK through ``T_mount``;
-* HOPE actor observations (desired racket pos rel-base, desired racket vel/normal world,
+* HOPE actor observations (desired racket pos/vel/normal in base frame,
   time-to-strike, desired base XY rel-base) plus projected gravity, with privileged actual racket
   state on the critic;
 * HITTER goal rewards (base-position before strike; racket pos/vel/normal in a window around strike),
@@ -63,7 +63,13 @@ class HOPECommandsCfg(CommandsCfg):
 class HOPEObservationsCfg(ObservationsCfg):
     @configclass
     class HOPEPolicyCfg(ObservationsCfg.PolicyCfg):
-        # Appended after the BeyondMimic proprioceptive + motion terms.
+        # Deployable WBC actor: proprioception + strike command only.
+        # Remove inherited reference-motion actor observations from ObservationsCfg.PolicyCfg.
+        command = None
+        motion_anchor_pos_b = None
+        motion_anchor_ori_b = None
+        base_lin_vel = None
+
         projected_gravity = ObsTerm(func=mdp.projected_gravity, noise=Unoise(n_min=-0.05, n_max=0.05))
         base_target_pos_b = ObsTerm(func=mdp.base_target_pos_b, params={"command_name": "racket_target"})
         racket_target_pos_b = ObsTerm(
@@ -71,16 +77,17 @@ class HOPEObservationsCfg(ObservationsCfg):
             params={"command_name": "racket_target"},
             noise=Unoise(n_min=-0.02, n_max=0.02),
         )
-        racket_target_vel_w = ObsTerm(func=mdp.racket_target_vel_w, params={"command_name": "racket_target"})
-        racket_target_normal_w = ObsTerm(func=mdp.racket_target_normal_w, params={"command_name": "racket_target"})
+        racket_target_vel_b = ObsTerm(func=mdp.racket_target_vel_b, params={"command_name": "racket_target"})
+        racket_target_normal_b = ObsTerm(func=mdp.racket_target_normal_b, params={"command_name": "racket_target"})
         time_to_strike = ObsTerm(func=mdp.time_to_strike, params={"command_name": "racket_target"})
-        # swing_type omitted by default (constant per forehand/backhand policy). Enable for a unified policy:
-        # swing_type = ObsTerm(func=mdp.swing_type, params={"command_name": "racket_target"})
+        swing_type = ObsTerm(func=mdp.swing_type, params={"command_name": "racket_target"})
 
     @configclass
     class HOPECriticCfg(ObservationsCfg.PrivilegedCfg):
         base_target_pos_b = ObsTerm(func=mdp.base_target_pos_b, params={"command_name": "racket_target"})
         racket_target_pos_b = ObsTerm(func=mdp.racket_target_pos_b, params={"command_name": "racket_target"})
+        racket_target_vel_b = ObsTerm(func=mdp.racket_target_vel_b, params={"command_name": "racket_target"})
+        racket_target_normal_b = ObsTerm(func=mdp.racket_target_normal_b, params={"command_name": "racket_target"})
         racket_target_vel_w = ObsTerm(func=mdp.racket_target_vel_w, params={"command_name": "racket_target"})
         racket_target_normal_w = ObsTerm(func=mdp.racket_target_normal_w, params={"command_name": "racket_target"})
         time_to_strike = ObsTerm(func=mdp.time_to_strike, params={"command_name": "racket_target"})

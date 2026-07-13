@@ -26,6 +26,11 @@ from analysis.mocap_cleaning.a3_refinement_solver import _fk_racket_state, load_
 from analysis.mocap_cleaning.config import load_config
 
 
+WAIST_YAW_ABS_LIMIT_RAD = 1.00
+WAIST_YAW_REGULARIZATION_SCALE = 5.0
+WAIST_YAW_NOMINAL_WEIGHT = 0.20
+
+
 def _quat_xyzw_to_matrix(quat: np.ndarray) -> np.ndarray:
     x, y, z, w = quat
     xx, yy, zz = x * x, y * y, z * z
@@ -109,8 +114,14 @@ def _solve_frame(
     weights: dict[str, float],
 ) -> tuple[np.ndarray, dict[str, Any]]:
     joint_index_by_name = {name: i for i, name in enumerate(A3_POLICY_JOINT_ORDER)}
+    active_names = [A3_POLICY_JOINT_ORDER[i] for i in active_idx]
+    waist_yaw_local_idx = active_names.index("waist_yaw_joint") if "waist_yaw_joint" in active_names else None
     target_normal = target_normal / max(float(np.linalg.norm(target_normal)), 1e-9)
     target_tangent = target_tangent / max(float(np.linalg.norm(target_tangent)), 1e-9)
+    reg_weight = np.ones(len(active_idx), dtype=np.float64) * float(weights["regularization_weight"])
+    waist_yaw_abs_limit = _config_float(weights, "waist_yaw_abs_limit_rad", WAIST_YAW_ABS_LIMIT_RAD)
+    if waist_yaw_local_idx is not None:
+        reg_weight[waist_yaw_local_idx] *= WAIST_YAW_REGULARIZATION_SCALE
 
     def residual(q_active: np.ndarray) -> np.ndarray:
         q = q_full_default.copy()
@@ -118,19 +129,28 @@ def _solve_frame(
         pos, rot = _fk_racket_state(base_pos, base_quat, q, joint_index_by_name, {"a3_joint_order": A3_POLICY_JOINT_ORDER})
         normal = rot[:, 1]
         tangent = rot[:, 0]
-        return np.concatenate(
-            [
-                float(weights["position_weight"]) * (pos - target_pos),
-                float(weights["normal_weight"]) * (normal - target_normal),
-                _config_float(weights, "tangent_weight", 0.0) * (tangent - target_tangent),
-                float(weights["regularization_weight"]) * (q_active - x0),
-            ]
-        )
+        terms = [
+            float(weights["position_weight"]) * (pos - target_pos),
+            float(weights["normal_weight"]) * (normal - target_normal),
+            _config_float(weights, "tangent_weight", 0.0) * (tangent - target_tangent),
+            reg_weight * (q_active - x0),
+        ]
+        if waist_yaw_local_idx is not None:
+            waist_default = q_full_default[active_idx[waist_yaw_local_idx]]
+            terms.append(np.asarray([WAIST_YAW_NOMINAL_WEIGHT * (q_active[waist_yaw_local_idx] - waist_default)], dtype=np.float64))
+        return np.concatenate(terms)
+
+    solve_lower = lower.copy()
+    solve_upper = upper.copy()
+    if waist_yaw_local_idx is not None:
+        waist_default = q_full_default[active_idx[waist_yaw_local_idx]]
+        solve_lower[waist_yaw_local_idx] = max(solve_lower[waist_yaw_local_idx], waist_default - waist_yaw_abs_limit)
+        solve_upper[waist_yaw_local_idx] = min(solve_upper[waist_yaw_local_idx], waist_default + waist_yaw_abs_limit)
 
     result = least_squares(
         residual,
-        x0=np.clip(x0, lower, upper),
-        bounds=(lower, upper),
+        x0=np.clip(x0, solve_lower, solve_upper),
+        bounds=(solve_lower, solve_upper),
         max_nfev=int(weights["max_nfev_per_frame"]),
         verbose=0,
     )

@@ -64,6 +64,25 @@ A3_TRACKED_BODIES = [
 A3_FEET_BODIES = ["left_ankle_roll_Link", "right_ankle_roll_Link"]
 A3_HAND_BODIES = ["left_wrist_yaw_Link", "right_wrist_yaw_Link"]
 
+# Native-strike trainable joints. These match the A3 official control split:
+# native MOTION/MC owns standing and lower body, while the learned strike policy
+# commands waist + the paddle arm.
+A3_WAIST_JOINTS = [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+]
+A3_RIGHT_ARM_JOINTS = [
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint",
+]
+A3_NATIVE_STRIKE_JOINTS = A3_WAIST_JOINTS + A3_RIGHT_ARM_JOINTS
+
 # Joint order for reading the retargeted-motion CSV in scripts/csv_to_npz.py. This is the order of
 # the *DOF columns* in the A3 retargeted CSV (columns 7: after base pos/quat), i.e. the order your
 # GMR retargeting outputs — NOT the simulation articulation order (the npz stores joint_pos in the
@@ -306,3 +325,19 @@ for _act in AGIBOT_A3_CFG.actuators.values():
     for _n in _names:
         if _n in _eff and _n in _stiff and _stiff[_n]:
             AGIBOT_A3_ACTION_SCALE[_n] = 0.25 * _eff[_n] / _stiff[_n]
+
+# Conservative exact-name scales for the native MOTION + waist/right-arm strike
+# route. The generic AGIBOT_A3_ACTION_SCALE is regex-oriented; this map is used
+# when the action term explicitly lists A3_NATIVE_STRIKE_JOINTS.
+AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE = {
+    "waist_yaw_joint": 0.20,
+    "waist_roll_joint": 0.12,
+    "waist_pitch_joint": 0.14,
+    "right_shoulder_pitch_joint": 0.28,
+    "right_shoulder_roll_joint": 0.32,
+    "right_shoulder_yaw_joint": 0.28,
+    "right_elbow_joint": 0.24,
+    "right_wrist_roll_joint": 0.14,
+    "right_wrist_pitch_joint": 0.12,
+    "right_wrist_yaw_joint": 0.12,
+}

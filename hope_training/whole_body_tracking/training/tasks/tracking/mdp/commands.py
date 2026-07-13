@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import json
 import numpy as np
 import os
 import torch
@@ -58,6 +59,206 @@ class MotionLoader:
         return self._body_ang_vel_w[:, self._body_indexes]
 
 
+class MotionLibraryLoader:
+    """GPU tensor motion library loaded from a balanced training manifest."""
+
+    def __init__(
+        self,
+        manifest_file: str,
+        body_indexes: Sequence[int],
+        device: str = "cpu",
+        subset_size: int | None = None,
+        expected_fps: int | None = 50,
+        frame_z_offset: float = 0.0,
+        ground_align: bool = False,
+    ):
+        self.manifest_file = self._resolve_path(manifest_file)
+        with open(self.manifest_file, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        entries = list(manifest.get("motions", []))
+        if not entries:
+            raise ValueError(f"motion manifest has no motions: {self.manifest_file}")
+        if subset_size is not None and int(subset_size) > 0:
+            entries = self._balanced_subset(entries, int(subset_size))
+
+        self.entries = entries
+        self.episode_ids = [str(e.get("episode_id", i)) for i, e in enumerate(entries)]
+        self.stroke_types = [str(e.get("stroke_type", "unknown")).lower() for e in entries]
+        self.stroke_ids = torch.tensor(
+            [0 if s == "forehand" else 1 if s == "backhand" else -1 for s in self.stroke_types],
+            dtype=torch.long,
+            device=device,
+        )
+        self.forehand_ids = torch.where(self.stroke_ids == 0)[0]
+        self.backhand_ids = torch.where(self.stroke_ids == 1)[0]
+
+        arrays: list[dict[str, np.ndarray | float | int]] = []
+        motion_paths: list[str] = []
+        for entry in entries:
+            motion_path = self._entry_motion_path(entry)
+            motion_paths.append(motion_path)
+            data = np.load(motion_path)
+            fps = int(data["fps"])
+            if expected_fps is not None and fps != int(expected_fps):
+                raise ValueError(f"{motion_path}: fps={fps}, expected {expected_fps}")
+            joint_pos = np.asarray(data["joint_pos"], dtype=np.float32)
+            body_pos_w = np.asarray(data["body_pos_w"], dtype=np.float32)
+            if joint_pos.shape[-1] != 31:
+                raise ValueError(f"{motion_path}: joint_pos shape {joint_pos.shape}, expected [...,31]")
+            if body_pos_w.shape[-2] != 32:
+                raise ValueError(f"{motion_path}: body_pos_w shape {body_pos_w.shape}, expected [...,32,3]")
+            hit_frame = int(entry.get("hit_event", {}).get("motion_hit_frame", round(0.46 * (joint_pos.shape[0] - 1))))
+            if not (0 <= hit_frame < joint_pos.shape[0]):
+                raise ValueError(f"{motion_path}: invalid hit_frame={hit_frame} for length={joint_pos.shape[0]}")
+
+            target = entry.get("strike_target", {})
+            normal = np.asarray(target.get("racket_normal_w", [0.0, 0.0, 1.0]), dtype=np.float32)
+            n = float(np.linalg.norm(normal))
+            if not np.isfinite(n) or n < 1e-6:
+                raise ValueError(f"{motion_path}: invalid racket_normal_w={normal}")
+            normal = normal / n
+
+            arrays.append(
+                {
+                    "fps": fps,
+                    "joint_pos": joint_pos,
+                    "joint_vel": np.asarray(data["joint_vel"], dtype=np.float32),
+                    "body_pos_w": body_pos_w,
+                    "body_quat_w": np.asarray(data["body_quat_w"], dtype=np.float32),
+                    "body_lin_vel_w": np.asarray(data["body_lin_vel_w"], dtype=np.float32),
+                    "body_ang_vel_w": np.asarray(data["body_ang_vel_w"], dtype=np.float32),
+                    "hit_frame": hit_frame,
+                    "strike_pos_w": np.asarray(target.get("racket_position_m", [0.0, 0.0, 0.0]), dtype=np.float32),
+                    "strike_vel_w": np.asarray(target.get("racket_velocity_mps", [0.0, 0.0, 0.0]), dtype=np.float32),
+                    "strike_normal_w": normal,
+                }
+            )
+
+        self.frame_z_offset = float(frame_z_offset)
+        if self.frame_z_offset != 0.0:
+            for a in arrays:
+                a["body_pos_w"][:, :, 2] += self.frame_z_offset
+                a["strike_pos_w"][2] += self.frame_z_offset
+
+        self.ground_z_offset = 0.0
+        if ground_align:
+            min_z = min(float(a["body_pos_w"][:, :, 2].min()) for a in arrays)
+            if min_z < 0.0:
+                self.ground_z_offset = -min_z
+                for a in arrays:
+                    a["body_pos_w"][:, :, 2] += self.ground_z_offset
+                    a["strike_pos_w"][2] += self.ground_z_offset
+
+        self.motion_paths = motion_paths
+        self.num_motions = len(arrays)
+        self.motion_lengths = torch.tensor([a["joint_pos"].shape[0] for a in arrays], dtype=torch.long, device=device)
+        self.time_step_total = int(self.motion_lengths.max().item())
+        self.fps = int(arrays[0]["fps"])
+        self._body_indexes = body_indexes
+
+        def padded(name: str, trailing_shape: tuple[int, ...]) -> torch.Tensor:
+            out = torch.zeros((self.num_motions, self.time_step_total, *trailing_shape), dtype=torch.float32)
+            for i, a in enumerate(arrays):
+                x = a[name]
+                out[i, : x.shape[0]] = torch.from_numpy(x)
+                if x.shape[0] < self.time_step_total:
+                    out[i, x.shape[0] :] = out[i, x.shape[0] - 1]
+            if not torch.isfinite(out).all():
+                raise ValueError(f"{self.manifest_file}: non-finite values in {name}")
+            return out.to(device=device)
+
+        self.joint_pos = padded("joint_pos", arrays[0]["joint_pos"].shape[1:])
+        self.joint_vel = padded("joint_vel", arrays[0]["joint_vel"].shape[1:])
+        self._body_pos_w = padded("body_pos_w", arrays[0]["body_pos_w"].shape[1:])
+        self._body_quat_w = padded("body_quat_w", arrays[0]["body_quat_w"].shape[1:])
+        self._body_lin_vel_w = padded("body_lin_vel_w", arrays[0]["body_lin_vel_w"].shape[1:])
+        self._body_ang_vel_w = padded("body_ang_vel_w", arrays[0]["body_ang_vel_w"].shape[1:])
+        self.hit_frame = torch.tensor([a["hit_frame"] for a in arrays], dtype=torch.long, device=device)
+        self.strike_pos_w = torch.tensor(np.stack([a["strike_pos_w"] for a in arrays]), dtype=torch.float32, device=device)
+        self.strike_vel_w = torch.tensor(np.stack([a["strike_vel_w"] for a in arrays]), dtype=torch.float32, device=device)
+        self.strike_normal_w = torch.tensor(
+            np.stack([a["strike_normal_w"] for a in arrays]), dtype=torch.float32, device=device
+        )
+
+    @staticmethod
+    def _balanced_subset(entries: list[dict], subset_size: int) -> list[dict]:
+        if subset_size >= len(entries):
+            return entries
+        forehands = [e for e in entries if str(e.get("stroke_type", "")).lower() == "forehand"]
+        backhands = [e for e in entries if str(e.get("stroke_type", "")).lower() == "backhand"]
+        if forehands and backhands:
+            if subset_size == 1:
+                return forehands[:1]
+            n_fh = subset_size // 2
+            n_bh = subset_size - n_fh
+            return forehands[:n_fh] + backhands[:n_bh]
+        return entries[:subset_size]
+
+    @staticmethod
+    def _repo_root() -> str:
+        here = os.path.dirname(os.path.abspath(__file__))
+        # .../hope_training/whole_body_tracking/training/tasks/tracking/mdp/commands.py
+        return os.path.abspath(os.path.join(here, "../../../../.."))
+
+    @classmethod
+    def _workspace_root(cls) -> str:
+        return os.path.abspath(os.path.join(cls._repo_root(), "../.."))
+
+    @classmethod
+    def _resolve_path(cls, path: str, manifest_dir: str | None = None) -> str:
+        candidates = []
+        p = os.path.expanduser(str(path))
+        if os.path.isabs(p):
+            candidates.append(p)
+        else:
+            candidates.extend(
+                [
+                    os.path.abspath(p),
+                    os.path.join(cls._repo_root(), p),
+                    os.path.join(cls._workspace_root(), p),
+                ]
+            )
+            if manifest_dir is not None:
+                candidates.append(os.path.join(manifest_dir, p))
+                candidates.append(os.path.join(manifest_dir, os.path.basename(p)))
+        for c in candidates:
+            if os.path.isfile(c):
+                return os.path.abspath(c)
+        raise FileNotFoundError(f"could not resolve path '{path}', tried: {candidates}")
+
+    def _entry_motion_path(self, entry: dict) -> str:
+        manifest_dir = os.path.dirname(self.manifest_file)
+        for key in ("library_motion_npz", "motion_npz"):
+            value = entry.get(key)
+            if value:
+                try:
+                    return self._resolve_path(value, manifest_dir=manifest_dir)
+                except FileNotFoundError:
+                    pass
+        episode_id = entry.get("episode_id")
+        stroke = str(entry.get("stroke_type", "")).lower()
+        if episode_id and stroke:
+            return self._resolve_path(os.path.join(stroke, f"{episode_id}.npz"), manifest_dir=manifest_dir)
+        raise FileNotFoundError(f"no usable motion path for manifest entry: {entry}")
+
+    @property
+    def body_pos_w(self) -> torch.Tensor:
+        return self._body_pos_w[:, :, self._body_indexes]
+
+    @property
+    def body_quat_w(self) -> torch.Tensor:
+        return self._body_quat_w[:, :, self._body_indexes]
+
+    @property
+    def body_lin_vel_w(self) -> torch.Tensor:
+        return self._body_lin_vel_w[:, :, self._body_indexes]
+
+    @property
+    def body_ang_vel_w(self) -> torch.Tensor:
+        return self._body_ang_vel_w[:, :, self._body_indexes]
+
+
 class MotionCommand(CommandTerm):
     cfg: MotionCommandCfg
 
@@ -67,11 +268,38 @@ class MotionCommand(CommandTerm):
         self.robot: Articulation = env.scene[cfg.asset_name]
         self.robot_anchor_body_index = self.robot.body_names.index(self.cfg.anchor_body_name)
         self.motion_anchor_body_index = self.cfg.body_names.index(self.cfg.anchor_body_name)
+        # Full motion arrays are saved in articulation body order. Body 0 is
+        # the articulation root; this is distinct from cfg.body_names, which may
+        # be a tracked subset for rewards/observations.
+        self.motion_root_body_index = 0
         self.body_indexes = torch.tensor(
             self.robot.find_bodies(self.cfg.body_names, preserve_order=True)[0], dtype=torch.long, device=self.device
         )
 
-        self.motion = MotionLoader(self.cfg.motion_file, self.body_indexes, device=self.device)
+        if self.cfg.motion_manifest:
+            self.motion = MotionLibraryLoader(
+                self.cfg.motion_manifest,
+                self.body_indexes,
+                device=self.device,
+                subset_size=self.cfg.manifest_subset_size,
+                expected_fps=self.cfg.manifest_expected_fps,
+                frame_z_offset=self.cfg.manifest_frame_z_offset,
+                ground_align=self.cfg.manifest_ground_align,
+            )
+            self.motion_ids = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+            self._use_motion_library = True
+            print(
+                f"[MotionCommand] loaded motion manifest: {self.motion.manifest_file} "
+                f"({self.motion.num_motions} motions; "
+                f"forehand={len(self.motion.forehand_ids)}, backhand={len(self.motion.backhand_ids)}, "
+                f"frame_z_offset={self.motion.frame_z_offset:.4f}m, "
+                f"ground_z_offset={self.motion.ground_z_offset:.4f}m)",
+                flush=True,
+            )
+        else:
+            self.motion = MotionLoader(self.cfg.motion_file, self.body_indexes, device=self.device)
+            self.motion_ids = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+            self._use_motion_library = False
         self.time_steps = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
         self.body_pos_relative_w = torch.zeros(self.num_envs, len(cfg.body_names), 3, device=self.device)
         self.body_quat_relative_w = torch.zeros(self.num_envs, len(cfg.body_names), 4, device=self.device)
@@ -104,6 +332,8 @@ class MotionCommand(CommandTerm):
         self.metrics["error_joint_vel_max_abs"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["reference_anchor_speed"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["robot_anchor_speed"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["motion_id"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["motion_stroke_id"] = torch.zeros(self.num_envs, device=self.device)
         for axis in ("x", "y", "z"):
             self.metrics[f"reference_anchor_pos_{axis}"] = torch.zeros(self.num_envs, device=self.device)
             self.metrics[f"robot_anchor_pos_{axis}"] = torch.zeros(self.num_envs, device=self.device)
@@ -116,42 +346,86 @@ class MotionCommand(CommandTerm):
 
     @property
     def joint_pos(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return self.motion.joint_pos[self.motion_ids, self.time_steps]
         return self.motion.joint_pos[self.time_steps]
 
     @property
     def joint_vel(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return self.motion.joint_vel[self.motion_ids, self.time_steps]
         return self.motion.joint_vel[self.time_steps]
 
     @property
     def body_pos_w(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return self.motion.body_pos_w[self.motion_ids, self.time_steps] + self._env.scene.env_origins[:, None, :]
         return self.motion.body_pos_w[self.time_steps] + self._env.scene.env_origins[:, None, :]
 
     @property
     def body_quat_w(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return self.motion.body_quat_w[self.motion_ids, self.time_steps]
         return self.motion.body_quat_w[self.time_steps]
 
     @property
     def body_lin_vel_w(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return self.motion.body_lin_vel_w[self.motion_ids, self.time_steps]
         return self.motion.body_lin_vel_w[self.time_steps]
 
     @property
     def body_ang_vel_w(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return self.motion.body_ang_vel_w[self.motion_ids, self.time_steps]
         return self.motion.body_ang_vel_w[self.time_steps]
+
+    def _motion_root_state_w(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return root body state from the full motion arrays.
+
+        Do not use ``self.body_*[:, 0]`` for this. ``self.body_*`` is filtered
+        by cfg.body_names and may start at torso/right arm in native-strike
+        tasks.
+        """
+        root_idx = self.motion_root_body_index
+        if self._use_motion_library:
+            root_pos = self.motion._body_pos_w[self.motion_ids, self.time_steps, root_idx].clone()
+            root_ori = self.motion._body_quat_w[self.motion_ids, self.time_steps, root_idx].clone()
+            root_lin_vel = self.motion._body_lin_vel_w[self.motion_ids, self.time_steps, root_idx].clone()
+            root_ang_vel = self.motion._body_ang_vel_w[self.motion_ids, self.time_steps, root_idx].clone()
+        else:
+            root_pos = self.motion._body_pos_w[self.time_steps, root_idx].clone()
+            root_ori = self.motion._body_quat_w[self.time_steps, root_idx].clone()
+            root_lin_vel = self.motion._body_lin_vel_w[self.time_steps, root_idx].clone()
+            root_ang_vel = self.motion._body_ang_vel_w[self.time_steps, root_idx].clone()
+        root_pos += self._env.scene.env_origins
+        return root_pos, root_ori, root_lin_vel, root_ang_vel
 
     @property
     def anchor_pos_w(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return (
+                self.motion.body_pos_w[self.motion_ids, self.time_steps, self.motion_anchor_body_index]
+                + self._env.scene.env_origins
+            )
         return self.motion.body_pos_w[self.time_steps, self.motion_anchor_body_index] + self._env.scene.env_origins
 
     @property
     def anchor_quat_w(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return self.motion.body_quat_w[self.motion_ids, self.time_steps, self.motion_anchor_body_index]
         return self.motion.body_quat_w[self.time_steps, self.motion_anchor_body_index]
 
     @property
     def anchor_lin_vel_w(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return self.motion.body_lin_vel_w[self.motion_ids, self.time_steps, self.motion_anchor_body_index]
         return self.motion.body_lin_vel_w[self.time_steps, self.motion_anchor_body_index]
 
     @property
     def anchor_ang_vel_w(self) -> torch.Tensor:
+        if self._use_motion_library:
+            return self.motion.body_ang_vel_w[self.motion_ids, self.time_steps, self.motion_anchor_body_index]
         return self.motion.body_ang_vel_w[self.time_steps, self.motion_anchor_body_index]
 
     @property
@@ -240,9 +514,22 @@ class MotionCommand(CommandTerm):
 
         self.metrics["reference_anchor_speed"] = torch.norm(self.anchor_lin_vel_w, dim=-1)
         self.metrics["robot_anchor_speed"] = torch.norm(self.robot_anchor_lin_vel_w, dim=-1)
-        self.metrics["motion_phase"] = self.time_steps.float() / max(self.motion.time_step_total - 1, 1)
+        if self._use_motion_library:
+            lengths = self.motion.motion_lengths[self.motion_ids].clamp(min=1)
+            self.metrics["motion_phase"] = self.time_steps.float() / (lengths - 1).clamp(min=1).float()
+            self.metrics["motion_id"] = self.motion_ids.float()
+            self.metrics["motion_stroke_id"] = self.motion.stroke_ids[self.motion_ids].float()
+        else:
+            self.metrics["motion_phase"] = self.time_steps.float() / max(self.motion.time_step_total - 1, 1)
 
     def _adaptive_sampling(self, env_ids: Sequence[int]):
+        if not self.cfg.sample_random_start_phase:
+            self.time_steps[env_ids] = 0
+            self.metrics["sampling_entropy"][:] = 0.0
+            self.metrics["sampling_top1_prob"][:] = 1.0
+            self.metrics["sampling_top1_bin"][:] = 0.0
+            return
+
         episode_failed = self._env.termination_manager.terminated[env_ids]
         if torch.any(episode_failed):
             current_bin_index = torch.clamp(
@@ -278,15 +565,34 @@ class MotionCommand(CommandTerm):
         self.metrics["sampling_top1_prob"][:] = pmax
         self.metrics["sampling_top1_bin"][:] = imax.float() / self.bin_count
 
+    def _sample_motion_ids(self, count: int) -> torch.Tensor:
+        if not self._use_motion_library:
+            return torch.zeros(count, dtype=torch.long, device=self.device)
+        if (
+            self.cfg.manifest_balance_strokes
+            and len(self.motion.forehand_ids) > 0
+            and len(self.motion.backhand_ids) > 0
+        ):
+            choose_fh = torch.rand(count, device=self.device) < 0.5
+            out = torch.empty(count, dtype=torch.long, device=self.device)
+            fh_pick = torch.randint(len(self.motion.forehand_ids), (int(choose_fh.sum()),), device=self.device)
+            bh_pick = torch.randint(len(self.motion.backhand_ids), (int((~choose_fh).sum()),), device=self.device)
+            out[choose_fh] = self.motion.forehand_ids[fh_pick]
+            out[~choose_fh] = self.motion.backhand_ids[bh_pick]
+            return out
+        return torch.randint(self.motion.num_motions, (count,), dtype=torch.long, device=self.device)
+
     def _resample_command(self, env_ids: Sequence[int]):
         if len(env_ids) == 0:
             return
+        if self._use_motion_library:
+            self.motion_ids[env_ids] = self._sample_motion_ids(len(env_ids))
         self._adaptive_sampling(env_ids)
+        if self._use_motion_library:
+            lengths = self.motion.motion_lengths[self.motion_ids[env_ids]]
+            self.time_steps[env_ids] = torch.minimum(self.time_steps[env_ids], lengths - 1)
 
-        root_pos = self.body_pos_w[:, 0].clone()
-        root_ori = self.body_quat_w[:, 0].clone()
-        root_lin_vel = self.body_lin_vel_w[:, 0].clone()
-        root_ang_vel = self.body_ang_vel_w[:, 0].clone()
+        root_pos, root_ori, root_lin_vel, root_ang_vel = self._motion_root_state_w()
 
         range_list = [self.cfg.pose_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]]
         ranges = torch.tensor(range_list, device=self.device)
@@ -316,7 +622,11 @@ class MotionCommand(CommandTerm):
 
     def _update_command(self):
         self.time_steps += 1
-        env_ids = torch.where(self.time_steps >= self.motion.time_step_total)[0]
+        if self._use_motion_library:
+            motion_lengths = self.motion.motion_lengths[self.motion_ids]
+            env_ids = torch.where(self.time_steps >= motion_lengths)[0]
+        else:
+            env_ids = torch.where(self.time_steps >= self.motion.time_step_total)[0]
         self._resample_command(env_ids)
 
         anchor_pos_w_repeat = self.anchor_pos_w[:, None, :].repeat(1, len(self.cfg.body_names), 1)
@@ -394,7 +704,15 @@ class MotionCommandCfg(CommandTermCfg):
 
     asset_name: str = MISSING
 
-    motion_file: str = MISSING
+    motion_file: str | None = None
+    motion_manifest: str | None = None
+    manifest_subset_size: int | None = None
+    manifest_expected_fps: int = 50
+    manifest_balance_strokes: bool = True
+    # Explicit frame adapter for using HOPE competition-frame motions in tracking scenes whose ground is z=0.
+    # HOPE competition frame uses z=0 at table surface and floor at z=-0.76, so the manifest task sets +0.76.
+    manifest_frame_z_offset: float = 0.0
+    manifest_ground_align: bool = False
     anchor_body_name: str = MISSING
     body_names: list[str] = MISSING
 
@@ -402,6 +720,7 @@ class MotionCommandCfg(CommandTermCfg):
     velocity_range: dict[str, tuple[float, float]] = {}
 
     joint_position_range: tuple[float, float] = (-0.52, 0.52)
+    sample_random_start_phase: bool = True
 
     adaptive_kernel_size: int = 1
     adaptive_lambda: float = 0.8

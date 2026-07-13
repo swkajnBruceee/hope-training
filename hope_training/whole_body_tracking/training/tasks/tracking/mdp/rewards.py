@@ -74,6 +74,27 @@ def motion_global_body_angular_velocity_error_exp(
     return torch.exp(-error.mean(-1) / std**2)
 
 
+def motion_joint_position_error_exp(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    std: float,
+    asset_cfg: SceneEntityCfg,
+) -> torch.Tensor:
+    """Track reference joint positions for a selected joint subset."""
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    error = torch.square(command.robot_joint_pos[:, asset_cfg.joint_ids] - command.joint_pos[:, asset_cfg.joint_ids])
+    return torch.exp(-error.mean(-1) / std**2)
+
+
+def action_raw_l2(env: ManagerBasedRLEnv, action_name: str = "joint_pos") -> torch.Tensor:
+    """Penalize raw policy residual magnitude for custom action terms."""
+    action_term = env.action_manager.get_term(action_name)
+    raw_actions = getattr(action_term, "_raw_actions", None)
+    if raw_actions is None:
+        raw_actions = env.action_manager.action
+    return torch.mean(torch.square(raw_actions), dim=-1)
+
+
 def feet_contact_time(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, threshold: float) -> torch.Tensor:
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     first_air = contact_sensor.compute_first_air(env.step_dt, env.physics_dt)[:, sensor_cfg.body_ids]

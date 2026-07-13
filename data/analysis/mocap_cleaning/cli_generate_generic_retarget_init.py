@@ -32,6 +32,9 @@ from analysis.mocap_cleaning.refinement_spec import resolve_existing_path
 from analysis.mocap_cleaning.a3_refinement_solver import _fk_racket_state, load_a3_joint_limits
 
 
+WAIST_YAW_SOLVE_DELTA_LIMIT_RAD = 0.60
+
+
 def _deg_to_rad(values: np.ndarray) -> np.ndarray:
     return values * np.pi / 180.0
 
@@ -460,14 +463,19 @@ def _solve_anchor_task_space(
         if name == "right_shoulder_pitch_joint":
             delta_weight[local_i] = 0.16
         elif name == "waist_yaw_joint":
-            delta_weight[local_i] = 0.03
+            # Fixed-base tracking should not solve heading mistakes by
+            # spinning the upper body almost backwards around the waist.
+            delta_weight[local_i] = 0.20
         elif name in ("waist_roll_joint", "waist_pitch_joint", "right_shoulder_yaw_joint", "right_elbow_joint"):
             delta_weight[local_i] = 0.04
 
     prev_weight = np.ones(len(active_idx), dtype=np.float64) * 0.04
     for local_i, joint_i in enumerate(active_idx):
-        if joint_order[joint_i] == "right_shoulder_pitch_joint":
+        name = joint_order[joint_i]
+        if name == "right_shoulder_pitch_joint":
             prev_weight[local_i] = 0.10
+        elif name == "waist_yaw_joint":
+            prev_weight[local_i] = 0.18
 
     def residual(delta: np.ndarray) -> np.ndarray:
         q = q_init.copy()
@@ -488,6 +496,11 @@ def _solve_anchor_task_space(
 
     lb = lower - q_init[active_idx]
     ub = upper - q_init[active_idx]
+    for local_i, joint_i in enumerate(active_idx):
+        if joint_order[joint_i] != "waist_yaw_joint":
+            continue
+        lb[local_i] = max(lb[local_i], -WAIST_YAW_SOLVE_DELTA_LIMIT_RAD)
+        ub[local_i] = min(ub[local_i], WAIST_YAW_SOLVE_DELTA_LIMIT_RAD)
     if delta_cap is not None:
         delta_cap = np.asarray(delta_cap, dtype=np.float64)
         lb = np.maximum(lb, -delta_cap)

@@ -22,7 +22,7 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy.optimize import least_squares
 
-from analysis.mocap_cleaning.a3_metadata import A3_POLICY_JOINT_ORDER
+from analysis.mocap_cleaning.a3_metadata import A3_DEFAULT_JOINT_POS, A3_POLICY_JOINT_ORDER
 from analysis.mocap_cleaning.a3_refinement_solver import (
     _fk_racket_state,
     compute_joint_vel_acc,
@@ -42,6 +42,9 @@ CONTROL_POINT_ORDER = (
     "post_far",
     "boundary_end",
 )
+
+WAIST_YAW_OPT_DELTA_LIMIT_RAD = 0.60
+WAIST_YAW_OPT_ABS_LIMIT_RAD = 1.00
 
 
 def _quat_xyzw_to_matrix(quat: np.ndarray) -> np.ndarray:
@@ -249,7 +252,12 @@ def _replay_precheck(
 
 def _control_point_delta_penalty(control_q: np.ndarray, control_q_ref: np.ndarray, config: dict[str, Any]) -> np.ndarray:
     stay_weights = _control_point_stay_weights(config)[:, None]
-    return (stay_weights * float(config["optimization"]["control_point_delta_weight"]) * (control_q - control_q_ref)).ravel()
+    joint_scale = np.ones((1, control_q.shape[1]), dtype=np.float64)
+    waist_yaw_idx = A3_POLICY_JOINT_ORDER.index("waist_yaw_joint")
+    joint_scale[:, waist_yaw_idx] = 4.0
+    return (
+        stay_weights * joint_scale * float(config["optimization"]["control_point_delta_weight"]) * (control_q - control_q_ref)
+    ).ravel()
 
 
 def _control_point_smooth_penalty(control_q: np.ndarray, config: dict[str, Any]) -> np.ndarray:
@@ -359,6 +367,18 @@ def _optimize_one(
 
     bounds_lo = np.tile(lower, len(CONTROL_POINT_ORDER))
     bounds_hi = np.tile(upper, len(CONTROL_POINT_ORDER))
+    if "waist_yaw_joint" in active_names:
+        waist_yaw_local = active_names.index("waist_yaw_joint")
+        waist_ref = control_q_ref[:, waist_yaw_local]
+        waist_default = float(A3_DEFAULT_JOINT_POS.get("waist_yaw_joint", 0.0))
+        waist_delta_limit = _config_float(config["optimization"], "waist_yaw_delta_limit_rad", WAIST_YAW_OPT_DELTA_LIMIT_RAD)
+        waist_abs_limit = _config_float(config["optimization"], "waist_yaw_abs_limit_rad", WAIST_YAW_OPT_ABS_LIMIT_RAD)
+        for cp_idx in range(len(CONTROL_POINT_ORDER)):
+            flat_idx = cp_idx * len(active_names) + waist_yaw_local
+            bounds_lo[flat_idx] = max(bounds_lo[flat_idx], waist_ref[cp_idx] - waist_delta_limit)
+            bounds_hi[flat_idx] = min(bounds_hi[flat_idx], waist_ref[cp_idx] + waist_delta_limit)
+            bounds_lo[flat_idx] = max(bounds_lo[flat_idx], waist_default - waist_abs_limit)
+            bounds_hi[flat_idx] = min(bounds_hi[flat_idx], waist_default + waist_abs_limit)
     result = least_squares(
         residual,
         x0=np.clip(control_q_ref, lower[None, :], upper[None, :]).ravel(),
@@ -407,6 +427,7 @@ def _evaluate(
     joint_vel, joint_acc = compute_joint_vel_acc(q, 1.0 / float(config["time"]["fps"]))
     joint_jerk = _joint_jerk(joint_acc, 1.0 / float(config["time"]["fps"]))
     active_idx = [A3_POLICY_JOINT_ORDER.index(name) for name in active_names]
+    waist_yaw_idx = A3_POLICY_JOINT_ORDER.index("waist_yaw_joint")
     pos_err_all = np.linalg.norm(pos - target_pos, axis=1)
     normal_cos = np.sum(_normalize_rows(normal) * _normalize_rows(target_normal), axis=1)
     normal_err_deg = np.degrees(np.arccos(np.clip(normal_cos, -1.0, 1.0)))
@@ -429,6 +450,7 @@ def _evaluate(
         "max_active_joint_velocity_radps": float(np.max(np.abs(joint_vel[:, active_idx]))),
         "max_active_joint_acceleration_radps2": float(np.max(np.abs(joint_acc[:, active_idx]))),
         "max_active_joint_jerk_radps3": float(np.max(np.abs(joint_jerk[:, active_idx]))),
+        "max_abs_waist_yaw_rad": float(np.max(np.abs(q[:, waist_yaw_idx]))),
     }
 
 
@@ -449,6 +471,7 @@ def _quality_layers(metrics: dict[str, Any], csv_data: np.ndarray, config: dict[
         and metrics["max_active_joint_acceleration_radps2"] <= float(thresholds["max_joint_acceleration_reject_radps2"])
         and metrics["max_active_joint_jerk_radps3"] <= float(thresholds["max_joint_jerk_reject_radps3"])
     )
+    waist_yaw_pass = metrics["max_abs_waist_yaw_rad"] <= _config_float(thresholds, "max_abs_waist_yaw_reject_rad", float("inf"))
     schema_pass = _schema_pass(csv_data)
     precheck = _replay_precheck(csv_data, config, active_names, geometry_pass, dynamics_pass, hit_index_valid)
     return {
@@ -459,8 +482,9 @@ def _quality_layers(metrics: dict[str, Any], csv_data: np.ndarray, config: dict[
         "hit_orientation_pass": hit_orientation_pass,
         "hit_velocity_direction_pass": hit_velocity_direction_pass,
         "hit_velocity_magnitude_pass": hit_velocity_magnitude_pass,
+        "waist_yaw_pass": waist_yaw_pass,
         "replay_precheck": precheck,
-        "replay_ready": bool(precheck["replay_ready"]),
+        "replay_ready": bool(precheck["replay_ready"] and waist_yaw_pass),
     }
 
 
@@ -475,6 +499,8 @@ def _classify_failure(item: dict[str, Any], target_spec: dict[str, Any], layers:
         return "fixed_base_dynamic_fail"
     if not layers["schema_pass"]:
         return "schema_fail"
+    if not layers.get("waist_yaw_pass", True):
+        return "waist_yaw_fail"
     return "fixed_base_pass"
 
 
@@ -497,6 +523,8 @@ def _reject_reasons(metrics: dict[str, Any], layers: dict[str, Any], config: dic
         reasons.append("joint_jerk")
     if not layers["schema_pass"]:
         reasons.append("schema")
+    if not layers.get("waist_yaw_pass", True):
+        reasons.append("waist_yaw")
     if not layers["replay_precheck"]["base_fixed_ok"]:
         reasons.append("base_not_fixed")
     if not layers["replay_precheck"]["lower_body_static_ok"]:

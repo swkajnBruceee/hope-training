@@ -114,6 +114,7 @@ def _set_reward(rewards, name, weight, std, applied):
         return  # this reward term is not overridden by the YAML -> keep code defaults
     _require(hasattr(rewards, name), f"rewards.{name}")
     term = getattr(rewards, name)
+    _require(term is not None, f"rewards.{name} (term is disabled/None)")
     if weight is not None:
         term.weight = float(weight)
         applied.append(f"rewards.{name}.weight={float(weight)}")
@@ -126,7 +127,7 @@ def _set_reward(rewards, name, weight, std, applied):
 # YAML keys under `racket:` that target the RacketTargetCommandCfg (used to decide whether the task
 # actually requested racket overrides before requiring the command to exist).
 _RACKET_KEYS = (
-    "strike_phase", "strike_window_s", "strike_success_pos_thresh",
+    "strike_phase", "strike_window_s", "strike_time_std_s", "strike_success_pos_thresh",
     "strike_success_vel_thresh", "strike_success_normal_thresh_deg",
     "pos_x_range", "pos_y_range", "pos_z_range",
     "vel_x_range", "vel_y_range", "vel_z_range",
@@ -174,12 +175,58 @@ def _apply_task_overrides(env_cfg, task):
             env_cfg.sim.render_interval = env_cfg.decimation  # keep render in step with decimation
             applied.append(f"decimation={int(dec)}")
 
+    actions = _get(task, "actions")
+    if actions is not None and hasattr(env_cfg, "actions") and hasattr(env_cfg.actions, "joint_pos"):
+        raw_clip = _get(actions, "raw_clip")
+        if raw_clip is not None:
+            _require(hasattr(env_cfg.actions.joint_pos, "raw_clip"), "actions.joint_pos.raw_clip")
+            env_cfg.actions.joint_pos.raw_clip = float(raw_clip)
+            applied.append(f"actions.joint_pos.raw_clip={float(raw_clip)}")
+        soft_limit_margin = _get(actions, "soft_limit_margin_frac")
+        if soft_limit_margin is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "soft_limit_margin_frac"),
+                "actions.joint_pos.soft_limit_margin_frac",
+            )
+            env_cfg.actions.joint_pos.soft_limit_margin_frac = float(soft_limit_margin)
+            applied.append(f"actions.joint_pos.soft_limit_margin_frac={float(soft_limit_margin)}")
+        residual_scale = _get(actions, "native_residual_scale")
+        if residual_scale is not None:
+            scale = getattr(env_cfg.actions.joint_pos, "scale", None)
+            _require(scale is not None, "actions.joint_pos.scale")
+            residual_scale = float(residual_scale)
+            if isinstance(scale, dict):
+                env_cfg.actions.joint_pos.scale = {k: float(v) * residual_scale for k, v in scale.items()}
+            else:
+                env_cfg.actions.joint_pos.scale = float(scale) * residual_scale
+            applied.append(f"actions.joint_pos.scale*=native_residual_scale({residual_scale})")
+        scale_multipliers = _get(actions, "native_joint_scale_multipliers")
+        if scale_multipliers is not None:
+            scale = getattr(env_cfg.actions.joint_pos, "scale", None)
+            _require(isinstance(scale, dict), "actions.joint_pos.scale dict for native_joint_scale_multipliers")
+            for name, multiplier in scale_multipliers.items():
+                _require(name in scale, f"actions.joint_pos.scale['{name}']")
+                scale[name] = float(scale[name]) * float(multiplier)
+                applied.append(f"actions.joint_pos.scale[{name}]*={float(multiplier)}")
+
     rw = _get(task, "rewards")
     if rw is not None:
         R = env_cfg.rewards
         _set_reward(R, "racket_position", _get(rw, "racket_position_weight"), _get(rw, "racket_position_std"), applied)
+        _set_reward(R, "racket_position_y", _get(rw, "racket_position_y_weight"), _get(rw, "racket_position_y_std"), applied)
+        _set_reward(R, "racket_position_fine", _get(rw, "racket_position_fine_weight"), _get(rw, "racket_position_fine_std"), applied)
+        _set_reward(R, "racket_position_y_fine", _get(rw, "racket_position_y_fine_weight"), _get(rw, "racket_position_y_fine_std"), applied)
         _set_reward(R, "racket_velocity", _get(rw, "racket_velocity_weight"), _get(rw, "racket_velocity_std"), applied)
         _set_reward(R, "racket_normal", _get(rw, "racket_normal_weight"), _get(rw, "racket_normal_std"), applied)
+        _set_reward(R, "racket_hit_coupled", _get(rw, "racket_hit_coupled_weight"), None, applied)
+        if hasattr(R, "racket_hit_coupled") and R.racket_hit_coupled is not None:
+            coupled = _get(rw, "racket_hit_coupled")
+            if coupled is not None:
+                for key in ("pos_std", "vel_std", "normal_std", "base", "vel_coeff", "normal_coeff"):
+                    val = _get(coupled, key)
+                    if val is not None:
+                        R.racket_hit_coupled.params[key] = float(val)
+                        applied.append(f"rewards.racket_hit_coupled.params.{key}={float(val)}")
         _set_reward(R, "base_position", _get(rw, "base_position_weight"), _get(rw, "base_position_std"), applied)
         jt = _get(rw, "joint_torques_weight")
         if jt is not None:
@@ -194,6 +241,7 @@ def _apply_task_overrides(env_cfg, task):
         _MOTION_TERMS = (
             "motion_global_anchor_pos", "motion_global_anchor_ori",
             "motion_body_pos", "motion_body_ori",
+            "motion_torso_ori", "motion_native_joint_pos",
             "motion_body_lin_vel", "motion_body_ang_vel",
         )
         for _t in _MOTION_TERMS:
@@ -203,12 +251,15 @@ def _apply_task_overrides(env_cfg, task):
             ms = float(ms)
             for _t in _MOTION_TERMS:
                 _require(hasattr(R, _t), f"rewards.{_t}")
-                getattr(R, _t).weight *= ms
-            applied.append(f"rewards.motion_scale={ms} (x{len(_MOTION_TERMS)} motion weights)")
+                _term = getattr(R, _t)
+                if _term is not None:
+                    _term.weight *= ms
+            applied.append(f"rewards.motion_scale={ms} (enabled motion weights only)")
 
         # --- penalties / regularization (negative weights: energy + smoothness + safety) --------
         for _name, _key in (
             ("action_rate_l2", "action_rate_weight"),
+            ("action_residual_l2", "action_residual_weight"),
             ("joint_limit", "joint_limit_weight"),
             ("undesired_contacts", "undesired_contacts_weight"),
         ):
@@ -229,6 +280,7 @@ def _apply_task_overrides(env_cfg, task):
             C = env_cfg.commands.racket_target
             _set_attr(C, "strike_phase", _get(rk, "strike_phase"), float, applied, "racket_target")
             _set_attr(C, "strike_window_s", _get(rk, "strike_window_s"), float, applied, "racket_target")
+            _set_attr(C, "strike_time_std_s", _get(rk, "strike_time_std_s"), float, applied, "racket_target")
             _set_attr(C, "strike_success_pos_thresh", _get(rk, "strike_success_pos_thresh"), float, applied, "racket_target")
             _set_attr(C, "strike_success_vel_thresh", _get(rk, "strike_success_vel_thresh"), float, applied, "racket_target")
             _set_attr(C, "strike_success_normal_thresh_deg", _get(rk, "strike_success_normal_thresh_deg"), float, applied, "racket_target")
@@ -263,7 +315,7 @@ def _apply_task_overrides(env_cfg, task):
     if dr is not None and hasattr(env_cfg, "events"):
         E = env_cfg.events
         mr = _get(dr, "link_mass_range")
-        if mr is not None and hasattr(E, "randomize_link_mass"):
+        if mr is not None and hasattr(E, "randomize_link_mass") and E.randomize_link_mass is not None:
             E.randomize_link_mass.params["mass_distribution_params"] = (float(mr[0]), float(mr[1]))
             applied.append(f"events.randomize_link_mass.mass_distribution_params=({float(mr[0])}, {float(mr[1])})")
         if hasattr(E, "randomize_pd_gains"):
@@ -275,6 +327,26 @@ def _apply_task_overrides(env_cfg, task):
                 E.randomize_pd_gains.params["stiffness_distribution_params"] = (float(pr[0]), float(pr[1]))
                 E.randomize_pd_gains.params["damping_distribution_params"] = (float(pr[0]), float(pr[1]))
                 applied.append(f"events.randomize_pd_gains=({float(pr[0])}, {float(pr[1])})")
+
+    motion = _get(task, "motion")
+    if motion is not None and hasattr(env_cfg, "commands") and hasattr(env_cfg.commands, "motion"):
+        C = env_cfg.commands.motion
+        pose_range = _get(motion, "pose_range")
+        if pose_range is not None:
+            C.pose_range = {str(k): (float(v[0]), float(v[1])) for k, v in pose_range.items()}
+            applied.append(f"commands.motion.pose_range={C.pose_range}")
+        velocity_range = _get(motion, "velocity_range")
+        if velocity_range is not None:
+            C.velocity_range = {str(k): (float(v[0]), float(v[1])) for k, v in velocity_range.items()}
+            applied.append(f"commands.motion.velocity_range={C.velocity_range}")
+        joint_position_range = _get(motion, "joint_position_range")
+        if joint_position_range is not None:
+            C.joint_position_range = (float(joint_position_range[0]), float(joint_position_range[1]))
+            applied.append(f"commands.motion.joint_position_range={C.joint_position_range}")
+        sample_random_start_phase = _get(motion, "sample_random_start_phase")
+        if sample_random_start_phase is not None:
+            C.sample_random_start_phase = _as_bool(sample_random_start_phase)
+            applied.append(f"commands.motion.sample_random_start_phase={C.sample_random_start_phase}")
 
     return applied
 
@@ -292,7 +364,7 @@ def _run(cfg):
 
     from isaaclab.utils.io import dump_yaml
     from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
-    from isaaclab_tasks.utils import parse_env_cfg
+    from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 
     import training  # noqa: F401
     import training.tasks  # noqa: F401  -- registers the gym tasks
@@ -326,14 +398,20 @@ def _run(cfg):
     # you can read the actual runtime values off the launch log without opening logs/.../params/env.yaml.
     R = env_cfg.rewards
     if hasattr(R, "racket_position"):
+        fine = ""
+        if hasattr(R, "racket_position_fine") and R.racket_position_fine is not None:
+            fine = (
+                f" pos_fine={R.racket_position_fine.params.get('std')}"
+                f"/w={R.racket_position_fine.weight}"
+            )
         print("[train.py] racket reward std (post-override): "
-              f"pos={R.racket_position.params.get('std')} vel={R.racket_velocity.params.get('std')} "
-              f"normal={R.racket_normal.params.get('std')}", flush=True)
+              f"pos={R.racket_position.params.get('std')}{fine} "
+              f"vel={R.racket_velocity.params.get('std')} normal={R.racket_normal.params.get('std')}", flush=True)
     if hasattr(env_cfg.commands, "racket_target"):
         _C = env_cfg.commands.racket_target
         print("[train.py] racket target (post-override): "
               f"target_mode={_C.target_mode} ref_perturb_curriculum_start={_C.ref_perturb_curriculum_start} "
-              f"strike_window_s={_C.strike_window_s}", flush=True)
+              f"strike_window_s={_C.strike_window_s} strike_time_std_s={_C.strike_time_std_s}", flush=True)
     env_cfg.seed = int(cfg.seed)
     env_cfg.sim.device = str(cfg.device)
     has_motion_command = hasattr(env_cfg.commands, "motion")
@@ -352,12 +430,43 @@ def _run(cfg):
     if agent_cfg.logger in {"wandb", "neptune"} and cfg.log_project_name:
         agent_cfg.wandb_project = str(cfg.log_project_name)
         agent_cfg.neptune_project = str(cfg.log_project_name)
+    agent_cfg.resume = bool(cfg.get("resume", False))
+    if cfg.get("load_run", None) is not None:
+        agent_cfg.load_run = str(cfg.load_run)
+    if cfg.get("checkpoint", None) is not None:
+        agent_cfg.load_checkpoint = str(cfg.checkpoint)
 
     # 3) motion source. Motion-imitation tasks require a clip; pure table-tennis RL tasks do not.
     registry_name = None
     if has_motion_command:
+        motion_manifest = cfg.motion_manifest if cfg.motion_manifest is not None else _get(cfg.task, "motion_manifest")
         motion_file = cfg.motion_file if cfg.motion_file is not None else _get(cfg.task, "motion_file")
-        if motion_file is not None:
+        if motion_manifest is not None:
+            manifest_path = pathlib.Path(str(motion_manifest)).expanduser()
+            if not manifest_path.is_absolute():
+                manifest_path = pathlib.Path.cwd() / manifest_path
+            if not manifest_path.is_file():
+                raise FileNotFoundError(f"motion_manifest does not exist: {manifest_path}")
+            env_cfg.commands.motion.motion_manifest = str(manifest_path)
+            env_cfg.commands.motion.motion_file = None
+            subset_size = cfg.manifest_subset_size if cfg.manifest_subset_size is not None else _get(cfg.task, "manifest_subset_size")
+            if subset_size is not None:
+                env_cfg.commands.motion.manifest_subset_size = int(subset_size)
+            frame_z_offset = (
+                cfg.manifest_frame_z_offset
+                if cfg.manifest_frame_z_offset is not None
+                else _get(cfg.task, "manifest_frame_z_offset")
+            )
+            if frame_z_offset is not None:
+                env_cfg.commands.motion.manifest_frame_z_offset = float(frame_z_offset)
+            registry_name = f"local:{manifest_path}"
+            print(
+                f"[train.py] using local motion_manifest: {manifest_path} "
+                f"(subset_size={env_cfg.commands.motion.manifest_subset_size}, "
+                f"frame_z_offset={env_cfg.commands.motion.manifest_frame_z_offset:.4f}m)",
+                flush=True,
+            )
+        elif motion_file is not None:
             motion_path = pathlib.Path(str(motion_file)).expanduser()
             if not motion_path.is_absolute():
                 motion_path = pathlib.Path.cwd() / motion_path
@@ -412,6 +521,10 @@ def _run(cfg):
     else:
         runner = MyOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     runner.add_git_repo_to_log(__file__)
+    if agent_cfg.resume:
+        resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+        print(f"[INFO] Loading model checkpoint from: {resume_path}", flush=True)
+        runner.load(resume_path)
 
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)

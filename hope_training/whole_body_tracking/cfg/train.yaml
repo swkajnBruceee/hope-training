@@ -23,7 +23,13 @@ num_envs: null
 max_iterations: null
 registry_name: null     # falls back to task.registry_name when null
 motion_file: null        # local .npz path; preferred for public smoke runs
+motion_manifest: null    # manifest.json path for multi-motion training
+manifest_subset_size: null
+manifest_frame_z_offset: null
 run_name: null
+resume: false
+load_run: null
+checkpoint: null
 
 # logging
 logger: tensorboard     # tensorboard | wandb | neptune

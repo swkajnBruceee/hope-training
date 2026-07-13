@@ -1,0 +1,43 @@
+# forehand
+01 T03_068_gao01_6p12_8p12 quality=7.766 hit_abs=0.340 yaw_hit=0.082 max=0.349 range=0.543 vmax=1.985
+02 T03_052_gao01_2p59_4p59 quality=7.614 hit_abs=0.356 yaw_hit=0.228 max=0.417 range=0.382 vmax=1.334
+03 T_018_gao01_3p20_5p20 quality=7.790 hit_abs=0.369 yaw_hit=0.369 max=0.463 range=0.265 vmax=0.953
+04 T002_015_gao01_15p25_17p25 quality=7.660 hit_abs=0.390 yaw_hit=0.316 max=0.402 range=0.214 vmax=0.883
+05 T03_045_gao01_3p18_5p18 quality=7.711 hit_abs=0.577 yaw_hit=0.577 max=0.761 range=0.394 vmax=1.411
+06 T04_018_gao01_10p28_12p28 quality=7.771 hit_abs=0.591 yaw_hit=0.591 max=0.728 range=0.280 vmax=1.020
+07 T_018_gao01_4p53_6p53 quality=7.711 hit_abs=0.734 yaw_hit=0.734 max=0.835 range=0.174 vmax=0.606
+08 T04_007_gao01_6p85_8p85 quality=7.498 hit_abs=0.995 yaw_hit=0.995 max=1.057 range=0.118 vmax=0.412
+09 T03_078_gao01_0p81_2p81 quality=7.746 hit_abs=1.032 yaw_hit=1.032 max=1.090 range=0.095 vmax=0.318
+10 T03_016_gao01_7p84_9p84 quality=7.846 hit_abs=1.260 yaw_hit=1.260 max=1.322 range=0.178 vmax=0.767
+11 T001_002_gao01_5p67_7p67 quality=7.662 hit_abs=1.408 yaw_hit=1.408 max=1.486 range=0.196 vmax=0.699
+12 T_018_gao01_1p62_3p62 quality=7.608 hit_abs=2.089 yaw_hit=-2.089 max=2.214 range=0.223 vmax=0.812
+13 T_020_gao01_11p83_13p83 quality=7.568 hit_abs=2.186 yaw_hit=-2.186 max=2.293 range=0.257 vmax=0.895
+14 T002_015_gao01_17p03_19p03 quality=7.770 hit_abs=2.370 yaw_hit=-2.370 max=2.423 range=0.158 vmax=0.553
+15 T002_021_gao01_4p94_6p94 quality=7.705 hit_abs=2.396 yaw_hit=-2.396 max=2.542 range=0.374 vmax=1.397
+16 T03_059_gao01_1p87_3p87 quality=7.718 hit_abs=2.542 yaw_hit=-2.542 max=2.618 range=0.287 vmax=1.266
+17 T04_023_gao01_2p76_4p76 quality=7.721 hit_abs=2.546 yaw_hit=-2.546 max=2.600 range=0.221 vmax=0.935
+18 T002_021_gao01_1p73_3p73 quality=7.792 hit_abs=2.554 yaw_hit=-2.554 max=2.618 range=0.243 vmax=1.039
+19 T_021_gao01_6p44_8p44 quality=7.680 hit_abs=2.554 yaw_hit=-2.554 max=2.618 range=0.260 vmax=1.202
+20 T04_021_gao01_10p13_12p13 quality=7.696 hit_abs=2.556 yaw_hit=-2.556 max=2.618 range=0.282 vmax=1.278
+
+# backhand
+01 T002_022_gao01_1p61_3p61 quality=7.551 hit_abs=0.792 yaw_hit=0.792 max=0.897 range=0.115 vmax=0.462
+02 T_010_gao01_8p47_10p47 quality=7.515 hit_abs=0.869 yaw_hit=0.869 max=1.013 range=0.152 vmax=0.471
+03 T03_034_gao01_1p26_3p26 quality=7.690 hit_abs=0.974 yaw_hit=0.974 max=1.087 range=0.117 vmax=0.524
+04 T03_034_gao01_2p48_4p48 quality=7.745 hit_abs=1.024 yaw_hit=1.024 max=1.161 range=0.143 vmax=0.407
+05 T002_027_gao01_7p12_9p12 quality=7.621 hit_abs=1.124 yaw_hit=1.124 max=1.228 range=0.104 vmax=0.313
+06 T_014_gao01_16p93_18p93 quality=7.575 hit_abs=1.301 yaw_hit=1.301 max=1.427 range=0.152 vmax=0.509
+07 T_009_gao01_9p72_11p72 quality=7.548 hit_abs=1.313 yaw_hit=1.313 max=1.382 range=0.088 vmax=0.249
+08 T002_022_gao01_20p68_22p68 quality=7.549 hit_abs=1.347 yaw_hit=1.347 max=1.424 range=0.080 vmax=0.257
+09 T002_022_gao01_27p50_29p50 quality=7.591 hit_abs=1.374 yaw_hit=1.374 max=1.483 range=0.112 vmax=0.338
+10 T03_034_gao01_6p12_8p12 quality=7.747 hit_abs=1.389 yaw_hit=1.389 max=1.462 range=0.079 vmax=0.391
+11 T002_027_gao01_8p51_10p51 quality=7.578 hit_abs=1.417 yaw_hit=1.417 max=1.472 range=0.058 vmax=0.309
+12 T002_023_gao01_1p15_3p15 quality=7.698 hit_abs=1.477 yaw_hit=1.477 max=1.526 range=0.050 vmax=0.228
+13 T002_027_gao01_9p91_11p91 quality=7.605 hit_abs=1.538 yaw_hit=1.538 max=1.630 range=0.160 vmax=0.684
+14 T_014_gao01_14p20_16p20 quality=7.551 hit_abs=1.551 yaw_hit=1.551 max=1.625 range=0.082 vmax=0.392
+15 T03_083_gao01_6p90_8p90 quality=7.614 hit_abs=1.572 yaw_hit=1.572 max=1.633 range=0.068 vmax=0.326
+16 T03_079_gao01_5p82_7p82 quality=7.723 hit_abs=1.596 yaw_hit=1.596 max=1.723 range=0.179 vmax=0.797
+17 T03_032_gao01_0p90_2p90 quality=7.581 hit_abs=1.648 yaw_hit=1.648 max=1.773 range=0.182 vmax=0.772
+18 T03_031_gao01_5p42_7p42 quality=7.625 hit_abs=1.801 yaw_hit=1.801 max=1.841 range=0.049 vmax=0.236
+19 T03_077_gao01_1p71_3p71 quality=7.572 hit_abs=1.871 yaw_hit=1.871 max=1.972 range=0.122 vmax=0.602
+20 T03_083_gao01_10p82_12p82 quality=7.588 hit_abs=2.095 yaw_hit=2.095 max=2.216 range=0.242 vmax=0.964
