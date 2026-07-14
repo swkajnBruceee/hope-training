@@ -1,0 +1,39 @@
+{
+  "manifest": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/sample_motions/p2_fixed_competition_global_funnel_waist1p0_strict2600_native_calibrated_posture_k4/manifest.json",
+  "checkpoint": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-13_20-34-14_native_calibrated_posture_k4_res005_smoke_300/model_299.pt",
+  "max_steps": 40,
+  "native_joint_names": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "focus_joint_names": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "rollouts": {
+    "zero": {
+      "episode_id": "T04_005_gao01_7p05_9p05",
+      "stroke_type": "forehand",
+      "hit_step": 36,
+      "raw_action_abs_max": 0.0,
+      "target_minus_ref_abs_max_rad": 0.14752867817878723,
+      "actual_minus_ref_abs_max_rad": 0.6337104439735413
+    }
+  }
+}

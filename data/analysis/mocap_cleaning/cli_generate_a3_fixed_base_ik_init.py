@@ -29,6 +29,11 @@ from analysis.mocap_cleaning.config import load_config
 WAIST_YAW_ABS_LIMIT_RAD = 1.00
 WAIST_YAW_REGULARIZATION_SCALE = 5.0
 WAIST_YAW_NOMINAL_WEIGHT = 0.20
+RIGHT_WRIST_JOINTS = (
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint",
+)
 
 
 def _quat_xyzw_to_matrix(quat: np.ndarray) -> np.ndarray:
@@ -99,6 +104,86 @@ def _config_float(mapping: dict[str, Any], key: str, default: float) -> float:
     return float(mapping.get(key, default))
 
 
+def _angle_delta(values: np.ndarray, neutral: np.ndarray) -> np.ndarray:
+    return (values - neutral + np.pi) % (2.0 * np.pi) - np.pi
+
+
+def _joint_weight_vector(weights: dict[str, Any], key: str, active_names: list[str]) -> np.ndarray:
+    configured = weights.get(key, {})
+    out = np.zeros(len(active_names), dtype=np.float64)
+    if isinstance(configured, dict):
+        for idx, name in enumerate(active_names):
+            out[idx] = float(configured.get(name, 0.0))
+    return out
+
+
+def _deadband_vector(weights: dict[str, Any], active_names: list[str]) -> np.ndarray:
+    configured = weights.get("joint_neutral_deadband_rad", {})
+    out = np.zeros(len(active_names), dtype=np.float64)
+    if isinstance(configured, dict):
+        for idx, name in enumerate(active_names):
+            out[idx] = max(float(configured.get(name, 0.0)), 0.0)
+    return out
+
+
+def _deadband_delta(delta: np.ndarray, deadband: np.ndarray) -> np.ndarray:
+    return np.sign(delta) * np.maximum(np.abs(delta) - deadband, 0.0)
+
+
+def _softplus(values: np.ndarray) -> np.ndarray:
+    return np.logaddexp(0.0, values)
+
+
+def _comfort_range_penalty(q_active: np.ndarray, weights: dict[str, Any], active_names: list[str]) -> np.ndarray:
+    ranges = weights.get("joint_comfort_ranges_rad", {})
+    comfort_weight = _config_float(weights, "joint_comfort_weight", 0.0)
+    if comfort_weight <= 0.0 or not isinstance(ranges, dict):
+        return np.zeros(0, dtype=np.float64)
+    softness = max(_config_float(weights, "joint_comfort_softness_rad", 0.0), 0.0)
+    residuals = []
+    for idx, name in enumerate(active_names):
+        if name not in ranges:
+            continue
+        lo, hi = ranges[name]
+        value = float(q_active[idx])
+        lower_excess = float(lo) - value
+        upper_excess = value - float(hi)
+        if softness > 0.0:
+            residuals.append(softness * _softplus(np.asarray(lower_excess / softness)))
+            residuals.append(softness * _softplus(np.asarray(upper_excess / softness)))
+        else:
+            residuals.append(max(lower_excess, 0.0))
+            residuals.append(max(upper_excess, 0.0))
+    if not residuals:
+        return np.zeros(0, dtype=np.float64)
+    return comfort_weight * np.asarray(residuals, dtype=np.float64)
+
+
+def _wrist_naturalness_metrics(joint_pos: np.ndarray, hit_index: int) -> dict[str, Any]:
+    metrics: dict[str, Any] = {}
+    for name in RIGHT_WRIST_JOINTS:
+        idx = A3_POLICY_JOINT_ORDER.index(name)
+        neutral = float(A3_DEFAULT_JOINT_POS.get(name, 0.0))
+        delta_deg = np.degrees(np.abs(_angle_delta(joint_pos[:, idx], neutral)))
+        prefix = name.replace("_joint", "")
+        metrics[f"{prefix}_neutral_delta_hit_deg"] = float(delta_deg[hit_index])
+        metrics[f"{prefix}_neutral_delta_p95_deg"] = float(np.nanpercentile(delta_deg, 95))
+        metrics[f"{prefix}_neutral_delta_max_deg"] = float(np.nanmax(delta_deg))
+    metrics["right_wrist_bend_pitch_yaw_p95_deg"] = float(
+        max(
+            metrics["right_wrist_pitch_neutral_delta_p95_deg"],
+            metrics["right_wrist_yaw_neutral_delta_p95_deg"],
+        )
+    )
+    metrics["right_wrist_bend_pitch_yaw_max_deg"] = float(
+        max(
+            metrics["right_wrist_pitch_neutral_delta_max_deg"],
+            metrics["right_wrist_yaw_neutral_delta_max_deg"],
+        )
+    )
+    return metrics
+
+
 def _solve_frame(
     *,
     x0: np.ndarray,
@@ -116,6 +201,9 @@ def _solve_frame(
     joint_index_by_name = {name: i for i, name in enumerate(A3_POLICY_JOINT_ORDER)}
     active_names = [A3_POLICY_JOINT_ORDER[i] for i in active_idx]
     waist_yaw_local_idx = active_names.index("waist_yaw_joint") if "waist_yaw_joint" in active_names else None
+    neutral_active = q_full_default[active_idx]
+    naturalness_weight = _joint_weight_vector(weights, "joint_neutral_weights", active_names)
+    naturalness_deadband = _deadband_vector(weights, active_names)
     target_normal = target_normal / max(float(np.linalg.norm(target_normal)), 1e-9)
     target_tangent = target_tangent / max(float(np.linalg.norm(target_tangent)), 1e-9)
     reg_weight = np.ones(len(active_idx), dtype=np.float64) * float(weights["regularization_weight"])
@@ -135,6 +223,11 @@ def _solve_frame(
             _config_float(weights, "tangent_weight", 0.0) * (tangent - target_tangent),
             reg_weight * (q_active - x0),
         ]
+        if np.any(naturalness_weight > 0.0):
+            terms.append(naturalness_weight * _deadband_delta(_angle_delta(q_active, neutral_active), naturalness_deadband))
+        comfort = _comfort_range_penalty(q_active, weights, active_names)
+        if comfort.size:
+            terms.append(comfort)
         if waist_yaw_local_idx is not None:
             waist_default = q_full_default[active_idx[waist_yaw_local_idx]]
             terms.append(np.asarray([WAIST_YAW_NOMINAL_WEIGHT * (q_active[waist_yaw_local_idx] - waist_default)], dtype=np.float64))
@@ -186,6 +279,7 @@ def _evaluate(csv_data: np.ndarray, target_pos: np.ndarray, target_quat: np.ndar
         "racket_tangent_error_at_hit_deg": float(tangent_err_deg[hit_index]),
         "racket_tangent_error_p50_deg": float(np.nanpercentile(tangent_err_deg, 50)),
         "racket_tangent_error_p90_deg": float(np.nanpercentile(tangent_err_deg, 90)),
+        **_wrist_naturalness_metrics(csv_data[:, 7:], hit_index),
     }
 
 

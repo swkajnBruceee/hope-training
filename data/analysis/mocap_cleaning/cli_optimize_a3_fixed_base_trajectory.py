@@ -45,6 +45,11 @@ CONTROL_POINT_ORDER = (
 
 WAIST_YAW_OPT_DELTA_LIMIT_RAD = 0.60
 WAIST_YAW_OPT_ABS_LIMIT_RAD = 1.00
+RIGHT_WRIST_JOINTS = (
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint",
+)
 
 
 def _quat_xyzw_to_matrix(quat: np.ndarray) -> np.ndarray:
@@ -70,6 +75,86 @@ def _normalize_rows(values: np.ndarray) -> np.ndarray:
 def _config_float(mapping: dict[str, Any], key: str, default: float) -> float:
     value = mapping.get(key, default)
     return float(value)
+
+
+def _angle_delta(values: np.ndarray, neutral: np.ndarray) -> np.ndarray:
+    return (values - neutral + np.pi) % (2.0 * np.pi) - np.pi
+
+
+def _joint_weight_vector(config: dict[str, Any], key: str, joint_names: list[str]) -> np.ndarray:
+    configured = config.get(key, {})
+    out = np.zeros(len(joint_names), dtype=np.float64)
+    if isinstance(configured, dict):
+        for idx, name in enumerate(joint_names):
+            out[idx] = float(configured.get(name, 0.0))
+    return out
+
+
+def _deadband_vector(config: dict[str, Any], joint_names: list[str]) -> np.ndarray:
+    configured = config.get("joint_neutral_deadband_rad", {})
+    out = np.zeros(len(joint_names), dtype=np.float64)
+    if isinstance(configured, dict):
+        for idx, name in enumerate(joint_names):
+            out[idx] = max(float(configured.get(name, 0.0)), 0.0)
+    return out
+
+
+def _deadband_delta(delta: np.ndarray, deadband: np.ndarray) -> np.ndarray:
+    return np.sign(delta) * np.maximum(np.abs(delta) - deadband, 0.0)
+
+
+def _softplus(values: np.ndarray) -> np.ndarray:
+    return np.logaddexp(0.0, values)
+
+
+def _comfort_range_penalty(q_seq: np.ndarray, config: dict[str, Any], joint_names: list[str]) -> np.ndarray:
+    ranges = config.get("joint_comfort_ranges_rad", {})
+    comfort_weight = _config_float(config, "joint_comfort_weight", 0.0)
+    if comfort_weight <= 0.0 or not isinstance(ranges, dict):
+        return np.zeros(0, dtype=np.float64)
+    softness = max(_config_float(config, "joint_comfort_softness_rad", 0.0), 0.0)
+    residuals = []
+    for idx, name in enumerate(joint_names):
+        if name not in ranges:
+            continue
+        lo, hi = ranges[name]
+        values = q_seq[:, idx]
+        lower_excess = float(lo) - values
+        upper_excess = values - float(hi)
+        if softness > 0.0:
+            residuals.append(softness * _softplus(lower_excess / softness))
+            residuals.append(softness * _softplus(upper_excess / softness))
+        else:
+            residuals.append(np.maximum(lower_excess, 0.0))
+            residuals.append(np.maximum(upper_excess, 0.0))
+    if not residuals:
+        return np.zeros(0, dtype=np.float64)
+    return (comfort_weight * np.concatenate(residuals)).ravel()
+
+
+def _wrist_naturalness_metrics(joint_pos: np.ndarray, hit_index: int) -> dict[str, Any]:
+    metrics: dict[str, Any] = {}
+    for name in RIGHT_WRIST_JOINTS:
+        idx = A3_POLICY_JOINT_ORDER.index(name)
+        neutral = float(A3_DEFAULT_JOINT_POS.get(name, 0.0))
+        delta_deg = np.degrees(np.abs(_angle_delta(joint_pos[:, idx], neutral)))
+        prefix = name.replace("_joint", "")
+        metrics[f"{prefix}_neutral_delta_hit_deg"] = float(delta_deg[hit_index])
+        metrics[f"{prefix}_neutral_delta_p95_deg"] = float(np.nanpercentile(delta_deg, 95))
+        metrics[f"{prefix}_neutral_delta_max_deg"] = float(np.nanmax(delta_deg))
+    metrics["right_wrist_bend_pitch_yaw_p95_deg"] = float(
+        max(
+            metrics["right_wrist_pitch_neutral_delta_p95_deg"],
+            metrics["right_wrist_yaw_neutral_delta_p95_deg"],
+        )
+    )
+    metrics["right_wrist_bend_pitch_yaw_max_deg"] = float(
+        max(
+            metrics["right_wrist_pitch_neutral_delta_max_deg"],
+            metrics["right_wrist_yaw_neutral_delta_max_deg"],
+        )
+    )
+    return metrics
 
 
 def _target_axes(quat_xyzw: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -304,6 +389,9 @@ def _optimize_one(
     support_frames = _geometry_support_frames(hit_mask, corridor_mask, weak_pre_frame, weak_post_frame, n_frames)
     support_lookup = {int(frame): i for i, frame in enumerate(support_frames.tolist())}
     opt_cfg = config["optimization"]
+    neutral_active = np.asarray([float(A3_DEFAULT_JOINT_POS.get(name, 0.0)) for name in active_names], dtype=np.float64)
+    naturalness_weight = _joint_weight_vector(opt_cfg, "joint_neutral_weights", active_names)
+    naturalness_deadband = _deadband_vector(opt_cfg, active_names)
 
     def residual(flat_control_q: np.ndarray) -> np.ndarray:
         control_q = flat_control_q.reshape(control_q_ref.shape)
@@ -350,6 +438,12 @@ def _optimize_one(
             res.append((float(opt_cfg["weak_velocity_direction_weight"]) * (vel_dir - target_vel_dir[frame])).ravel())
 
         res.append((float(opt_cfg["regularization_weight"]) * (q_seq - q_ref)).ravel())
+        if np.any(naturalness_weight > 0.0):
+            neutral_delta = _angle_delta(q_seq, neutral_active[None, :])
+            res.append((naturalness_weight[None, :] * _deadband_delta(neutral_delta, naturalness_deadband[None, :])).ravel())
+        comfort = _comfort_range_penalty(q_seq, opt_cfg, active_names)
+        if comfort.size:
+            res.append(comfort)
         res.append(_control_point_delta_penalty(control_q, control_q_ref, config))
         res.append(_control_point_smooth_penalty(control_q, config))
         res.append(_limit_margin_penalty(q_seq, lower, upper, config))
@@ -451,6 +545,7 @@ def _evaluate(
         "max_active_joint_acceleration_radps2": float(np.max(np.abs(joint_acc[:, active_idx]))),
         "max_active_joint_jerk_radps3": float(np.max(np.abs(joint_jerk[:, active_idx]))),
         "max_abs_waist_yaw_rad": float(np.max(np.abs(q[:, waist_yaw_idx]))),
+        **_wrist_naturalness_metrics(q, hit_index),
     }
 
 
@@ -472,6 +567,22 @@ def _quality_layers(metrics: dict[str, Any], csv_data: np.ndarray, config: dict[
         and metrics["max_active_joint_jerk_radps3"] <= float(thresholds["max_joint_jerk_reject_radps3"])
     )
     waist_yaw_pass = metrics["max_abs_waist_yaw_rad"] <= _config_float(thresholds, "max_abs_waist_yaw_reject_rad", float("inf"))
+    wrist_pitch_pass = metrics["right_wrist_pitch_neutral_delta_p95_deg"] <= _config_float(
+        thresholds,
+        "right_wrist_pitch_neutral_delta_p95_reject_deg",
+        float("inf"),
+    )
+    wrist_yaw_pass = metrics["right_wrist_yaw_neutral_delta_p95_deg"] <= _config_float(
+        thresholds,
+        "right_wrist_yaw_neutral_delta_p95_reject_deg",
+        float("inf"),
+    )
+    wrist_roll_pass = metrics["right_wrist_roll_neutral_delta_p95_deg"] <= _config_float(
+        thresholds,
+        "right_wrist_roll_neutral_delta_p95_reject_deg",
+        float("inf"),
+    )
+    wrist_naturalness_pass = bool(wrist_pitch_pass and wrist_yaw_pass and wrist_roll_pass)
     schema_pass = _schema_pass(csv_data)
     precheck = _replay_precheck(csv_data, config, active_names, geometry_pass, dynamics_pass, hit_index_valid)
     return {
@@ -483,8 +594,12 @@ def _quality_layers(metrics: dict[str, Any], csv_data: np.ndarray, config: dict[
         "hit_velocity_direction_pass": hit_velocity_direction_pass,
         "hit_velocity_magnitude_pass": hit_velocity_magnitude_pass,
         "waist_yaw_pass": waist_yaw_pass,
+        "wrist_naturalness_pass": wrist_naturalness_pass,
+        "wrist_pitch_pass": wrist_pitch_pass,
+        "wrist_yaw_pass": wrist_yaw_pass,
+        "wrist_roll_pass": wrist_roll_pass,
         "replay_precheck": precheck,
-        "replay_ready": bool(precheck["replay_ready"] and waist_yaw_pass),
+        "replay_ready": bool(precheck["replay_ready"] and waist_yaw_pass and wrist_naturalness_pass),
     }
 
 
@@ -501,6 +616,8 @@ def _classify_failure(item: dict[str, Any], target_spec: dict[str, Any], layers:
         return "schema_fail"
     if not layers.get("waist_yaw_pass", True):
         return "waist_yaw_fail"
+    if not layers.get("wrist_naturalness_pass", True):
+        return "wrist_naturalness_fail"
     return "fixed_base_pass"
 
 
@@ -525,6 +642,8 @@ def _reject_reasons(metrics: dict[str, Any], layers: dict[str, Any], config: dic
         reasons.append("schema")
     if not layers.get("waist_yaw_pass", True):
         reasons.append("waist_yaw")
+    if not layers.get("wrist_naturalness_pass", True):
+        reasons.append("wrist_naturalness")
     if not layers["replay_precheck"]["base_fixed_ok"]:
         reasons.append("base_not_fixed")
     if not layers["replay_precheck"]["lower_body_static_ok"]:

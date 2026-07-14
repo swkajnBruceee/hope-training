@@ -1,0 +1,103 @@
+{
+  "stage": "optimized_motion_npz",
+  "count": 1,
+  "all_joint_pos_shape": [
+    [
+      80,
+      31
+    ]
+  ],
+  "all_body_pos_w_shape": [
+    [
+      80,
+      32,
+      3
+    ]
+  ],
+  "all_fps": [
+    50
+  ],
+  "entries": [
+    {
+      "episode_id": "T001_003_gao01_2p92_4p92",
+      "motion_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_expand4_v1/optimized_motion_npz/T001_003_gao01_2p92_4p92.npz",
+      "fps": 50,
+      "joint_pos_shape": [
+        80,
+        31
+      ],
+      "joint_vel_shape": [
+        80,
+        31
+      ],
+      "body_pos_w_shape": [
+        80,
+        32,
+        3
+      ],
+      "body_quat_w_shape": [
+        80,
+        32,
+        4
+      ],
+      "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel_supplement20/target_specs/T001_003_gao01_2p92_4p92_target_spec.json",
+      "hit_event": {
+        "source_hit_index": 120,
+        "source_fps": 200.0,
+        "hit_time_from_start_s": 0.6,
+        "motion_fps": 50,
+        "motion_hit_frame": 30,
+        "motion_hit_subframe_alpha": 0.0
+      },
+      "strike_target": {
+        "racket_position_m": [
+          2.398211123381072,
+          -0.1826438712920634,
+          0.31723232117415234
+        ],
+        "racket_quat_xyzw": [
+          -0.27251106351375226,
+          0.48238511242878773,
+          0.7260311692150153,
+          0.4073340949367576
+        ],
+        "racket_normal_w": [
+          -0.8543850584384881,
+          -0.20276707681823702,
+          0.4784471595439237
+        ],
+        "racket_tangent_w": [
+          -0.5196333107293127,
+          0.3285639383938085,
+          -0.7886868584981264
+        ],
+        "racket_velocity_mps": [
+          -1.720168059407138,
+          -0.5382641046198006,
+          1.0847288239408028
+        ],
+        "racket_velocity_direction_w": [
+          -0.8177064236535029,
+          -0.25587151997311736,
+          0.5156413191186727
+        ],
+        "ball_position_m": [
+          2.3963489928922126,
+          -0.20586184851663508,
+          0.314385707505056
+        ],
+        "ball_in_velocity_mps": [
+          2.0457538828461046,
+          0.9759527051051489,
+          1.7017658291154578
+        ],
+        "ball_out_velocity_mps": [
+          -4.437074360525733,
+          -1.9844876543086494,
+          1.3455757607339978
+        ],
+        "ball_to_racket_center_distance_m": 0.023465830599818015
+      }
+    }
+  ]
+}

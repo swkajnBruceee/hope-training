@@ -122,7 +122,8 @@ def main() -> None:
         entry = {
             "episode_id": episode_id,
             "stroke_type": str(sample["stroke_type_rule_v2"]),
-            "stroke_confidence": float(sample["stroke_confidence_rule_v2"]),
+            "stroke_confidence": float(sample.get("stroke_confidence_rule_v2", 1.0)),
+            "selection_note": str(sample.get("selection_note", "manual_or_probe_manifest")),
             "motion_npz": str(npz_entry["motion_npz"]),
             "fps": int(npz_entry["fps"]),
             "joint_pos_shape": npz_entry["joint_pos_shape"],
