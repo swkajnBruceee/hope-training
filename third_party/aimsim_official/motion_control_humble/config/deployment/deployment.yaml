@@ -1,0 +1,666 @@
+formatVersion: v1
+type: deployment
+labels:
+  robot: A3_ULTRA
+spec:
+  - app: motion_player
+    executable: aimrt_main
+    module: MotionPlayerModule
+    processor: mdu
+    mode: pkg
+    net:
+      http:
+        - listen_port: 56444
+          is_net_plugin: True
+          clients:
+            - agent
+  - app: motion_streamer
+    executable: aimrt_main
+    module:
+      - A2MotionStreamer
+      - MotionStreamerA2Vr
+    mode: pkg
+    processor: mdu
+    net:
+      http:
+        - listen_port: 50070
+          is_net_plugin: True
+          clients:
+            - aim_master
+      udp:
+        - listen_port: 56640
+          is_net_plugin: True
+          constraint:
+            env:
+              MOCAP_TYPE:
+                - IO_VR
+                - IO_MOCAP
+          clients:
+            - mocap_suit
+            - vr
+            - rtc
+        - listen_port: 56641
+          is_net_plugin: True
+          constraint:
+            env:
+              MOCAP_TYPE: VR
+  - app: ota_master
+    executable: ota_master
+    module: ota_master
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 57900
+          is_net_plugin: True
+          clients:
+            - gateway
+      tcp:
+        - listen_port: 57901
+          is_net_plugin: True
+      udp:
+        - listen_port: 57900
+          is_net_plugin: True
+  - app: mc
+    executable: motion_control
+    module: MotionControlModule
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 56322
+          is_net_plugin: True
+          clients:
+            - agent
+            - gateway
+            - hds
+            - motion_player
+            - motion_streamer
+      udp:
+        - listen_port: 50041
+          is_net_plugin: True
+  - app: hal_ethercat
+    executable: aimrt_main_hal
+    module:
+      - EthercatModule
+      - XsensImuDriverModule
+      - SerialImuDriverModule
+      - MID360LidarDriverModule
+      - RealsenseCameraModule
+      - OpenCvCameraModule
+      - AIUIModule
+    mode: pkg
+    processor: mdu
+    net:
+      http:
+        - listen_port: 56421
+          is_net_plugin: True
+          clients:
+            - agent
+            - motion_player
+            - motion_streamer
+      udp:
+        - listen_port: 56421
+          is_net_plugin: True
+          clients:
+            - hds
+  - app: hal_elink
+    executable: aimrt_main
+    module:
+      - ElinkModule
+    mode: pkg
+    processor: mdu
+    net:
+      http:
+        - listen_port: 56430
+          is_net_plugin: True
+  - app: recordbag0
+    executable: aimrte-tool-record_playback
+    module: recordbag
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 50593
+          is_net_plugin: True
+  - app: hds
+    executable: hds_master
+    module: hds
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 50587
+          is_net_plugin: True
+      udp:
+        - listen_port: 51587
+          is_net_plugin: True
+          clients:
+            - hal_ethercat
+  - app: data_exporter
+    executable: data_exporter
+    module: DataExporterModule
+    processor: hdu
+    mode: app
+    net:
+      http:
+        - listen_port: 51260
+          is_net_plugin: True
+  - app: sm
+    executable: sm
+    module: SystemManagerModule
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 51011
+          is_net_plugin: True
+      clients:
+        - test
+      udp:
+        - listen_port: 53011
+          is_net_plugin: True
+  - app: gateway
+    executable: gateway
+    module: GatewayModule
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 51056
+          is_net_plugin: True
+          clients:
+            - aima_master
+      udp:
+        - listen_port: 53056
+          is_net_plugin: True
+  - app: pnc_arm
+    executable: pnc_arm
+    module: PncArmModule
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 56321
+          is_net_plugin: True
+          clients:
+            - agent
+            - gateway
+            - hds
+            - manipulator
+            - motion_player
+            - pnc
+            - motion_streamer
+      udp:
+        - listen_port: 50042
+          is_net_plugin: True
+          clients:
+            - pnc
+
+  - app: setting0
+    executable: setting
+    module: SettingModule
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 51048
+          is_net_plugin: True
+          clients:
+            - agent
+      udp:
+        - listen_port: 53048
+          is_net_plugin: True
+  - app: setting1
+    executable: setting
+    module: SettingModule
+    mode: app
+    processor: hdu
+    net:
+      http:
+        - listen_port: 51048
+          is_net_plugin: True
+          clients:
+            - agent
+      udp:
+        - listen_port: 53048
+          is_net_plugin: True
+  - app: agent
+    executable: agent
+    module: AgentModule
+    mode: app
+    processor: hdu
+    net:
+      http:
+        - listen_port: 59301
+          is_net_plugin: True
+      udp:
+        - listen_port: 58301
+          is_net_plugin: True
+  - app: hal_audio
+    executable: hal_audio
+    module: HalAudioModule
+    mode: app
+    processor: hdu
+    net:
+      http:
+        - listen_port: 56666
+          is_net_plugin: True
+      udp:
+        - listen_port: 56667
+          is_net_plugin: True
+  - app: resource_manager
+    executable: resource_manager
+    module: ResourceManagerModule
+    mode: app
+    processor: hdu
+    net:
+      http:
+        - listen_port: 51049
+          is_net_plugin: True
+      udp:
+        - listen_port: 53049
+          is_net_plugin: True
+  - app: data_proxy
+    executable: aima-data_proxy-app
+    module: data_proxy
+    mode: app
+    processor: hdu
+    net:
+      http:
+        - listen_port: 52583
+          is_net_plugin: True
+      tcp:
+        - listen_port: 53583
+          is_net_plugin: True
+      udp:
+        - listen_port: 54583
+          is_net_plugin: True
+          clients:
+            - all
+  - app: skillpilot
+    executable: skillpilot
+    module: SkillPilotModule
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 52893
+          is_net_plugin: True
+      udp:
+        - listen_port: 54893
+          is_net_plugin: True
+  - app: viz
+    executable: aimrt_main
+    module: VizModule
+    mode: pkg
+    processor: hdu
+    net:
+      http:
+        - listen_port: 50090
+          is_net_plugin: True
+          clients:
+            - https://aimrt-viz.dev.agibot.com/cloud/node
+  - app: recordbag1
+    executable: aimrte-tool-record_playback
+    module: recordbag
+    mode: app
+    processor: hdu
+    net:
+      http:
+        - listen_port: 50593
+          is_net_plugin: True
+  - app: health_monitor0
+    executable: health_monitor
+    module: health_monitor
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 50588
+          is_net_plugin: True
+      udp:
+        - listen_port: 51588
+          is_net_plugin: True
+  - app: health_monitor1
+    executable: health_monitor
+    module: health_monitor
+    mode: app
+    processor: hdu
+    net:
+      http:
+        - listen_port: 50588
+          is_net_plugin: True
+      udp:
+        - listen_port: 51588
+          is_net_plugin: True
+  - app: ota_service0
+    executable: ota_service
+    module: ota_service
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 57902
+          is_net_plugin: True
+      tcp:
+        - listen_port: 57903
+          is_net_plugin: True
+      udp:
+        - listen_port: 57902
+          is_net_plugin: True
+  - app: ota_service1
+    executable: ota_service
+    module: ota_service
+    mode: app
+    processor: hdu
+    net:
+      http:
+        - listen_port: 57902
+          is_net_plugin: True
+      tcp:
+        - listen_port: 57903
+          is_net_plugin: True
+      udp:
+        - listen_port: 57902
+          is_net_plugin: True
+  - app: tf
+    executable: joint_tf
+    module: JointTFModule
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 50775
+          is_net_plugin: True
+      udp:
+        - listen_port: 50200
+          is_net_plugin: True
+          max_pkg_size: 20480
+  - app: tf_server
+    executable: transform_service
+    module: transform_rpc_module
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 50100
+          is_net_plugin: True
+          clients:
+            - task_engine
+      udp:
+        - listen_port: 52775
+          is_net_plugin: True
+  - app: calibration
+    executable: calibration
+    module: CalibrationModule
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 51096
+          is_net_plugin: True
+      udp:
+        - listen_port: 53096
+          is_net_plugin: True
+  - app: recordbag2
+    executable: aimrte-tool-record_playback
+    module: recordbag
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 50593
+          is_net_plugin: True
+  - app: health_monitor2
+    executable: health_monitor
+    module: health_monitor
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 50588
+          is_net_plugin: True
+      udp:
+        - listen_port: 51588
+          is_net_plugin: True
+  - app: ota_service2
+    executable: ota_service
+    module: ota_service
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 57902
+          is_net_plugin: True
+      tcp:
+        - listen_port: 57903
+          is_net_plugin: True
+      udp:
+        - listen_port: 57902
+          is_net_plugin: True
+  - app: perception
+    executable: perception
+    module:
+      - CalibParamModule
+      - Intra
+      - BasePerceptron
+      - SceneFormer
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 52443
+          is_net_plugin: True
+          clients:
+            - manipulator
+      udp:
+        - listen_port: 54443
+          is_net_plugin: True
+  - app: pnc
+    executable: vectorflux
+    module:
+      - MainModule
+      - PncServiceModule
+      - FootControlModule
+      - PerceptionModule
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 53176
+          is_net_plugin: True
+          clients:
+            - agent
+            - embodied_agent
+            - pnc
+      udp:
+        - listen_port: 55176
+          is_net_plugin: True
+  - app: mm
+    executable: map_manager
+    module: MapManagerModule
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 50807
+          is_net_plugin: True
+      udp:
+        - listen_port: 52807
+          is_net_plugin: True
+  - app: slam
+    executable: slam
+    module:
+      - LocalizationModule
+      - MappingModule
+      - RelocalizationModule
+      - QRLocalizationModule
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 50583
+          is_net_plugin: True
+      udp:
+        - listen_port: 51583
+          is_net_plugin: True
+  - app: agivslam
+    executable: agivslam
+    module: VisualSlamModule
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 50584
+          is_net_plugin: True
+      udp:
+        - listen_port: 52584
+          is_net_plugin: True
+  - app: legged_odometry
+    executable: legged_odometry
+    module: LeggedOdometryModule
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 50585
+          is_net_plugin: True
+      udp:
+        - listen_port: 52585
+          is_net_plugin: True
+  - app: embodied_agent
+    executable: embodied_agent
+    module: EmbodiedAgentModule
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 52181
+          is_net_plugin: True
+          clients:
+            - agent
+      udp:
+        - listen_port: 54181
+          is_net_plugin: True
+  - app: manipulator
+    executable: manipulator
+    module:
+      - CalibParamModule
+      - ManipulationModule
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 52137
+          is_net_plugin: True
+          clients:
+            - embodied_agent
+            - aim_master
+      udp:
+        - listen_port: 54137
+          is_net_plugin: True
+  - app: data_collector
+    executable: data_collector
+    module: data_collector
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 51549
+          is_net_plugin: True
+      udp:
+        - listen_port: 53549
+          is_net_plugin: True
+  - app: columbus
+    executable: columbus
+    module: ColumbusModule
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 50586
+          is_net_plugin: True
+      udp:
+        - listen_port: 52586
+          is_net_plugin: True
+  - app: resource_server
+    executable: resource_server
+    module: ResourceServerModule
+    mode: app
+    processor: hdu
+    net:
+      http:
+        - listen_port: 64515
+          is_net_plugin: False
+  - app: hal_hdu_camera
+    executable: aimrt_main
+    module:
+      - HduCameraModule
+    mode: pkg
+    processor: hdu
+    net:
+      http:
+        - listen_port: 56430
+          is_net_plugin: True
+      udp:
+        - listen_port: 56430
+          is_net_plugin: True
+  - app: hal_depth_camera
+    executable: aimrt_main
+    module: hal_depth_camera
+    mode: pkg
+    processor: adu
+    net:
+      http:
+        - listen_port: 56436
+          is_net_plugin: True
+      udp:
+        - listen_port: 56436
+          is_net_plugin: True
+  - app: hal_sipl
+    executable: aimrt_main
+    module: SiplCameraModule
+    mode: pkg
+    processor: adu
+    net:
+      http:
+        - listen_port: 56435
+          is_net_plugin: True
+      udp:
+        - listen_port: 56435
+          is_net_plugin: True
+  - app: hal_lidar
+    executable: hal_lidar
+    module: hal_lidar
+    mode: app
+    processor: adu
+    net:
+      http:
+        - listen_port: 52114
+          is_net_plugin: True
+      udp:
+        - listen_port: 54114
+          is_net_plugin: True
+        - listen_port: 56101
+          is_net_plugin: False
+        - listen_port: 56201
+          is_net_plugin: False
+        - listen_port: 56301
+          is_net_plugin: False
+        - listen_port: 56401
+          is_net_plugin: False
+        - listen_port: 56501
+          is_net_plugin: False
+  - app: hal_uwb
+    executable: hal_uwb
+    module: hal_uwb
+    mode: app
+    processor: mdu
+    net:
+      http:
+        - listen_port: 57402
+          is_net_plugin: True
+      udp:
+        - listen_port: 57403
+          is_net_plugin: True

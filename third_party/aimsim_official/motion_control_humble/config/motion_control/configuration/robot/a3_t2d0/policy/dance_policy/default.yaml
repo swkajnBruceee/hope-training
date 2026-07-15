@@ -1,0 +1,7 @@
+common:
+  policy_name: "Dance"
+  model_name: ["放克派对", "locking_plus", "babyshark6_finetune"]
+  model_path: ["policy_locking_0310_2.onnx", "policy_locking_plus.onnx", "babyshark_ft_52500.onnx"]
+  dataset_file: ["export_data_locking_0310.npy", "export_data_locking_plus.npy", "babyshark_ft_52500.npy"]
+  use_imu_list: [1] # 0 means torso imu ; 1 means waist imu; [0, 1] means both imu enable
+  decimation: 10

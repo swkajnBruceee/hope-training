@@ -1,7 +1,58 @@
 # A3 MuJoCo Body-Drive Validation
 
-This document defines the local A3 actuator-contract validation path. It is
-separate from IsaacLab training and from the official A3 MOTION controller.
+This document contains the historical custom body-drive probe and points to
+the official AimSim path. The official path is now the source of truth for
+native A3 motion-control validation; the custom probe is retained only for
+historical comparison.
+
+Use [`OFFICIAL_AIMSIM_A3_RUNTIME.md`](OFFICIAL_AIMSIM_A3_RUNTIME.md) for the
+installed official runtime. Do not use the historical custom launcher when
+making claims about native A3 balance or official MOTION behavior.
+
+## Official A3 v3.0 AimSim Path
+
+The official A3 v3.0 documentation provides a separate path that is closer to
+the native robot stack than this local body-drive probe:
+
+```text
+AimSim MuJoCo
+    + official motion_control
+    + A3 action/state interfaces
+```
+
+Reference:
+
+```text
+https://open.agibot.com/docs/aimdk/a3/v3_0/dev_guide/09-motion_control_simulation
+```
+
+The documented setup requires Python 3.10. This checkout now contains the
+vendor-provided AimSim package as `AimSim/aimsim-3.3-py3-none-any.whl` and the
+matching official x86 Humble Motion Control bundle under
+`third_party/aimsim_official/motion_control_humble`.
+
+Use the project wrapper for the installed package:
+
+```bash
+source tools/setup_official_aimsim_env.sh
+tools/start_official_aimsim_a3.sh
+```
+
+Then the official action state machine should be exercised in order:
+
+```text
+GET_UP -> MOTION -> locomotion / upper-body interface
+```
+
+This is the correct validation route for the question “does the A3 native
+motion controller keep the lower body balanced while an upper-body command is
+sent?”. It does not require us to substitute our PPO checkpoint for the
+factory motion controller.
+
+`agibot_a3_aimdk/prebuilt/a3_aimdk-3.1.0-py3-none-any.whl` remains only the
+high-level SDK interface package and must not be mistaken for the AimSim
+runtime. The official runtime is documented separately in
+`OFFICIAL_AIMSIM_A3_RUNTIME.md`.
 
 ## What Is Configured
 

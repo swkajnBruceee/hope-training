@@ -1,0 +1,114 @@
+aimrt:
+  plugin:
+    plugins:
+      - name: ros2_plugin
+        path: libaimrt_ros2_plugin.so
+        options:
+          node_name: mujoco_simulator_node
+          executor_type: MultiThreaded # SingleThreaded/StaticSingleThreaded/MultiThreaded
+          executor_thread_num: 4
+          auto_initialize_logging: false
+      - name: iceoryx_plugin
+        path: libaimrt_iceoryx_plugin.so
+  log:
+    core_lvl: INFO # Trace/Debug/Info/Warn/Error/Fatal/Off
+    default_module_lvl: INFO
+    backends:
+      - type: console
+
+  executor:
+    executors:
+      - name: arm_joint_state_publisher_thread
+        type: asio_thread
+      - name: leg_joint_state_publisher_thread
+        type: asio_thread
+      - name: waist_joint_state_publisher_thread
+        type: asio_thread
+      - name: neck_joint_state_publisher_thread
+        type: asio_thread
+      - name: pelvis_imu_data_state_publisher_thread
+        type: asio_thread
+      - name: torso_imu_data_state_publisher_thread
+        type: asio_thread 
+
+  channel:
+    # 每个 topic 实际使用的后端看 enable_backends；仅改下方 backends 列表不会切换 topic。
+    # 改用 ROS2 时：各 enable_backends 改为 [ros2]，且 backends 中需保留 - type: ros2。
+    pub_topics_options:
+      - topic_name: /body_drive/pelvis_imu/data
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/torso_imu/data
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/arm_joint_state
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/leg_joint_state
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/waist_joint_state
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/neck_joint_state
+        enable_backends: [iceoryx]
+
+    sub_topics_options:
+      - topic_name: "/body_drive/arm_joint_command"
+        enable_backends: [iceoryx]
+      - topic_name: "/body_drive/leg_joint_command"
+        enable_backends: [iceoryx]
+      - topic_name: "/body_drive/waist_joint_command"
+        enable_backends: [iceoryx]
+      - topic_name: "/body_drive/neck_joint_command"
+        enable_backends: [iceoryx]
+
+    backends: # 消息队列后端配置
+      - type: ros2
+      - type: iceoryx
+ 
+  module:
+    modules:
+      - name: IsaacSimulatorModule
+        log_lvl: INFO
+
+
+IsaacSimulatorModule:
+  mode: sil
+  publisher_manager:
+    publisher_cfg_list:
+    - name: arm_joint_state
+      topic_name: /body_drive/arm_joint_state
+      executor: arm_joint_state_publisher_thread
+      frequency: -1
+      enable_rt: true
+    - name: leg_joint_state
+      topic_name: /body_drive/leg_joint_state
+      executor: leg_joint_state_publisher_thread
+      frequency: -1
+      enable_rt: true
+    - name: waist_joint_state
+      topic_name: /body_drive/waist_joint_state
+      executor: waist_joint_state_publisher_thread
+      frequency: -1
+      enable_rt: true
+    - name: neck_joint_state
+      topic_name: /body_drive/neck_joint_state
+      executor: neck_joint_state_publisher_thread
+      frequency: -1
+      enable_rt: true
+    - name: pelvis_imu_state_ros
+      topic_name: /body_drive/pelvis_imu/data
+      executor: pelvis_imu_data_state_publisher_thread
+      frequency: -1
+    - name: torso_imu_state_ros
+      topic_name: /body_drive/torso_imu/data
+      executor: torso_imu_data_state_publisher_thread
+      frequency: -1
+
+  subscriber_manager:
+    subscriber_cfg_list:
+      - name: arm_joint_command
+        topic_name: /body_drive/arm_joint_command
+      - name: leg_joint_command
+        topic_name: /body_drive/leg_joint_command
+      - name: waist_joint_command
+        topic_name: /body_drive/waist_joint_command
+      - name: neck_joint_command
+        topic_name: /body_drive/neck_joint_command
+

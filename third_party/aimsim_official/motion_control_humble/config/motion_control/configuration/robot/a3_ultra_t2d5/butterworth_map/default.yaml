@@ -1,0 +1,150 @@
+###########################################nmpc##########################################
+nmpc_body_vel_lin_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: false
+  debug_info: true
+nmpc_body_vel_ang_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+nmpc_joint_vel_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+###########################################wbc##########################################
+
+body_w_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+body_v_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+foot_w_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+foot_v_filter:
+  # # ordor: 2  fs: 1000.0  cutoff_freq: 10
+  # butterworth_b: [ 0.0009446918438401507, 0.0018893836876803015, 0.0009446918438401507 ]
+  # butterworth_a: [ -1.911197067426073, 0.9149758348014336 ]
+  # enable: true
+  # debug_info: true
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+model_body_w_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+model_body_v_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+model_joint_qd_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+
+# acc filter
+body_acc_lin_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+body_acc_ang_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+foot_acc_lin_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+foot_acc_ang_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+
+foot_wrench_filter:
+  # # ordor: 2  fs: 1000.0  cutoff_freq: 100
+  # butterworth_b: [0.0674552738890719, 0.1349105477781438, 0.0674552738890719]
+  # butterworth_a: [-1.1429805025399011, 0.41280159809618877]
+  # enable: true
+  # debug_info: true
+
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+###########################################################################################
+arm_swing_body_vel_filter:
+  # ordor: 2  fs: 1000.0  cutoff_freq: 20
+  butterworth_b:
+    [0.0036216815149286417, 0.007243363029857283, 0.0036216815149286417]
+  butterworth_a: [-1.822694925196308, 0.8371816512560226]
+  enable: true
+  debug_info: true
+
+stand_body_offset_filter:
+  # ordor: 4  fs: 1000.0  cutoff_freq: 1
+  butterworth_b:
+    [
+      9.66139663398867e-11,
+      3.864558653595468e-10,
+      5.796837980393201e-10,
+      3.864558653595468e-10,
+      9.66139663398867e-11,
+    ]
+  butterworth_a:
+    [
+      -3.983581258658521,
+      5.950878429266698,
+      -3.9510124365728325,
+      0.9837152675104786,
+    ]
+  enable: true
+  debug_info: true
