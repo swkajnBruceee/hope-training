@@ -4,6 +4,18 @@ Date: 2026-07-10
 
 This document supersedes the old whole-body-first training plan as the active project route for the A3 table-tennis controller.
 
+2026-07-14 status:
+
+The high-level native A3 route remains active, but the old balanced/K24
+manifests and PPO checkpoints discussed here are archived diagnostics. Current
+training inputs must be selected through:
+
+```text
+hope_training/whole_body_tracking/docs/CURRENT_NATIVE_STRIKE_WORKFLOW.md
+hope_training/whole_body_tracking/sample_motions/README_DATASETS.md
+hope_training/whole_body_tracking/docs/NATIVE_STRIKE_GATE_DESIGN.md
+```
+
 ## Core Decision
 
 Do not continue treating stable standing as a PPO skill to learn from scratch.
@@ -23,9 +35,9 @@ Planner / manifest
 
 The 31-DOF Isaac PPO run remains useful as a baseline, but it is no longer the main engineering path.
 
-## Current Baseline To Preserve
+## Historical Baseline To Preserve
 
-Keep this run as the whole-body PPO baseline:
+Keep this run only as a historical whole-body PPO diagnostic:
 
 ```text
 hope_training/whole_body_tracking/logs/rsl_rl/agibot_a3_hope_manifest/
@@ -37,13 +49,14 @@ What it proved:
 - Isaac training can run at `1024` environments on the laptop.
 - The manifest frame adapter is necessary and working for the tracking-only scene.
 - The balanced motion library loads correctly.
-- Whole-body PPO can learn basic stability.
+- Isaac can execute the old training loop.
 
 What it did not prove:
 
 - Stable strike execution.
 - Suitability for real A3 deployment.
 - Need to train balance from scratch.
+- Usability under the current combined robot / wrist / visual gate.
 
 ## AimDK Interface Findings
 

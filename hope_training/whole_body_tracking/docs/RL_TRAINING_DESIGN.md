@@ -7,19 +7,37 @@ Status update:
 The active project route has moved away from 31-DOF whole-body PPO as the main line. The current recommended route is native A3 standing/balance plus a waist/right-arm strike policy. See:
 
 ```text
+hope_training/whole_body_tracking/docs/CURRENT_NATIVE_STRIKE_WORKFLOW.md
 hope_training/whole_body_tracking/docs/A3_NATIVE_STRIKE_POLICY_PLAN.md
+hope_training/whole_body_tracking/docs/NATIVE_STRIKE_GATE_DESIGN.md
+hope_training/whole_body_tracking/sample_motions/README_DATASETS.md
 ```
 
 This document remains useful for the historical whole-body baseline and the HITTER-like command schema, but it should not be used to justify continuing `K=4 -> K=8` whole-body PPO expansion.
+
+2026-07-14 correction:
+
+The `balanced20` and older K8/K16/K24/K32 manifests referenced below are
+archived historical artifacts. They do not satisfy the current combined gate:
+
+```text
+hit task
++ robot posture / arm margin
++ wrist / forearm naturalness
++ visual replay review
+```
+
+Do not use commands or dataset paths in this document as current training
+instructions unless they are re-promoted in `sample_motions/README_DATASETS.md`.
 
 This document defines the recommended reinforcement-learning path for the current Agibot A3 table-tennis dataset.
 
 ## Current Training Dataset
 
-Use only the balanced dataset:
+Historical dataset described by this design:
 
 ```text
-hope_training/whole_body_tracking/sample_motions/p2_fixed_competition_global_funnel_balanced20/manifest.json
+hope_training/whole_body_tracking/sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20/manifest.json
 ```
 
 Contents:
@@ -36,7 +54,8 @@ Contents:
   - `joint_pos=(80,31)`
   - `body_pos_w=(80,32,3)`
 
-This dataset is ready for training, but the current RL code path is still mostly single-motion oriented.
+This dataset is not current training input. It is retained for comparison with
+the older whole-body and early native-strike experiments.
 
 ## Project Status
 

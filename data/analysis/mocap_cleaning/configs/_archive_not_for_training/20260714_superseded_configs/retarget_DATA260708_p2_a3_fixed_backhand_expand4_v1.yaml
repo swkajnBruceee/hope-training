@@ -1,0 +1,148 @@
+dataset: datasets_ready/DATA260708_competition_core.npz
+output_root: data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_backhand_expand4_v1
+
+robot: agibot_a3
+robot_side: p2
+base_mode: fixed
+coordinate_frame: competition_table_m
+
+selection:
+  racket: gao01
+  success_only: true
+  first_batch_size: 140
+  min_stroke_confidence: 0.7
+  preferred_strokes:
+    - forehand
+    - backhand
+  per_stroke_target: 10
+  diversity_sampling: true
+  allow_unknown: false
+  max_hit_distance_m: 0.15
+
+time:
+  fps: 200
+  hit_index: 120
+
+table:
+  length_m: 2.74
+  width_m: 1.525
+  floor_z_m: -0.76
+
+robot_base:
+  position_m: [3.15, -0.35, 0.3084]
+  quat_xyzw: [0.0, 0.0, 1.0, 0.0]
+
+ik:
+  active_joints:
+    - waist_yaw_joint
+    - waist_roll_joint
+    - waist_pitch_joint
+    - right_shoulder_pitch_joint
+    - right_shoulder_roll_joint
+    - right_shoulder_yaw_joint
+    - right_elbow_joint
+    - right_wrist_roll_joint
+    - right_wrist_pitch_joint
+    - right_wrist_yaw_joint
+  position_weight: 8.0
+  normal_weight: 0.8
+  tangent_weight: 0.2
+  velocity_direction_weight: 1.2
+  regularization_weight: 0.04
+  waist_yaw_abs_limit_rad: 1.0
+  max_nfev_per_frame: 80
+  joint_neutral_weights:
+    right_wrist_roll_joint: 0.18
+    right_wrist_pitch_joint: 0.65
+    right_wrist_yaw_joint: 0.65
+  joint_neutral_deadband_rad:
+    right_wrist_roll_joint: 0.70
+    right_wrist_pitch_joint: 0.30
+    right_wrist_yaw_joint: 0.30
+  joint_comfort_weight: 1.0
+  joint_comfort_softness_rad: 0.04
+  joint_comfort_ranges_rad:
+    right_elbow_joint: [-0.80, 1.62]
+    right_wrist_roll_joint: [-1.40, 1.40]
+    right_wrist_pitch_joint: [-0.65, 0.65]
+    right_wrist_yaw_joint: [-0.75, 0.75]
+
+optimization:
+  max_nfev: 120
+  hit_position_weight: 20.0
+  hit_normal_weight: 1.2
+  hit_velocity_direction_weight: 2.4
+  hit_velocity_magnitude_weight: 1.2
+  velocity_magnitude_scale_mps: 2.0
+  near_corridor_position_weight: 5.0
+  near_corridor_normal_weight: 0.45
+  near_corridor_velocity_direction_weight: 0.9
+  weak_position_weight: 0.25
+  weak_velocity_direction_weight: 0.12
+  smoothness_weight: 0.06
+  acceleration_weight: 0.004
+  jerk_weight: 0.00015
+  regularization_weight: 0.02
+  waist_yaw_abs_limit_rad: 1.0
+  waist_yaw_delta_limit_rad: 0.60
+  limit_margin_weight: 0.03
+  control_point_delta_weight: 0.06
+  control_point_smooth_weight: 0.05
+  joint_neutral_weights:
+    right_wrist_roll_joint: 0.15
+    right_wrist_pitch_joint: 0.50
+    right_wrist_yaw_joint: 0.50
+  joint_neutral_deadband_rad:
+    right_wrist_roll_joint: 0.70
+    right_wrist_pitch_joint: 0.30
+    right_wrist_yaw_joint: 0.30
+  joint_comfort_weight: 1.0
+  joint_comfort_softness_rad: 0.04
+  joint_comfort_ranges_rad:
+    right_elbow_joint: [-0.80, 1.62]
+    right_wrist_roll_joint: [-1.40, 1.40]
+    right_wrist_pitch_joint: [-0.65, 0.65]
+    right_wrist_yaw_joint: [-0.75, 0.75]
+
+optimization_control_points:
+  pre_far_offset: -20
+  pre_near_offset: -6
+  hit_offset: 0
+  post_near_offset: 6
+  post_far_offset: 24
+
+optimization_stay_weights:
+  boundary_start: 1.2
+  pre_far: 0.35
+  pre_near: 1.1
+  hit: 1.6
+  post_near: 1.1
+  post_far: 0.25
+  boundary_end: 1.0
+
+phase_windows:
+  pre_hit: [-24, -4]
+  hit: [-3, 3]
+  post_hit: [4, 40]
+
+quality_thresholds:
+  hit_position_warning_m: 0.035
+  hit_position_reject_m: 0.060
+  hit_orientation_warning_deg: 12.0
+  hit_orientation_reject_deg: 20.0
+  hit_tangent_warning_deg: 25.0
+  hit_tangent_reject_deg: 45.0
+  velocity_direction_warning_deg: 15.0
+  velocity_direction_reject_deg: 25.0
+  velocity_magnitude_warning_mps: 0.8
+  velocity_magnitude_reject_mps: 1.5
+  max_joint_velocity_warning_radps: 10.0
+  max_joint_velocity_reject_radps: 12.0
+  max_joint_acceleration_warning_radps2: 90.0
+  max_joint_acceleration_reject_radps2: 120.0
+  max_joint_jerk_warning_radps3: 1800.0
+  max_joint_jerk_reject_radps3: 2600.0
+  max_abs_waist_yaw_reject_rad: 1.0
+  right_wrist_roll_neutral_delta_p95_reject_deg: 95.0
+  right_wrist_pitch_neutral_delta_p95_reject_deg: 45.0
+  right_wrist_yaw_neutral_delta_p95_reject_deg: 50.0

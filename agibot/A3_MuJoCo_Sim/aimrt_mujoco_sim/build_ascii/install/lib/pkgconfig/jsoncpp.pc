@@ -1,0 +1,11 @@
+prefix=/home/bruce/hopett_sim/build_ascii/install
+exec_prefix=/home/bruce/hopett_sim/build_ascii/install
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: jsoncpp
+Description: A C++ library for interacting with JSON
+Version: 1.9.6
+URL: https://github.com/open-source-parsers/jsoncpp
+Libs: -L${libdir} -ljsoncpp
+Cflags: -I${includedir}

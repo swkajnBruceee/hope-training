@@ -1,0 +1,331 @@
+{
+  "source_manifests": [
+    "hope_training/whole_body_tracking/sample_motions/p2_fixed_forehand_native_margin_v1/manifest.json",
+    "hope_training/whole_body_tracking/sample_motions/p2_fixed_manual_accepted_v3/manifest.json"
+  ],
+  "replay_ready_count": 4,
+  "stroke_counts": {
+    "forehand": 2,
+    "backhand": 2
+  },
+  "smoke_picks": {
+    "forehand": "T002_015_gao01_15p25_17p25",
+    "backhand": "T002_023_gao01_26p64_28p64"
+  },
+  "library_root": "hope_training/whole_body_tracking/sample_motions/p2_fixed_balanced_native_margin_v1_k4",
+  "selection_note": "balanced K4: 2 new forehand native-margin-v1 + 2 accepted backhand v3; raw strike targets before native calibration",
+  "motions": [
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25",
+      "stroke_type": "forehand",
+      "stroke_confidence": 0.9,
+      "selection_note": "manual_or_probe_manifest",
+      "motion_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_native_margin_v1/optimized_motion_npz/T002_015_gao01_15p25_17p25.npz",
+      "fps": 50,
+      "joint_pos_shape": [
+        80,
+        31
+      ],
+      "body_pos_w_shape": [
+        80,
+        32,
+        3
+      ],
+      "optimized_csv": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_native_margin_v1/optimized_csv/T002_015_gao01_15p25_17p25.csv",
+      "target_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel/target_npz/T002_015_gao01_15p25_17p25_target.npz",
+      "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel/target_specs/T002_015_gao01_15p25_17p25_target_spec.json",
+      "hit_event": {
+        "source_hit_index": 120,
+        "source_fps": 200.0,
+        "hit_time_from_start_s": 0.6,
+        "motion_fps": 50,
+        "motion_hit_frame": 30,
+        "motion_hit_subframe_alpha": 0.0
+      },
+      "strike_target": {
+        "racket_position_m": [
+          2.685343449295345,
+          0.267972723547827,
+          0.3190760193911114
+        ],
+        "racket_quat_xyzw": [
+          -0.2801719581680884,
+          0.5624819160169564,
+          0.6511119027837913,
+          0.42564193644825854
+        ],
+        "racket_normal_w": [
+          -0.8694643819800241,
+          -0.004886072180940726,
+          0.4939714716122151
+        ],
+        "racket_tangent_w": [
+          -0.4806652315856712,
+          0.2390977426015885,
+          -0.8436783774801377
+        ],
+        "racket_velocity_mps": [
+          -2.1478530280249615,
+          -0.08451630563117413,
+          1.4951749981184501
+        ],
+        "racket_velocity_direction_w": [
+          -0.820295443136043,
+          -0.03227797222405644,
+          0.5710284743157261
+        ],
+        "ball_position_m": [
+          2.6438798820089553,
+          0.2893662958346657,
+          0.3530752489895562
+        ],
+        "ball_in_velocity_mps": [
+          1.5181294360845046,
+          1.0399656462656874,
+          -0.6650447128163015
+        ],
+        "ball_out_velocity_mps": [
+          -4.218549986966393,
+          -2.222371524129866,
+          1.478827333315237
+        ],
+        "ball_to_racket_center_distance_m": 0.05773092724522034
+      },
+      "library_motion_npz": "hope_training/whole_body_tracking/sample_motions/p2_fixed_balanced_native_margin_v1_k4/forehand/T002_015_gao01_15p25_17p25.npz"
+    },
+    {
+      "episode_id": "T03_012_gao01_12p10_14p10",
+      "stroke_type": "forehand",
+      "stroke_confidence": 1.0,
+      "selection_note": "manual_or_probe_manifest",
+      "motion_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_native_margin_v1/optimized_motion_npz/T03_012_gao01_12p10_14p10.npz",
+      "fps": 50,
+      "joint_pos_shape": [
+        80,
+        31
+      ],
+      "body_pos_w_shape": [
+        80,
+        32,
+        3
+      ],
+      "optimized_csv": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_native_margin_v1/optimized_csv/T03_012_gao01_12p10_14p10.csv",
+      "target_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel_supplement20/target_npz/T03_012_gao01_12p10_14p10_target.npz",
+      "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel_supplement20/target_specs/T03_012_gao01_12p10_14p10_target_spec.json",
+      "hit_event": {
+        "source_hit_index": 120,
+        "source_fps": 200.0,
+        "hit_time_from_start_s": 0.6,
+        "motion_fps": 50,
+        "motion_hit_frame": 30,
+        "motion_hit_subframe_alpha": 0.0
+      },
+      "strike_target": {
+        "racket_position_m": [
+          2.482127152951041,
+          0.03287011540983548,
+          0.3220059740636206
+        ],
+        "racket_quat_xyzw": [
+          0.23185290001554515,
+          -0.4831217916581204,
+          -0.7627696710625153,
+          -0.36196684390509
+        ],
+        "racket_normal_w": [
+          -0.776221037835327,
+          -0.2711466766768722,
+          0.5691751752746566
+        ],
+        "racket_tangent_w": [
+          -0.63044847333554,
+          0.3281682840087622,
+          -0.7034488608560198
+        ],
+        "racket_velocity_mps": [
+          -2.3886234507058144,
+          -0.1336503951415071,
+          1.1050994939139767
+        ],
+        "racket_velocity_direction_w": [
+          -0.9064068047984386,
+          -0.050716084020889125,
+          0.41935019141127317
+        ],
+        "ball_position_m": [
+          2.479195041294936,
+          -0.01290371315051829,
+          0.3290565187077023
+        ],
+        "ball_in_velocity_mps": [
+          2.304052582438041,
+          0.9284608319122868,
+          1.3646360858717015
+        ],
+        "ball_out_velocity_mps": [
+          -4.652787271719825,
+          -1.9969313705246508,
+          1.1114214877141237
+        ],
+        "ball_to_racket_center_distance_m": 0.04640636636944023
+      },
+      "library_motion_npz": "hope_training/whole_body_tracking/sample_motions/p2_fixed_balanced_native_margin_v1_k4/forehand/T03_012_gao01_12p10_14p10.npz"
+    },
+    {
+      "episode_id": "T002_023_gao01_26p64_28p64",
+      "stroke_type": "backhand",
+      "stroke_confidence": 1.0,
+      "selection_note": "backhand_expand4_v2_from_global_funnel_supplement20_using_accepted_wrist_naturalness_constraints",
+      "motion_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_backhand_expand4_v2/optimized_motion_npz/T002_023_gao01_26p64_28p64.npz",
+      "fps": 50,
+      "joint_pos_shape": [
+        80,
+        31
+      ],
+      "body_pos_w_shape": [
+        80,
+        32,
+        3
+      ],
+      "optimized_csv": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_backhand_expand4_v2/optimized_csv/T002_023_gao01_26p64_28p64.csv",
+      "target_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel_supplement20/target_npz/T002_023_gao01_26p64_28p64_target.npz",
+      "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel_supplement20/target_specs/T002_023_gao01_26p64_28p64_target_spec.json",
+      "hit_event": {
+        "source_hit_index": 120,
+        "source_fps": 200.0,
+        "hit_time_from_start_s": 0.6,
+        "motion_fps": 50,
+        "motion_hit_frame": 30,
+        "motion_hit_subframe_alpha": 0.0
+      },
+      "strike_target": {
+        "racket_position_m": [
+          2.774509223496827,
+          -0.5516002085979901,
+          0.23858058684307132
+        ],
+        "racket_quat_xyzw": [
+          0.3359061871029894,
+          0.43669024324068184,
+          0.5900733286765413,
+          -0.5901543287216591
+        ],
+        "racket_normal_w": [
+          0.9898425674674272,
+          0.07796100050103594,
+          0.11888555013276181
+        ],
+        "racket_tangent_w": [
+          -0.07776980351403884,
+          -0.4030947492592094,
+          0.9118478386118174
+        ],
+        "racket_velocity_mps": [
+          -1.569484654882683,
+          0.37733985241905066,
+          0.6524026783880865
+        ],
+        "racket_velocity_direction_w": [
+          -0.9014525061587567,
+          0.21672971097774427,
+          0.3747153740101947
+        ],
+        "ball_position_m": [
+          2.744348538549212,
+          -0.5592221389007708,
+          0.24351456311215863
+        ],
+        "ball_in_velocity_mps": [
+          2.3415710148345554,
+          0.005682225235460383,
+          2.5701338036655406
+        ],
+        "ball_out_velocity_mps": [
+          -4.297603976671027,
+          0.7066684808659416,
+          0.9175920521704912
+        ],
+        "ball_to_racket_center_distance_m": 0.03149769610421777
+      },
+      "library_motion_npz": "hope_training/whole_body_tracking/sample_motions/p2_fixed_balanced_native_margin_v1_k4/backhand/T002_023_gao01_26p64_28p64.npz"
+    },
+    {
+      "episode_id": "T03_030_gao01_0p99_2p99",
+      "stroke_type": "backhand",
+      "stroke_confidence": 1.0,
+      "selection_note": "manual_or_probe_manifest",
+      "motion_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_wrist_naturalness_probe/optimized_motion_npz/T03_030_gao01_0p99_2p99.npz",
+      "fps": 50,
+      "joint_pos_shape": [
+        80,
+        31
+      ],
+      "body_pos_w_shape": [
+        80,
+        32,
+        3
+      ],
+      "optimized_csv": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_wrist_naturalness_probe/optimized_csv/T03_030_gao01_0p99_2p99.csv",
+      "target_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel_supplement20/target_npz/T03_030_gao01_0p99_2p99_target.npz",
+      "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel_supplement20/target_specs/T03_030_gao01_0p99_2p99_target_spec.json",
+      "hit_event": {
+        "source_hit_index": 120,
+        "source_fps": 200.0,
+        "hit_time_from_start_s": 0.6,
+        "motion_fps": 50,
+        "motion_hit_frame": 30,
+        "motion_hit_subframe_alpha": 0.0
+      },
+      "strike_target": {
+        "racket_position_m": [
+          2.7267685260062002,
+          -0.6329226042293086,
+          0.2214973606077723
+        ],
+        "racket_quat_xyzw": [
+          -0.39496089379601734,
+          -0.4160928881136777,
+          -0.5893598415226333,
+          0.5687948470525083
+        ],
+        "racket_normal_w": [
+          0.9991305198186022,
+          -0.006678260855464746,
+          0.04115343483788847
+        ],
+        "racket_tangent_w": [
+          -0.04095662867672978,
+          -0.34176884385242473,
+          0.9388911608590282
+        ],
+        "racket_velocity_mps": [
+          -1.7585433799905126,
+          -0.019635666780401614,
+          0.812211690681368
+        ],
+        "racket_velocity_direction_w": [
+          -0.907799513874744,
+          -0.010136371363185374,
+          0.41928188201300315
+        ],
+        "ball_position_m": [
+          2.699198486144794,
+          -0.6409121586828715,
+          0.23494825496999813
+        ],
+        "ball_in_velocity_mps": [
+          2.2262127485500174,
+          -0.11766514742283041,
+          1.2695128764972936
+        ],
+        "ball_out_velocity_mps": [
+          -4.418772826670419,
+          0.010448936081338601,
+          1.5889370720341105
+        ],
+        "ball_to_racket_center_distance_m": 0.03169963150368983
+      },
+      "library_motion_npz": "hope_training/whole_body_tracking/sample_motions/p2_fixed_balanced_native_margin_v1_k4/backhand/T03_030_gao01_0p99_2p99.npz"
+    }
+  ]
+}

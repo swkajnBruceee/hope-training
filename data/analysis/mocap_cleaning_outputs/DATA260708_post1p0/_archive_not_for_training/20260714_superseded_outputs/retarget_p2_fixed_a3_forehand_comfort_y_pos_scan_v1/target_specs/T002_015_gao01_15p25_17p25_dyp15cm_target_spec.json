@@ -1,0 +1,203 @@
+{
+  "spec_version": "competition_a3_fixed_v1",
+  "episode_id": "T002_015_gao01_15p25_17p25_dyp15cm",
+  "source_index": 106,
+  "dataset_index": 104,
+  "robot": "agibot_a3",
+  "robot_side": "p2",
+  "base_mode": "fixed",
+  "coordinate_contract": {
+    "position_frame": "competition_table_m",
+    "orientation_frame": "competition_table_m",
+    "position_unit": "m",
+    "angle_unit": "rad",
+    "time_unit": "s",
+    "quat_order": "xyzw",
+    "fps": 200.0,
+    "hit_index": 120,
+    "sequence_length_frames": 321
+  },
+  "robot_base": {
+    "position_m": [
+      3.15,
+      -0.35,
+      0.3084
+    ],
+    "quat_xyzw": [
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    "note": "fixed P2 base, facing P1"
+  },
+  "source": {
+    "source_csv": "CSV/T002_015.csv",
+    "source_bvh": "/home/bruce/桌面/HOPETableTennis/DATA_PingPang/DATA260708/BVH/T002_015_gao.bvh",
+    "racket": "gao01",
+    "stroke_type_rule_v2": "forehand",
+    "stroke_confidence_rule_v2": 0.9,
+    "success": 1,
+    "landing_pos": [
+      0.7110734869926179,
+      -0.7531181661673071,
+      -0.00502097068070825
+    ]
+  },
+  "racket_reference_point": {
+    "racket_pos": "Motive rigid-body center inside the racket, not the physical ball-contact point on the racket face",
+    "distance_at_hit_m": "ball center to racket rigid-body center distance; nonzero contact distance is expected",
+    "contact_distance_note": "Hit detection uses tolerance because the racket center is internal. Do not interpret dist_at_hit_m as contact error."
+  },
+  "hit_target": {
+    "racket_position_m": [
+      2.685343449295345,
+      0.417972723547827,
+      0.3190760193911114
+    ],
+    "racket_quat_xyzw": [
+      -0.2801719581680884,
+      0.5624819160169564,
+      0.6511119027837913,
+      0.42564193644825854
+    ],
+    "racket_normal_w": [
+      -0.8694643819800241,
+      -0.004886072180940726,
+      0.4939714716122151
+    ],
+    "racket_tangent_w": [
+      -0.4806652315856712,
+      0.2390977426015885,
+      -0.8436783774801377
+    ],
+    "racket_velocity_mps": [
+      -2.1478530280249615,
+      -0.08451630563117413,
+      1.4951749981184501
+    ],
+    "racket_velocity_direction_w": [
+      -0.820295443136043,
+      -0.03227797222405644,
+      0.5710284743157261
+    ],
+    "ball_position_m": [
+      2.6438798820089553,
+      0.2893662958346657,
+      0.3530752489895562
+    ],
+    "ball_in_velocity_mps": [
+      1.5181294360845046,
+      1.0399656462656874,
+      -0.6650447128163015
+    ],
+    "ball_out_velocity_mps": [
+      -4.218549986966393,
+      -2.222371524129866,
+      1.478827333315237
+    ],
+    "ball_to_racket_center_distance_m": 0.05773092724522034
+  },
+  "phase_windows": {
+    "pre_hit": [
+      -24,
+      -4
+    ],
+    "hit": [
+      -3,
+      3
+    ],
+    "post_hit": [
+      4,
+      40
+    ]
+  },
+  "active_joints": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "quality_thresholds": {
+    "hit_position_warning_m": 0.035,
+    "hit_position_reject_m": 0.06,
+    "hit_orientation_warning_deg": 12.0,
+    "hit_orientation_reject_deg": 20.0,
+    "hit_tangent_warning_deg": 25.0,
+    "hit_tangent_reject_deg": 45.0,
+    "velocity_direction_warning_deg": 15.0,
+    "velocity_direction_reject_deg": 25.0,
+    "velocity_magnitude_warning_mps": 0.8,
+    "velocity_magnitude_reject_mps": 1.5,
+    "max_joint_velocity_warning_radps": 10.0,
+    "max_joint_velocity_reject_radps": 12.0,
+    "max_joint_acceleration_warning_radps2": 90.0,
+    "max_joint_acceleration_reject_radps2": 120.0,
+    "max_joint_jerk_warning_radps3": 1800.0
+  },
+  "artifacts": {
+    "target_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel/target_npz/T002_015_gao01_15p25_17p25_target.npz",
+    "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_global_funnel/target_specs/T002_015_gao01_15p25_17p25_target_spec.json",
+    "ik_init_csv": "",
+    "optimized_csv": "",
+    "quality_report_json": "",
+    "motion_npz": ""
+  },
+  "quality_flags": {
+    "has_finite_data": true,
+    "hit_distance_ok": true,
+    "racket_speed_ok": true,
+    "ball_velocity_change_ok": true,
+    "cleaning_usable": true,
+    "missing_near_hit": false,
+    "racket_quat_available": true,
+    "racket_omega_available": true,
+    "ball_speed_reasonable": true,
+    "racket_speed_reasonable": true,
+    "racket_omega_reasonable": true,
+    "max_ball_speed_mps": 5.276646019583497,
+    "max_racket_speed_mps": 2.836255434465605,
+    "max_racket_omega_radps": 7.447757293579835,
+    "coordinate_transform_available": true,
+    "coordinate_frame": "competition_table_m",
+    "table_config_available": true,
+    "landing_detected": true,
+    "success_label_reliable": true,
+    "success_label_reason": "opponent_table_landing_rule",
+    "stroke_type": "forehand",
+    "stroke_label_source": "rule",
+    "stroke_label_confidence": 1.0,
+    "stroke_label_reason": "body_lateral_offset_rule",
+    "stroke_lateral_offset_m": 0.8330292294339873,
+    "stroke_handedness": "right",
+    "stroke_pre_hit_ball_speed_mps": 1.8992846837936275,
+    "usable_for_training": true,
+    "source_coordinate_frame": "motive_global_m",
+    "table_transform_available": true,
+    "table_z_m": 0.0,
+    "table_y_min_m": -1.525,
+    "table_y_max_m": 0.0,
+    "table_net_x_m": 1.37,
+    "landing_index": 222,
+    "landing_time_rel_s": 0.5100000000000016,
+    "landing_side": "p1_half",
+    "expected_landing_side": "p1_half",
+    "landing_in_table_y": true,
+    "landing_in_expected_x": true
+  },
+  "comfort_y_scan": {
+    "source_episode_id": "T002_015_gao01_15p25_17p25",
+    "world_delta_m": [
+      0.0,
+      0.15,
+      0.0
+    ],
+    "note": "positive-y diagnostic shift of racket target trajectory"
+  }
+}

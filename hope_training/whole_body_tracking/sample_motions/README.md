@@ -20,8 +20,27 @@ Current retargeted ping-pong training data is documented in:
 README_DATASETS.md
 ```
 
-Use the balanced training library:
+Do not use an old manifest by directory name alone. The native-strike task now
+requires an explicit `motion_manifest=...` argument because several historical
+sets pass older numeric gates but fail the current visual / wrist / robot-quality
+gate.
+
+Current status:
 
 ```text
-p2_fixed_competition_global_funnel_balanced20/manifest.json
+Balanced K8 training candidate:
+  p2_fixed_balanced_k8_current_v1/manifest.json
+
+Status:
+  4 forehands visually accepted
+  4 backhands numeric-gate accepted and visually accepted
+  K8 zero-action gate passed 8 / 8 whole-cycle
+
+Use this as the current small native-strike residual-PPO training candidate.
+```
+
+Historical manifests have been moved out of the top-level training search area:
+
+```text
+_archive_not_for_training/20260714_superseded_manifests/
 ```

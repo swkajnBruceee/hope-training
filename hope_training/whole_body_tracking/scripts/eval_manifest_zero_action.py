@@ -34,7 +34,9 @@ def _print_group_summary(rows):
             return
         hit_comp = sum(1 for r in group if r[3]) / len(group)
         posture = sum(1 for r in group if r[15]) / len(group)
-        whole = sum(1 for r in group if r[3] and r[15]) / len(group)
+        robot_posture = sum(1 for r in group if r[26]) / len(group)
+        wrist = sum(1 for r in group if r[33]) / len(group)
+        whole = sum(1 for r in group if r[34]) / len(group)
         pos_mean = sum(r[0] for r in group) / len(group)
         vel_mean = sum(r[1] for r in group) / len(group)
         normal_mean = sum(r[2] for r in group) / len(group)
@@ -43,7 +45,8 @@ def _print_group_summary(rows):
         arm_margin_mean = sum(0.10 - r[13] for r in group) / len(group)
         worst = max(group, key=lambda r: (r[0], r[1], r[2]))
         print(
-            f"[INFO] {name}: n={len(group)} hit_composite={hit_comp:.3f} posture={posture:.3f} whole_cycle={whole:.3f} "
+            f"[INFO] {name}: n={len(group)} hit_composite={hit_comp:.3f} posture_ref={posture:.3f} "
+            f"robot_posture={robot_posture:.3f} wrist_naturalness={wrist:.3f} whole_cycle={whole:.3f} "
             f"pos_mean={pos_mean:.4f} vel_mean={vel_mean:.4f} normal_mean={normal_mean:.2f} "
             f"pelvis_margin_mean={pelvis_margin_mean:.2f} torso_margin_mean={torso_margin_mean:.2f} "
             f"arm_margin_mean={arm_margin_mean:.4f} "
@@ -141,13 +144,41 @@ def _apply_motion_reset_perturbation(env, motion_cmd, n, device, cfg, episode_id
     return bank
 
 
+def _robot_posture_tier(
+    *,
+    hit_pass: bool,
+    robot_posture_pass: bool,
+    wrist_naturalness_pass: bool,
+    arm_near_limit: float,
+    torso_tilt: float,
+) -> str:
+    if hit_pass and robot_posture_pass and wrist_naturalness_pass:
+        return "A_robot_usable_candidate"
+    if hit_pass and robot_posture_pass and not wrist_naturalness_pass:
+        return "B_wrist_retarget_required"
+    if hit_pass and arm_near_limit <= 0.10 and torso_tilt <= 35.0:
+        return "B_robot_borderline"
+    if hit_pass:
+        return "C_requires_stance_or_retarget"
+    return "D_task_fail"
+
+
+def _angle_between_deg(a, b):
+    import torch
+
+    denom = torch.linalg.norm(a, dim=-1) * torch.linalg.norm(b, dim=-1)
+    denom = torch.clamp(denom, min=1.0e-6)
+    cos = torch.sum(a * b, dim=-1) / denom
+    return torch.rad2deg(torch.acos(cos.clamp(-1.0, 1.0)))
+
+
 def _run(cfg, simulation_app):
     import pathlib
 
     import gymnasium as gym
     import torch
 
-    from isaaclab.utils.math import matrix_from_quat, quat_error_magnitude
+    from isaaclab.utils.math import euler_xyz_from_quat, matrix_from_quat, quat_error_magnitude, wrap_to_pi
     from isaaclab_tasks.utils import parse_env_cfg
 
     import training.tasks  # noqa: F401
@@ -184,11 +215,14 @@ def _run(cfg, simulation_app):
     body_name_to_id = {name: i for i, name in enumerate(robot.body_names)}
     pelvis_body_id = body_name_to_id.get("pelvis_link", 0)
     torso_body_id = body_name_to_id.get("torso_Link", pelvis_body_id)
+    right_elbow_body_id = body_name_to_id.get("right_elbow_Link", torso_body_id)
+    right_wrist_body_id = body_name_to_id.get("right_wrist_yaw_Link", right_elbow_body_id)
     action_term = env.unwrapped.action_manager.get_term("joint_pos")
     native_joint_ids = getattr(action_term, "_joint_index_tensor", None)
     native_joint_names = []
     if native_joint_ids is not None:
         native_joint_names = [robot.data.joint_names[int(idx)] for idx in native_joint_ids.detach().cpu().tolist()]
+    native_joint_name_to_local = {name: i for i, name in enumerate(native_joint_names)}
 
     n_motions = int(motion_cmd.motion.num_motions)
     n = min(num_envs, n_motions)
@@ -269,11 +303,24 @@ def _run(cfg, simulation_app):
         "torso_upright": torch.full((n,), float("nan"), device=device),
         "pelvis_ref_err_deg": torch.full((n,), float("nan"), device=device),
         "torso_ref_err_deg": torch.full((n,), float("nan"), device=device),
+        "torso_roll_abs_deg": torch.full((n,), float("nan"), device=device),
+        "torso_pitch_abs_deg": torch.full((n,), float("nan"), device=device),
+        "torso_yaw_deg": torch.full((n,), float("nan"), device=device),
+        "torso_ref_yaw_delta_deg": torch.full((n,), float("nan"), device=device),
+        "torso_tilt_abs_deg": torch.full((n,), float("nan"), device=device),
+        "torso_ref_tilt_delta_deg": torch.full((n,), float("nan"), device=device),
+        "min_joint_margin": torch.full((n,), float("nan"), device=device),
+        "min_arm_margin": torch.full((n,), float("nan"), device=device),
         "joint_near_limit_frac": torch.full((n,), float("nan"), device=device),
         "arm_near_limit_frac": torch.full((n,), float("nan"), device=device),
         "joint_near_limit_mask": torch.zeros(
             (n, len(native_joint_ids) if native_joint_ids is not None else 0), dtype=torch.bool, device=device
         ),
+        "right_wrist_roll_abs_deg": torch.full((n,), float("nan"), device=device),
+        "right_wrist_pitch_abs_deg": torch.full((n,), float("nan"), device=device),
+        "right_wrist_yaw_abs_deg": torch.full((n,), float("nan"), device=device),
+        "right_wrist_bend_pitch_yaw_deg": torch.full((n,), float("nan"), device=device),
+        "forearm_racket_angle_deg": torch.full((n,), float("nan"), device=device),
         "captured": torch.zeros(n, dtype=torch.bool, device=device),
     }
 
@@ -289,6 +336,7 @@ def _run(cfg, simulation_app):
             captured["target_pos"][take] = racket_cmd.racket_target_pos_w[:n][take]
             captured["target_vel"][take] = racket_cmd.racket_target_vel_w[:n][take]
             captured["target_normal"][take] = racket_cmd.racket_target_normal_w[:n][take]
+            body_pos = robot.data.body_pos_w[:n]
             body_quat = robot.data.body_quat_w[:n]
             motion_ids = motion_cmd.motion_ids[:n]
             time_steps = motion_cmd.time_steps[:n]
@@ -304,13 +352,45 @@ def _run(cfg, simulation_app):
             captured["torso_ref_err_deg"][take] = torch.rad2deg(
                 quat_error_magnitude(ref_quat[take, torso_body_id], body_quat[take, torso_body_id])
             )
+            torso_rot = matrix_from_quat(body_quat[take, torso_body_id])
+            ref_torso_rot = matrix_from_quat(ref_quat[take, torso_body_id])
+            torso_roll, torso_pitch, torso_yaw = euler_xyz_from_quat(body_quat[take, torso_body_id])
+            _, _, ref_torso_yaw = euler_xyz_from_quat(ref_quat[take, torso_body_id])
+            torso_up = torso_rot[:, :, 2]
+            ref_torso_up = ref_torso_rot[:, :, 2]
+            world_up = torch.zeros_like(torso_up)
+            world_up[:, 2] = 1.0
+            torso_tilt = torch.acos(torch.sum(torso_up * world_up, dim=-1).clamp(-1.0, 1.0))
+            ref_torso_tilt = torch.acos(torch.sum(ref_torso_up * world_up, dim=-1).clamp(-1.0, 1.0))
+            captured["torso_roll_abs_deg"][take] = torch.abs(torch.rad2deg(wrap_to_pi(torso_roll)))
+            captured["torso_pitch_abs_deg"][take] = torch.abs(torch.rad2deg(wrap_to_pi(torso_pitch)))
+            captured["torso_yaw_deg"][take] = torch.rad2deg(wrap_to_pi(torso_yaw))
+            captured["torso_ref_yaw_delta_deg"][take] = torch.abs(torch.rad2deg(wrap_to_pi(torso_yaw - ref_torso_yaw)))
+            captured["torso_tilt_abs_deg"][take] = torch.rad2deg(torso_tilt)
+            captured["torso_ref_tilt_delta_deg"][take] = torch.abs(torch.rad2deg(torso_tilt - ref_torso_tilt))
+            forearm_vec = body_pos[take, right_wrist_body_id] - body_pos[take, right_elbow_body_id]
+            racket_vec = racket_cmd.racket_pos_w[:n][take] - body_pos[take, right_wrist_body_id]
+            captured["forearm_racket_angle_deg"][take] = _angle_between_deg(forearm_vec, racket_vec)
             if native_joint_ids is not None:
                 joint_pos = robot.data.joint_pos[:n, native_joint_ids]
+                for joint_name, field in (
+                    ("right_wrist_roll_joint", "right_wrist_roll_abs_deg"),
+                    ("right_wrist_pitch_joint", "right_wrist_pitch_abs_deg"),
+                    ("right_wrist_yaw_joint", "right_wrist_yaw_abs_deg"),
+                ):
+                    local_idx = native_joint_name_to_local.get(joint_name)
+                    if local_idx is not None:
+                        captured[field][take] = torch.abs(torch.rad2deg(wrap_to_pi(joint_pos[take, local_idx])))
+                captured["right_wrist_bend_pitch_yaw_deg"][take] = torch.sqrt(
+                    captured["right_wrist_pitch_abs_deg"][take] ** 2
+                    + captured["right_wrist_yaw_abs_deg"][take] ** 2
+                )
                 limits = robot.data.soft_joint_pos_limits[:n, native_joint_ids]
                 span = torch.clamp(limits[..., 1] - limits[..., 0], min=1.0e-6)
                 margin = torch.minimum(joint_pos - limits[..., 0], limits[..., 1] - joint_pos) / span
                 near_mask = margin[take] < 0.05
                 captured["joint_near_limit_frac"][take] = near_mask.float().mean(dim=-1)
+                captured["min_joint_margin"][take] = margin[take].min(dim=-1).values
                 non_waist_mask = torch.tensor(
                     [not name.startswith("waist_") for name in native_joint_names],
                     dtype=torch.bool,
@@ -318,6 +398,7 @@ def _run(cfg, simulation_app):
                 )
                 if bool(non_waist_mask.any()):
                     captured["arm_near_limit_frac"][take] = near_mask[:, non_waist_mask].float().mean(dim=-1)
+                    captured["min_arm_margin"][take] = margin[take][:, non_waist_mask].min(dim=-1).values
                 captured["joint_near_limit_mask"][take] = near_mask
             captured["captured"][take] = True
         if not simulation_app.is_running():
@@ -330,7 +411,12 @@ def _run(cfg, simulation_app):
     print(
         "rank,stroke,episode_id,pos_exact,vel_exact,normal_deg_exact,hit_composite_pass,pos_window,success10_window,"
         "action_abs_mean,joint_vel_abs_max,pelvis_upright,torso_upright,pelvis_ref_err_deg,"
-        "torso_ref_err_deg,joint_near_limit_frac,arm_near_limit_frac,joint_near_limit_names,posture_pass",
+        "torso_ref_err_deg,joint_near_limit_frac,arm_near_limit_frac,joint_near_limit_names,posture_pass,"
+        "torso_roll_abs_deg,torso_pitch_abs_deg,torso_yaw_deg,torso_ref_yaw_delta_deg,"
+        "torso_tilt_abs_deg,torso_ref_tilt_delta_deg,min_joint_margin,min_arm_margin,"
+        "robot_posture_pass,gate_tier,right_wrist_roll_abs_deg,right_wrist_pitch_abs_deg,"
+        "right_wrist_yaw_abs_deg,right_wrist_bend_pitch_yaw_deg,forearm_racket_angle_deg,"
+        "wrist_naturalness_pass,whole_cycle_pass",
         flush=True,
     )
     rows = []
@@ -355,6 +441,19 @@ def _run(cfg, simulation_app):
         torso_ref = float(captured["torso_ref_err_deg"][i].detach().cpu())
         joint_near_limit = float(captured["joint_near_limit_frac"][i].detach().cpu())
         arm_near_limit = float(captured["arm_near_limit_frac"][i].detach().cpu())
+        torso_roll = float(captured["torso_roll_abs_deg"][i].detach().cpu())
+        torso_pitch = float(captured["torso_pitch_abs_deg"][i].detach().cpu())
+        torso_yaw = float(captured["torso_yaw_deg"][i].detach().cpu())
+        torso_yaw_delta = float(captured["torso_ref_yaw_delta_deg"][i].detach().cpu())
+        torso_tilt = float(captured["torso_tilt_abs_deg"][i].detach().cpu())
+        torso_tilt_delta = float(captured["torso_ref_tilt_delta_deg"][i].detach().cpu())
+        min_joint_margin = float(captured["min_joint_margin"][i].detach().cpu())
+        min_arm_margin = float(captured["min_arm_margin"][i].detach().cpu())
+        wrist_roll = float(captured["right_wrist_roll_abs_deg"][i].detach().cpu())
+        wrist_pitch = float(captured["right_wrist_pitch_abs_deg"][i].detach().cpu())
+        wrist_yaw = float(captured["right_wrist_yaw_abs_deg"][i].detach().cpu())
+        wrist_bend = float(captured["right_wrist_bend_pitch_yaw_deg"][i].detach().cpu())
+        forearm_racket_angle = float(captured["forearm_racket_angle_deg"][i].detach().cpu())
         near_names = "-"
         if native_joint_ids is not None:
             near_mask = captured["joint_near_limit_mask"][i].detach().cpu().tolist()
@@ -368,6 +467,29 @@ def _run(cfg, simulation_app):
             pelvis_ref <= 15.0
             and torso_ref <= 20.0
             and arm_near_limit <= 0.10
+        )
+        robot_posture_pass = (
+            pelvis_ref <= 15.0
+            and torso_tilt <= 32.0
+            and torso_roll <= 25.0
+            and torso_pitch <= 35.0
+            and arm_near_limit <= 0.10
+            and min_arm_margin >= 0.05
+        )
+        wrist_naturalness_pass = (
+            wrist_roll <= 65.0
+            and wrist_pitch <= 35.0
+            and wrist_yaw <= 35.0
+            and wrist_bend <= 45.0
+            and forearm_racket_angle <= 75.0
+        )
+        whole_cycle_pass = bool(hit_pass and robot_posture_pass and wrist_naturalness_pass)
+        gate_tier = _robot_posture_tier(
+            hit_pass=hit_pass,
+            robot_posture_pass=robot_posture_pass,
+            wrist_naturalness_pass=wrist_naturalness_pass,
+            arm_near_limit=arm_near_limit,
+            torso_tilt=torso_tilt,
         )
         rows.append(
             (
@@ -389,6 +511,23 @@ def _run(cfg, simulation_app):
                 posture_pass,
                 strokes[i],
                 names[i],
+                torso_roll,
+                torso_pitch,
+                torso_yaw,
+                torso_yaw_delta,
+                torso_tilt,
+                torso_tilt_delta,
+                min_joint_margin,
+                min_arm_margin,
+                robot_posture_pass,
+                gate_tier,
+                wrist_roll,
+                wrist_pitch,
+                wrist_yaw,
+                wrist_bend,
+                forearm_racket_angle,
+                wrist_naturalness_pass,
+                whole_cycle_pass,
             )
         )
     for rank, row in enumerate(sorted(rows, key=lambda r: (r[0], r[1])), start=1):
@@ -411,20 +550,46 @@ def _run(cfg, simulation_app):
             posture_pass,
             stroke,
             name,
+            torso_roll,
+            torso_pitch,
+            torso_yaw,
+            torso_yaw_delta,
+            torso_tilt,
+            torso_tilt_delta,
+            min_joint_margin,
+            min_arm_margin,
+            robot_posture_pass,
+            gate_tier,
+            wrist_roll,
+            wrist_pitch,
+            wrist_yaw,
+            wrist_bend,
+            forearm_racket_angle,
+            wrist_naturalness_pass,
+            whole_cycle_pass,
         ) = row
         print(
             f"{rank},{stroke},{name},{pos:.4f},{vel:.4f},{normal:.2f},{int(hit_pass)},{pos_window:.4f},"
             f"{success10:.3f},{action_mean:.4f},{joint_vel:.4f},{pelvis_up:.4f},"
             f"{torso_up:.4f},{pelvis_ref:.2f},{torso_ref:.2f},{joint_near_limit:.4f},"
-            f"{arm_near_limit:.4f},{near_names},{int(posture_pass)}",
+            f"{arm_near_limit:.4f},{near_names},{int(posture_pass)},"
+            f"{torso_roll:.2f},{torso_pitch:.2f},{torso_yaw:.2f},{torso_yaw_delta:.2f},"
+            f"{torso_tilt:.2f},{torso_tilt_delta:.2f},{min_joint_margin:.4f},{min_arm_margin:.4f},"
+            f"{int(robot_posture_pass)},{gate_tier},{wrist_roll:.2f},{wrist_pitch:.2f},"
+            f"{wrist_yaw:.2f},{wrist_bend:.2f},{forearm_racket_angle:.2f},"
+            f"{int(wrist_naturalness_pass)},{int(whole_cycle_pass)}",
             flush=True,
         )
     if rows:
         hit_rate = sum(1 for r in rows if r[3]) / len(rows)
         posture_rate = sum(1 for r in rows if r[15]) / len(rows)
-        whole_rate = sum(1 for r in rows if r[3] and r[15]) / len(rows)
+        robot_posture_rate = sum(1 for r in rows if r[26]) / len(rows)
+        wrist_rate = sum(1 for r in rows if r[33]) / len(rows)
+        whole_rate = sum(1 for r in rows if r[34]) / len(rows)
         print(f"[INFO] hit_composite_pass_rate={hit_rate:.3f} ({len(rows)} captured motions)", flush=True)
         print(f"[INFO] posture_pass_rate={posture_rate:.3f} ({len(rows)} captured motions)", flush=True)
+        print(f"[INFO] robot_posture_pass_rate={robot_posture_rate:.3f} ({len(rows)} captured motions)", flush=True)
+        print(f"[INFO] wrist_naturalness_pass_rate={wrist_rate:.3f} ({len(rows)} captured motions)", flush=True)
         print(f"[INFO] whole_cycle_pass_rate={whole_rate:.3f} ({len(rows)} captured motions)", flush=True)
         _print_group_summary(rows)
 

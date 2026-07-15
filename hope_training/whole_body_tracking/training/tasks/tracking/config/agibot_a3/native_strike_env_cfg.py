@@ -30,6 +30,12 @@ from training.tasks.tracking.config.agibot_a3.hope_env_cfg import (
 from training.tasks.tracking.tracking_env_cfg import ActionsCfg, ObservationsCfg, RewardsCfg, TerminationsCfg
 
 
+def _scale_gain_map(value, scale: float):
+    if isinstance(value, dict):
+        return {k: float(v) * scale for k, v in value.items()}
+    return float(value) * scale
+
+
 @configclass
 class A3NativeStrikeActionsCfg(ActionsCfg):
     joint_pos = mdp.ReferenceResidualJointPositionActionCfg(
@@ -198,7 +204,7 @@ class A3NativeStrikeRewardsCfg(RewardsCfg):
     motion_body_ang_vel = RewTerm(
         func=mdp.motion_global_body_angular_velocity_error_exp,
         weight=0.25,
-        params={"command_name": "motion", "std": 3.14, "body_names": ["right_elbow_Link", "right_wrist_yaw_Link"]},
+        params={"command_name": "motion", "std": 3.14, "body_names": ["torso_Link", "right_elbow_Link", "right_wrist_yaw_Link"]},
     )
 
     # Native MOTION route should not reward base repositioning in this first
@@ -273,6 +279,29 @@ class A3NativeStrikeEnvCfg(HOPEPingPongAgibotA3EnvCfg):
         self.events.randomize_pd_gains.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=A3_WAIST_JOINTS + A3_RIGHT_ARM_JOINTS, preserve_order=True
         )
+        # The real A3 route uses MC standing / waist / arm servo behavior, not a
+        # weak randomized Isaac bare-PD executor. The default A3 URDF gains were
+        # too soft for zero-residual physical tracking: waist_pitch drifted
+        # toward the soft limit and produced a false forward-lean failure even
+        # when the kinematic reference was upright. Keep native-strike execution
+        # deterministic and closer to the real servo contract.
+        self.events.randomize_pd_gains = None
+        waist_actuator = self.scene.robot.actuators.get("waist")
+        if waist_actuator is not None:
+            waist_actuator.stiffness = {
+                "waist_yaw_joint": 120.0,
+                "waist_roll_joint": 160.0,
+                "waist_pitch_joint": 200.0,
+            }
+            waist_actuator.damping = {
+                "waist_yaw_joint": 6.0,
+                "waist_roll_joint": 8.0,
+                "waist_pitch_joint": 10.0,
+            }
+        arm_actuator = self.scene.robot.actuators.get("arms")
+        if arm_actuator is not None:
+            arm_actuator.stiffness = _scale_gain_map(arm_actuator.stiffness, 2.0)
+            arm_actuator.damping = _scale_gain_map(arm_actuator.damping, 2.0)
         self.events.add_joint_default_pos = None
         self.events.base_com = None
         # External pushes are useful for whole-body balance policies, but this

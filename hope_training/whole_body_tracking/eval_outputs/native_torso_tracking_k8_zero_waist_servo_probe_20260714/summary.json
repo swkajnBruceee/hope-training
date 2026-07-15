@@ -1,0 +1,962 @@
+{
+  "manifest": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/sample_motions/p2_fixed_balanced_k8_current_v1/manifest.json",
+  "checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-14_17-22-45_balanced_k8_current_v1_res015_smoke_300_20260714/model_299.pt",
+  "rollout_mode": "zero",
+  "max_steps": 90,
+  "native_joint_names": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "focus_joint_names": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "rollouts": {
+    "zero": {
+      "overall": {
+        "torso_ref_err_deg": {
+          "mean": 8.42448902130127,
+          "p95": 26.328479766845703,
+          "max_abs": 30.819305419921875
+        },
+        "torso_pitch_deg": {
+          "mean": 16.497222900390625,
+          "p95": 23.51548957824707,
+          "max_abs": 23.994606018066406
+        },
+        "torso_roll_deg": {
+          "mean": 13.285882949829102,
+          "p95": 21.72332191467285,
+          "max_abs": 21.72344398498535
+        },
+        "torso_tilt_deg": {
+          "mean": 21.480344772338867,
+          "p95": 30.857179641723633,
+          "max_abs": 30.857240676879883
+        },
+        "torso_tilt_delta_deg": {
+          "mean": 5.955747604370117,
+          "p95": 24.982707977294922,
+          "max_abs": 29.62311553955078
+        },
+        "torso_ang_vel_norm": {
+          "mean": 0.3884657919406891,
+          "p95": 1.1279045343399048,
+          "max_abs": 2.8765156269073486
+        },
+        "torso_ang_vel_err_norm": {
+          "mean": 0.49361148476600647,
+          "p95": 1.3823697566986084,
+          "max_abs": 3.0333762168884277
+        },
+        "joint_actual_minus_ref_max_abs": {
+          "mean": 0.22215914726257324,
+          "p95": 0.5456385016441345,
+          "max_abs": 0.6840853691101074
+        },
+        "joint_actual_minus_target_max_abs": {
+          "mean": 0.234292134642601,
+          "p95": 0.5480170249938965,
+          "max_abs": 2.893810272216797
+        },
+        "target_minus_ref_max_abs": {
+          "mean": 0.026001447811722755,
+          "p95": 0.030959581956267357,
+          "max_abs": 2.893810272216797
+        },
+        "waist_yaw_tracking_err_rad": {
+          "mean_abs": 0.07070828974246979,
+          "p95_abs": 0.22092702984809875,
+          "max_abs": 1.1515960693359375
+        },
+        "waist_roll_tracking_err_rad": {
+          "mean_abs": 0.050042543560266495,
+          "p95_abs": 0.2268306463956833,
+          "max_abs": 0.3363111913204193
+        },
+        "waist_pitch_tracking_err_rad": {
+          "mean_abs": 0.09935960918664932,
+          "p95_abs": 0.4128921329975128,
+          "max_abs": 0.4460183382034302
+        },
+        "right_shoulder_pitch_tracking_err_rad": {
+          "mean_abs": 0.1906394511461258,
+          "p95_abs": 0.5467703938484192,
+          "max_abs": 0.7875640988349915
+        },
+        "right_shoulder_roll_tracking_err_rad": {
+          "mean_abs": 0.05784408375620842,
+          "p95_abs": 0.13847693800926208,
+          "max_abs": 0.9335845708847046
+        },
+        "right_shoulder_yaw_tracking_err_rad": {
+          "mean_abs": 0.0795539990067482,
+          "p95_abs": 0.17230381071567535,
+          "max_abs": 2.893810272216797
+        },
+        "right_elbow_tracking_err_rad": {
+          "mean_abs": 0.049186643213033676,
+          "p95_abs": 0.10941094160079956,
+          "max_abs": 0.843844473361969
+        },
+        "right_wrist_roll_tracking_err_rad": {
+          "mean_abs": 0.01415986381471157,
+          "p95_abs": 0.024619020521640778,
+          "max_abs": 1.2860625982284546
+        },
+        "right_wrist_pitch_tracking_err_rad": {
+          "mean_abs": 0.03161054849624634,
+          "p95_abs": 0.06937842816114426,
+          "max_abs": 0.45145779848098755
+        },
+        "right_wrist_yaw_tracking_err_rad": {
+          "mean_abs": 0.027934608981013298,
+          "p95_abs": 0.08620060235261917,
+          "max_abs": 0.40651363134384155
+        }
+      },
+      "motions": {
+        "T002_015_gao01_15p25_17p25_dyp10cm": {
+          "stroke_type": "forehand",
+          "torso_ref_err_deg": {
+            "mean": 14.120161056518555,
+            "p95": 27.31490707397461,
+            "max_abs": 27.49261474609375
+          },
+          "torso_pitch_deg": {
+            "mean": 13.514266014099121,
+            "p95": 23.977123260498047,
+            "max_abs": 23.994606018066406
+          },
+          "torso_roll_deg": {
+            "mean": 6.346500873565674,
+            "p95": 18.040390014648438,
+            "max_abs": 18.430883407592773
+          },
+          "torso_tilt_deg": {
+            "mean": 15.141719818115234,
+            "p95": 28.883342742919922,
+            "max_abs": 29.08016586303711
+          },
+          "torso_tilt_delta_deg": {
+            "mean": 12.808995246887207,
+            "p95": 26.934587478637695,
+            "max_abs": 27.099424362182617
+          },
+          "torso_ang_vel_norm": {
+            "mean": 0.5916901230812073,
+            "p95": 1.8561714887619019,
+            "max_abs": 1.9583808183670044
+          },
+          "torso_ang_vel_err_norm": {
+            "mean": 0.6841981410980225,
+            "p95": 2.076929807662964,
+            "max_abs": 2.2173707485198975
+          },
+          "joint_actual_minus_ref_max_abs": {
+            "mean": 0.26166030764579773,
+            "p95": 0.4136333167552948,
+            "max_abs": 0.4163193702697754
+          },
+          "joint_actual_minus_target_max_abs": {
+            "mean": 0.28703969717025757,
+            "p95": 0.4135621190071106,
+            "max_abs": 2.893810272216797
+          },
+          "target_minus_ref_max_abs": {
+            "mean": 0.04087190702557564,
+            "p95": 0.03693380579352379,
+            "max_abs": 2.893810272216797
+          },
+          "waist_yaw_tracking_err_rad": {
+            "mean_abs": 0.05951040983200073,
+            "p95_abs": 0.12758192420005798,
+            "max_abs": 1.1515960693359375
+          },
+          "waist_roll_tracking_err_rad": {
+            "mean_abs": 0.09234564751386642,
+            "p95_abs": 0.2687329053878784,
+            "max_abs": 0.32110029458999634
+          },
+          "waist_pitch_tracking_err_rad": {
+            "mean_abs": 0.20847199857234955,
+            "p95_abs": 0.41347911953926086,
+            "max_abs": 0.41372326016426086
+          },
+          "right_shoulder_pitch_tracking_err_rad": {
+            "mean_abs": 0.1675531566143036,
+            "p95_abs": 0.36076799035072327,
+            "max_abs": 0.7136529684066772
+          },
+          "right_shoulder_roll_tracking_err_rad": {
+            "mean_abs": 0.05393538624048233,
+            "p95_abs": 0.08965838700532913,
+            "max_abs": 0.9335845708847046
+          },
+          "right_shoulder_yaw_tracking_err_rad": {
+            "mean_abs": 0.07955073565244675,
+            "p95_abs": 0.13970693945884705,
+            "max_abs": 2.893810272216797
+          },
+          "right_elbow_tracking_err_rad": {
+            "mean_abs": 0.029210004955530167,
+            "p95_abs": 0.0775512158870697,
+            "max_abs": 0.07931989431381226
+          },
+          "right_wrist_roll_tracking_err_rad": {
+            "mean_abs": 0.02096797525882721,
+            "p95_abs": 0.012640002183616161,
+            "max_abs": 1.2860625982284546
+          },
+          "right_wrist_pitch_tracking_err_rad": {
+            "mean_abs": 0.02123125083744526,
+            "p95_abs": 0.04045936092734337,
+            "max_abs": 0.24445898830890656
+          },
+          "right_wrist_yaw_tracking_err_rad": {
+            "mean_abs": 0.025124015286564827,
+            "p95_abs": 0.05763094872236252,
+            "max_abs": 0.38814061880111694
+          }
+        },
+        "T002_015_gao01_15p25_17p25_dyp15cm": {
+          "stroke_type": "forehand",
+          "torso_ref_err_deg": {
+            "mean": 10.428166389465332,
+            "p95": 20.92027473449707,
+            "max_abs": 20.974523544311523
+          },
+          "torso_pitch_deg": {
+            "mean": 8.851101875305176,
+            "p95": 17.887733459472656,
+            "max_abs": 18.308198928833008
+          },
+          "torso_roll_deg": {
+            "mean": 4.860232353210449,
+            "p95": 9.58935832977295,
+            "max_abs": 9.591976165771484
+          },
+          "torso_tilt_deg": {
+            "mean": 10.111066818237305,
+            "p95": 20.221614837646484,
+            "max_abs": 20.585554122924805
+          },
+          "torso_tilt_delta_deg": {
+            "mean": 7.706584453582764,
+            "p95": 19.795997619628906,
+            "max_abs": 20.104286193847656
+          },
+          "torso_ang_vel_norm": {
+            "mean": 0.37967368960380554,
+            "p95": 0.9674157500267029,
+            "max_abs": 1.2896803617477417
+          },
+          "torso_ang_vel_err_norm": {
+            "mean": 0.6066446304321289,
+            "p95": 1.334231972694397,
+            "max_abs": 1.469979166984558
+          },
+          "joint_actual_minus_ref_max_abs": {
+            "mean": 0.23637330532073975,
+            "p95": 0.551186740398407,
+            "max_abs": 0.5596334934234619
+          },
+          "joint_actual_minus_target_max_abs": {
+            "mean": 0.2636602818965912,
+            "p95": 0.5444276332855225,
+            "max_abs": 2.7583203315734863
+          },
+          "target_minus_ref_max_abs": {
+            "mean": 0.04198289290070534,
+            "p95": 0.04209236055612564,
+            "max_abs": 2.7583203315734863
+          },
+          "waist_yaw_tracking_err_rad": {
+            "mean_abs": 0.11002547293901443,
+            "p95_abs": 0.21405978500843048,
+            "max_abs": 0.7121457457542419
+          },
+          "waist_roll_tracking_err_rad": {
+            "mean_abs": 0.07387585937976837,
+            "p95_abs": 0.17027820646762848,
+            "max_abs": 0.31296151876449585
+          },
+          "waist_pitch_tracking_err_rad": {
+            "mean_abs": 0.12481171637773514,
+            "p95_abs": 0.31704023480415344,
+            "max_abs": 0.3175865411758423
+          },
+          "right_shoulder_pitch_tracking_err_rad": {
+            "mean_abs": 0.22623281180858612,
+            "p95_abs": 0.5403180718421936,
+            "max_abs": 0.5495626926422119
+          },
+          "right_shoulder_roll_tracking_err_rad": {
+            "mean_abs": 0.061786748468875885,
+            "p95_abs": 0.17032936215400696,
+            "max_abs": 0.3294826149940491
+          },
+          "right_shoulder_yaw_tracking_err_rad": {
+            "mean_abs": 0.08830840140581131,
+            "p95_abs": 0.16335700452327728,
+            "max_abs": 2.7583203315734863
+          },
+          "right_elbow_tracking_err_rad": {
+            "mean_abs": 0.0200512558221817,
+            "p95_abs": 0.030668169260025024,
+            "max_abs": 0.584630012512207
+          },
+          "right_wrist_roll_tracking_err_rad": {
+            "mean_abs": 0.02097495086491108,
+            "p95_abs": 0.025423435494303703,
+            "max_abs": 1.2376272678375244
+          },
+          "right_wrist_pitch_tracking_err_rad": {
+            "mean_abs": 0.026717880740761757,
+            "p95_abs": 0.07082314789295197,
+            "max_abs": 0.45145779848098755
+          },
+          "right_wrist_yaw_tracking_err_rad": {
+            "mean_abs": 0.036622267216444016,
+            "p95_abs": 0.08763814717531204,
+            "max_abs": 0.38826489448547363
+          }
+        },
+        "T002_015_gao01_15p25_17p25_dyp20cm": {
+          "stroke_type": "forehand",
+          "torso_ref_err_deg": {
+            "mean": 18.131919860839844,
+            "p95": 30.55565643310547,
+            "max_abs": 30.819305419921875
+          },
+          "torso_pitch_deg": {
+            "mean": 16.66761589050293,
+            "p95": 23.948015213012695,
+            "max_abs": 23.98950958251953
+          },
+          "torso_roll_deg": {
+            "mean": 6.048372268676758,
+            "p95": 21.579484939575195,
+            "max_abs": 21.72322654724121
+          },
+          "torso_tilt_deg": {
+            "mean": 18.830350875854492,
+            "p95": 30.74435806274414,
+            "max_abs": 30.85556411743164
+          },
+          "torso_tilt_delta_deg": {
+            "mean": 15.220219612121582,
+            "p95": 29.0744571685791,
+            "max_abs": 29.62311553955078
+          },
+          "torso_ang_vel_norm": {
+            "mean": 0.9205116629600525,
+            "p95": 2.2651405334472656,
+            "max_abs": 2.8765156269073486
+          },
+          "torso_ang_vel_err_norm": {
+            "mean": 1.0172302722930908,
+            "p95": 2.4199795722961426,
+            "max_abs": 3.0333762168884277
+          },
+          "joint_actual_minus_ref_max_abs": {
+            "mean": 0.3050893247127533,
+            "p95": 0.4453120529651642,
+            "max_abs": 0.44602781534194946
+          },
+          "joint_actual_minus_target_max_abs": {
+            "mean": 0.2969109117984772,
+            "p95": 0.44527116417884827,
+            "max_abs": 0.4460183382034302
+          },
+          "target_minus_ref_max_abs": {
+            "mean": 0.01372577901929617,
+            "p95": 0.03950599581003189,
+            "max_abs": 0.05131840705871582
+          },
+          "waist_yaw_tracking_err_rad": {
+            "mean_abs": 0.06904369592666626,
+            "p95_abs": 0.16833257675170898,
+            "max_abs": 0.18496514856815338
+          },
+          "waist_roll_tracking_err_rad": {
+            "mean_abs": 0.12132735550403595,
+            "p95_abs": 0.3309721350669861,
+            "max_abs": 0.3363111913204193
+          },
+          "waist_pitch_tracking_err_rad": {
+            "mean_abs": 0.2621062099933624,
+            "p95_abs": 0.44527116417884827,
+            "max_abs": 0.4460183382034302
+          },
+          "right_shoulder_pitch_tracking_err_rad": {
+            "mean_abs": 0.18067222833633423,
+            "p95_abs": 0.33345475792884827,
+            "max_abs": 0.36080431938171387
+          },
+          "right_shoulder_roll_tracking_err_rad": {
+            "mean_abs": 0.09197903424501419,
+            "p95_abs": 0.25528329610824585,
+            "max_abs": 0.27640998363494873
+          },
+          "right_shoulder_yaw_tracking_err_rad": {
+            "mean_abs": 0.036850716918706894,
+            "p95_abs": 0.08292315155267715,
+            "max_abs": 0.09092342853546143
+          },
+          "right_elbow_tracking_err_rad": {
+            "mean_abs": 0.04369723051786423,
+            "p95_abs": 0.10191690921783447,
+            "max_abs": 0.10452687740325928
+          },
+          "right_wrist_roll_tracking_err_rad": {
+            "mean_abs": 0.006632619071751833,
+            "p95_abs": 0.014653664082288742,
+            "max_abs": 0.01681464910507202
+          },
+          "right_wrist_pitch_tracking_err_rad": {
+            "mean_abs": 0.024842532351613045,
+            "p95_abs": 0.05055159702897072,
+            "max_abs": 0.05162772536277771
+          },
+          "right_wrist_yaw_tracking_err_rad": {
+            "mean_abs": 0.019590826705098152,
+            "p95_abs": 0.05418277159333229,
+            "max_abs": 0.06155657023191452
+          }
+        },
+        "T03_012_gao01_12p10_14p10_dyp20cm": {
+          "stroke_type": "forehand",
+          "torso_ref_err_deg": {
+            "mean": 11.70723819732666,
+            "p95": 17.34681510925293,
+            "max_abs": 18.34050178527832
+          },
+          "torso_pitch_deg": {
+            "mean": 3.876072406768799,
+            "p95": 10.657468795776367,
+            "max_abs": 11.202698707580566
+          },
+          "torso_roll_deg": {
+            "mean": 2.715383529663086,
+            "p95": 6.3209614753723145,
+            "max_abs": 6.563361167907715
+          },
+          "torso_tilt_deg": {
+            "mean": 5.635921001434326,
+            "p95": 12.372308731079102,
+            "max_abs": 12.962525367736816
+          },
+          "torso_tilt_delta_deg": {
+            "mean": 5.81656551361084,
+            "p95": 12.02637004852295,
+            "max_abs": 12.050716400146484
+          },
+          "torso_ang_vel_norm": {
+            "mean": 0.30252987146377563,
+            "p95": 0.7042038440704346,
+            "max_abs": 0.8494059443473816
+          },
+          "torso_ang_vel_err_norm": {
+            "mean": 0.6520007252693176,
+            "p95": 1.7081379890441895,
+            "max_abs": 2.2798140048980713
+          },
+          "joint_actual_minus_ref_max_abs": {
+            "mean": 0.4056015610694885,
+            "p95": 0.6818724870681763,
+            "max_abs": 0.6840853691101074
+          },
+          "joint_actual_minus_target_max_abs": {
+            "mean": 0.3966091573238373,
+            "p95": 0.6718376874923706,
+            "max_abs": 0.6731669902801514
+          },
+          "target_minus_ref_max_abs": {
+            "mean": 0.012534759007394314,
+            "p95": 0.04394902288913727,
+            "max_abs": 0.05929720401763916
+          },
+          "waist_yaw_tracking_err_rad": {
+            "mean_abs": 0.16066303849220276,
+            "p95_abs": 0.2703506350517273,
+            "max_abs": 0.27223747968673706
+          },
+          "waist_roll_tracking_err_rad": {
+            "mean_abs": 0.06351285427808762,
+            "p95_abs": 0.11077781021595001,
+            "max_abs": 0.11273399740457535
+          },
+          "waist_pitch_tracking_err_rad": {
+            "mean_abs": 0.08692682534456253,
+            "p95_abs": 0.18485072255134583,
+            "max_abs": 0.1887252926826477
+          },
+          "right_shoulder_pitch_tracking_err_rad": {
+            "mean_abs": 0.3923361599445343,
+            "p95_abs": 0.6718376874923706,
+            "max_abs": 0.6731669902801514
+          },
+          "right_shoulder_roll_tracking_err_rad": {
+            "mean_abs": 0.07758375257253647,
+            "p95_abs": 0.20173701643943787,
+            "max_abs": 0.22806087136268616
+          },
+          "right_shoulder_yaw_tracking_err_rad": {
+            "mean_abs": 0.07223659753799438,
+            "p95_abs": 0.1222095638513565,
+            "max_abs": 0.12272310256958008
+          },
+          "right_elbow_tracking_err_rad": {
+            "mean_abs": 0.04159339889883995,
+            "p95_abs": 0.11867114901542664,
+            "max_abs": 0.12343060970306396
+          },
+          "right_wrist_roll_tracking_err_rad": {
+            "mean_abs": 0.012901556678116322,
+            "p95_abs": 0.02496635913848877,
+            "max_abs": 0.025297999382019043
+          },
+          "right_wrist_pitch_tracking_err_rad": {
+            "mean_abs": 0.039835963398218155,
+            "p95_abs": 0.09112989157438278,
+            "max_abs": 0.09212706238031387
+          },
+          "right_wrist_yaw_tracking_err_rad": {
+            "mean_abs": 0.05050668865442276,
+            "p95_abs": 0.09324046969413757,
+            "max_abs": 0.09390948712825775
+          }
+        },
+        "T002_022_gao01_20p68_22p68": {
+          "stroke_type": "backhand",
+          "torso_ref_err_deg": {
+            "mean": 2.157580852508545,
+            "p95": 3.1569862365722656,
+            "max_abs": 3.483646869659424
+          },
+          "torso_pitch_deg": {
+            "mean": 22.375354766845703,
+            "p95": 22.476709365844727,
+            "max_abs": 22.565675735473633
+          },
+          "torso_roll_deg": {
+            "mean": 21.54718017578125,
+            "p95": 21.72319793701172,
+            "max_abs": 21.72322654724121
+          },
+          "torso_tilt_deg": {
+            "mean": 30.67361831665039,
+            "p95": 30.857065200805664,
+            "max_abs": 30.857074737548828
+          },
+          "torso_tilt_delta_deg": {
+            "mean": 1.3540242910385132,
+            "p95": 2.643547296524048,
+            "max_abs": 2.6917383670806885
+          },
+          "torso_ang_vel_norm": {
+            "mean": 0.2078266739845276,
+            "p95": 0.5290753841400146,
+            "max_abs": 0.7340381145477295
+          },
+          "torso_ang_vel_err_norm": {
+            "mean": 0.19055111706256866,
+            "p95": 0.5244120955467224,
+            "max_abs": 0.7054210305213928
+          },
+          "joint_actual_minus_ref_max_abs": {
+            "mean": 0.13627740740776062,
+            "p95": 0.2726909816265106,
+            "max_abs": 0.28835511207580566
+          },
+          "joint_actual_minus_target_max_abs": {
+            "mean": 0.15759937465190887,
+            "p95": 0.2639390230178833,
+            "max_abs": 2.3271334171295166
+          },
+          "target_minus_ref_max_abs": {
+            "mean": 0.03152570128440857,
+            "p95": 0.024199306964874268,
+            "max_abs": 2.3271334171295166
+          },
+          "waist_yaw_tracking_err_rad": {
+            "mean_abs": 0.02289055660367012,
+            "p95_abs": 0.056795086711645126,
+            "max_abs": 0.5528231859207153
+          },
+          "waist_roll_tracking_err_rad": {
+            "mean_abs": 0.01416832860559225,
+            "p95_abs": 0.024329813197255135,
+            "max_abs": 0.3001830577850342
+          },
+          "waist_pitch_tracking_err_rad": {
+            "mean_abs": 0.025655832141637802,
+            "p95_abs": 0.04191364347934723,
+            "max_abs": 0.3638639450073242
+          },
+          "right_shoulder_pitch_tracking_err_rad": {
+            "mean_abs": 0.13246358931064606,
+            "p95_abs": 0.2639390230178833,
+            "max_abs": 0.7099769711494446
+          },
+          "right_shoulder_roll_tracking_err_rad": {
+            "mean_abs": 0.0426517128944397,
+            "p95_abs": 0.11674588173627853,
+            "max_abs": 0.361088365316391
+          },
+          "right_shoulder_yaw_tracking_err_rad": {
+            "mean_abs": 0.0810810923576355,
+            "p95_abs": 0.16115733981132507,
+            "max_abs": 2.3271334171295166
+          },
+          "right_elbow_tracking_err_rad": {
+            "mean_abs": 0.060187920928001404,
+            "p95_abs": 0.09863465279340744,
+            "max_abs": 0.5465372204780579
+          },
+          "right_wrist_roll_tracking_err_rad": {
+            "mean_abs": 0.01345234178006649,
+            "p95_abs": 0.0061794365756213665,
+            "max_abs": 0.9237239360809326
+          },
+          "right_wrist_pitch_tracking_err_rad": {
+            "mean_abs": 0.034498319029808044,
+            "p95_abs": 0.051458314061164856,
+            "max_abs": 0.4047187566757202
+          },
+          "right_wrist_yaw_tracking_err_rad": {
+            "mean_abs": 0.0276329405605793,
+            "p95_abs": 0.10986816138029099,
+            "max_abs": 0.40651363134384155
+          }
+        },
+        "T_009_gao01_11p24_13p24": {
+          "stroke_type": "backhand",
+          "torso_ref_err_deg": {
+            "mean": 5.112462520599365,
+            "p95": 8.405863761901855,
+            "max_abs": 8.710854530334473
+          },
+          "torso_pitch_deg": {
+            "mean": 22.39545440673828,
+            "p95": 22.47088623046875,
+            "max_abs": 22.47089958190918
+          },
+          "torso_roll_deg": {
+            "mean": 21.69844627380371,
+            "p95": 21.72332191467285,
+            "max_abs": 21.72332191467285
+          },
+          "torso_tilt_deg": {
+            "mean": 30.788692474365234,
+            "p95": 30.85723114013672,
+            "max_abs": 30.857240676879883
+          },
+          "torso_tilt_delta_deg": {
+            "mean": 1.0005236864089966,
+            "p95": 2.3209617137908936,
+            "max_abs": 2.333160161972046
+          },
+          "torso_ang_vel_norm": {
+            "mean": 0.17572417855262756,
+            "p95": 0.4188216030597687,
+            "max_abs": 0.5698061585426331
+          },
+          "torso_ang_vel_err_norm": {
+            "mean": 0.262353777885437,
+            "p95": 0.7015067338943481,
+            "max_abs": 1.0161184072494507
+          },
+          "joint_actual_minus_ref_max_abs": {
+            "mean": 0.23345351219177246,
+            "p95": 0.3693675994873047,
+            "max_abs": 0.372780442237854
+          },
+          "joint_actual_minus_target_max_abs": {
+            "mean": 0.22904741764068604,
+            "p95": 0.3627677857875824,
+            "max_abs": 0.3685178756713867
+          },
+          "target_minus_ref_max_abs": {
+            "mean": 0.007822362706065178,
+            "p95": 0.027588659897446632,
+            "max_abs": 0.03692507743835449
+          },
+          "waist_yaw_tracking_err_rad": {
+            "mean_abs": 0.07722146064043045,
+            "p95_abs": 0.14109626412391663,
+            "max_abs": 0.14658236503601074
+          },
+          "waist_roll_tracking_err_rad": {
+            "mean_abs": 0.008282873779535294,
+            "p95_abs": 0.01933433674275875,
+            "max_abs": 0.021402090787887573
+          },
+          "waist_pitch_tracking_err_rad": {
+            "mean_abs": 0.01709613762795925,
+            "p95_abs": 0.047268643975257874,
+            "max_abs": 0.04753232002258301
+          },
+          "right_shoulder_pitch_tracking_err_rad": {
+            "mean_abs": 0.22558584809303284,
+            "p95_abs": 0.3627677857875824,
+            "max_abs": 0.3685178756713867
+          },
+          "right_shoulder_roll_tracking_err_rad": {
+            "mean_abs": 0.06099895387887955,
+            "p95_abs": 0.12794747948646545,
+            "max_abs": 0.1317065954208374
+          },
+          "right_shoulder_yaw_tracking_err_rad": {
+            "mean_abs": 0.11922901123762131,
+            "p95_abs": 0.21846869587898254,
+            "max_abs": 0.22388315200805664
+          },
+          "right_elbow_tracking_err_rad": {
+            "mean_abs": 0.0489022471010685,
+            "p95_abs": 0.08752045780420303,
+            "max_abs": 0.09507763385772705
+          },
+          "right_wrist_roll_tracking_err_rad": {
+            "mean_abs": 0.007181526627391577,
+            "p95_abs": 0.02681618370115757,
+            "max_abs": 0.028820157051086426
+          },
+          "right_wrist_pitch_tracking_err_rad": {
+            "mean_abs": 0.03674877807497978,
+            "p95_abs": 0.06982151418924332,
+            "max_abs": 0.07005688548088074
+          },
+          "right_wrist_yaw_tracking_err_rad": {
+            "mean_abs": 0.037630025297403336,
+            "p95_abs": 0.07815929502248764,
+            "max_abs": 0.08094200491905212
+          }
+        },
+        "T002_023_gao01_26p64_28p64": {
+          "stroke_type": "backhand",
+          "torso_ref_err_deg": {
+            "mean": 3.3540408611297607,
+            "p95": 5.550412654876709,
+            "max_abs": 5.738032817840576
+          },
+          "torso_pitch_deg": {
+            "mean": 22.224821090698242,
+            "p95": 22.470836639404297,
+            "max_abs": 22.555143356323242
+          },
+          "torso_roll_deg": {
+            "mean": 21.33102798461914,
+            "p95": 21.723176956176758,
+            "max_abs": 21.72344398498535
+          },
+          "torso_tilt_deg": {
+            "mean": 30.424850463867188,
+            "p95": 30.857036590576172,
+            "max_abs": 30.857046127319336
+          },
+          "torso_tilt_delta_deg": {
+            "mean": 2.2463438510894775,
+            "p95": 4.59590482711792,
+            "max_abs": 4.60572624206543
+          },
+          "torso_ang_vel_norm": {
+            "mean": 0.27151164412498474,
+            "p95": 0.6586740612983704,
+            "max_abs": 1.3873411417007446
+          },
+          "torso_ang_vel_err_norm": {
+            "mean": 0.2952505648136139,
+            "p95": 0.7703263759613037,
+            "max_abs": 1.3512095212936401
+          },
+          "joint_actual_minus_ref_max_abs": {
+            "mean": 0.1050594374537468,
+            "p95": 0.20076502859592438,
+            "max_abs": 0.22049689292907715
+          },
+          "joint_actual_minus_target_max_abs": {
+            "mean": 0.13616912066936493,
+            "p95": 0.20193374156951904,
+            "max_abs": 2.724781036376953
+          },
+          "target_minus_ref_max_abs": {
+            "mean": 0.039056241512298584,
+            "p95": 0.02194690890610218,
+            "max_abs": 2.724781036376953
+          },
+          "waist_yaw_tracking_err_rad": {
+            "mean_abs": 0.0295027457177639,
+            "p95_abs": 0.05577799677848816,
+            "max_abs": 0.5650522708892822
+          },
+          "waist_roll_tracking_err_rad": {
+            "mean_abs": 0.0136937340721488,
+            "p95_abs": 0.024524057283997536,
+            "max_abs": 0.2848607301712036
+          },
+          "waist_pitch_tracking_err_rad": {
+            "mean_abs": 0.04524838179349899,
+            "p95_abs": 0.09371693432331085,
+            "max_abs": 0.3701113760471344
+          },
+          "right_shoulder_pitch_tracking_err_rad": {
+            "mean_abs": 0.10177690535783768,
+            "p95_abs": 0.20193374156951904,
+            "max_abs": 0.7875640988349915
+          },
+          "right_shoulder_roll_tracking_err_rad": {
+            "mean_abs": 0.0303488876670599,
+            "p95_abs": 0.04706726223230362,
+            "max_abs": 0.6130512356758118
+          },
+          "right_shoulder_yaw_tracking_err_rad": {
+            "mean_abs": 0.07389814406633377,
+            "p95_abs": 0.1477961540222168,
+            "max_abs": 2.724781036376953
+          },
+          "right_elbow_tracking_err_rad": {
+            "mean_abs": 0.08586228638887405,
+            "p95_abs": 0.11316996812820435,
+            "max_abs": 0.843844473361969
+          },
+          "right_wrist_roll_tracking_err_rad": {
+            "mean_abs": 0.01833449862897396,
+            "p95_abs": 0.024753162637352943,
+            "max_abs": 1.0859265327453613
+          },
+          "right_wrist_pitch_tracking_err_rad": {
+            "mean_abs": 0.03226913884282112,
+            "p95_abs": 0.052315663546323776,
+            "max_abs": 0.4087175726890564
+          },
+          "right_wrist_yaw_tracking_err_rad": {
+            "mean_abs": 0.015841150656342506,
+            "p95_abs": 0.035299547016620636,
+            "max_abs": 0.36435002088546753
+          }
+        },
+        "T_010_gao01_8p47_10p47": {
+          "stroke_type": "backhand",
+          "torso_ref_err_deg": {
+            "mean": 3.74493145942688,
+            "p95": 5.6631293296813965,
+            "max_abs": 5.956825256347656
+          },
+          "torso_pitch_deg": {
+            "mean": 22.471389770507812,
+            "p95": 22.4708309173584,
+            "max_abs": 22.502044677734375
+          },
+          "torso_roll_deg": {
+            "mean": 21.71480369567871,
+            "p95": 21.723405838012695,
+            "max_abs": 21.723430633544922
+          },
+          "torso_tilt_deg": {
+            "mean": 30.851926803588867,
+            "p95": 30.857128143310547,
+            "max_abs": 30.857141494750977
+          },
+          "torso_tilt_delta_deg": {
+            "mean": 1.997355341911316,
+            "p95": 3.3312199115753174,
+            "max_abs": 3.3635129928588867
+          },
+          "torso_ang_vel_norm": {
+            "mean": 0.3076406419277191,
+            "p95": 0.6252157092094421,
+            "max_abs": 0.6356166005134583
+          },
+          "torso_ang_vel_err_norm": {
+            "mean": 0.29196634888648987,
+            "p95": 0.6402979493141174,
+            "max_abs": 0.8282527923583984
+          },
+          "joint_actual_minus_ref_max_abs": {
+            "mean": 0.1431940346956253,
+            "p95": 0.24768832325935364,
+            "max_abs": 0.2603943347930908
+          },
+          "joint_actual_minus_target_max_abs": {
+            "mean": 0.13935591280460358,
+            "p95": 0.23377160727977753,
+            "max_abs": 0.2453595995903015
+          },
+          "target_minus_ref_max_abs": {
+            "mean": 0.00552311260253191,
+            "p95": 0.019629212096333504,
+            "max_abs": 0.026357412338256836
+          },
+          "waist_yaw_tracking_err_rad": {
+            "mean_abs": 0.04581507295370102,
+            "p95_abs": 0.0940619558095932,
+            "max_abs": 0.10004064440727234
+          },
+          "waist_roll_tracking_err_rad": {
+            "mean_abs": 0.017466533929109573,
+            "p95_abs": 0.03383389860391617,
+            "max_abs": 0.03395959734916687
+          },
+          "waist_pitch_tracking_err_rad": {
+            "mean_abs": 0.0316009521484375,
+            "p95_abs": 0.04989700764417648,
+            "max_abs": 0.05055859684944153
+          },
+          "right_shoulder_pitch_tracking_err_rad": {
+            "mean_abs": 0.13206146657466888,
+            "p95_abs": 0.23377160727977753,
+            "max_abs": 0.2453595995903015
+          },
+          "right_shoulder_roll_tracking_err_rad": {
+            "mean_abs": 0.055966224521398544,
+            "p95_abs": 0.11862417310476303,
+            "max_abs": 0.12472045421600342
+          },
+          "right_shoulder_yaw_tracking_err_rad": {
+            "mean_abs": 0.08377078920602798,
+            "p95_abs": 0.1666838675737381,
+            "max_abs": 0.18009209632873535
+          },
+          "right_elbow_tracking_err_rad": {
+            "mean_abs": 0.06208876147866249,
+            "p95_abs": 0.0985272154211998,
+            "max_abs": 0.10273498296737671
+          },
+          "right_wrist_roll_tracking_err_rad": {
+            "mean_abs": 0.007393361534923315,
+            "p95_abs": 0.027255432680249214,
+            "max_abs": 0.02988123893737793
+          },
+          "right_wrist_pitch_tracking_err_rad": {
+            "mean_abs": 0.039552271366119385,
+            "p95_abs": 0.05498215928673744,
+            "max_abs": 0.056067630648612976
+          },
+          "right_wrist_yaw_tracking_err_rad": {
+            "mean_abs": 0.012384972535073757,
+            "p95_abs": 0.029647616669535637,
+            "max_abs": 0.03598979115486145
+          }
+        }
+      }
+    }
+  }
+}

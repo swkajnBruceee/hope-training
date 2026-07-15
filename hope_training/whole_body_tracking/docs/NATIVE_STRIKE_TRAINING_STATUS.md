@@ -4,6 +4,17 @@ Date: 2026-07-11
 
 This file records the active native A3 strike-policy training line. It is a run log, not the architecture design document.
 
+Current workflow entry point:
+
+```text
+docs/CURRENT_NATIVE_STRIKE_WORKFLOW.md
+```
+
+Only the sections explicitly marked as current should be treated as active
+instructions. Older commands and manifest paths later in this log are preserved
+as historical records; many of those manifests have been moved under
+`sample_motions/_archive_not_for_training/20260714_superseded_manifests/`.
+
 ## Active Strategy
 
 The current policy route is:
@@ -39,20 +50,172 @@ non-waist native strike joint near-limit fraction <= 0.10
 Do not expand a motion set if the current set does not pass both the racket gate
 and the posture gate.
 
-## Clean Motion Sets
+2026-07-14 update:
 
-| Set | Manifest | Count | Status |
+The posture gate above is no longer enough. The active gate is now:
+
+```text
+hit task gate
++ robot posture / arm-margin gate
++ wrist / forearm naturalness gate
++ visual replay review
+```
+
+`p2_fixed_balanced_robot_gate_k4_v1` is archived as diagnostic only. It passed
+the prior robot-posture numeric gate and a PPO smoke run, but the forehand replay
+showed unacceptable wrist/forearm folding. Do not use that manifest or its
+checkpoint as a K4/K8/K24 baseline.
+
+The current forehand work item is `p2_fixed_forehand_combined_gate_v1`: combine
+the comfort-zone/stance-offset logic with wrist/forearm naturalness and
+shoulder-elbow margin constraints before training again.
+
+2026-07-14 forehand combined-gate result:
+
+```text
+sample_motions/p2_fixed_forehand_combined_gate_v1/accepted_forehand_manifest.json
+
+accepted motions: 4 forehands
+hit_composite_pass_rate     = 1.000
+robot_posture_pass_rate     = 1.000
+wrist_naturalness_pass_rate = 1.000
+whole_cycle_pass_rate       = 1.000
+```
+
+Status: visual accepted on 2026-07-14. These 4 forehands are the current
+forehand training candidate source.
+
+2026-07-14 balanced K8 current result:
+
+```text
+sample_motions/p2_fixed_balanced_k8_current_v1/manifest.json
+
+4 forehands:
+  source: p2_fixed_forehand_combined_gate_v1/accepted_forehand_manifest.json
+  visual review: accepted
+
+4 backhands:
+  source: p2_fixed_backhand_current_pool_v2/accepted_backhand_manifest.json
+  numeric gate: accepted
+  visual review: accepted
+
+K8 zero-action gate:
+  hit_composite_pass_rate     = 1.000
+  robot_posture_pass_rate     = 1.000
+  wrist_naturalness_pass_rate = 1.000
+  whole_cycle_pass_rate       = 1.000
+```
+
+Status: current small training candidate. The selected backhands were visually
+accepted on 2026-07-14. Use this manifest for the first current K8 residual-PPO
+smoke experiment, and compare against zero-residual replay before expanding.
+
+2026-07-14 K8 residual-PPO smoke result:
+
+```text
+run_name:
+  balanced_k8_current_v1_res015_smoke_300_20260714
+
+checkpoint:
+  /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/
+    2026-07-14_17-22-45_balanced_k8_current_v1_res015_smoke_300_20260714/model_299.pt
+
+training overrides:
+  num_envs = 512
+  max_iterations = 300
+  manifest_subset_size = 8
+  task.actions.native_residual_scale = 0.15
+  task.rewards.action_residual_weight = -0.2
+```
+
+Deterministic policy eval:
+
+```text
+eval log:
+  hope_training/whole_body_tracking/eval_outputs/
+    balanced_k8_current_v1_res015_smoke_300_20260714_policy_model299.log
+
+hit_composite_pass_rate     = 1.000  (8 / 8)
+legacy posture_pass_rate    = 0.750  (6 / 8)
+robot_posture_pass_rate     = 1.000  (8 / 8)
+wrist_naturalness_pass_rate = 1.000  (8 / 8)
+whole_cycle_pass_rate       = 1.000  (8 / 8)
+
+overall:
+  pos_mean    = 0.0195 m
+  vel_mean    = 0.0517 m/s
+  normal_mean = 2.09 deg
+
+forehand:
+  n = 4
+  whole_cycle = 4 / 4
+  pos_mean    = 0.0294 m
+  vel_mean    = 0.0871 m/s
+  normal_mean = 1.67 deg
+
+backhand:
+  n = 4
+  whole_cycle = 4 / 4
+  pos_mean    = 0.0096 m
+  vel_mean    = 0.0162 m/s
+  normal_mean = 2.51 deg
+```
+
+Interpretation: the first current K8 residual-PPO smoke passed the numeric
+robot/task gate. The old human-reference posture scalar still rejects two
+forehands, but the current robot-centric gate accepts all eight. Before using
+this checkpoint as a baseline for expansion, run visual replay of `model_299.pt`
+and confirm that wrist folding, excessive side tilt, and shoulder/elbow margin
+issues do not reappear.
+
+2026-07-14 visual replay correction:
+
+```text
+checkpoint:
+  model_299.pt from balanced_k8_current_v1_res015_smoke_300_20260714
+
+numeric gate:
+  passed
+
+visual status:
+  not promoted as expansion baseline yet
+```
+
+The hand/racket motion is visually much improved, but the policy replay shows
+excessive upper-body forward lean and loose torso motion. This is a policy /
+control-objective issue rather than a reference-data issue, because the
+zero-residual reference replay for the same K8 manifest was visually accepted.
+
+Do not expand to a larger K from this checkpoint. Next train a tighter K8
+variant that preserves the same reference data but changes the residual policy
+contract:
+
+```text
+- reduce waist_pitch / waist_roll residual authority
+- increase torso pose / torso angular-velocity control
+- add or strengthen balance-aware torso tilt and action-smoothness penalties
+- keep the current wrist / forearm gate
+- visual replay must pass before the checkpoint becomes a baseline
+```
+
+## Historical Motion Sets
+
+These sets are retained as experiment history. They are not active training
+inputs under the current combined gate unless a new registry entry explicitly
+promotes them.
+
+| Set | Manifest | Count | Historical Status |
 | --- | --- | ---: | --- |
-| K8 clean v1 | `sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_k8_clean_v1/manifest.json` | 4 FH + 4 BH | Passed |
-| K16 clean v1 | `sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_k16_clean_v1/manifest.json` | 8 FH + 8 BH | Passed |
-| K24 clean v2 | `sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_k24_clean_v2/manifest.json` | 12 FH + 12 BH | Racket gate passed, posture gate failed |
-| K32 clean v1 | `sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_k32_clean_v1/manifest.json` | 16 FH + 16 BH | Failed expansion gate |
-| K2 posture-balanced v1 | `sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k2_posture_balanced_v1/manifest.json` | 1 FH + 1 BH | Superseded: target/frame calibration stale |
-| K4 posture-balanced v1 | `sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k4_posture_balanced_v1/manifest.json` | 2 FH + 2 BH | Superseded: target/frame calibration stale |
-| K4 posture-balanced v2 | `sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k4_posture_balanced_v2/manifest.json` | 2 FH + 2 BH | Current zero-residual replay baseline passed |
-| K8 posture-balanced v2 | `sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k8_posture_balanced_v2/manifest.json` | 4 FH + 4 BH | Zero-residual replay passed; residual PPO smoke passed |
-| K16 posture-balanced v2 | `sample_motions/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k16_posture_balanced_v2/manifest.json` | 8 FH + 8 BH | Zero-residual replay passed; residual PPO smoke passed |
-| K24 posture-balanced v2 | `sample_motions/p2_fixed_competition_global_funnel_tracking_union55_v2_curated/k24_posture_balanced_v2/manifest.json` | 12 FH + 12 BH | Zero-residual replay passed; residual PPO smoke passed |
+| K8 clean v1 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_k8_clean_v1/manifest.json` | 4 FH + 4 BH | Historical; superseded by combined gate |
+| K16 clean v1 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_k16_clean_v1/manifest.json` | 8 FH + 8 BH | Historical; superseded by combined gate |
+| K24 clean v2 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_k24_clean_v2/manifest.json` | 12 FH + 12 BH | Historical; racket gate passed, posture gate failed |
+| K32 clean v1 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_k32_clean_v1/manifest.json` | 16 FH + 16 BH | Historical; failed expansion gate |
+| K2 posture-balanced v1 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k2_posture_balanced_v1/manifest.json` | 1 FH + 1 BH | Historical; target/frame calibration stale |
+| K4 posture-balanced v1 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k4_posture_balanced_v1/manifest.json` | 2 FH + 2 BH | Historical; target/frame calibration stale |
+| K4 posture-balanced v2 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k4_posture_balanced_v2/manifest.json` | 2 FH + 2 BH | Historical diagnostic; not current baseline |
+| K8 posture-balanced v2 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k8_posture_balanced_v2/manifest.json` | 4 FH + 4 BH | Historical diagnostic; not current baseline |
+| K16 posture-balanced v2 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_balanced20_native_zero_residual_curated/k16_posture_balanced_v2/manifest.json` | 8 FH + 8 BH | Historical diagnostic; not current baseline |
+| K24 posture-balanced v2 | `sample_motions/_archive_not_for_training/20260714_superseded_manifests/p2_fixed_competition_global_funnel_tracking_union55_v2_curated/k24_posture_balanced_v2/manifest.json` | 12 FH + 12 BH | Historical diagnostic; not current baseline |
 
 ## Current Best Checkpoints
 
@@ -1150,3 +1313,343 @@ Cleaned /tmp/IsaacLab and reran with:
 
 Use `TMPDIR=/home/bruce/tmp_isaac` for future Isaac batch conversions while the
 root partition remains near full.
+
+## 2026-07-14 Manual v3 and Strict-K4 Smoke
+
+Manual visually accepted replay set:
+
+```text
+hope_training/whole_body_tracking/sample_motions/p2_fixed_manual_accepted_v3/manifest.json
+  4 motions = 2 forehand + 2 backhand
+```
+
+Native target calibration was generated at:
+
+```text
+hope_training/whole_body_tracking/sample_motions/p2_fixed_manual_accepted_v3/native_zero_residual_manifest.json
+```
+
+Zero-residual eval on the calibrated v3 manifest showed that the target/FK
+semantics are now aligned, but the strict native posture gate is not yet closed:
+
+```text
+hit_composite_pass_rate = 1.000  (4/4)
+posture_pass_rate      = 0.500  (2/4)
+whole_cycle_pass_rate  = 0.500  (2/4)
+
+Backhands pass both hit and posture.
+Forehands pass hit but fail posture/near-limit gates:
+  T001_003_gao01_2p92_4p92:
+    torso_ref_err_deg = 28.45
+    arm_near_limit_frac = 0.2857
+    near_limit = waist_roll_joint|waist_pitch_joint|right_shoulder_roll_joint|right_elbow_joint
+
+  T04_005_gao01_7p05_9p05:
+    torso_ref_err_deg = 15.23
+    arm_near_limit_frac = 0.1429
+    near_limit = waist_roll_joint|right_shoulder_roll_joint
+```
+
+Conclusion: do not treat `p2_fixed_manual_accepted_v3` as a closed training
+manifest yet. It is visually useful, but the current native training gate still
+rejects the forehand posture/limit margin.
+
+For a minimal training smoke, use the already gate-closed strict K4 manifest:
+
+```text
+hope_training/whole_body_tracking/sample_motions/
+  p2_fixed_competition_global_funnel_waist1p0_strict2600_native_calibrated_posture_k4/manifest.json
+
+composition:
+  1 forehand + 3 backhand
+```
+
+This set is imbalanced and should not be confused with the final balanced train
+set, but it is valid for verifying PPO/residual wiring.
+
+2026-07-14 smoke run:
+
+```text
+run_name:
+  strict2600_posture_k4_res015_smoke_300_20260714
+
+checkpoint:
+  /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/
+    2026-07-14_12-49-52_strict2600_posture_k4_res015_smoke_300_20260714/model_299.pt
+
+training overrides:
+  num_envs = 512
+  max_iterations = 300
+  task.actions.native_residual_scale = 0.15
+  task.rewards.action_residual_weight = -0.2
+```
+
+Deterministic policy eval with the same residual scale:
+
+```text
+eval log:
+  hope_training/whole_body_tracking/eval_outputs/
+    strict2600_posture_k4_res015_smoke_300_20260714_policy_model299.log
+
+hit_composite_pass_rate = 1.000  (4/4)
+posture_pass_rate      = 1.000  (4/4)
+whole_cycle_pass_rate  = 1.000  (4/4)
+
+overall:
+  pos_mean = 0.0132 m
+  vel_mean = 0.1305 m/s
+  normal_mean = 1.31 deg
+
+forehand:
+  n = 1
+  pos = 0.0241 m
+  vel = 0.2201 m/s
+  normal = 1.93 deg
+  posture = pass
+
+backhand:
+  n = 3
+  pos_mean = 0.0096 m
+  vel_mean = 0.1007 m/s
+  normal_mean = 1.10 deg
+  posture = pass
+```
+
+Operational note: the actual RSL-RL logs are redirected to
+`/workspace/hopetmp/whole_body_tracking_logs/...`, not the project-local
+`hope_training/whole_body_tracking/logs/` directory.
+
+Next data task:
+
+```text
+Build a balanced native-gate-closed K4/K8 from the waist1p0/manual-v3 source:
+  - keep the accepted backhands
+  - add or repair forehands until zero-residual hit + posture + near-limit gates pass
+  - only then run the balanced residual PPO smoke
+```
+
+## 2026-07-14 Gate Semantics Update
+
+The old native gate mixed robot usability with human-reference similarity:
+
+```text
+pelvis_ref_err_deg <= 15
+torso_ref_err_deg  <= 20
+arm_near_limit_frac <= 0.10
+```
+
+This rejected several forehand variants whose strike target was exact and whose
+robot posture was plausibly usable, because `torso_ref_err_deg` mixes yaw,
+pitch, and roll into one scalar.
+
+The zero-action and policy evaluators now print additional robot-centric fields:
+
+```text
+torso_roll_abs_deg
+torso_pitch_abs_deg
+torso_yaw_deg
+torso_ref_yaw_delta_deg
+torso_tilt_abs_deg
+torso_ref_tilt_delta_deg
+min_joint_margin
+min_arm_margin
+robot_posture_pass
+gate_tier
+```
+
+Current robot posture gate:
+
+```text
+pelvis_ref_err_deg <= 15
+torso_tilt_abs_deg <= 32
+torso_roll_abs_deg <= 25
+torso_pitch_abs_deg <= 35
+arm_near_limit_frac <= 0.10
+min_arm_margin >= 0.05
+```
+
+Reference posture is still reported as `posture_pass`, but it is no longer the
+only hard reject signal. The primary screening label is now `gate_tier`.
+
+Re-evaluation of `p2_fixed_forehand_comfort_y_pos_scan_v1`:
+
+```text
+hit_composite_pass_rate = 8/8
+legacy posture_pass_rate = 0/8
+robot_posture_pass_rate = 6/8
+```
+
+Interpretation: the old `torso_ref_err` hard line was too strict for robot
+specific forehand variants. The two remaining rejects still lack non-waist arm
+margin and stay in `C_requires_stance_or_retarget`.
+
+Detailed gate rationale:
+
+```text
+hope_training/whole_body_tracking/docs/NATIVE_STRIKE_GATE_DESIGN.md
+```
+
+## 2026-07-14 Balanced Robot-Gate K4 v1
+
+Built a balanced K4 manifest from the accepted robot-gate candidates:
+
+```text
+hope_training/whole_body_tracking/sample_motions/p2_fixed_balanced_robot_gate_k4_v1/manifest.json
+
+composition:
+  2 forehand
+  2 backhand
+```
+
+Forehand candidates come from the positive-y comfort-zone scan:
+
+```text
+T002_015_gao01_15p25_17p25_dyp10cm
+T03_012_gao01_12p10_14p10_dyp20cm
+```
+
+Backhand candidates come from `p2_fixed_manual_accepted_v3`:
+
+```text
+T002_023_gao01_26p64_28p64
+T03_030_gao01_0p99_2p99
+```
+
+Raw combined manifest result before native target calibration:
+
+```text
+hit_composite_pass_rate = 2/4
+robot_posture_pass_rate = 4/4
+whole_cycle_pass_rate = 2/4
+```
+
+The two raw failures were the backhands, because their manifest target offsets
+needed recalibration in the combined manifest.
+
+Native-calibrated training manifest:
+
+```text
+hope_training/whole_body_tracking/sample_motions/p2_fixed_balanced_robot_gate_k4_v1/native_zero_residual_manifest.json
+```
+
+Native-calibrated zero-action result:
+
+```text
+hit_composite_pass_rate = 4/4
+legacy posture_pass_rate = 2/4
+robot_posture_pass_rate = 4/4
+whole_cycle_pass_rate = 4/4
+```
+
+Per-stroke result:
+
+```text
+forehand:
+  hit_composite = 2/2
+  legacy posture = 0/2
+  robot_posture = 2/2
+  whole_cycle = 2/2
+
+backhand:
+  hit_composite = 2/2
+  legacy posture = 2/2
+  robot_posture = 2/2
+  whole_cycle = 2/2
+```
+
+Interpretation: this is the current balanced K4 smoke-training candidate. The
+old human-reference torso gate would reject both forehands, but the new robot
+gate accepts them because task accuracy, torso tilt/roll/pitch, and non-waist
+arm margin pass. Do not use the raw `manifest.json` for training; use the
+native-calibrated manifest above.
+
+Residual PPO smoke run:
+
+```text
+run_name:
+  balanced_robot_gate_k4_v1_res015_smoke_300_20260714
+
+checkpoint:
+  /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/
+    2026-07-14_14-33-53_balanced_robot_gate_k4_v1_res015_smoke_300_20260714/model_299.pt
+
+training overrides:
+  num_envs = 512
+  max_iterations = 300
+  task.actions.native_residual_scale = 0.15
+  task.rewards.action_residual_weight = -0.2
+```
+
+Deterministic policy eval:
+
+```text
+eval log:
+  hope_training/whole_body_tracking/eval_outputs/
+    balanced_robot_gate_k4_v1_res015_smoke_300_20260714_policy_model299.log
+
+hit_composite_pass_rate = 4/4
+legacy posture_pass_rate = 2/4
+robot_posture_pass_rate = 4/4
+whole_cycle_pass_rate = 4/4
+
+overall:
+  pos_mean = 0.0217 m
+  vel_mean = 0.1191 m/s
+  normal_mean = 2.02 deg
+
+forehand:
+  n = 2
+  hit_composite = 2/2
+  legacy posture = 0/2
+  robot_posture = 2/2
+  whole_cycle = 2/2
+  pos_mean = 0.0247 m
+  vel_mean = 0.1384 m/s
+  normal_mean = 1.61 deg
+
+backhand:
+  n = 2
+  hit_composite = 2/2
+  legacy posture = 2/2
+  robot_posture = 2/2
+  whole_cycle = 2/2
+  pos_mean = 0.0187 m
+  vel_mean = 0.0999 m/s
+  normal_mean = 2.43 deg
+```
+
+Interpretation at evaluation time: the balanced robot-gate K4 set passed the
+small residual PPO smoke numerically. It is not a deployment policy.
+
+Visual review correction: the forehands in this manifest came from
+`p2_fixed_forehand_comfort_y_pos_scan_v1`, not from the later wrist/native-margin
+forehand repair set. The visual replay showed the old forearm/hand-angle problem
+again. This means `robot_posture_pass` is not sufficient by itself; the gate must
+also include wrist/forearm naturalness before a forehand is promoted into the
+clean balanced training baseline.
+
+Do not use this checkpoint or manifest as the next K8/K24 baseline until the
+forehand set is rebuilt with both:
+
+```text
+1. robot posture / non-waist arm margin
+2. wrist / forearm naturalness
+```
+
+Follow-up check:
+
+```text
+sample_motions/p2_fixed_balanced_native_margin_v1_k4/native_zero_residual_manifest.json
+```
+
+passes exact-hit after native calibration, but the two forehands fail the current
+robot posture gate because right shoulder roll margin is still too thin:
+
+```text
+forehand robot_posture_pass = 0/2
+forehand gate_tier = C_requires_stance_or_retarget
+```
+
+Current conclusion: neither existing forehand source is sufficient alone. The
+next usable forehand retarget needs to combine the comfort-zone/stance-offset
+idea with wrist/forearm naturalness and shoulder-margin constraints.
