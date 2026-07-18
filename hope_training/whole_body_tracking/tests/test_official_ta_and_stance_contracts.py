@@ -6,6 +6,7 @@ import importlib.util
 from pathlib import Path
 import sys
 
+import numpy as np
 import pytest
 
 
@@ -24,6 +25,9 @@ def _load(name: str, filename: str):
 ta = _load("official_ta_mapping", "official_ta_mapping.py")
 stance = _load("stance_offset_adapter", "stance_offset_adapter.py")
 waist_probe = _load("official_waist_reference_probe", "official_waist_reference_probe.py")
+official_activation = _load("official_aimsim_activation", "activate_official_aimsim_sil.py")
+official_strike = _load("official_motion_arm_strike", "run_a3_official_motion_arm_strike.py")
+wrist_variant = _load("a3_wrist_bias_variant", "make_a3_right_wrist_yaw_bias_command.py")
 _stance_contract_spec = importlib.util.spec_from_file_location(
     "stance_contract",
     _ROOT / "training" / "tasks" / "tracking" / "mdp" / "stance_contract.py",
@@ -62,6 +66,77 @@ def test_waist_probe_resampling_preserves_duration():
     assert result[0, 0] == 0.0
     assert result[-1, 0] == 4.0
     assert np.isclose((result.shape[0] - 1) / 100.0, 4 / 50.0)
+
+
+def test_ball_tracking_flags_post_launch_rebound_without_calling_it_direct_contact():
+    # 50 Hz pose stream: launch is before the displayed window; the ball first
+    # travels along +X, then a racket sends it towards -Y/+Z.
+    samples = []
+    for elapsed_s, ball_position in (
+        (0.60, [0.00, 0.00, 0.90]),
+        (0.62, [0.08, 0.00, 0.90]),
+        (0.64, [0.16, 0.00, 0.90]),
+        (0.66, [0.14, -0.03, 0.92]),
+        (0.68, [0.12, -0.09, 0.96]),
+    ):
+        samples.append({
+            "elapsed_s": elapsed_s,
+            "ball_pose": {"position_w_m": ball_position},
+            "tracked_body_pose": {"position_w_m": [0.20, 0.00, 0.90]},
+        })
+    summary = official_strike.summarize_ball_tracking(
+        samples, launch_elapsed_s=0.30, expected_return_direction_world=[-1.0, 0.0, 0.0]
+    )
+    assert summary is not None
+    impulse = summary["post_launch_velocity_impulse"]
+    assert impulse["rebound_candidate"] is True
+    assert impulse["event_elapsed_s"] == pytest.approx(0.66)
+    assert "not a direct MuJoCo contact flag" in impulse["criterion"]
+    assert summary["directional_return"]["directional_return_candidate"] is True
+
+
+def test_wrist_bias_variant_is_smooth_and_does_not_mutate_source(tmp_path: Path):
+    source = tmp_path / "canonical.npz"
+    timestamps = np.asarray([0.0, 0.1, 0.2, 0.3, 0.4])
+    positions = np.zeros((len(timestamps), 2))
+    np.savez(source, timestamps_s=timestamps, q_des=positions, joint_names=np.asarray(["other", "right_wrist_yaw_joint"]))
+    variant, metadata = wrist_variant.build_variant(source, center_s=0.2, half_width_s=0.2, bias_rad=-0.25)
+    with np.load(source, allow_pickle=False) as archive:
+        assert np.allclose(archive["q_des"], 0.0)
+    assert np.allclose(variant["q_des"][:, 1], [0.0, -0.125, -0.25, -0.125, 0.0])
+    assert metadata["artifact_status"] == "local_sil_diagnostic_only"
+
+
+def test_official_activation_uses_external_action_envelope(monkeypatch):
+    captured = {}
+
+    def fake_call(endpoint, method, payload):
+        captured.update(endpoint=endpoint, method=method, payload=payload)
+        return {"state": "CommonState_SUCCESS"}
+
+    monkeypatch.setattr(official_activation, "call", fake_call)
+    official_activation.set_external_action("http://sim", "DAMPING")
+    assert captured["method"] == "SetAction"
+    assert captured["payload"]["command"] == {
+        "action": "MotionControlAction_USE_EXT_CMD", "ext_action": "DAMPING"
+    }
+
+
+def test_official_activation_waits_for_a_simulator_backed_service(monkeypatch):
+    attempts = 0
+
+    def fake_get_action(_endpoint):
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise RuntimeError("HTTP 500")
+        return {"info": {"current_action": "MotionControlAction_PASSIVE"}}
+
+    monkeypatch.setattr(official_activation, "get_action", fake_get_action)
+    monkeypatch.setattr(official_activation.time, "sleep", lambda _seconds: None)
+    result = official_activation.wait_for_service_action("http://sim", timeout_s=1.0, poll_s=0.001)
+    assert result["info"]["current_action"] == "MotionControlAction_PASSIVE"
+    assert attempts == 3
 
 
 @pytest.mark.parametrize(

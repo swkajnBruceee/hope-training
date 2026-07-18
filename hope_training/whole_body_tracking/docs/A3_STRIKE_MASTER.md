@@ -105,15 +105,13 @@ describe a fallen initial state, not a standing strike miss. The attempts are
 invalid diagnostic evidence and cannot be used for target, repeatability, or
 training conclusions.
 
-Every new repeat now performs the simulator-native `stand` keyframe reset
-(keyframe 0, all velocity and controller state cleared), verifies an upright
-pelvis pose, sends the 3-second PD-STAND command, and requires a 0.5-second
-height/tilt gate (height at least 0.75 m, tilt at most 25 deg, at least 20
-pose samples) before the runner may publish a strike command. A failed reset
-or gate aborts the repeat; the evaluator also rejects any task evidence that
-does not embed `stand_gate_passed=true`. The obsolete attempts remain at
-`artifacts/pilots/T002_001_gao01_7p52_9p52/sil_repeatability_20260718/` for
-diagnosis only.
+The former direct body-drive recovery procedure (resetting the simulator to
+keyframe 0 and sending a 3-second `PD_STAND`) is retained only as historical
+connectivity evidence. It must not be used by the official balance route: a
+keyframe reset hides the real zero-torque fall and `PD_STAND` is not the
+factory recovery controller. The obsolete direct-body-drive attempts remain
+at `artifacts/pilots/T002_001_gao01_7p52_9p52/sil_repeatability_20260718/`
+for diagnosis only.
 
 ### Native-MOTION balance with right-arm-only strike: SIL stability pass
 
@@ -140,6 +138,53 @@ This is a local-SIL stability pass only.  The official HTTP service exposes
 IMU and joint state but not pelvis height, foot wrench, support polygon, ball
 state, or racket pose.  It therefore does not establish target matching,
 ball contact, real-robot safety, or permission to use a custom waist path.
+
+### Fixed official startup and recovery contract
+
+This is the default and only supported startup sequence for the official A3
+AimSim table-tennis SIL route. It is implemented by
+`tools/start_official_aimsim_a3.sh` and
+`tools/activate_official_aimsim_sil.py`; it is not a direct 31-DOF posture
+controller.
+
+```text
+MuJoCo starts in PASSIVE (zero torque)
+  -> keep PASSIVE for 1.5 s so the free-base robot naturally falls
+  -> DAMPING
+  -> official GET_UP policy, until GET_UP_FINISHED
+  -> MOTION
+  -> wait for the existing two-second stillness/IMU gate
+  -> publish only the project-owned right-arm command
+```
+
+`MOTION` remains the owner of legs, waist, trunk, head, and the balance
+policy. The project must not send leg, waist, torso, or `PD_STAND` commands
+on this route. The ping-pong table is visual-only during recovery, so it
+cannot obstruct the natural fall or the official get-up motion. The route
+never calls `/reset_simulation` as part of a trial.
+
+The launcher starts the recovery helper before creating MuJoCo so that it can
+wait up to 45 s for the simulator-backed action service. Once available, the
+helper uses the official external-action envelope
+`MotionControlAction_USE_EXT_CMD`; it has a 45 s GET_UP deadline. This removes
+the previous timing race in which a manual request could arrive before the
+simulator had state channels.
+
+Cold-start acceptance requires all of the following:
+
+1. helper log contains `PASSIVE`, `DAMPING`, `GET_UP_ING`, and
+   `GET_UP_FINISHED`, in that order;
+2. final action is `MotionControlAction_MOTION`;
+3. `/baselink_position` reports pelvis height at least `0.75 m` after
+   recovery; and
+4. the existing native-MOTION stillness/IMU gate passes before any right-arm
+   strike command is published.
+
+The helper log is
+`third_party/aimsim_official/logs/motion_control/get_up.stdout.log`. On the
+2026-07-18 cold-start verification it reached `GET_UP_FINISHED` in about 20 s,
+then entered `MOTION`; the post-recovery pelvis height was `1.074 m`. This is
+local-SIL evidence only, not real-robot safety validation.
 
 ### Right-hand racket overlay: SIL stability pass
 

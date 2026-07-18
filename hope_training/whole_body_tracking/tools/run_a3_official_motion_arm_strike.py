@@ -147,17 +147,36 @@ def send_body_force(session: requests.Session, simulator_endpoint: str, body_nam
         raise RuntimeError(f"body force request failed: {payload.get('message')}")
 
 
-def summarize_ball_tracking(samples: list[dict[str, Any]]) -> dict[str, Any] | None:
+def summarize_ball_tracking(
+    samples: list[dict[str, Any]], *, launch_elapsed_s: float | None = None,
+    expected_return_direction_world: np.ndarray | None = None,
+    min_return_speed_mps: float = 0.25,
+) -> dict[str, Any] | None:
+    """Summarize ball/racket geometry and flag a post-launch rebound candidate.
+
+    The official HTTP surface exposes poses but not MuJoCo's contact array.  A
+    velocity impulse is therefore deliberately reported as a *candidate*, not
+    as a direct engine contact flag.  The initial launch impulse is excluded
+    when its send time is known.
+    """
     paired = [sample for sample in samples if "ball_pose" in sample and "tracked_body_pose" in sample]
     if not paired:
         return None
+    if expected_return_direction_world is not None:
+        expected_return_direction_world = np.asarray(expected_return_direction_world, dtype=np.float64)
+        if expected_return_direction_world.shape != (3,) or not np.all(np.isfinite(expected_return_direction_world)):
+            raise ValueError("expected return direction must be three finite values")
+        direction_norm = float(np.linalg.norm(expected_return_direction_world))
+        if direction_norm <= 1.0e-12:
+            raise ValueError("expected return direction must be non-zero")
+        expected_return_direction_world = expected_return_direction_world / direction_norm
     distances = [
         float(np.linalg.norm(np.asarray(sample["ball_pose"]["position_w_m"]) - np.asarray(sample["tracked_body_pose"]["position_w_m"])))
         for sample in paired
     ]
     closest_index = int(np.argmin(distances))
     closest = paired[closest_index]
-    return {
+    summary: dict[str, Any] = {
         "sample_count": len(paired),
         "minimum_ball_to_racket_center_distance_m": distances[closest_index],
         "closest_approach_elapsed_s": closest["elapsed_s"],
@@ -165,6 +184,58 @@ def summarize_ball_tracking(samples: list[dict[str, Any]]) -> dict[str, Any] | N
         "closest_racket_center_w_m": closest["tracked_body_pose"]["position_w_m"],
         "note": "closest approach is a coordinate/contact diagnostic; it is not a physical-hit verdict by itself",
     }
+    velocity_segments: list[tuple[float, np.ndarray]] = []
+    for previous, current in zip(paired, paired[1:]):
+        start_s = float(previous["elapsed_s"])
+        end_s = float(current["elapsed_s"])
+        dt_s = end_s - start_s
+        if dt_s <= 1.0e-6 or dt_s > 0.1:
+            continue
+        start_position = np.asarray(previous["ball_pose"]["position_w_m"], dtype=np.float64)
+        end_position = np.asarray(current["ball_pose"]["position_w_m"], dtype=np.float64)
+        velocity_segments.append((end_s, (end_position - start_position) / dt_s))
+    # A launch force is itself a velocity impulse.  Starting 0.15 s later
+    # excludes it while leaving a fixed-table return trajectory observable.
+    analysis_start_s = 0.0 if launch_elapsed_s is None else launch_elapsed_s + 0.15
+    impulses: list[tuple[float, float, np.ndarray, np.ndarray]] = []
+    for (previous_s, previous_velocity), (current_s, current_velocity) in zip(velocity_segments, velocity_segments[1:]):
+        if current_s < analysis_start_s:
+            continue
+        delta_velocity = current_velocity - previous_velocity
+        impulses.append((current_s, float(np.linalg.norm(delta_velocity)), previous_velocity, current_velocity))
+    if impulses:
+        event_s, impulse_mps, incoming_velocity, outgoing_velocity = max(impulses, key=lambda item: item[1])
+        delta_velocity = outgoing_velocity - incoming_velocity
+        transverse_outgoing_speed_mps = float(np.linalg.norm(outgoing_velocity[1:]))
+        # These deliberately conservative thresholds are well above the
+        # 50 Hz finite-difference noise seen in a gravity-compensated ball.
+        rebound_candidate = impulse_mps >= 0.5 and transverse_outgoing_speed_mps >= 0.25
+        summary["post_launch_velocity_impulse"] = {
+            "analysis_start_elapsed_s": analysis_start_s,
+            "event_elapsed_s": event_s,
+            "delta_velocity_mps": impulse_mps,
+            "incoming_velocity_w_mps": incoming_velocity.tolist(),
+            "outgoing_velocity_w_mps": outgoing_velocity.tolist(),
+            "outgoing_transverse_speed_mps": transverse_outgoing_speed_mps,
+            "rebound_candidate": rebound_candidate,
+            "criterion": (
+                "post-launch |Δv| >= 0.5 m/s and outgoing sqrt(v_y^2 + v_z^2) >= 0.25 m/s; "
+                "this is trajectory evidence, not a direct MuJoCo contact flag"
+            ),
+        }
+        if expected_return_direction_world is not None:
+            return_speed_mps = float(np.dot(outgoing_velocity, expected_return_direction_world))
+            summary["directional_return"] = {
+                "expected_direction_world": expected_return_direction_world.tolist(),
+                "outgoing_projection_mps": return_speed_mps,
+                "min_return_speed_mps": min_return_speed_mps,
+                "directional_return_candidate": rebound_candidate and return_speed_mps >= min_return_speed_mps,
+                "note": (
+                    "direction-only check: a true table-tennis return still requires net-crossing and "
+                    "opponent-table landing checks"
+                ),
+            }
+    return summary
 
 
 def send_arm_command(session: requests.Session, endpoint: str, command: np.ndarray, sequence: int) -> None:
@@ -226,6 +297,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ball-launch-steps", type=int, default=1)
     parser.add_argument("--ball-launch-at-s", type=float, default=0.0,
                         help="Seconds after arm replay starts at which to send the ball launch force.")
+    parser.add_argument("--expected-return-direction-world", nargs=3, type=float, metavar=("DX", "DY", "DZ"),
+                        help="Optional unitless world direction that a valid outgoing ball should follow.")
+    parser.add_argument("--min-return-speed-mps", type=float, default=0.25,
+                        help="Minimum projection along --expected-return-direction-world for a directional return candidate.")
     parser.add_argument("--max-pre-tilt-deg", type=float, default=3.0,
                         help="Maximum pelvis orientation drift during the stationary preflight window.")
     parser.add_argument("--max-stroke-tilt-deg", type=float, default=25.0,
@@ -237,10 +312,14 @@ def parse_args() -> argparse.Namespace:
             or args.command_hz <= 0.0 or args.monitor_hz <= 0.0
             or args.max_pre_tilt_deg < 0.0 or args.max_stroke_tilt_deg < 0.0
             or args.max_pelvis_angular_speed_rad_s <= 0.0 or args.max_torso_angular_speed_rad_s <= 0.0
-            or args.ball_launch_steps <= 0 or args.ball_launch_at_s < 0.0):
+            or args.ball_launch_steps <= 0 or args.ball_launch_at_s < 0.0 or args.min_return_speed_mps < 0.0):
         parser.error("all durations/rates must be positive and limits must be non-negative")
     if args.ball_launch_force_world is not None and not args.ball_body:
         parser.error("--ball-launch-force-world requires --ball-body")
+    if args.expected_return_direction_world is not None:
+        direction = np.asarray(args.expected_return_direction_world, dtype=np.float64)
+        if not np.all(np.isfinite(direction)) or float(np.linalg.norm(direction)) <= 1.0e-12:
+            parser.error("--expected-return-direction-world must be a finite non-zero vector")
     return args
 
 
@@ -364,7 +443,12 @@ def main() -> int:
             send_arm_command(session, args.endpoint, np.concatenate([left_hold, right]), sequence)
             sequence += 1
             time.sleep(max(0.0, started + sequence * command_period - time.monotonic()))
-        ball_summary = summarize_ball_tracking(output["stroke_samples"])
+        ball_summary = summarize_ball_tracking(
+            output["stroke_samples"],
+            launch_elapsed_s=output.get("ball_launch", {}).get("actual_elapsed_s"),
+            expected_return_direction_world=args.expected_return_direction_world,
+            min_return_speed_mps=args.min_return_speed_mps,
+        )
         if ball_summary is not None:
             output["ball_tracking"] = ball_summary
         output["pass"] = True

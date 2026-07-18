@@ -44,6 +44,10 @@ mkdir -p "${MC_LOG_DIR}"
 
 cleanup() {
   trap - TERM INT
+  if [[ -n "${GET_UP_PID:-}" ]] && kill -0 "${GET_UP_PID}" 2>/dev/null; then
+    kill -TERM "${GET_UP_PID}" 2>/dev/null || true
+    wait "${GET_UP_PID}" 2>/dev/null || true
+  fi
   if [[ -n "${MC_PID:-}" ]] && kill -0 "${MC_PID}" 2>/dev/null; then
     kill -TERM "${MC_PID}" 2>/dev/null || true
     wait "${MC_PID}" 2>/dev/null || true
@@ -73,6 +77,17 @@ if ! kill -0 "${MC_PID}" 2>/dev/null; then
   sed -n '1,240p' "${MC_LOG_DIR}/motion_control.stdout.log" >&2 || true
   exit 1
 fi
+
+# The simulator intentionally starts in PASSIVE (zero torque). This helper
+# waits for the simulator-backed service, leaves PASSIVE long enough for the
+# normal fall, then requests the official DAMPING -> GET_UP -> MOTION path.
+# It is not a position reset and never requests PD_STAND.
+echo "[official-aimsim] scheduling official PASSIVE -> DAMPING -> GET_UP -> MOTION"
+(
+  SIM_MODE=sil "${AIMSIM_PYTHON}" "${SCRIPT_DIR}/activate_official_aimsim_sil.py" \
+    --action MOTION --ready-timeout-s 45 --get-up-timeout-s 45 --passive-settle-s 1.5
+) >"${MC_LOG_DIR}/get_up.stdout.log" 2>&1 &
+GET_UP_PID=$!
 
 echo "[official-aimsim] starting official AimSim MuJoCo SIL"
 "${AIMSIM_PYTHON}" -m aimsim.cli mujoco start \

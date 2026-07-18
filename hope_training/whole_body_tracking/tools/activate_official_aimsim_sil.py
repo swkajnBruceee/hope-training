@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Activate the official A3 AimSim SIL motion-control state.
 
-The official SIL starts in PASSIVE.  A valid MOTION validation run must first
+The official SIL starts in PASSIVE. A valid MOTION validation run must first
 request GET_UP, wait for GET_UP_FINISHED, and only then request MOTION.
 """
 
@@ -91,11 +91,34 @@ def wait_for_action(endpoint: str, action: str, timeout_s: float, poll_s: float)
         time.sleep(poll_s)
 
 
+def wait_for_service_action(endpoint: str, timeout_s: float, poll_s: float) -> dict:
+    """Wait until the local controller has a simulator-backed action state."""
+
+    deadline = time.monotonic() + timeout_s
+    last_error: RuntimeError | None = None
+    while time.monotonic() < deadline:
+        try:
+            return get_action(endpoint)
+        except RuntimeError as error:
+            last_error = error
+            time.sleep(poll_s)
+    raise RuntimeError(
+        f"motion-control service did not become ready within {timeout_s:.1f}s: {last_error}"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--endpoint", default=os.environ.get("A3_MC_ENDPOINT", DEFAULT_ENDPOINT))
     parser.add_argument("--action", choices=("MOTION", "PD_STAND"), default="MOTION")
     parser.add_argument("--get-up-timeout-s", type=float, default=45.0)
+    parser.add_argument("--ready-timeout-s", type=float, default=45.0)
+    parser.add_argument(
+        "--passive-settle-s",
+        type=float,
+        default=1.5,
+        help="keep the initial PASSIVE (zero-torque) state briefly before DAMPING",
+    )
     parser.add_argument("--poll-s", type=float, default=1.0)
     args = parser.parse_args()
 
@@ -103,11 +126,25 @@ def main() -> int:
         print("Refusing to activate a non-SIL endpoint; set SIM_MODE=sil explicitly.", file=sys.stderr)
         return 2
 
-    initial = print_state("initial", get_action(args.endpoint))
+    if args.get_up_timeout_s <= 0.0 or args.ready_timeout_s <= 0.0 or args.poll_s <= 0.0:
+        parser.error("timeouts and poll interval must be positive")
+    if args.passive_settle_s < 0.0:
+        parser.error("passive settle time must be non-negative")
+
+    initial = print_state(
+        "initial", wait_for_service_action(args.endpoint, args.ready_timeout_s, args.poll_s)
+    )
     expected = f"MotionControlAction_{args.action}"
     if initial["current_action"] == expected:
         print(f"[final] {expected} is already active")
         return 0
+
+    # Let the official PASSIVE action remain zero-torque briefly so the robot
+    # follows the normal fall-and-recovery path before the get-up policy takes
+    # over. The table is visual-only during this phase.
+    if initial["current_action"] == "MotionControlAction_PASSIVE" and args.passive_settle_s > 0.0:
+        time.sleep(args.passive_settle_s)
+        initial = print_state("post_passive", get_action(args.endpoint))
 
     # The official action graph does not allow MOTION -> GET_UP directly.
     # Route through DAMPING whenever the current action is neither DAMPING nor
