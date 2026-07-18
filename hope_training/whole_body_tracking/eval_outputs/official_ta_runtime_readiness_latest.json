@@ -1,0 +1,319 @@
+{
+  "scope": "local_official_a3_aimsim_sil_readiness",
+  "publishes_commands": false,
+  "ports": {
+    "motion_control": {
+      "port": 56322,
+      "open": false
+    },
+    "mujoco_simulator": {
+      "port": 8001,
+      "open": true
+    }
+  },
+  "endpoints": {
+    "sim_liveness": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "status": "mujoco http service online",
+        "service": "MuJoCo Simulator HTTP API"
+      }
+    },
+    "joint_states": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "status": true,
+        "message": "成功",
+        "joints": [
+          [
+            {
+              "name": "left_hip_pitch_joint",
+              "position": -0.1314043850128016,
+              "velocity": -1.000516133627496e-08,
+              "effort": 0.45657759924370755
+            },
+            {
+              "name": "left_hip_roll_joint",
+              "position": 0.0003020371299540761,
+              "velocity": -1.2310203789520633e-09,
+              "effort": 2.119185156635512
+            },
+            {
+              "name": "left_hip_yaw_joint",
+              "position": -0.04422372768279667,
+              "velocity": 6.925732153121136e-09,
+              "effort": 2.827118256358877
+            },
+            {
+              "name": "left_knee_joint",
+              "position": 0.25337110481695696,
+              "velocity": -2.703515072603774e-09,
+              "effort": -13.142209612285818
+            },
+            {
+              "name": "left_ankle_pitch_joint",
+              "position": -0.12740966098742154,
+              "velocity": 1.051295499068158e-08,
+              "effort": 3.5048304411459994
+            },
+            {
+              "name": "left_ankle_roll_joint",
+              "position": -0.0042484569300769645,
+              "velocity": 9.72840017857886e-10,
+              "effort": -1.7757715398257177
+            }
+          ],
+          [
+            {
+              "name": "right_hip_pitch_joint",
+              "position": -0.13128934553133742,
+              "velocity": 1.5241187613563612e-08,
+              "effort": 0.284018175076638
+            },
+            {
+              "name": "right_hip_roll_joint",
+              "position": 1.8817014866442105e-05,
+              "velocity": -1.0997144869087033e-09,
+              "effort": -2.2475267982485754
+            },
+            {
+              "name": "right_hip_yaw_joint",
+              "position": 0.044107140179740156,
+              "velocity": 1.099422882266052e-08,
+              "effort": -2.792142130881649
+            },
+            {
+              "name": "right_knee_joint",
+              "position": 0.25336301653303134,
+              "velocity": 1.7287592622225387e-09,
+              "effort": -13.126033079892768
+            },
+            {
+              "name": "right_ankle_pitch_joint",
+              "position": -0.1275019623553671,
+              "velocity": -1.660391798533374e-08,
+              "effort": 3.55098126070314
+            },
+            {
+              "name": "right_ankle_roll_joint",
+              "position": 0.004873913274300155,
+              "velocity": 1.3701002830507015e-09,
+              "effort": 1.4630433559994207
+            }
+          ],
+          [
+            {
+              "name": "left_shoulder_pitch_joint",
+              "position": 0.297438726242201,
+              "velocity": -1.070284748706674e-08,
+              "effort": 0.512254772965488
+            },
+            {
+              "name": "left_shoulder_roll_joint",
+              "position": 0.11605052357082309,
+              "velocity": -3.517029958445363e-11,
+              "effort": 0.7898952859057226
+            },
+            {
+              "name": "left_shoulder_yaw_joint",
+              "position": -0.006320955891099573,
+              "velocity": -1.2144149170553547e-11,
+              "effort": 0.6320955891221015
+            },
+            {
+              "name": "left_elbow_joint",
+              "position": 0.8034992524696319,
+              "velocity": -1.3956600404818506e-10,
+              "effort": -0.6998504937868134
+            },
+            {
+              "name": "left_wrist_roll_joint",
+              "position": -0.0040632683975158545,
+              "velocity": -1.1607935958513437e-12,
+              "effort": 0.40632683975274625
+            },
+            {
+              "name": "left_wrist_pitch_joint",
+              "position": 0.006286881021521071,
+              "velocity": -9.082919732951331e-11,
+              "effort": -0.3143440509852244
+            },
+            {
+              "name": "left_wrist_yaw_joint",
+              "position": 0.0016309076397537402,
+              "velocity": -2.8826011152921127e-12,
+              "effort": -0.08154538198480442
+            }
+          ],
+          [
+            {
+              "name": "right_shoulder_pitch_joint",
+              "position": 0.2919308842864152,
+              "velocity": -6.613946752138909e-10,
+              "effort": 1.613823144039742
+            },
+            {
+              "name": "right_shoulder_roll_joint",
+              "position": -0.10976498684618677,
+              "velocity": -8.28972384190803e-11,
+              "effort": -2.047002630596851
+            },
+            {
+              "name": "right_shoulder_yaw_joint",
+              "position": -0.001900029211857635,
+              "velocity": 2.7972552547192478e-11,
+              "effort": 0.19000292115779097
+            },
+            {
+              "name": "right_elbow_joint",
+              "position": 0.8053704769629266,
+              "velocity": -2.53565909871592e-08,
+              "effort": -1.074095367228726
+            },
+            {
+              "name": "right_wrist_roll_joint",
+              "position": -0.00419548127122144,
+              "velocity": 1.2175627996454321e-11,
+              "effort": 0.41954812710996836
+            },
+            {
+              "name": "right_wrist_pitch_joint",
+              "position": 0.004036255361085385,
+              "velocity": 2.2912195691020086e-08,
+              "effort": -0.20181279096646496
+            },
+            {
+              "name": "right_wrist_yaw_joint",
+              "position": 0.00237315127460967,
+              "velocity": -5.934761917389666e-12,
+              "effort": -0.11865756372454873
+            }
+          ],
+          [
+            {
+              "name": "head_yaw_joint",
+              "position": -0.002479274972351951,
+              "velocity": 2.252727080577918e-12,
+              "effort": 0.09917099888957259
+            },
+            {
+              "name": "head_pitch_joint",
+              "position": 0.005490819311726538,
+              "velocity": 3.804776331094427e-10,
+              "effort": -0.2196327732300168
+            }
+          ],
+          [
+            {
+              "name": "waist_yaw_joint",
+              "position": -0.001180146252660619,
+              "velocity": -3.804420261743315e-08,
+              "effort": 0.47205865324105806
+            },
+            {
+              "name": "waist_roll_joint",
+              "position": -0.0015319893475010092,
+              "velocity": 9.496798302755313e-11,
+              "effort": 0.7659946733706327
+            },
+            {
+              "name": "waist_pitch_joint",
+              "position": 0.010155243423001515,
+              "velocity": 2.0159194717351546e-08,
+              "effort": -5.077621792137537
+            }
+          ]
+        ]
+      }
+    },
+    "imu": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "status": true,
+        "message": "成功",
+        "imu": {
+          "pelvis": {
+            "orientation": [
+              0.9999137273759152,
+              -0.00027533270181953303,
+              2.2782068178521632e-05,
+              0.01313245895040427
+            ],
+            "angular_velocity": [
+              8.568330874175898e-10,
+              1.0680894017354115e-09,
+              8.789779494070259e-08
+            ],
+            "linear_acceleration": [
+              -0.0005178875087603401,
+              -0.005395691576134319,
+              9.809998502448156
+            ],
+            "linear_position": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "torso": {
+            "orientation": [
+              0.9999078420014461,
+              -0.0011049524430887811,
+              0.005090209743976859,
+              0.012536999197225682
+            ],
+            "angular_velocity": [
+              4.442414741145548e-10,
+              2.1151973550212794e-08,
+              4.9862518468598134e-08
+            ],
+            "linear_acceleration": [
+              -0.10013250306181962,
+              -0.02042509999261553,
+              9.809467686721435
+            ],
+            "linear_position": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        }
+      }
+    },
+    "current_action": {
+      "ok": false,
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    }
+  },
+  "source_and_config": {
+    "ta_whole_body_source_matches": [
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/src/a3_deploy/main.cpp",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/proto/aimdk/protocol/ta/ta_channel.proto",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_runtime_config.yaml",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.ros2.yaml",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.yaml",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.ros2_mujoco_sim.yaml",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.iceoryx.yaml"
+    ],
+    "ta_topic_in_deployment_config": [
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_runtime_config.yaml",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.ros2.yaml",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.yaml",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.ros2_mujoco_sim.yaml",
+      "/home/bruce/桌面/HOPETableTennis/agibot/code_deployment/a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.iceoryx.yaml"
+    ],
+    "ta_topic_in_motion_control_config": [],
+    "official_motion_binary": "/home/bruce/桌面/HOPETableTennis/third_party/aimsim_official/motion_control_humble/bin/motion_control",
+    "official_motion_binary_exists": true
+  },
+  "current_action": "",
+  "official_sil_running": false,
+  "ta_source_confirmed": true,
+  "ta_runtime_topic_active": true,
+  "waist_external_command_status": "not_tested_by_this_readiness_check",
+  "interpretation": "Official SIL or TA source is not ready according to the checks above."
+}

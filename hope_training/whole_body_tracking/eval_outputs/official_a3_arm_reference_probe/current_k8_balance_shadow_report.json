@@ -1,0 +1,111 @@
+{
+  "report_type": "official_aimsim_balance_shadow",
+  "reports": [
+    {
+      "source": "eval_outputs/official_a3_arm_reference_probe/current_k8_forehand_T002_015.json",
+      "motion_npz": "/home/bruce/\u684c\u9762/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz/T002_015_gao01_15p25_17p25_dyp10cm.npz",
+      "sample_count": 359,
+      "http_failures": 0,
+      "torso": {
+        "orientation_tilt_deg_p50": 8.387910325935838,
+        "orientation_tilt_deg_p95": 8.505869681469338,
+        "orientation_tilt_deg_max": 8.555356336285472,
+        "angular_velocity_rad_s_p50": 0.030183307600174066,
+        "angular_velocity_rad_s_p95": 0.09156117893677088,
+        "angular_velocity_rad_s_max": 0.18834979118453657,
+        "linear_acceleration_residual_m_s2_p95": 0.47710328397909463
+      },
+      "pelvis": {
+        "orientation_tilt_deg_p50": 9.027207665848596,
+        "orientation_tilt_deg_p95": 9.132695764877829,
+        "orientation_tilt_deg_max": 9.138776476056451,
+        "angular_velocity_rad_s_p50": 0.007780013663528549,
+        "angular_velocity_rad_s_p95": 0.027223125459336375,
+        "angular_velocity_rad_s_max": 0.034538038166014855,
+        "linear_acceleration_residual_m_s2_p95": 0.8673291836534007
+      },
+      "arm_tracking": {
+        "abs_error_rad_mean": 0.030863116753059243,
+        "abs_error_rad_p95": 0.1097392593698926,
+        "abs_error_rad_max": 0.2551836122976112,
+        "per_joint_abs_error_rad_p95": [
+          0.01923068381307309,
+          0.016218644895970236,
+          0.015391425116077074,
+          0.039541851482363874,
+          0.008118989770754065,
+          0.012629646299848977,
+          8.377040803931858e-05,
+          0.18342715596675152,
+          0.07201499576799196,
+          0.21157144280907322,
+          0.07094782883776299,
+          0.06811459692538059,
+          0.030618926836134878,
+          0.048381830339362185
+        ]
+      },
+      "limitations": [
+        "No foot wrench or support-polygon data is exposed by this endpoint.",
+        "No native controller torque/current data is exposed by this endpoint.",
+        "Absolute IMU tilt includes the simulator's static body-frame offset."
+      ],
+      "command_path_shadow_pass": true,
+      "pass_definition": "Diagnostic only: HTTP success, torso angular-velocity p95 < 0.25 rad/s, and arm absolute tracking-error p95 < 0.15 rad. This is not a full balance gate."
+    },
+    {
+      "source": "eval_outputs/official_a3_arm_reference_probe/current_k8_backhand_T002_022.json",
+      "motion_npz": "/home/bruce/\u684c\u9762/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_backhand_torso_control_v1/optimized_motion_npz/T002_022_gao01_20p68_22p68.npz",
+      "sample_count": 359,
+      "http_failures": 0,
+      "torso": {
+        "orientation_tilt_deg_p50": 14.555955685507929,
+        "orientation_tilt_deg_p95": 14.6111085810441,
+        "orientation_tilt_deg_max": 14.664828891013592,
+        "angular_velocity_rad_s_p50": 0.01244912107394731,
+        "angular_velocity_rad_s_p95": 0.05639920088819636,
+        "angular_velocity_rad_s_max": 0.08391873088016186,
+        "linear_acceleration_residual_m_s2_p95": 0.47986499282210315
+      },
+      "pelvis": {
+        "orientation_tilt_deg_p50": 14.837770398921883,
+        "orientation_tilt_deg_p95": 14.89747884933789,
+        "orientation_tilt_deg_max": 14.931356773935944,
+        "angular_velocity_rad_s_p50": 0.0067282031858392505,
+        "angular_velocity_rad_s_p95": 0.024472951998979628,
+        "angular_velocity_rad_s_max": 0.04153238287043283,
+        "linear_acceleration_residual_m_s2_p95": 0.9223718094303368
+      },
+      "arm_tracking": {
+        "abs_error_rad_mean": 0.027593677921735976,
+        "abs_error_rad_p95": 0.0940935354631373,
+        "abs_error_rad_max": 0.19495010880258368,
+        "per_joint_abs_error_rad_p95": [
+          0.012169965744935882,
+          0.01851921094531065,
+          0.015605026385469952,
+          0.03643119707468651,
+          0.010299635897929243,
+          0.011854130448652205,
+          0.0011700464923693212,
+          0.13855974068596075,
+          0.08025594050599279,
+          0.10876180478113552,
+          0.041311754327617314,
+          0.08777559391536646,
+          0.048983166183877304,
+          0.04866101791023828
+        ]
+      },
+      "limitations": [
+        "No foot wrench or support-polygon data is exposed by this endpoint.",
+        "No native controller torque/current data is exposed by this endpoint.",
+        "Absolute IMU tilt includes the simulator's static body-frame offset."
+      ],
+      "command_path_shadow_pass": true,
+      "pass_definition": "Diagnostic only: HTTP success, torso angular-velocity p95 < 0.25 rad/s, and arm absolute tracking-error p95 < 0.15 rad. This is not a full balance gate."
+    }
+  ],
+  "overall_command_path_shadow_pass": true,
+  "not_a_full_balance_validation": true
+}

@@ -1,0 +1,30 @@
+{
+  "date": "2026-07-16",
+  "scope": "independent held-out evaluation for current K8 fixed-base candidate",
+  "train_manifest": "sample_motions/p2_fixed_balanced_k8_torso_control_v2_nativecal_20260716/manifest.json",
+  "heldout_manifest": "sample_motions/p2_fixed_manual_accepted_v3/native_zero_residual_manifest.json",
+  "checkpoint": "logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-16_01-43-27_k8_ta_contract_baseline_1000_20260716/model_999.pt",
+  "runtime": "IsaacLab fixed-base HOPEA3NativeStrikeManifest",
+  "native_residual_scale": 0.05,
+  "paired_evaluation": {
+    "motions": 4,
+    "forehand": 2,
+    "backhand": 2,
+    "zero_residual": {"hit_composite": "3/4", "robot_posture": "2/4", "whole_cycle": "2/4", "forehand_whole_cycle": "0/2", "backhand_whole_cycle": "2/2"},
+    "learned_residual": {"hit_composite": "3/4", "robot_posture": "2/4", "whole_cycle": "2/4", "forehand_whole_cycle": "0/2", "backhand_whole_cycle": "2/2"},
+    "rescue_count": 0,
+    "harm_count": 0
+  },
+  "per_motion": {
+    "T04_005_gao01_7p05_9p05": {"stroke": "forehand", "zero_whole_cycle": false, "learned_whole_cycle": false, "learned_hit_composite": true, "failure": "right_shoulder_roll_near_limit_and_posture_gate"},
+    "T001_003_gao01_2p92_4p92": {"stroke": "forehand", "zero_whole_cycle": false, "learned_whole_cycle": false, "learned_hit_composite": false, "failure": "position_and_normal_gate_with_right_elbow_margin"},
+    "T002_023_gao01_26p64_28p64": {"stroke": "backhand", "zero_whole_cycle": true, "learned_whole_cycle": true},
+    "T03_030_gao01_0p99_2p99": {"stroke": "backhand", "zero_whole_cycle": true, "learned_whole_cycle": true}
+  },
+  "decision": "do_not_expand_to_K24; add independent accepted forehand coverage or stance-offset handling before expansion",
+  "notes": [
+    "The policy evaluation used the same native-zero-residual manifest as the zero-action evaluation.",
+    "Three broken historical symlinks were repaired to the corresponding archived optimized NPZ files before evaluation.",
+    "This is an Isaac fixed-base result and is not official TA deployment validation."
+  ]
+}

@@ -10,6 +10,7 @@ Example:
 
 import argparse
 import json
+import os
 import numpy as np
 from dataclasses import dataclass
 from pathlib import Path
@@ -502,5 +503,7 @@ def main():
 if __name__ == "__main__":
     # run the main function
     main()
-    # close sim app
-    simulation_app.close()
+    # Isaac rendering extensions can keep background GPU workers alive after
+    # the output file has been flushed. The caller runs one motion per process,
+    # so force the process boundary instead of hanging during shutdown.
+    os._exit(0)

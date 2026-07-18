@@ -14,9 +14,12 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -88,9 +91,38 @@ class MotionEval:
     arm_near_limit_frac: float
 
 
+def _python_executable() -> str:
+    """Use the IsaacLab environment even when this driver is started by python3."""
+    configured = os.environ.get("HOPE_ISAAC_PY")
+    if configured and Path(configured).exists():
+        return configured
+    for candidate in (
+        "/workspace/anaconda3/envs/hope/bin/python",
+        shutil.which("python"),
+        sys.executable,
+    ):
+        if candidate and Path(candidate).exists():
+            return str(candidate)
+    return sys.executable
+
+
 def _run_eval(script: str, extra_args: list[str]) -> str:
-    cmd = [sys.executable, str(ROOT / "scripts" / script)] + extra_args
-    proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    cmd = [_python_executable(), str(ROOT / "scripts" / script)] + extra_args
+    child_env = os.environ.copy()
+    # Headless Isaac subprocesses must not try to read the NVIDIA EULA prompt
+    # from stdin. This is a local evaluation runner, not a license bypass: the
+    # project environment already records acceptance through sitecustomize.
+    child_env.setdefault("OMNI_KIT_ACCEPT_EULA", "YES")
+    proc = subprocess.run(cmd, cwd=ROOT, env=child_env, capture_output=True, text=True)
+    # Isaac Sim may release Kit/GPU resources a moment after the child exits.
+    # A short gap prevents the next headless launch from failing in Kit startup.
+    time.sleep(5.0)
+    if proc.returncode == -6 and "bad_optional_access" in proc.stderr:
+        # This is a Kit startup race, not an evaluation result. Retry once after
+        # a longer release window; any second failure remains fatal.
+        time.sleep(15.0)
+        proc = subprocess.run(cmd, cwd=ROOT, env=child_env, capture_output=True, text=True)
+        time.sleep(5.0)
     if proc.returncode != 0:
         raise RuntimeError(
             f"{script} failed with code {proc.returncode}\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}"
@@ -110,16 +142,26 @@ def _fmt_dict(d: dict[str, list[float]]) -> str:
     return "{" + ",".join(f"{k}:{_fmt_list(v)}" for k, v in d.items()) + "}"
 
 
-def _hydra_args(manifest: str, seed: int, level_cfg: dict, bank_path: str | None, checkpoint: str | None) -> list[str]:
+def _hydra_args(
+    manifest: str,
+    seed: int,
+    level_cfg: dict,
+    bank_path: str | None,
+    checkpoint: str | None,
+    subset_size: int,
+    num_envs: int,
+    actuator_profile: str,
+) -> list[str]:
     args = [
         "headless=true",
         f"+seed={seed}",
-        "num_envs=24",
+        f"num_envs={num_envs}",
         "task=HOPEA3NativeStrikeManifest",
         "algo=ppo",
         f"motion_manifest={manifest}",
-        "manifest_subset_size=24",
+        f"manifest_subset_size={subset_size}",
         "manifest_frame_z_offset=0.76",
+        f"+task.native_actuator_profile={actuator_profile}",
     ]
     if checkpoint is not None:
         args.append(f"checkpoint={checkpoint}")
@@ -147,12 +189,16 @@ def _parse_rows(stdout: str, zero: bool) -> dict[str, MotionEval]:
         posture_idx = 18 if zero else 18
         hit_pass = bool(int(parts[hit_pass_idx]))
         posture_pass = bool(int(parts[posture_idx]))
+        # Both evaluators keep the full robot-level whole-cycle gate in the
+        # final CSV column. Do not reconstruct it from hit/posture only: that
+        # would hide wrist, soft-limit, and robot-posture failures.
+        whole_cycle_pass = bool(int(parts[35])) if len(parts) > 35 else (hit_pass and posture_pass)
         out[episode_id] = MotionEval(
             stroke=stroke,
             episode_id=episode_id,
             hit_pass=hit_pass,
             posture_pass=posture_pass,
-            whole_cycle_pass=hit_pass and posture_pass,
+            whole_cycle_pass=whole_cycle_pass,
             pos=float(parts[3]),
             vel=float(parts[4]),
             normal=float(parts[5]),
@@ -223,14 +269,32 @@ def main():
     parser.add_argument("--levels", default="mild,medium,strong")
     parser.add_argument("--seeds", default="0,1,2,3,4")
     parser.add_argument("--output", default=str(ROOT / "docs" / "eval_reports" / "k24_perturbation_sweep.json"))
+    parser.add_argument("--subset-size", type=int, default=24)
+    parser.add_argument("--num-envs", type=int, default=None)
+    parser.add_argument("--residual-scale", type=float, default=0.15)
+    parser.add_argument("--raw-clip", type=float, default=0.25)
+    parser.add_argument(
+        "--actuator-profile",
+        default="official_pd",
+        choices=("official_pd", "calibrated"),
+        help="Isaac actuator profile used for both zero and learned evaluations",
+    )
+    parser.add_argument(
+        "--waist-scale-multiplier",
+        type=float,
+        default=1.0,
+        help="multiply waist residual authority during learned evaluation",
+    )
     args = parser.parse_args()
 
     levels = [x.strip() for x in args.levels.split(",") if x.strip()]
     seeds = [int(x.strip()) for x in args.seeds.split(",") if x.strip()]
+    num_envs = args.num_envs or args.subset_size
 
     results = {
         "manifest": args.manifest,
         "checkpoint": args.checkpoint,
+        "actuator_profile": args.actuator_profile,
         "levels": levels,
         "seeds": seeds,
         "generated_at": datetime.now().isoformat(),
@@ -244,15 +308,37 @@ def main():
                 raise ValueError(f"unknown level: {level}")
             for seed in seeds:
                 bank_path = tmp / f"{level}_seed{seed}.json"
-                zero_build_args = _hydra_args(args.manifest, seed, LEVELS[level], None, None)
+                zero_build_args = _hydra_args(
+                    args.manifest, seed, LEVELS[level], None, None,
+                    args.subset_size, num_envs, args.actuator_profile
+                )
                 zero_build_args.append(f"+write_perturb_bank={bank_path}")
                 zero_stdout = _run_eval("eval_manifest_zero_action.py", zero_build_args)
 
-                zero_bank_args = _hydra_args(args.manifest, seed, LEVELS[level], str(bank_path), None)
+                zero_bank_args = _hydra_args(
+                    args.manifest, seed, LEVELS[level], str(bank_path), None,
+                    args.subset_size, num_envs, args.actuator_profile
+                )
                 zero_bank_stdout = _run_eval("eval_manifest_zero_action.py", zero_bank_args)
 
-                learned_args = _hydra_args(args.manifest, seed, LEVELS[level], str(bank_path), args.checkpoint)
-                learned_args.extend(["task.actions.native_residual_scale=0.15", "task.actions.raw_clip=0.25"])
+                learned_args = _hydra_args(
+                    args.manifest, seed, LEVELS[level], str(bank_path), args.checkpoint,
+                    args.subset_size, num_envs, args.actuator_profile
+                )
+                learned_args.extend([
+                    f"task.actions.native_residual_scale={args.residual_scale}",
+                    f"task.actions.raw_clip={args.raw_clip}",
+                ])
+                if args.waist_scale_multiplier != 1.0:
+                    learned_args.append(
+                        "+task.actions.native_joint_scale_multipliers="
+                        "{waist_yaw_joint: "
+                        f"{args.waist_scale_multiplier}, "
+                        "waist_roll_joint: "
+                        f"{args.waist_scale_multiplier}, "
+                        "waist_pitch_joint: "
+                        f"{args.waist_scale_multiplier}}}"
+                    )
                 learned_stdout = _run_eval("eval_manifest_policy.py", learned_args)
 
                 zero_rows = _parse_rows(zero_bank_stdout, zero=True)

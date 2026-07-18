@@ -466,6 +466,14 @@ bool A3AimrtBackend::RegisterPubSub_() {
                 // teleop commands onto that same local clock so the delayed
                 // future window works for both live AimRT and ROS2 bag replay.
                 frame.stamp_ns = arrival_stamp_ns;
+                static std::uint64_t accept_count = 0;
+                if ((accept_count++ % 100) == 0) {
+                  std::cerr << "[a3_backend] accepted TA frame: q0="
+                            << frame.q_mujoco[0]
+                            << " q_waist_yaw=" << frame.q_mujoco[2]
+                            << " q_right_arm_0=" << frame.q_mujoco[13]
+                            << "\n";
+                }
                 teleop_frame_cb_(frame);
               }))
         throw std::runtime_error("subscribe teleop whole_body_command failed");

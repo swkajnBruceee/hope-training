@@ -1,0 +1,29 @@
+<mujoco model = "temp">
+    <statistic center = "0 0 0.55" extent = "1.1" />
+
+    <visual>
+        <headlight diffuse = "0.6 0.6 0.6" ambient = "0.3 0.3 0.3" specular = "0 0 0" />
+        <rgba haze = "0.15 0.25 0.35 1" />
+        <global azimuth = "150" elevation = "-20" />
+    </visual>
+    <visual>
+        <rgba com = "0.502 1.0 0 0.5" contactforce = "0.98 0.4 0.4 1" contactpoint = "1.0 1.0 0.6 0.4" />
+        <scale com = "1" forcewidth = "0.03" contactwidth = "0.01" contactheight = "0.02" framewidth = "0.05" framelength = "0.6" />
+        <map force = "0.005" />
+    </visual>
+    <asset>
+        <texture name = "skybox" type = "skybox" builtin = "gradient" rgb1 = "0.2 0.3 0.4" rgb2 = "0 0 0" width = "1000" height = "1000" mark = "random" random = "0.001" markrgb = "1 1 1" />
+        <texture type = "2d" name = "groundplane" builtin = "checker" mark = "edge" rgb1 = "0.2 0.3 0.4" rgb2 = "0.1 0.2 0.3" markrgb = "0.8 0.8 0.8" width = "1000" height = "1000" />
+        <material name = "groundplane" texture = "groundplane" texuniform = "true" texrepeat = "1 1" reflectance = "0.2" />
+    </asset>
+
+    <worldbody>
+        <light pos = "0 0 10" dir = "0 0 -1" directional = "true" />
+        <geom name = "floor" size = "0 100 .125" type = "plane" material = "groundplane" conaffinity = "7" condim = "3" friction = "1" />
+        <body name = "logo1" pos = "1.2 1 2" euler = "1.57 0 0">
+            <geom type = "box" size = "5 2 0.1" euler = "0 0 0" pos = "-0.5 0 -0.05" rgba = "0.5 0.5 0.5 1" />
+            <geom name = "logo1" type = "mesh" pos = "0 1.5 0" rgba = "0.2 0.2 0.8 1" mesh = "logo1" />
+            <geom name = "logo2" type = "mesh" pos = "1.4 0.5 0" rgba = "1 1 0.8 1" mesh = "logo2" />
+        </body>
+    </worldbody>
+</mujoco>

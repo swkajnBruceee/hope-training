@@ -1,6 +1,6 @@
 # Native Strike Sample Motion Registry
 
-Last updated: 2026-07-14
+Last updated: 2026-07-16
 
 This registry separates active training inputs from diagnostic and historical
 artifacts. Do not infer usability from a directory name. Use only manifests
@@ -14,22 +14,60 @@ Current full workflow:
 
 ## Active Training Inputs
 
-Current balanced training candidate:
+### Stance-aware K8 candidate
 
 ```text
-p2_fixed_balanced_k8_current_v1/manifest.json
+p2_stance_train_k8_v1_20260716/manifest.json
 ```
 
 Status:
 
 ```text
-4 forehands: visual accepted
-4 backhands: current numeric gate passed and visual accepted
-K8 zero-action gate: 8 / 8 whole-cycle pass
+2 prepositioned forehands + 2 fixed forehands + 4 fixed backhands
+K8 zero-residual whole-cycle gate: 8 / 8
+500-iteration residual smoke: 8 / 8 whole-cycle
+independent held-out stance set: 4 / 4 whole-cycle
+```
+
+This is the current stance-aware Isaac sim-only training candidate. It uses
+the mixed stance contract with walking disabled. The corresponding held-out
+manifest is never a training input:
+
+```text
+p2_stance_heldout_k4_v1_20260716/manifest.json
+```
+
+The checkpoint is retained under the run named
+`stance_train_k8_v1_20260716`. It is not an official A3 deployment artifact;
+the official TA -> policy -> body-drive path still requires the configured
+official policy model.
+
+Current balanced training candidate:
+
+```text
+p2_fixed_balanced_k8_torso_control_v2_nativecal_20260716/manifest.json
+```
+
+Status:
+
+```text
+4 forehands: inherited visual-accepted references
+4 backhands: torso-control references
+K8 zero-action gate: 8 / 8 whole-cycle pass after native calibration
+K8 nominal residual smoke: 8 / 8 whole-cycle pass
+medium reset perturbation: 7 / 8 for zero and learned residual; rescue=0, harm=0
 ```
 
 This is the current small training candidate for the native fixed-base
-waist/right-arm residual-PPO smoke experiment.
+waist/right-arm residual-PPO smoke experiment. The older
+`p2_fixed_balanced_k8_torso_control_v1/` manifest is superseded because its
+forehand calibration was generated through an inconsistent ground-frame
+diagnostic entry point; it is not a training input.
+
+Large lateral targets are tracked as a fixed-base workspace boundary. They
+must be marked `requires_stance_offset` when they fail under paired reset or
+target-offset evaluation; do not solve that boundary by increasing waist
+residual authority.
 
 The current combined gate is:
 
@@ -52,6 +90,8 @@ Only these non-archive directories remain at the top level:
 | `p2_fixed_forehand_combined_gate_v1/` | Current forehand repair | `accepted_forehand_manifest.json` is visually accepted and is the current forehand training candidate source. |
 | `p2_fixed_backhand_current_pool_v2/` | Current backhand pool | `accepted_backhand_manifest.json` contains 6 numeric-gate accepted backhands; 4 are selected for K8 and visually accepted. |
 | `p2_fixed_balanced_k8_current_v1/` | Current balanced K8 candidate | 4 accepted forehands + 4 accepted backhands; K8 numeric gate passed 8/8 and visual review passed. |
+| `p2_fixed_balanced_k8_torso_control_v2_nativecal_20260716/` | Current native-calibrated K8 candidate | 4 forehands + 4 backhands; regenerated with the verified ground-frame adapter; zero-residual whole-cycle gate passed 8/8. |
+| `p2_fixed_balanced_k8_torso_control_v1/` | Superseded native calibration | Historical trace only; forehand target calibration used the old inconsistent ground-frame entry point. Do not train. |
 | `p2_fixed_backhand_expand4_v2_pending_visual/` | Earlier backhand expansion | Superseded by `p2_fixed_backhand_current_pool_v2/`; keep as source trace only. |
 | `p2_fixed_manual_accepted_v3/` | Manual accepted diagnostics | Historical diagnostic. Some paths were superseded by archive moves; do not train directly. |
 

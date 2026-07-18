@@ -1,0 +1,124 @@
+task:
+  env:
+    num_envs: 4096
+    env_spacing: 2.5
+    episode_length_s: 2.0
+  sim:
+    dt: 0.005
+    decimation: 4
+  domain_rand:
+    link_mass_range:
+    - 0.85
+    - 1.15
+    pd_gain_range: null
+  name: HOPEA3NativeStrikeManifest
+  gym_task: HOPE-NativeStrike-AgibotA3-v0
+  experiment_name: agibot_a3_native_strike_manifest
+  registry_name: ${oc.env:WANDB_REGISTRY_ORG,your-wandb-org}/wandb-registry-motions/hope_forehand
+  motion_manifest: null
+  manifest_subset_size: 4
+  manifest_frame_z_offset: 0.76
+  actions:
+    raw_clip: 0.5
+    soft_limit_margin_frac: 0.0
+    native_residual_scale: 0.0
+    native_joint_scale_multipliers:
+      waist_roll_joint: 0.35
+      waist_pitch_joint: 0.45
+      right_shoulder_roll_joint: 0.5
+      right_elbow_joint: 0.55
+      right_wrist_yaw_joint: 0.5
+  rewards:
+    racket_position_weight: 4.0
+    racket_position_std: 0.3
+    racket_position_y_weight: 1.0
+    racket_position_y_std: 0.1
+    racket_position_fine_weight: 1.0
+    racket_position_fine_std: 0.08
+    racket_position_y_fine_weight: 0.3
+    racket_position_y_fine_std: 0.045
+    racket_velocity_weight: 1.5
+    racket_velocity_std: 2.0
+    racket_normal_weight: 2.0
+    racket_normal_std: 0.45
+    racket_hit_coupled_weight: 4.0
+    racket_hit_coupled:
+      pos_std: 0.08
+      vel_std: 2.0
+      normal_std: 0.45
+      base: 0.15
+      vel_coeff: 0.25
+      normal_coeff: 0.6
+    motion_scale: 1.0
+    motion_torso_ori_weight: 1.0
+    motion_torso_ori_std: 0.22
+    motion_native_joint_pos_weight: 0.8
+    motion_native_joint_pos_std: 0.35
+    joint_torques_weight: -1.0e-06
+    action_rate_weight: -0.03
+    action_residual_weight: -1.0
+    joint_limit_weight: -15.0
+  racket:
+    target_mode: manifest
+    strike_phase: 0.46
+    strike_window_s: 0.12
+    strike_time_std_s: 0.04
+    strike_success_pos_thresh: 0.1
+    strike_success_vel_thresh: 2.0
+    strike_success_normal_thresh_deg: 20.0
+    ref_perturb_success_gated: false
+    forehand_on_negative_y: true
+    mount_normal_axis: 1
+    mount_normal_sign: 1.0
+algo:
+  name: ppo
+  runner:
+    num_steps_per_env: 24
+    max_iterations: 30000
+    save_interval: 100
+    empirical_normalization: true
+  policy:
+    actor_hidden_dims:
+    - 512
+    - 256
+    - 128
+    critic_hidden_dims:
+    - 512
+    - 256
+    - 128
+    activation: elu
+    init_noise_std: 1.0
+  algorithm:
+    learning_rate: 0.001
+    schedule: adaptive
+    desired_kl: 0.01
+    entropy_coef: 0.004
+    num_learning_epochs: 5
+    num_mini_batches: 4
+    gamma: 0.99
+    lam: 0.95
+    clip_param: 0.2
+    value_loss_coef: 1.0
+    use_clipped_value_loss: true
+    max_grad_norm: 1.0
+headless: true
+device: cuda:0
+num_envs: 1
+wandb_path: null
+checkpoint: null
+registry_name: null
+motion_file: null
+motion_manifest: /home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_stance_probe_T03_004_20260716/stance_soft_limit_native_manifest.json
+manifest_subset_size: 1
+manifest_frame_z_offset: 0.76
+video: false
+video_length: 200
+max_steps: null
+camera_eye:
+- 5.0
+- -2.5
+- 2.2
+camera_lookat:
+- 3.15
+- -0.34
+- 1.05

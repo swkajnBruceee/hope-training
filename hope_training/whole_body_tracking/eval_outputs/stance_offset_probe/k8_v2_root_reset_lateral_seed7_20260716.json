@@ -1,0 +1,36 @@
+{
+  "status": "diagnostic_only",
+  "experiment": "fixed_base_root_reset_lateral_robustness",
+  "date": "2026-07-16",
+  "manifest": "sample_motions/p2_fixed_balanced_k8_torso_control_v2_nativecal_20260716/manifest.json",
+  "checkpoint": "logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-16_00-32-01_k8_torso_control_v2_robust_mild_20260716/model_499.pt",
+  "native_residual_scale": 0.05,
+  "seed": 7,
+  "subset_size": 8,
+  "frame_z_offset_m": 0.76,
+  "important_semantics": [
+    "This is a fixed-base reset-offset probe, not a stance planner evaluation.",
+    "The robot root is shifted while manifest world-frame targets remain unchanged.",
+    "No walking, footstep, target remapping, or official waist ownership is included."
+  ],
+  "paired_results": {
+    "root_y_plus_0.10m": {
+      "zero_residual_whole_cycle": "3/8",
+      "learned_residual_whole_cycle": "6/8",
+      "rescue": 3,
+      "harm": 0,
+      "posture_zero": "8/8",
+      "posture_learned": "8/8"
+    },
+    "root_y_minus_0.10m": {
+      "zero_residual_whole_cycle": "2/8",
+      "learned_residual_whole_cycle": "2/8",
+      "rescue": 0,
+      "harm": 0,
+      "posture_zero": "8/8",
+      "posture_learned": "8/8"
+    }
+  },
+  "conclusion": "Residual policy can recover some positive-Y initial lateral displacement, but not the negative-Y cases in this seed. Failures are task-space reach failures with posture and wrist gates still passing. This supports a stance-offset/target-remapping layer, not a larger waist residual authority.",
+  "next_action": "Implement and evaluate an explicit stance-offset adapter that preserves the world hit point while recomputing the base-relative strike command; do not call this reset probe a walking result."
+}

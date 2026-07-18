@@ -1,0 +1,31 @@
+{
+  "stage": "ttmd6_a3_replay_video_v0_visual_review",
+  "source_manifest": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/TTMD6_pilot_retarget_v0/replay_video_v0/video_manifest.json",
+  "reviewer": "user",
+  "total": 18,
+  "passed_count": 8,
+  "rejected_count": 10,
+  "passed_episode_ids": [
+    "class1_sample1__source_right_to_a3_minus_y__upright_plane_neg",
+    "class1_sample1__source_right_to_a3_minus_y__velocity_plane_neg",
+    "class2_sample51__source_right_to_a3_minus_y__upright_plane_neg",
+    "class2_sample51__source_right_to_a3_minus_y__velocity_plane_neg",
+    "class4_sample151__source_right_to_a3_minus_y__velocity_plane_neg",
+    "class4_sample151__source_right_to_a3_plus_y__velocity_plane_neg",
+    "class5_sample201__source_right_to_a3_minus_y__upright_plane_neg",
+    "class6_sample251__source_right_to_a3_minus_y__upright_plane_neg"
+  ],
+  "rejected_episode_ids": [
+    "class1_sample1__source_right_to_a3_minus_y__upright_plane_pos",
+    "class2_sample51__source_right_to_a3_minus_y__upright_plane_pos",
+    "class2_sample51__source_right_to_a3_minus_y__velocity_plane_pos",
+    "class3_sample101__source_right_to_a3_minus_y__upright_plane_pos",
+    "class3_sample101__source_right_to_a3_plus_y__upright_plane_neg",
+    "class3_sample101__source_right_to_a3_plus_y__upright_plane_pos",
+    "class4_sample151__source_right_to_a3_minus_y__upright_plane_pos",
+    "class4_sample151__source_right_to_a3_minus_y__velocity_plane_pos",
+    "class4_sample151__source_right_to_a3_plus_y__velocity_plane_pos",
+    "class5_sample201__source_right_to_a3_minus_y__velocity_plane_pos"
+  ],
+  "note": "Rejected videos remain diagnostic artifacts; none are promoted to training."
+}

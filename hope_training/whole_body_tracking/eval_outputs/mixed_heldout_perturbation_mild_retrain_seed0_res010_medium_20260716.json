@@ -1,0 +1,112 @@
+{
+  "manifest": "sample_motions/p2_mixed_heldout_stance_fixed_20260716/manifest.json",
+  "checkpoint": "logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-16_05-43-15_k8_residual_mild_retrain_20260716/model_499.pt",
+  "levels": [
+    "medium"
+  ],
+  "seeds": [
+    0
+  ],
+  "generated_at": "2026-07-16T06:04:48.847518",
+  "runs": [
+    {
+      "level": "medium",
+      "seed": 0,
+      "bank_path": "/tmp/hope_k24_banks_6ue3i1tz/medium_seed0.json",
+      "zero": {
+        "overall": {
+          "n": 6,
+          "hit_composite_pass_rate": 1.0,
+          "posture_pass_rate": 1.0,
+          "whole_cycle_pass_rate": 0.6666666666666666,
+          "pos_mean": 0.0463,
+          "vel_mean": 0.10110000000000001,
+          "normal_mean": 3.2266666666666666,
+          "torso_margin_mean": 8.37,
+          "pelvis_margin_mean": 10.74,
+          "arm_margin_mean": 0.09999999999999999,
+          "worst": "T03_014_gao01_26p29_28p29"
+        },
+        "forehand": {
+          "n": 4,
+          "hit_composite_pass_rate": 1.0,
+          "posture_pass_rate": 1.0,
+          "whole_cycle_pass_rate": 1.0,
+          "pos_mean": 0.061825,
+          "vel_mean": 0.09897500000000001,
+          "normal_mean": 3.4825,
+          "torso_margin_mean": 7.5175,
+          "pelvis_margin_mean": 10.767500000000002,
+          "arm_margin_mean": 0.1,
+          "worst": "T03_014_gao01_26p29_28p29"
+        },
+        "backhand": {
+          "n": 2,
+          "hit_composite_pass_rate": 1.0,
+          "posture_pass_rate": 1.0,
+          "whole_cycle_pass_rate": 0.0,
+          "pos_mean": 0.01525,
+          "vel_mean": 0.10535,
+          "normal_mean": 2.715,
+          "torso_margin_mean": 10.075,
+          "pelvis_margin_mean": 10.685,
+          "arm_margin_mean": 0.1,
+          "worst": "T_009_gao01_11p24_13p24"
+        }
+      },
+      "learned": {
+        "overall": {
+          "n": 6,
+          "hit_composite_pass_rate": 1.0,
+          "posture_pass_rate": 1.0,
+          "whole_cycle_pass_rate": 0.6666666666666666,
+          "pos_mean": 0.04726666666666666,
+          "vel_mean": 0.0988,
+          "normal_mean": 3.545,
+          "torso_margin_mean": 8.813333333333334,
+          "pelvis_margin_mean": 10.74,
+          "arm_margin_mean": 0.09999999999999999,
+          "worst": "T_018_gao01_3p20_5p20"
+        },
+        "forehand": {
+          "n": 4,
+          "hit_composite_pass_rate": 1.0,
+          "posture_pass_rate": 1.0,
+          "whole_cycle_pass_rate": 1.0,
+          "pos_mean": 0.059375,
+          "vel_mean": 0.097425,
+          "normal_mean": 3.7975,
+          "torso_margin_mean": 8.115,
+          "pelvis_margin_mean": 10.767499999999998,
+          "arm_margin_mean": 0.1,
+          "worst": "T_018_gao01_3p20_5p20"
+        },
+        "backhand": {
+          "n": 2,
+          "hit_composite_pass_rate": 1.0,
+          "posture_pass_rate": 1.0,
+          "whole_cycle_pass_rate": 0.0,
+          "pos_mean": 0.02305,
+          "vel_mean": 0.10155,
+          "normal_mean": 3.04,
+          "torso_margin_mean": 10.21,
+          "pelvis_margin_mean": 10.685,
+          "arm_margin_mean": 0.1,
+          "worst": "T_009_gao01_11p24_13p24"
+        }
+      },
+      "pairing": {
+        "rescue_count": 0,
+        "harm_count": 0,
+        "net_rescue": 0,
+        "rescue": [],
+        "harm": [],
+        "both_fail": [
+          "T03_038_gao01_5p27_7p27",
+          "T_009_gao01_11p24_13p24"
+        ],
+        "both_pass_count": 4
+      }
+    }
+  ]
+}

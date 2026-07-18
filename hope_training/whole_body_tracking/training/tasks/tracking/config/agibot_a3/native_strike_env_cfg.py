@@ -236,6 +236,13 @@ class A3NativeStrikeTerminationsCfg(TerminationsCfg):
 
 @configclass
 class A3NativeStrikeEnvCfg(HOPEPingPongAgibotA3EnvCfg):
+    # ``official_pd`` preserves the historical A3 starter/deployment gain map.
+    # ``official_pd_stand_approx`` maps the official PD_STAND waist/arm arrays
+    # into Isaac implicit actuators for a controlled diagnostic. Neither is a
+    # substitute for the native hierarchical MOTION balance controller.
+    # ``calibrated`` is an Isaac-only high-gain comparison profile.
+    native_actuator_profile: str = "official_pd"
+
     commands: HOPECommandsCfg = HOPECommandsCfg()
     actions: A3NativeStrikeActionsCfg = A3NativeStrikeActionsCfg()
     observations: A3NativeStrikeObservationsCfg = A3NativeStrikeObservationsCfg()
@@ -286,22 +293,7 @@ class A3NativeStrikeEnvCfg(HOPEPingPongAgibotA3EnvCfg):
         # when the kinematic reference was upright. Keep native-strike execution
         # deterministic and closer to the real servo contract.
         self.events.randomize_pd_gains = None
-        waist_actuator = self.scene.robot.actuators.get("waist")
-        if waist_actuator is not None:
-            waist_actuator.stiffness = {
-                "waist_yaw_joint": 120.0,
-                "waist_roll_joint": 160.0,
-                "waist_pitch_joint": 200.0,
-            }
-            waist_actuator.damping = {
-                "waist_yaw_joint": 6.0,
-                "waist_roll_joint": 8.0,
-                "waist_pitch_joint": 10.0,
-            }
-        arm_actuator = self.scene.robot.actuators.get("arms")
-        if arm_actuator is not None:
-            arm_actuator.stiffness = _scale_gain_map(arm_actuator.stiffness, 2.0)
-            arm_actuator.damping = _scale_gain_map(arm_actuator.damping, 2.0)
+        self.apply_native_actuator_profile(self.native_actuator_profile)
         self.events.add_joint_default_pos = None
         self.events.base_com = None
         # External pushes are useful for whole-body balance policies, but this
@@ -316,3 +308,127 @@ class A3NativeStrikeEnvCfg(HOPEPingPongAgibotA3EnvCfg):
         self.terminations.anchor_ori = None
         self.terminations.ee_body_pos = None
         self.rewards.undesired_contacts.weight = 0.0
+
+    def apply_native_actuator_profile(self, profile: str) -> None:
+        """Apply the selected A3 waist/arm servo gains after cfg construction.
+
+        Hydra task overrides are applied after ``parse_env_cfg`` has already
+        constructed this object, so changing only ``native_actuator_profile``
+        would otherwise be a no-op. Keep the gain application in one method so
+        training and evaluation use the same contract.
+        """
+        self.native_actuator_profile = str(profile)
+        waist_actuator = self.scene.robot.actuators.get("waist")
+        arm_actuator = self.scene.robot.actuators.get("arms")
+        if self.native_actuator_profile == "official_pd":
+            # Historical starter/deployment map retained for reproducibility.
+            # It is materially softer than official PD_STAND and must not be
+            # described as a one-to-one native-controller reproduction.
+            if waist_actuator is not None:
+                waist_actuator.stiffness = {
+                    "waist_yaw_joint": 85.0,
+                    "waist_roll_joint": 50.0,
+                    "waist_pitch_joint": 50.0,
+                }
+                waist_actuator.damping = {
+                    "waist_yaw_joint": 3.0,
+                    "waist_roll_joint": 2.0,
+                    "waist_pitch_joint": 2.0,
+                }
+            if arm_actuator is not None:
+                arm_actuator.stiffness = {
+                    ".*_shoulder_pitch_joint": 40.0,
+                    ".*_shoulder_roll_joint": 40.0,
+                    ".*_shoulder_yaw_joint": 30.0,
+                    ".*_elbow_joint": 30.0,
+                    ".*_wrist_roll_joint": 30.0,
+                    ".*_wrist_pitch_joint": 20.0,
+                    ".*_wrist_yaw_joint": 20.0,
+                }
+                arm_actuator.damping = {
+                    ".*_shoulder_pitch_joint": 3.0,
+                    ".*_shoulder_roll_joint": 3.0,
+                    ".*_shoulder_yaw_joint": 2.0,
+                    ".*_elbow_joint": 2.0,
+                    ".*_wrist_roll_joint": 2.0,
+                    ".*_wrist_pitch_joint": 2.0,
+                    ".*_wrist_yaw_joint": 2.0,
+                }
+        elif self.native_actuator_profile == "official_pd_stand_approx":
+            # Direct numerical mapping of the official A3 T2D5 PD_STAND
+            # waist/right-arm arrays. Isaac's implicit actuator has different
+            # timing and hierarchy, so this is an auditable approximation for
+            # tracking diagnostics and training experiments, not a claim that
+            # native A3 standing/balance is reproduced.
+            if waist_actuator is not None:
+                waist_actuator.stiffness = {
+                    "waist_yaw_joint": 400.0,
+                    "waist_roll_joint": 500.0,
+                    "waist_pitch_joint": 500.0,
+                }
+                waist_actuator.damping = {
+                    "waist_yaw_joint": 4.0,
+                    "waist_roll_joint": 4.0,
+                    "waist_pitch_joint": 4.0,
+                }
+            if arm_actuator is not None:
+                arm_actuator.stiffness = {
+                    ".*_shoulder_pitch_joint": 200.0,
+                    ".*_shoulder_roll_joint": 200.0,
+                    ".*_shoulder_yaw_joint": 100.0,
+                    ".*_elbow_joint": 200.0,
+                    ".*_wrist_roll_joint": 100.0,
+                    ".*_wrist_pitch_joint": 50.0,
+                    ".*_wrist_yaw_joint": 50.0,
+                }
+                arm_actuator.damping = {
+                    ".*_shoulder_pitch_joint": 2.0,
+                    ".*_shoulder_roll_joint": 2.0,
+                    ".*_shoulder_yaw_joint": 1.0,
+                    ".*_elbow_joint": 1.0,
+                    ".*_wrist_roll_joint": 1.0,
+                    ".*_wrist_pitch_joint": 1.0,
+                    ".*_wrist_yaw_joint": 1.0,
+                }
+        elif self.native_actuator_profile == "calibrated":
+            # Isaac-only comparison profile. This is intentionally not the
+            # official A3 controller setting.
+            if waist_actuator is not None:
+                waist_actuator.stiffness = {
+                    "waist_yaw_joint": 120.0,
+                    "waist_roll_joint": 160.0,
+                    "waist_pitch_joint": 200.0,
+                }
+                waist_actuator.damping = {
+                    "waist_yaw_joint": 6.0,
+                    "waist_roll_joint": 8.0,
+                    "waist_pitch_joint": 10.0,
+                }
+            if arm_actuator is not None:
+                # Absolute values keep this method idempotent when a runtime
+                # task override switches calibrated -> calibrated again.
+                arm_actuator.stiffness = {
+                    ".*_shoulder_pitch_joint": 80.0,
+                    ".*_shoulder_roll_joint": 80.0,
+                    ".*_shoulder_yaw_joint": 60.0,
+                    ".*_elbow_joint": 60.0,
+                    ".*_wrist_roll_joint": 60.0,
+                    ".*_wrist_pitch_joint": 40.0,
+                    ".*_wrist_yaw_joint": 40.0,
+                }
+                arm_actuator.damping = {
+                    ".*_shoulder_pitch_joint": 6.0,
+                    ".*_shoulder_roll_joint": 6.0,
+                    ".*_shoulder_yaw_joint": 4.0,
+                    ".*_elbow_joint": 4.0,
+                    ".*_wrist_roll_joint": 4.0,
+                    ".*_wrist_pitch_joint": 4.0,
+                    ".*_wrist_yaw_joint": 4.0,
+                }
+        else:
+            raise ValueError(
+                "native_actuator_profile must be 'official_pd', "
+                "'official_pd_stand_approx', or 'calibrated', "
+                f"got {self.native_actuator_profile!r}"
+            )
+        print(f"[A3NativeStrikeEnvCfg] native_actuator_profile={self.native_actuator_profile}", flush=True)

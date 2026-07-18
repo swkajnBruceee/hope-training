@@ -323,10 +323,29 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=Path("data/analysis/mocap_cleaning/configs/retarget_DATA260708_p2_a3_fixed.yaml"))
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=None,
+        help="Override the output root from the config so an experiment cannot overwrite another dataset.",
+    )
+    parser.add_argument(
+        "--require-tangent-gate",
+        action="store_true",
+        help="Require the configured tangent reject threshold during formal IK admission.",
+    )
+    parser.add_argument(
+        "--input-fps",
+        type=int,
+        default=None,
+        help="Override config time.fps for a source dataset with a different sampling rate.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
-    output_root = Path(str(config["output_root"]))
+    if args.input_fps is not None:
+        config["time"]["fps"] = int(args.input_fps)
+    output_root = args.output_root or Path(str(config["output_root"]))
     manifest_path = args.manifest or output_root / "retarget_ready" / "retarget_target_manifest.json"
     manifest = json.loads(Path(manifest_path).read_text())
     samples = manifest["samples"]
@@ -385,7 +404,10 @@ def main() -> None:
         csv_path = ik_dir / f"{episode_id}.csv"
         write_retarget_csv(csv_path, csv_data)
         metrics = _evaluate(csv_data, target_pos, target_quat, hit_index, base_pos, base_quat)
-        ik_pose_status, reject_reasons = _ik_pose_status(metrics, config["quality_thresholds"])
+        quality_thresholds = dict(config["quality_thresholds"])
+        if args.require_tangent_gate:
+            quality_thresholds["hit_tangent_gate"] = True
+        ik_pose_status, reject_reasons = _ik_pose_status(metrics, quality_thresholds)
         metrics.update(
             {
                 "episode_id": episode_id,
@@ -396,6 +418,7 @@ def main() -> None:
                 "frames": int(target_pos.shape[0]),
                 "ik_pose_status": ik_pose_status,
                 "reject_reasons": reject_reasons,
+                "tangent_gate_required": bool(args.require_tangent_gate),
                 "nonfinite_target_pos_frames_filled": nonfinite_target_pos_frames,
                 "nonfinite_target_quat_frames_filled": nonfinite_target_quat_frames,
             }

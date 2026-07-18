@@ -111,6 +111,29 @@ def _run(cfg, simulation_app):
             f"{float(actual_pos[idx, 2].detach().cpu()):.4f},{float(ref_pos[idx, 2].detach().cpu()):.4f}",
             flush=True,
         )
+
+    # This is deliberately a no-physics check.  It distinguishes an inconsistent
+    # manifest strike target from a later actuator-tracking error: the live FK at
+    # the stored hit frame must agree with the manifest target before a PD servo
+    # or policy is involved.
+    racket_cmd = env.unwrapped.command_manager.get_term("racket_target")
+    racket_cmd._resample_command(torch.tensor([0], device=device))
+    racket_cmd._compute_racket_state()
+    racket_pos = racket_cmd.racket_pos_w[0]
+    target_pos = racket_cmd.racket_target_pos_w[0]
+    racket_normal = racket_cmd.racket_normal_w[0]
+    target_normal = racket_cmd.racket_target_normal_w[0]
+    normal_dot = torch.sum(racket_normal * target_normal).clamp(-1.0, 1.0)
+    print(
+        "[reset_fk] strike_target_no_physics: pos_err_m={:.5f} normal_err_deg={:.3f} "
+        "racket_pos=({:.4f},{:.4f},{:.4f}) target_pos=({:.4f},{:.4f},{:.4f})".format(
+            float(torch.linalg.norm(racket_pos - target_pos).detach().cpu()),
+            float(torch.rad2deg(torch.acos(normal_dot)).detach().cpu()),
+            *[float(v.detach().cpu()) for v in racket_pos],
+            *[float(v.detach().cpu()) for v in target_pos],
+        ),
+        flush=True,
+    )
     env.close()
 
 

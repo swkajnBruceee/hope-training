@@ -714,6 +714,22 @@ if(A3_AIMRT_BACKEND_AVAILABLE AND TARGET aimrt_plugins_ros2_plugin)
   endforeach()
 endif()
 
+# The AimRT ROS2 plugin links the bundled irobot_events_executor target.
+# Copy it beside the executable as well; otherwise dlopen of
+# libaimrt_ros2_plugin.so fails on a clean runtime host even though the main
+# binary and both AimRT plugins were packaged correctly.
+if(A3_AIMRT_BACKEND_AVAILABLE AND TARGET irobot_events_executor)
+  set_target_properties(irobot_events_executor PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    BUILD_RPATH "$ORIGIN;/opt/ros/jazzy/lib;/opt/ros/humble/lib"
+    INSTALL_RPATH "$ORIGIN;/opt/ros/jazzy/lib;/opt/ros/humble/lib")
+  add_custom_command(TARGET ${A3_EXECUTABLE_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      $<TARGET_FILE:irobot_events_executor>
+      "${GS_RUNTIME_OUTPUT_DIR}"
+    COMMENT "Copying irobot_events_executor runtime dependency")
+endif()
+
 # Copy joint_msgs runtime .so files. The typesupport wrappers link against the
 # generated C support library and dlopen concrete typesupport variants at
 # runtime; keep all concrete shared-library targets next to the executable.

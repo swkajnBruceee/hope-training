@@ -1,0 +1,33 @@
+dataset: TTMD6
+contract_version: ttmd6_a3_coordinate_contract_v1
+status: locked_for_future_processing
+
+source_frame:
+  axes: [lateral, forward, up]
+  units: millimeter_like_source_units
+  up_axis: source_up
+
+a3_base_frame:
+  axes: [forward, lateral, up]
+  position_units: meter
+  forward_axis: +X
+  up_axis: +Z
+
+mapping:
+  source_lateral_to_a3_lateral: -1
+  name: source_right_to_a3_minus_y
+  formula: "a3 = [source_forward, -source_lateral, source_up]"
+
+orientation_candidates:
+  status: locked_for_future_processing
+  production_lateral_branch: source_right_to_a3_minus_y
+  rejected_lateral_branch: source_right_to_a3_plus_y
+  production_orientation_branch: velocity_plane_neg
+  rejected_orientation_branches:
+    - velocity_plane_pos
+    - upright_plane_pos
+    - upright_plane_neg
+
+training:
+  training_eligible_by_contract: false
+  note: "This contract fixes axes/signs and the selected heuristic orientation branch; it does not certify hit timing, IK, dynamics, or real-robot execution."

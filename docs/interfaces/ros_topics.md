@@ -54,3 +54,20 @@ command streams:
 
 Use probe or dry-run modes first so command publication remains disabled during
 transport and sync bring-up.
+
+## Official A3 TA Whole-Body Command
+
+The official A3 teleoperation path is separate from the body-drive state/command
+topics above. Its input channel is:
+
+- `/ta/whole_body_command`
+
+The protobuf payload contains the official TA command groups: leg, waist, head,
+arm, and optional hand/pelvis fields. The local mapping mirror is kept in
+`hope_training/whole_body_tracking/tools/official_ta_mapping.py`; its policy
+view is the official 29-DOF layout (12 leg + 3 waist + 14 arm), while the A3
+deployment backend can expand to the robot's 31-DOF layout.
+
+The official AimRT backend is only considered available when the executable is
+built with both `ENABLE_A3_AIMRT_BACKEND=ON` and `ENABLE_A3_ROS_MSGS=ON`. The
+backend-off executable must not be used as evidence that the TA channel works.

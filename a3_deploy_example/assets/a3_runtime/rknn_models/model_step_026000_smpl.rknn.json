@@ -1,0 +1,28 @@
+{
+  "label": "smpl",
+  "target_platform": "rk3588",
+  "do_quantization": false,
+  "source_onnx": "ckpts/ckpt_from_luo/a3_a3smpl1215_lenfix_20260520_112453_latest_checkpoint/a3_a3smpl1215_lenfix_20260520_112453_latest/exported/model_step_026000_smpl.onnx",
+  "source_onnx_sha256": "f369e94cbc7817f4d4713ee62c68aeee3e044a004e33d9e2046226f1c0277373",
+  "rknn": "assets/a3_runtime/rknn_models/model_step_026000_smpl.rknn",
+  "rknn_sha256": "31d1604d82a55f9860ef404da96a61dace9f74bef2b8fd35ee9d445534f3d109",
+  "schema": {
+    "input_name": "obs_dict",
+    "input_shape": [
+      1,
+      1770
+    ],
+    "output_name": "action",
+    "output_shape": [
+      1,
+      29
+    ],
+    "opset": [
+      {
+        "domain": "ai.onnx",
+        "version": 13
+      }
+    ],
+    "ir_version": 7
+  }
+}

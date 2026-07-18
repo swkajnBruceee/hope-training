@@ -1,0 +1,39 @@
+{
+  "scope": "local_sil_onnx_full_body_static_stand",
+  "command_window_s": 3.0,
+  "limits": {
+    "tilt_deg": 15.0,
+    "pelvis_angular_speed_rad_s": 1.5,
+    "torso_angular_speed_rad_s": 1.5,
+    "min_pelvis_height_m": 0.75
+  },
+  "command_publishers": "onnx_only_during_window",
+  "pass": false,
+  "preflight_pelvis_height_m": 1.0741820875617372,
+  "native_action_before": "MotionControlAction_MOTION",
+  "native_action_during_window": "MotionControlAction_PASSIVE",
+  "failure": "IMU safety stop: {'tilt_deg': 21.25323985151629, 'pelvis_angular_speed_rad_s': 1.679950865866379, 'torso_angular_speed_rad_s': 3.368842551130677, 'pelvis_height_m': 0.9177831428259416}",
+  "restore_actions": [
+    "MotionControlAction_PD_STAND",
+    "MotionControlAction_MOTION"
+  ],
+  "native_action_after": "MotionControlAction_MOTION",
+  "post_run_recovery_actions": [
+    "reset_simulation",
+    "MotionControlAction_PD_STAND",
+    "MotionControlAction_MOTION"
+  ],
+  "samples": [
+    {
+      "tilt_deg": 21.25323985151629,
+      "pelvis_angular_speed_rad_s": 1.679950865866379,
+      "torso_angular_speed_rad_s": 3.368842551130677,
+      "pelvis_height_m": 0.9177831428259416
+    }
+  ],
+  "max_tilt_deg": 21.25323985151629,
+  "max_pelvis_angular_speed_rad_s": 1.679950865866379,
+  "max_torso_angular_speed_rad_s": 3.368842551130677,
+  "min_pelvis_height_m": 0.9177831428259416,
+  "timestamp_utc": "2026-07-18T07:00:00.317722+00:00"
+}

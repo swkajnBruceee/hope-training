@@ -26,6 +26,8 @@ motion_file: null        # local .npz path; preferred for public smoke runs
 motion_manifest: null    # manifest.json path for multi-motion training
 manifest_subset_size: null
 manifest_frame_z_offset: null
+validate_stance_contract: false  # opt-in prepositioned-manifest validation
+stance_contract_mode: null       # null=allow fixed/prepositioned mixed manifests
 run_name: null
 resume: false
 load_run: null

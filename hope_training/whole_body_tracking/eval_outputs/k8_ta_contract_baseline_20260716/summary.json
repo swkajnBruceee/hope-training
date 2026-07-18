@@ -1,0 +1,44 @@
+{
+  "status": "completed_deterministic_eval",
+  "run_name": "k8_ta_contract_baseline_20260716",
+  "manifest": "sample_motions/p2_fixed_balanced_k8_torso_control_v2_nativecal_20260716/manifest.json",
+  "checkpoint": "logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-16_01-20-39_k8_ta_contract_baseline_20260716/model_299.pt",
+  "training": {
+    "iterations": 300,
+    "num_envs": 512,
+    "seed": 7,
+    "native_residual_scale": 0.05,
+    "reset_perturbation": "mild pose/velocity/joint noise",
+    "base_mode": "fixed_base_isaac_sim",
+    "official_deployment_status": "not_deployable_runtime_unverified"
+  },
+  "deterministic_eval": {
+    "num_motions": 8,
+    "forehand": 4,
+    "backhand": 4,
+    "hit_composite_pass": "8/8",
+    "posture_ref_pass": "8/8",
+    "robot_posture_pass": "8/8",
+    "wrist_naturalness_pass": "8/8",
+    "whole_cycle_pass": "8/8",
+    "position_error_mean_m": 0.0051,
+    "velocity_error_mean_mps": 0.0324,
+    "normal_error_mean_deg": 0.50,
+    "forehand_position_error_mean_m": 0.0069,
+    "forehand_velocity_error_mean_mps": 0.0432,
+    "forehand_normal_error_mean_deg": 0.48,
+    "backhand_position_error_mean_m": 0.0032,
+    "backhand_velocity_error_mean_mps": 0.0217,
+    "backhand_normal_error_mean_deg": 0.51,
+    "worst_motion": "T002_015_gao01_15p25_17p25_dyp10cm",
+    "worst_position_error_m": 0.0088,
+    "worst_velocity_error_mps": 0.0342,
+    "worst_normal_error_deg": 0.72
+  },
+  "interpretation": [
+    "The current Isaac fixed-base K8 sim-only candidate remains numerically valid.",
+    "This does not validate official TA runtime fusion or real A3 waist ownership.",
+    "Large lateral targets still require the separate stance_offset contract.",
+    "Do not warm-start a larger K from historical invalid-reset checkpoints."
+  ]
+}

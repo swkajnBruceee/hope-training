@@ -49,6 +49,20 @@ hope_training/whole_body_tracking/setup_train_env.local.sh
 external_repos/
 vendor_assets/
 
+# Agibot A3 MuJoCo/AimRT build outputs (regenerable locally).
+agibot/A3_MuJoCo_Sim/**/build*/
+agibot/A3_MuJoCo_Sim/**/install*/
+agibot/A3_MuJoCo_Sim/**/*.so
+agibot/A3_MuJoCo_Sim/**/*.a
+agibot/A3_MuJoCo_Sim/**/CMakeCache.txt
+agibot/A3_MuJoCo_Sim/**/CMakeFiles/
+agibot/A3_MuJoCo_Sim/**/Makefile
+agibot/A3_MuJoCo_Sim/**/cmake_install.cmake
+agibot/A3_MuJoCo_Sim/**/CMakeRuleHashes.txt
+agibot/A3_MuJoCo_Sim/**/CPack*.cmake
+agibot/A3_MuJoCo_Sim/**/compiler_depend*
+agibot/A3_MuJoCo_Sim/**/generated/
+
 hope_ws/src/vrpn_mocap/
 
 # Model artifacts and generated datasets.

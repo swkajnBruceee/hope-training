@@ -36,6 +36,8 @@ for _p in (
         sys.path.insert(0, _p)
 del _HERE, _REPO_ROOT, _p
 
+from tools.a3_strike_contract import assert_training_manifest
+
 
 def dump_pickle(filename: str, data):
     """Compatibility helper for IsaacLab builds that no longer expose dump_pickle."""
@@ -149,6 +151,15 @@ def _apply_task_overrides(env_cfg, task):
     """
     applied = []
 
+    # This is a post-construction env-config switch.  The A3 env class applies
+    # the default profile during __post_init__, so merely setting the string in
+    # Hydra would leave the actual actuator gains unchanged.
+    native_profile = _get(task, "native_actuator_profile")
+    if native_profile is not None:
+        _require(hasattr(env_cfg, "apply_native_actuator_profile"), "native_actuator_profile")
+        env_cfg.apply_native_actuator_profile(str(native_profile))
+        applied.append(f"native_actuator_profile={str(native_profile)!r}")
+
     # env base (num_envs is applied earlier via parse_env_cfg). Read every value through _get so the
     # logic works on both OmegaConf nodes (runtime) and plain dicts (unit tests).
     env = _get(task, "env")
@@ -200,6 +211,32 @@ def _apply_task_overrides(env_cfg, task):
             else:
                 env_cfg.actions.joint_pos.scale = float(scale) * residual_scale
             applied.append(f"actions.joint_pos.scale*=native_residual_scale({residual_scale})")
+        interpolate_reference = _get(actions, "interpolate_reference")
+        if interpolate_reference is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "interpolate_reference"),
+                "actions.joint_pos.interpolate_reference",
+            )
+            env_cfg.actions.joint_pos.interpolate_reference = bool(interpolate_reference)
+            applied.append(
+                f"actions.joint_pos.interpolate_reference={bool(interpolate_reference)}"
+            )
+        reference_lookahead_steps = _get(actions, "reference_lookahead_steps")
+        if reference_lookahead_steps is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "reference_lookahead_steps"),
+                "actions.joint_pos.reference_lookahead_steps",
+            )
+            reference_lookahead_steps = int(reference_lookahead_steps)
+            _require(
+                reference_lookahead_steps >= 0,
+                "actions.joint_pos.reference_lookahead_steps >= 0",
+            )
+            env_cfg.actions.joint_pos.reference_lookahead_steps = reference_lookahead_steps
+            applied.append(
+                "actions.joint_pos.reference_lookahead_steps="
+                f"{reference_lookahead_steps}"
+            )
         scale_multipliers = _get(actions, "native_joint_scale_multipliers")
         if scale_multipliers is not None:
             scale = getattr(env_cfg.actions.joint_pos, "scale", None)
@@ -447,6 +484,13 @@ def _run(cfg):
                 manifest_path = pathlib.Path.cwd() / manifest_path
             if not manifest_path.is_file():
                 raise FileNotFoundError(f"motion_manifest does not exist: {manifest_path}")
+            # A3 strike PPO must never silently consume an old K8/K12 manifest,
+            # a target-relabel result, or a diagnostic archive.  This happens
+            # before the Isaac environment is constructed, so it protects both
+            # expensive training and any code path that would otherwise load
+            # the motion library.
+            if str(getattr(cfg.task, "gym_task", "")).startswith("HOPE-NativeStrike"):
+                assert_training_manifest(manifest_path)
             env_cfg.commands.motion.motion_manifest = str(manifest_path)
             env_cfg.commands.motion.motion_file = None
             subset_size = cfg.manifest_subset_size if cfg.manifest_subset_size is not None else _get(cfg.task, "manifest_subset_size")
@@ -459,6 +503,16 @@ def _run(cfg):
             )
             if frame_z_offset is not None:
                 env_cfg.commands.motion.manifest_frame_z_offset = float(frame_z_offset)
+            if _as_bool(cfg.get("validate_stance_contract", False)):
+                env_cfg.commands.motion.validate_stance_contract = True
+                stance_mode = cfg.get("stance_contract_mode", None)
+                if stance_mode is not None:
+                    env_cfg.commands.motion.stance_contract_mode = str(stance_mode)
+                print(
+                    "[train.py] stance contract validation enabled for this manifest "
+                    "(prepositioned metadata + NPZ root consistency)",
+                    flush=True,
+                )
             registry_name = f"local:{manifest_path}"
             print(
                 f"[train.py] using local motion_manifest: {manifest_path} "

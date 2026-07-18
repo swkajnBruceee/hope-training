@@ -26,7 +26,12 @@ from geometry_msgs.msg import Pose, Twist
 from joint_msgs.msg import Command, JointCommand, JointState
 from mujoco_sim_msgs.msg import SimReset
 from rclpy.node import Node
-from rclpy.qos import QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
+from rclpy.qos import (
+    QoSDurabilityPolicy,
+    QoSHistoryPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
+)
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import JointState as RosJointState
 from std_msgs.msg import Header
@@ -169,9 +174,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--settle-s", type=float, default=1.0)
     parser.add_argument("--tail-s", type=float, default=1.0)
     parser.add_argument("--command-hz", type=float, default=500.0)
+    parser.add_argument(
+        "--qos-profile",
+        choices=("mujoco_sim", "official"),
+        default="mujoco_sim",
+        help="body-drive QoS: local MuJoCo uses best_effort; real deployment uses reliable",
+    )
     parser.add_argument("--kp-scale", type=float, default=1.0)
     parser.add_argument("--kd-scale", type=float, default=1.0)
     parser.add_argument("--base-z", type=float, default=1.3, help="MuJoCo A3 pelvis reset height in meters")
+    parser.add_argument(
+        "--skip-reset",
+        action="store_true",
+        help="do not wait for the project /sim/a3/reset topic; use for official AimSim SIL",
+    )
     parser.add_argument(
         "--stand-s",
         type=float,
@@ -195,7 +211,17 @@ def resolve_motion(args: argparse.Namespace) -> tuple[Path, dict[str, object]]:
 
 def make_qos(reliable: bool = False) -> QoSProfile:
     reliability = QoSReliabilityPolicy.RELIABLE if reliable else QoSReliabilityPolicy.BEST_EFFORT
-    return QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=10, reliability=reliability)
+    durability = (
+        QoSDurabilityPolicy.TRANSIENT_LOCAL
+        if reliable
+        else QoSDurabilityPolicy.VOLATILE
+    )
+    return QoSProfile(
+        history=QoSHistoryPolicy.KEEP_LAST,
+        depth=10,
+        reliability=reliability,
+        durability=durability,
+    )
 
 
 class BodyDriveReplay(Node):
@@ -216,7 +242,11 @@ class BodyDriveReplay(Node):
         self.state_samples: list[dict[str, dict[str, float]]] = []
         self.imu: dict[str, dict[str, np.ndarray]] = {}
         self.imu_samples: list[dict[str, dict[str, np.ndarray]]] = []
-        qos = make_qos()
+        # Keep the transport contract explicit. The checked-in local MuJoCo
+        # simulator uses best_effort for body-drive topics; the real deployment
+        # profile uses reliable. A silent QoS mismatch leaves topics visible but
+        # produces zero matched publishers/subscribers.
+        qos = make_qos(reliable=args.qos_profile == "official")
         for group, (command_topic, state_topic, names) in GROUPS.items():
             self.command_publishers[group] = self.create_publisher(JointCommand, command_topic, qos)
             self.create_subscription(JointState, state_topic, lambda msg, g=group: self.on_state(g, msg), qos)
@@ -224,7 +254,9 @@ class BodyDriveReplay(Node):
         self.create_subscription(Imu, "/body_drive/torso_imu/data", lambda msg: self.on_imu("torso", msg), qos)
         self.reset_pub = self.create_publisher(SimReset, "/sim/a3/reset", make_qos(reliable=True))
         self.start = time.monotonic()
-        self.reset_sent = False
+        # The project A3 MuJoCo example exposes /sim/a3/reset. The official
+        # AimSim SIL viewer does not, so its current state must be used as-is.
+        self.reset_sent = bool(args.skip_reset)
         self.reset_attempts = 0
         self.finished = False
         self.sequence = 0
@@ -408,7 +440,7 @@ class BodyDriveReplay(Node):
                     "publish_period_s": publish_period[row],
                 }
                 for name in JOINT_NAMES:
-                    values[f"{name}.q_ref"] = q_ref[self.joint_index[name]]
+                    values[f"{name}.q_ref"] = q_ref[row, self.joint_index[name]]
                     values[f"{name}.q_actual"] = sample[name]["position"]
                     values[f"{name}.dq_actual"] = sample[name]["velocity"]
                     values[f"{name}.effort"] = sample[name]["effort"]
@@ -433,6 +465,7 @@ class BodyDriveReplay(Node):
             "stroke_type": self.meta.get("stroke_type"),
             "fps": self.fps,
             "command_hz_requested": self.args.command_hz,
+            "qos_profile": self.args.qos_profile,
             "sample_count": len(samples),
             "state_coverage_fraction": float(np.mean(finite)) if finite.size else 0.0,
             "q_tracking_mae_rad": float(np.mean(valid_errors)) if valid_errors.size else None,

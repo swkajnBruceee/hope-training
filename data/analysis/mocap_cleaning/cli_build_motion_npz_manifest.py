@@ -21,13 +21,37 @@ import numpy as np
 
 def _hit_metadata(job: dict, fps: int) -> dict:
     spec_path = Path(str(job.get("target_spec_json", "")))
-    if not spec_path.exists():
-        return {}
-    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    spec = json.loads(spec_path.read_text(encoding="utf-8")) if spec_path.exists() else {}
     contract = spec.get("coordinate_contract", {})
     hit_target = spec.get("hit_target", {})
     source_fps = float(contract.get("fps", job.get("input_fps", 0)) or 0.0)
-    hit_index = int(contract.get("hit_index", hit_target.get("hit_index", 0)) or 0)
+    hit_index = int(
+        contract.get(
+            "hit_index",
+            hit_target.get("hit_index", spec.get("candidate_hit_index", spec.get("hit_index", 0))),
+        )
+        or 0
+    )
+    target_npz = Path(str(job.get("target_npz", "")))
+    if target_npz.exists():
+        with np.load(target_npz, allow_pickle=False) as target:
+            hit_index = int(target["hit_index"]) if "hit_index" in target else hit_index
+            source_fps = float(target["source_fps"]) if "source_fps" in target else source_fps
+            if not hit_target and 0 <= hit_index < len(target["racket_pos"]):
+                hit_target = {
+                    "racket_position_m": target["racket_pos"][hit_index].tolist(),
+                    "racket_velocity_mps": target["racket_vel"][hit_index].tolist(),
+                    "racket_normal_w": (
+                        target["racket_normal_w"] if "racket_normal_w" in target else target["racket_normal_base"]
+                    )[hit_index].tolist(),
+                    "racket_tangent_w": (
+                        target["racket_tangent_w"] if "racket_tangent_w" in target else target["racket_tangent_base"]
+                    )[hit_index].tolist(),
+                    "racket_velocity_direction_w": (
+                        target["racket_vel"][hit_index]
+                        / max(float(np.linalg.norm(target["racket_vel"][hit_index])), 1e-9)
+                    ).tolist(),
+                }
     hit_time_from_start_s = float(hit_index / source_fps) if source_fps > 0 else None
     hit_frame_float = float(hit_time_from_start_s * fps) if hit_time_from_start_s is not None else None
     hit_frame = int(np.floor(hit_frame_float)) if hit_frame_float is not None else None
@@ -78,7 +102,7 @@ def main() -> None:
         entries.append(
             {
                 "episode_id": str(job["output_name"]),
-                "motion_npz": str(p),
+                "motion_npz": str(p.resolve()),
                 "fps": fps,
                 "joint_pos_shape": list(z["joint_pos"].shape),
                 "joint_vel_shape": list(z["joint_vel"].shape),

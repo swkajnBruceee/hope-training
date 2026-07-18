@@ -28,7 +28,7 @@ del _REPO_ROOT, _p
 import hydra
 from omegaconf import OmegaConf
 
-from train import _apply_task_overrides
+from train import _apply_task_overrides, _as_bool
 
 
 def _run_play(cfg, simulation_app):
@@ -89,6 +89,11 @@ def _run_play(cfg, simulation_app):
                 env_cfg.commands.motion.manifest_subset_size = int(cfg.manifest_subset_size)
             if cfg.get("manifest_frame_z_offset", None) is not None:
                 env_cfg.commands.motion.manifest_frame_z_offset = float(cfg.manifest_frame_z_offset)
+            if _as_bool(cfg.get("validate_stance_contract", False)):
+                env_cfg.commands.motion.validate_stance_contract = True
+                stance_mode = cfg.get("stance_contract_mode", None)
+                if stance_mode is not None:
+                    env_cfg.commands.motion.stance_contract_mode = str(stance_mode)
         elif has_motion_command and cfg.motion_file is not None:
             env_cfg.commands.motion.motion_file = str(cfg.motion_file)
         elif has_motion_command:
@@ -123,6 +128,11 @@ def _run_play(cfg, simulation_app):
                 frame_z_offset = cfg.task.get("manifest_frame_z_offset")
             if frame_z_offset is not None:
                 env_cfg.commands.motion.manifest_frame_z_offset = float(frame_z_offset)
+            if _as_bool(cfg.get("validate_stance_contract", False)):
+                env_cfg.commands.motion.validate_stance_contract = True
+                stance_mode = cfg.get("stance_contract_mode", None)
+                if stance_mode is not None:
+                    env_cfg.commands.motion.stance_contract_mode = str(stance_mode)
             print(
                 f"[INFO] using local motion_manifest: {manifest_path} "
                 f"(subset_size={env_cfg.commands.motion.manifest_subset_size}, "

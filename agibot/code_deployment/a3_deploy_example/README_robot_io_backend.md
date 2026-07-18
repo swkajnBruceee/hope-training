@@ -41,20 +41,24 @@ AimRT、ROS 2、iceoryx、六路 state topic、topic 内 joint 顺序、同步�
 | `src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.ros2.yaml` | ROS 2 transport 参考配置。 |
 | `src/a3/a3_deploy_onnx_ref/config/a3_aimrt_config.iceoryx.yaml` | iceoryx transport 参考配置。 |
 
-## 自包含策略资产
+## 策略资产状态
 
-仓库内带了 reference deploy 所需的默认 runtime assets：
+reference deploy 的配置预留了以下 runtime asset 路径：
 
 ```text
-assets/a3_runtime/models/model_step_098000_a3.onnx
-assets/a3_runtime/models/model_step_026000_smpl.onnx
-assets/a3_runtime/models/model_step_098000_a3_fast.onnx
-assets/a3_runtime/rknn_models/*.rknn
 assets/a3_runtime/motions/*.csv
 assets/a3_runtime/teleop_motions/*.csv
 ```
 
-默认 `a3_runtime_config.yaml` 使用仓库相对路径。只复用通信层时，可以忽略这些模型和 motion，写自己的 executable 接 `RobotIOBackend`。
+当前工作区实际包含 motion/teleop CSV，但 `assets/a3_runtime/models/` 和
+`assets/a3_runtime/rknn_models/` 尚未放入模型文件。因此当前仓库可以验证
+backend、状态同步、31-DOF body-drive 映射和 `--dry-run`，但不能直接按默认
+配置启动 ONNX policy。获得与部署示例契约匹配的模型后，才能运行
+`--probe` 或正式 policy loop。
+
+不要把 `third_party/aimsim_official` 下的 MOTION 内部 ONNX 文件直接替换为
+这里的部署模型：两者的输入/输出契约不同。只复用通信层时，可以忽略模型，
+写自己的 executable 接 `RobotIOBackend`。
 
 ## RobotIOBackend 接口
 

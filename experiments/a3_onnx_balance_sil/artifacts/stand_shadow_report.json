@@ -1,0 +1,21 @@
+{
+  "scope": "local_sil_onnx_stand_shadow_nonpublishing",
+  "timestamp_local": "2026-07-18T14:43:39+08:00",
+  "runtime": "a3_deploy_example/dist/a3_deploy_x86_64/a3_deploy_onnx_ref",
+  "model": "model_step_098000_a3.onnx",
+  "reference": "BMD_0319_a3_filtered_20260319_164305__stand_Skeleton0.csv",
+  "command_publishers": "disabled by --probe",
+  "records": 100,
+  "policy_hz": 50,
+  "inference_ms_average": 1.94,
+  "inference_ms_max_observed": 2.8,
+  "raw_action_abs_max": 1.986922264099121,
+  "q_des_abs_max_rad": 1.1973844528198243,
+  "q_des_step_abs_max_rad": 0.09300154034793376,
+  "q_des_minus_measured_abs_max_rad": 0.3900449255141522,
+  "base_angular_speed_max_rad_s": 3.7986104007300157e-06,
+  "result": "pass_for_shadow_gate_only",
+  "not_a_balance_validation": true,
+  "not_a_command_publication_test": true,
+  "next_gate": "run an isolated simulator with this ONNX process as the sole body-drive command publisher"
+}

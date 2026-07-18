@@ -22,7 +22,7 @@ del _REPO_ROOT, _p
 import hydra
 from omegaconf import OmegaConf
 
-from train import _apply_task_overrides
+from train import _apply_task_overrides, _as_bool
 
 
 def _obs_to_device(obs, device):
@@ -239,6 +239,15 @@ def _run(cfg, simulation_app):
         frame_z_offset = cfg.task.get("manifest_frame_z_offset")
     if frame_z_offset is not None:
         env_cfg.commands.motion.manifest_frame_z_offset = float(frame_z_offset)
+    if _as_bool(cfg.get("validate_stance_contract", False)):
+        env_cfg.commands.motion.validate_stance_contract = True
+        stance_mode = cfg.get("stance_contract_mode", None)
+        if stance_mode is not None:
+            env_cfg.commands.motion.stance_contract_mode = str(stance_mode)
+        print(
+            "[INFO] stance contract validation enabled for policy evaluation",
+            flush=True,
+        )
 
     agent_cfg = RslRlOnPolicyRunnerCfg(
         **runner_kwargs(OmegaConf.to_container(cfg.algo, resolve=True), str(cfg.task.experiment_name))
@@ -285,6 +294,14 @@ def _run(cfg, simulation_app):
             f"[INFO] action scale abs max/mean: {scale_abs_max:.6f}/{scale_abs_mean:.6f}",
             flush=True,
         )
+        if scale_abs_max <= 1.0e-9:
+            print(
+                "[WARN] policy evaluation has zero residual action scale; "
+                "this is a zero-residual/reference replay, not the learned "
+                "checkpoint behavior. Pass task.actions.native_residual_scale "
+                "used during training for a policy evaluation.",
+                flush=True,
+            )
     native_joint_names = []
     if native_joint_ids is not None:
         native_joint_names = [robot.data.joint_names[int(idx)] for idx in native_joint_ids.detach().cpu().tolist()]
@@ -535,6 +552,7 @@ def _run(cfg, simulation_app):
             and torso_tilt <= 32.0
             and torso_roll <= 25.0
             and torso_pitch <= 35.0
+            and joint_near_limit <= 0.10
             and arm_near_limit <= 0.10
             and min_arm_margin >= 0.05
         )

@@ -32,6 +32,18 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=Path("data/analysis/mocap_cleaning/configs/retarget_DATA260708_p2_a3_fixed.yaml"))
     parser.add_argument("--manifest", type=Path, default=None)
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=None,
+        help="Override the output root from the config so an experiment cannot overwrite another dataset.",
+    )
+    parser.add_argument(
+        "--input-fps",
+        type=int,
+        default=None,
+        help="Override config time.fps for a source dataset with a different sampling rate.",
+    )
     parser.add_argument("--stage", choices=["optimized", "ik"], default="optimized")
     parser.add_argument("--include-reject", action="store_true", help="Generate commands for reject samples too.")
     parser.add_argument("--output-fps", type=int, default=50)
@@ -45,7 +57,8 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config(args.config)
-    output_root = Path(str(config["output_root"]))
+    output_root = args.output_root or Path(str(config["output_root"]))
+    input_fps = int(args.input_fps or config["time"]["fps"])
     if args.manifest is None:
         args.manifest = output_root / ("optimized_manifest.json" if args.stage == "optimized" else "ik_init_manifest.json")
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
@@ -68,7 +81,7 @@ def main() -> None:
                 "input_file": str(csv_path),
                 "output_file": str(out_path),
                 "output_name": episode_id,
-                "input_fps": int(config["time"]["fps"]),
+                "input_fps": input_fps,
                 "output_fps": int(args.output_fps),
                 "target_npz": str(item.get("target_npz", "")),
                 "target_spec_json": str(item.get("target_spec_json", "")),
@@ -95,7 +108,7 @@ def main() -> None:
         "--batch_jobs_json",
         str(jobs_path),
         "--input_fps",
-        str(int(config["time"]["fps"])),
+        str(input_fps),
         "--output_fps",
         str(args.output_fps),
         "--robot",

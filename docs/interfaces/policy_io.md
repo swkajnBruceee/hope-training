@@ -68,6 +68,21 @@ Teams can replace the included Agibot reference motions, tokenizer metadata,
 and exported policy artifacts with their own trained policies when moving
 beyond the Isaac smoke path.
 
+## Official TA Deployment Boundary
+
+The Isaac training task and the official A3 TA runtime are different control
+layers:
+
+- Isaac Lab trains/evaluates the strike policy and its residual contract.
+- The official TA/AimRT path transports whole-body commands to the A3 runtime.
+- The local official deploy build is an integration target, not a substitute
+  for the Isaac training environment and not proof of real-hardware safety.
+
+The current active training task is still the fixed-base native-strike task
+(waist plus right arm residuals). The official TA build is used to validate the
+29-DOF command mapping, topic/schema, runtime loading, and later deployment
+adapter; it does not change the training action space by itself.
+
 ## Logging
 
 The public smoke command uses:

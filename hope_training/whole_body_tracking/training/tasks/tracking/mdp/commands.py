@@ -23,6 +23,7 @@ from isaaclab.utils.math import (
     sample_uniform,
     yaw_quat,
 )
+from .stance_contract import validate_stance_manifest
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -71,10 +72,20 @@ class MotionLibraryLoader:
         expected_fps: int | None = 50,
         frame_z_offset: float = 0.0,
         ground_align: bool = False,
+        validate_stance_contract: bool = False,
+        stance_contract_mode: str | None = None,
     ):
         self.manifest_file = self._resolve_path(manifest_file)
         with open(self.manifest_file, "r", encoding="utf-8") as f:
             manifest = json.load(f)
+
+        if validate_stance_contract:
+            validate_stance_manifest(
+                manifest,
+                manifest_file=self.manifest_file,
+                expected_mode=stance_contract_mode,
+                check_motion_paths=True,
+            )
 
         entries = list(manifest.get("motions", []))
         if not entries:
@@ -285,6 +296,8 @@ class MotionCommand(CommandTerm):
                 expected_fps=self.cfg.manifest_expected_fps,
                 frame_z_offset=self.cfg.manifest_frame_z_offset,
                 ground_align=self.cfg.manifest_ground_align,
+                validate_stance_contract=self.cfg.validate_stance_contract,
+                stance_contract_mode=self.cfg.stance_contract_mode,
             )
             self.motion_ids = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
             self._use_motion_library = True
@@ -713,6 +726,10 @@ class MotionCommandCfg(CommandTermCfg):
     # HOPE competition frame uses z=0 at table surface and floor at z=-0.76, so the manifest task sets +0.76.
     manifest_frame_z_offset: float = 0.0
     manifest_ground_align: bool = False
+    # Opt-in validation for prepositioned stance metadata. Fixed-base manifests
+    # remain unchanged unless this is explicitly enabled.
+    validate_stance_contract: bool = False
+    stance_contract_mode: str | None = None
     anchor_body_name: str = MISSING
     body_names: list[str] = MISSING
 

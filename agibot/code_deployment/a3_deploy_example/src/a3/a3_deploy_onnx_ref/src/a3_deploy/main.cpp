@@ -135,8 +135,8 @@ bool HasFlag(int argc, char** argv, const char* flag) {
 }
 
 bool ValidateKnownFlags(int argc, char** argv, std::string* error) {
-  const std::array<std::string, 3> bool_flags = {
-      "--dry-run", "--probe", "--auto-start"};
+  const std::array<std::string, 4> bool_flags = {
+      "--dry-run", "--probe", "--auto-start", "--body-drive-probe"};
   const std::array<std::string, 4> value_flags = {
       "--runtime-cfg", "--probe-source", "--aimrt-cfg",
       "--frame-log-interval"};
@@ -238,6 +238,7 @@ void PrintUsage(const char* progname) {
   std::cerr << "Usage: " << progname << " --runtime-cfg=/path/to/config.yaml"
                " [--dry-run] [--probe] [--auto-start]"
                " [--probe-source a3|smpl|both]"
+               " [--body-drive-probe]"
                " [--aimrt-cfg PATH] [--frame-log-interval N]"
                "\n"
             << "\nSee src/a3/a3_deploy_onnx_ref/config/a3_runtime_config.yaml\n"
@@ -245,6 +246,7 @@ void PrintUsage(const char* progname) {
             << "\n--dry-run Start transport/backend only; do not load policy or publish commands.\n"
                "--probe  Run receive/sync + policy inference latency probe; do not publish commands.\n"
                "--probe-source a3|smpl|both  Select probe inference source; default both.\n"
+               "--body-drive-probe  Local SIL only: publish a bounded 31-DOF hold/waist test through body_drive.\n"
                "--auto-start Use the simulation/debug flow: PD warmup then policy inference.\n"
                "             Without this flag, startup is PASSIVE and keyboard-controlled.\n"
                "--aimrt-cfg PATH  Override backend.aimrt_cfg_path from runtime config.\n"
@@ -1213,6 +1215,7 @@ int main(int argc, char** argv) {
   const std::string aimrt_cfg_override = ResolveRuntimePathString(
       ParseStringFlag(argc, argv, "--aimrt-cfg", ""), runtime_cfg_lookup_path);
   const bool probe_mode = HasFlag(argc, argv, "--probe");
+  const bool body_drive_probe = HasFlag(argc, argv, "--body-drive-probe");
   const std::string default_probe_source = probe_mode ? "both" : "a3";
   const std::string probe_source = NormalizeConfigToken(
       ParseStringFlag(argc, argv, "--probe-source", default_probe_source));
@@ -1221,6 +1224,20 @@ int main(int argc, char** argv) {
                        OptionalKey<bool>(cfg["backend"]["dry_run"], false);
   const bool policy_enabled =
       OptionalKey<bool>(cfg["policy_driver"]["policy_enabled"], true);
+  if (body_drive_probe && std::getenv("A3_LOCAL_SIL") != std::string("1")) {
+    std::cerr << "--body-drive-probe is local SIL only; set A3_LOCAL_SIL=1 "
+                 "explicitly before running it\n";
+    return 64;
+  }
+  if (body_drive_probe && dry_run) {
+    std::cerr << "--body-drive-probe cannot be combined with --dry-run; it "
+                 "must publish to the local body_drive simulator\n";
+    return 64;
+  }
+  if (body_drive_probe && probe_mode) {
+    std::cerr << "--body-drive-probe cannot be combined with --probe\n";
+    return 64;
+  }
   if (probe_mode && dry_run) {
     std::cerr << "--probe cannot be used with --dry-run or "
                  "backend.dry_run=true; probe mode must load policy and run "
@@ -1244,8 +1261,9 @@ int main(int argc, char** argv) {
   const bool probe_source_smpl = probe_mode && probe_source == "smpl";
   const bool probe_source_both = probe_mode && probe_source == "both";
   const bool probe_needs_smpl_policy = probe_source_smpl || probe_source_both;
-  const bool backend_only = dry_run || !policy_enabled;
-  const bool force_publish_disabled = backend_only || probe_mode;
+  const bool backend_only = dry_run || !policy_enabled || body_drive_probe;
+  const bool force_publish_disabled =
+      (backend_only && !body_drive_probe) || probe_mode;
 
   std::uint64_t frame_log_interval =
       OptionalKey<std::uint64_t>(cfg["logging"]["frame_log_interval"], 0ULL);
@@ -1501,6 +1519,101 @@ int main(int argc, char** argv) {
   }
 
   if (backend_only) {
+    if (body_drive_probe) {
+      std::mutex state_mutex;
+      std::condition_variable state_cv;
+      robot_io::RobotState latest_state;
+      bool state_ready = false;
+      backend.RegisterStateCallback(
+          [&](const robot_io::RobotState& state) {
+            std::lock_guard<std::mutex> lock(state_mutex);
+            latest_state = state;
+            state_ready = true;
+            state_cv.notify_all();
+          });
+
+      if (!backend.Start()) {
+        std::cerr << "Backend::Start failed for body-drive probe\n";
+        return 5;
+      }
+
+      {
+        std::unique_lock<std::mutex> lock(state_mutex);
+        if (!state_cv.wait_for(lock, std::chrono::seconds(3),
+                               [&] { return state_ready; })) {
+          std::cerr << "body-drive probe timed out waiting for a 31-DOF "
+                       "state\n";
+          backend.Stop();
+          return 75;
+        }
+      }
+
+      robot_io::RobotState baseline;
+      {
+        std::lock_guard<std::mutex> lock(state_mutex);
+        baseline = latest_state;
+      }
+      if (baseline.q.size() != robot_io::kA3Dof) {
+        std::cerr << "body-drive probe expected 31-DOF state, got "
+                  << baseline.q.size() << "\n";
+        backend.Stop();
+        return 65;
+      }
+
+      robot_io::RobotCommand command;
+      command.q_des = baseline.q;
+      command.dq_des = Eigen::VectorXd::Zero(robot_io::kA3Dof);
+      command.tau_ff = Eigen::VectorXd::Zero(robot_io::kA3Dof);
+      command.kp = Eigen::VectorXd::Constant(robot_io::kA3Dof, 80.0);
+      command.kd = Eigen::VectorXd::Constant(robot_io::kA3Dof, 4.0);
+      const Eigen::Vector3d waist_offset(0.08, 0.04, -0.02);
+      for (int i = 0; i < robot_io::kA3WaistCount; ++i) {
+        command.q_des[robot_io::kA3WaistStart + i] += waist_offset[i];
+        command.kp[robot_io::kA3WaistStart + i] =
+            (i == 0) ? 160.0 : 200.0;
+        command.kd[robot_io::kA3WaistStart + i] = 4.0;
+      }
+
+      std::cout << "✓ body-drive probe started (local SIL only)\n"
+                << "  baseline waist=["
+                << baseline.q[robot_io::kA3WaistStart] << ", "
+                << baseline.q[robot_io::kA3WaistStart + 1] << ", "
+                << baseline.q[robot_io::kA3WaistStart + 2] << "]\n"
+                << "  target waist=["
+                << command.q_des[robot_io::kA3WaistStart] << ", "
+                << command.q_des[robot_io::kA3WaistStart + 1] << ", "
+                << command.q_des[robot_io::kA3WaistStart + 2] << "]\n";
+
+      constexpr int kTicks = 300;
+      for (int tick = 0; tick < kTicks; ++tick) {
+        if (!backend.SendCommand(command)) {
+          std::cerr << "body-drive probe SendCommand failed at tick " << tick
+                    << "\n";
+          backend.Stop();
+          return 70;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+
+      robot_io::RobotState observed;
+      {
+        std::lock_guard<std::mutex> lock(state_mutex);
+        observed = latest_state;
+      }
+      std::cout << "body-drive probe observed waist=["
+                << observed.q[robot_io::kA3WaistStart] << ", "
+                << observed.q[robot_io::kA3WaistStart + 1] << ", "
+                << observed.q[robot_io::kA3WaistStart + 2] << "]\n";
+      std::cout << "body-drive probe delta=["
+                << observed.q[robot_io::kA3WaistStart] - baseline.q[robot_io::kA3WaistStart]
+                << ", "
+                << observed.q[robot_io::kA3WaistStart + 1] - baseline.q[robot_io::kA3WaistStart + 1]
+                << ", "
+                << observed.q[robot_io::kA3WaistStart + 2] - baseline.q[robot_io::kA3WaistStart + 2]
+                << "]\n";
+      backend.Stop();
+      return 0;
+    }
     InstallSigintHandler();
     std::cout << "✓ backend-only dry-run enabled"
               << (dry_run ? " (--dry-run/backend.dry_run)" : " (policy_enabled=false)")

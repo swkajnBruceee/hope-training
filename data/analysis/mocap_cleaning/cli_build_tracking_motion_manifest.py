@@ -28,13 +28,42 @@ def _load_strike_metadata(npz_entry: dict, sample: dict) -> dict:
         return metadata
 
     spec_path = Path(str(sample.get("target_spec_json", "")))
-    if not spec_path.exists():
-        return {}
-    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    spec = json.loads(spec_path.read_text(encoding="utf-8")) if spec_path.exists() else {}
     contract = spec.get("coordinate_contract", {})
     hit_target = spec.get("hit_target", {})
     source_fps = float(contract.get("fps", 0.0) or 0.0)
-    hit_index = int(contract.get("hit_index", 0) or 0)
+    hit_index = int(
+        contract.get(
+            "hit_index",
+            hit_target.get("hit_index", spec.get("candidate_hit_index", spec.get("hit_index", 0))),
+        )
+        or 0
+    )
+    target_path = Path(str(sample.get("target_npz", "")))
+    if target_path.exists():
+        import numpy as np
+
+        with np.load(target_path, allow_pickle=False) as target:
+            hit_index = int(target["hit_index"]) if "hit_index" in target else hit_index
+            if "source_fps" in target:
+                source_fps = float(target["source_fps"])
+            if not hit_target and 0 <= hit_index < len(target["racket_pos"]):
+                velocity = target["racket_vel"][hit_index]
+                hit_target = {
+                    "racket_position_m": target["racket_pos"][hit_index].tolist(),
+                    "racket_velocity_mps": velocity.tolist(),
+                    "racket_normal_w": target["racket_normal_w"][hit_index].tolist()
+                    if "racket_normal_w" in target
+                    else target["racket_normal_base"][hit_index].tolist(),
+                    "racket_tangent_w": target["racket_tangent_w"][hit_index].tolist()
+                    if "racket_tangent_w" in target
+                    else target["racket_tangent_base"][hit_index].tolist(),
+                    "racket_velocity_direction_w": (velocity / max(float(np.linalg.norm(velocity)), 1e-9)).tolist(),
+                }
+    if source_fps <= 0.0:
+        source_fps = float(spec.get("fps", 0.0) or 0.0)
+    if source_fps <= 0.0:
+        source_fps = float(sample.get("fps", 50.0))
     motion_fps = int(npz_entry.get("fps", 50))
     hit_time_from_start_s = float(hit_index / source_fps) if source_fps > 0 else None
     hit_frame_float = float(hit_time_from_start_s * motion_fps) if hit_time_from_start_s is not None else None
@@ -65,6 +94,20 @@ def _load_strike_metadata(npz_entry: dict, sample: dict) -> dict:
             if key in hit_target
         },
     }
+
+
+def _stroke_metadata(sample: dict) -> tuple[str, float, str]:
+    """Resolve stroke labels without silently treating inferred TTMD6 labels as authoritative."""
+    if sample.get("stroke_type_rule_v2"):
+        return str(sample["stroke_type_rule_v2"]), float(sample.get("stroke_confidence_rule_v2", 1.0)), "authoritative_project_label"
+    if sample.get("stroke_type"):
+        return str(sample["stroke_type"]), float(sample.get("stroke_confidence", 1.0)), "manifest_label"
+    source_id = str(sample.get("source_id", ""))
+    if source_id.startswith(("class1_", "class2_", "class3_")):
+        return "forehand", 0.5, "ttmd6_numeric_class_inferred"
+    if source_id.startswith(("class4_", "class5_", "class6_")):
+        return "backhand", 0.5, "ttmd6_numeric_class_inferred"
+    raise ValueError(f"cannot resolve stroke label for {sample.get('episode_id')}")
 
 
 def _write_markdown(report: dict, path: Path) -> None:
@@ -119,10 +162,12 @@ def main() -> None:
         npz_entry = npz_by_episode.get(episode_id)
         if npz_entry is None:
             continue
+        stroke_type, stroke_confidence, stroke_label_status = _stroke_metadata(sample)
         entry = {
             "episode_id": episode_id,
-            "stroke_type": str(sample["stroke_type_rule_v2"]),
-            "stroke_confidence": float(sample.get("stroke_confidence_rule_v2", 1.0)),
+            "stroke_type": stroke_type,
+            "stroke_confidence": stroke_confidence,
+            "stroke_label_status": stroke_label_status,
             "selection_note": str(sample.get("selection_note", "manual_or_probe_manifest")),
             "motion_npz": str(npz_entry["motion_npz"]),
             "fps": int(npz_entry["fps"]),

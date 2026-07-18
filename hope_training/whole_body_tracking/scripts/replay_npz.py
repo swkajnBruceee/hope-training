@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import time
 from pathlib import Path
 
 import numpy as np
@@ -11,9 +12,23 @@ import torch
 from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser(description="Replay converted motions.")
-parser.add_argument("--motion_file", type=str, default=None, help="Local motion NPZ path.")
+parser.add_argument(
+    "--motion_file",
+    action="append",
+    default=None,
+    help="Local motion NPZ path. Repeat to replay multiple motions in sequence.",
+)
 parser.add_argument("--registry_name", type=str, default=None, help="Optional WandB registry motion name.")
 parser.add_argument("--steps", type=int, default=300, help="Maximum replay steps before exit.")
+parser.add_argument("--hold_steps", type=int, default=30, help="Frames to hold before and after each motion.")
+parser.add_argument("--realtime", action="store_true", help="Throttle playback to the simulation timestep.")
+parser.add_argument(
+    "--view",
+    choices=["default", "front"],
+    default="default",
+    help="Camera view; front looks along +X toward the A3 front side.",
+)
+parser.add_argument("--keep_open", action="store_true", help="Keep the Isaac window open after replay.")
 parser.add_argument(
     "--robot",
     type=str,
@@ -55,9 +70,9 @@ class ReplayMotionsSceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = _ROBOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
 
-def _resolve_motion_file() -> str:
+def _resolve_motion_files() -> list[str]:
     if args_cli.motion_file is not None:
-        return str(Path(args_cli.motion_file).expanduser())
+        return [str(Path(path).expanduser()) for path in args_cli.motion_file]
 
     registry_name = str(args_cli.registry_name)
     if ":" not in registry_name:
@@ -68,45 +83,68 @@ def _resolve_motion_file() -> str:
 
     api = wandb.Api()
     artifact = api.artifact(registry_name)
-    return str(pathlib.Path(artifact.download()) / "motion.npz")
+    return [str(pathlib.Path(artifact.download()) / "motion.npz")]
+
+
+def _set_camera(sim: SimulationContext, root_position: np.ndarray) -> None:
+    if args_cli.view == "front":
+        # A3 uses +X as the forward direction in the table-tennis scene. The
+        # camera is placed in front of the robot and aligned with its lateral
+        # centerline to compare paddle orientation without a side perspective.
+        eye = root_position + np.array([2.8, 0.0, 0.45])
+        target = root_position + np.array([0.0, 0.0, 0.12])
+    else:
+        eye = root_position + np.array([2.0, 2.0, 0.5])
+        target = root_position
+    sim.set_camera_view(eye, target)
 
 
 def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene) -> None:
     robot: Articulation = scene["robot"]
     sim_dt = sim.get_physics_dt()
-    motion_file = _resolve_motion_file()
-    motion = MotionLoader(
-        motion_file,
-        torch.tensor([0], dtype=torch.long, device=sim.device),
-        sim.device,
-    )
-    time_steps = torch.zeros(scene.num_envs, dtype=torch.long, device=sim.device)
+    motion_files = _resolve_motion_files()
     max_steps = int(max(args_cli.steps, 1))
-    print(f"[replay_npz] motion={motion_file} steps={max_steps}", flush=True)
+    for motion_file in motion_files:
+        motion = MotionLoader(
+            motion_file,
+            torch.tensor([0], dtype=torch.long, device=sim.device),
+            sim.device,
+        )
+        total_steps = min(max_steps, int(motion.time_step_total))
+        print(f"[replay_npz] motion={motion_file} steps={total_steps}", flush=True)
+        frame_indices = ([0] * max(0, int(args_cli.hold_steps))
+                         + list(range(total_steps))
+                         + [max(total_steps - 1, 0)] * max(0, int(args_cli.hold_steps)))
+        for frame_idx in frame_indices:
+            if not simulation_app.is_running():
+                break
+            time_step = torch.full(
+                (scene.num_envs,), frame_idx, dtype=torch.long, device=sim.device
+            )
+            root_states = robot.data.default_root_state.clone()
+            root_states[:, :3] = motion.body_pos_w[time_step][:, 0] + scene.env_origins
+            root_states[:, 3:7] = motion.body_quat_w[time_step][:, 0]
+            root_states[:, 7:10] = motion.body_lin_vel_w[time_step][:, 0]
+            root_states[:, 10:] = motion.body_ang_vel_w[time_step][:, 0]
 
-    for _ in range(max_steps):
+            robot.write_root_state_to_sim(root_states)
+            robot.write_joint_state_to_sim(motion.joint_pos[time_step], motion.joint_vel[time_step])
+            scene.write_data_to_sim()
+            sim.render()
+            scene.update(sim_dt)
+            _set_camera(sim, root_states[0, :3].cpu().numpy())
+            if args_cli.realtime:
+                time.sleep(sim_dt)
+
         if not simulation_app.is_running():
             break
-        time_steps += 1
-        reset_ids = time_steps >= motion.time_step_total
-        time_steps[reset_ids] = 0
-
-        root_states = robot.data.default_root_state.clone()
-        root_states[:, :3] = motion.body_pos_w[time_steps][:, 0] + scene.env_origins
-        root_states[:, 3:7] = motion.body_quat_w[time_steps][:, 0]
-        root_states[:, 7:10] = motion.body_lin_vel_w[time_steps][:, 0]
-        root_states[:, 10:] = motion.body_ang_vel_w[time_steps][:, 0]
-
-        robot.write_root_state_to_sim(root_states)
-        robot.write_joint_state_to_sim(motion.joint_pos[time_steps], motion.joint_vel[time_steps])
-        scene.write_data_to_sim()
-        sim.render()
-        scene.update(sim_dt)
-
-        pos_lookat = root_states[0, :3].cpu().numpy()
-        sim.set_camera_view(pos_lookat + np.array([2.0, 2.0, 0.5]), pos_lookat)
 
     print("[replay_npz] replay completed", flush=True)
+    if args_cli.keep_open and not args_cli.headless:
+        print("[replay_npz] keeping Isaac window open; close the window to exit", flush=True)
+        while simulation_app.is_running():
+            sim.render()
+            time.sleep(0.05)
 
 
 def main() -> None:

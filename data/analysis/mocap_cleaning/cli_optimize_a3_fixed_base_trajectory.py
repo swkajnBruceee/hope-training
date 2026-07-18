@@ -300,8 +300,13 @@ def _replay_precheck(
     geometry_pass: bool,
     dynamics_pass: bool,
     hit_index_valid: bool,
+    expected_base_pos: np.ndarray | None = None,
 ) -> dict[str, Any]:
-    base_pos = np.asarray(config["robot_base"]["position_m"], dtype=np.float64)
+    base_pos = (
+        np.asarray(config["robot_base"]["position_m"], dtype=np.float64)
+        if expected_base_pos is None
+        else np.asarray(expected_base_pos, dtype=np.float64)
+    )
     base_quat = np.asarray(config["robot_base"]["quat_xyzw"], dtype=np.float64)
     lower_body_names = [
         name
@@ -389,18 +394,36 @@ def _optimize_one(
     support_frames = _geometry_support_frames(hit_mask, corridor_mask, weak_pre_frame, weak_post_frame, n_frames)
     support_lookup = {int(frame): i for i, frame in enumerate(support_frames.tolist())}
     opt_cfg = config["optimization"]
+    stance_cfg = opt_cfg.get("stance_offset_xy", {}) or {}
+    stance_enabled = bool(stance_cfg.get("enabled", False))
+    stance_max_offset_m = max(float(stance_cfg.get("max_abs_offset_m", 0.0)), 0.0)
+    stance_weight = max(float(stance_cfg.get("regularization_weight", 0.0)), 0.0)
+    stance_initial = np.asarray(stance_cfg.get("initial_offset_m", [0.0, 0.0]), dtype=np.float64)
+    if stance_initial.shape != (2,) or not np.isfinite(stance_initial).all():
+        raise ValueError("optimization.stance_offset_xy.initial_offset_m must be a finite 2-vector")
+    if stance_enabled and stance_max_offset_m <= 0.0:
+        raise ValueError("optimization.stance_offset_xy.max_abs_offset_m must be positive when enabled")
     neutral_active = np.asarray([float(A3_DEFAULT_JOINT_POS.get(name, 0.0)) for name in active_names], dtype=np.float64)
     naturalness_weight = _joint_weight_vector(opt_cfg, "joint_neutral_weights", active_names)
     naturalness_deadband = _deadband_vector(opt_cfg, active_names)
 
     def residual(flat_control_q: np.ndarray) -> np.ndarray:
-        control_q = flat_control_q.reshape(control_q_ref.shape)
+        if stance_enabled:
+            control_flat = flat_control_q[:-2]
+            stance_delta = flat_control_q[-2:]
+        else:
+            control_flat = flat_control_q
+            stance_delta = np.zeros(2, dtype=np.float64)
+        control_q = control_flat.reshape(control_q_ref.shape)
         q_seq = _spline_sequence(control_q, control_frames, n_frames)
         trial = csv_init.copy()
         trial[:, 7:][:, active_idx] = q_seq
+        trial_base_pos = base_pos + np.asarray([stance_delta[0], stance_delta[1], 0.0], dtype=np.float64)
         joint_vel, joint_acc = compute_joint_vel_acc(q_seq, dt)
         joint_jerk = _joint_jerk(joint_acc, dt)
-        support_pos, support_normal, support_tangent = _racket_series_for_frames(trial, support_frames, base_pos, base_quat)
+        support_pos, support_normal, support_tangent = _racket_series_for_frames(
+            trial, support_frames, trial_base_pos, base_quat
+        )
 
         res = []
         if np.any(hit_mask):
@@ -457,6 +480,8 @@ def _optimize_one(
         res.append((0.25 * vel_excess).ravel())
         res.append((0.10 * acc_excess).ravel())
         res.append((0.03 * jerk_excess).ravel())
+        if stance_enabled:
+            res.append((stance_weight * stance_delta).ravel())
         return np.concatenate(res)
 
     bounds_lo = np.tile(lower, len(CONTROL_POINT_ORDER))
@@ -473,17 +498,33 @@ def _optimize_one(
             bounds_hi[flat_idx] = min(bounds_hi[flat_idx], waist_ref[cp_idx] + waist_delta_limit)
             bounds_lo[flat_idx] = max(bounds_lo[flat_idx], waist_default - waist_abs_limit)
             bounds_hi[flat_idx] = min(bounds_hi[flat_idx], waist_default + waist_abs_limit)
+    bounds_lo = np.asarray(bounds_lo, dtype=np.float64)
+    bounds_hi = np.asarray(bounds_hi, dtype=np.float64)
+    if stance_enabled:
+        bounds_lo = np.concatenate([bounds_lo, np.full(2, -stance_max_offset_m)])
+        bounds_hi = np.concatenate([bounds_hi, np.full(2, stance_max_offset_m)])
+    x0 = np.clip(control_q_ref, lower[None, :], upper[None, :]).ravel()
+    if stance_enabled:
+        x0 = np.concatenate([x0, stance_initial])
+    x0 = np.clip(x0, bounds_lo, bounds_hi)
     result = least_squares(
         residual,
-        x0=np.clip(control_q_ref, lower[None, :], upper[None, :]).ravel(),
+        x0=x0,
         bounds=(bounds_lo, bounds_hi),
         max_nfev=int(opt_cfg["max_nfev"]),
         verbose=0,
     )
-    control_q_opt = result.x.reshape(control_q_ref.shape)
+    if stance_enabled:
+        control_q_opt = result.x[:-2].reshape(control_q_ref.shape)
+        stance_delta_opt = result.x[-2:]
+    else:
+        control_q_opt = result.x.reshape(control_q_ref.shape)
+        stance_delta_opt = np.zeros(2, dtype=np.float64)
     q_opt = _spline_sequence(control_q_opt, control_frames, n_frames)
     q_opt = np.clip(q_opt, lower[None, :], upper[None, :])
     csv_opt = csv_init.copy()
+    optimized_base_pos = base_pos + np.asarray([stance_delta_opt[0], stance_delta_opt[1], 0.0])
+    csv_opt[:, :3] = optimized_base_pos[None, :]
     csv_opt[:, 7:][:, active_idx] = q_opt
     metrics = {
         "optimizer_cost": float(result.cost),
@@ -492,6 +533,10 @@ def _optimize_one(
         "control_frame_map": {name: int(control_frames[name]) for name in CONTROL_POINT_ORDER},
         "active_joint_count": int(len(active_idx)),
         "source_quality_ok": _source_quality_ok(target_spec),
+        "joint_limit_source": str(opt_cfg.get("joint_limit_source", "hard")),
+        "stance_offset_enabled": stance_enabled,
+        "stance_offset_xy_m": [float(x) for x in stance_delta_opt.tolist()],
+        "optimized_base_position_m": [float(x) for x in optimized_base_pos.tolist()],
     }
     return csv_opt, metrics
 
@@ -549,7 +594,13 @@ def _evaluate(
     }
 
 
-def _quality_layers(metrics: dict[str, Any], csv_data: np.ndarray, config: dict[str, Any], active_names: list[str]) -> dict[str, Any]:
+def _quality_layers(
+    metrics: dict[str, Any],
+    csv_data: np.ndarray,
+    config: dict[str, Any],
+    active_names: list[str],
+    expected_base_pos: np.ndarray,
+) -> dict[str, Any]:
     thresholds = config["quality_thresholds"]
     hit_index_valid = 0 <= int(metrics["hit_index"]) < int(metrics["sequence_length_frames"])
     hit_position_pass = metrics["racket_position_error_at_hit_m"] <= float(thresholds["hit_position_reject_m"])
@@ -584,7 +635,15 @@ def _quality_layers(metrics: dict[str, Any], csv_data: np.ndarray, config: dict[
     )
     wrist_naturalness_pass = bool(wrist_pitch_pass and wrist_yaw_pass and wrist_roll_pass)
     schema_pass = _schema_pass(csv_data)
-    precheck = _replay_precheck(csv_data, config, active_names, geometry_pass, dynamics_pass, hit_index_valid)
+    precheck = _replay_precheck(
+        csv_data,
+        config,
+        active_names,
+        geometry_pass,
+        dynamics_pass,
+        hit_index_valid,
+        expected_base_pos=expected_base_pos,
+    )
     return {
         "geometry_pass": geometry_pass,
         "dynamics_pass": dynamics_pass,
@@ -677,10 +736,24 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=Path("data/analysis/mocap_cleaning/configs/retarget_DATA260708_p2_a3_fixed.yaml"))
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=None,
+        help="Override the output root from the config so an experiment cannot overwrite another dataset.",
+    )
+    parser.add_argument(
+        "--input-fps",
+        type=int,
+        default=None,
+        help="Override config time.fps for a source dataset with a different sampling rate.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
-    output_root = Path(str(config["output_root"]))
+    if args.input_fps is not None:
+        config["time"]["fps"] = int(args.input_fps)
+    output_root = args.output_root or Path(str(config["output_root"]))
     manifest_path = args.manifest or output_root / "ik_init_manifest.json"
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     samples = [item for item in manifest["samples"] if item.get("ik_status") == "pass"]
@@ -694,8 +767,19 @@ def main() -> None:
 
     limits = load_a3_joint_limits()
     active_names = [str(x) for x in config["ik"]["active_joints"]]
-    lower = np.asarray([limits[name][0] for name in active_names], dtype=np.float64)
-    upper = np.asarray([limits[name][1] for name in active_names], dtype=np.float64)
+    hard_lower = np.asarray([limits[name][0] for name in active_names], dtype=np.float64)
+    hard_upper = np.asarray([limits[name][1] for name in active_names], dtype=np.float64)
+    limit_source = str(config["optimization"].get("joint_limit_source", "hard"))
+    if limit_source == "soft":
+        soft_factor = float(config["optimization"].get("soft_joint_pos_limit_factor", 0.9))
+        if not 0.0 < soft_factor <= 1.0:
+            raise ValueError("optimization.soft_joint_pos_limit_factor must be in (0, 1]")
+        inward = (1.0 - soft_factor) * (hard_upper - hard_lower)
+        lower, upper = hard_lower + inward, hard_upper - inward
+    elif limit_source == "hard":
+        lower, upper = hard_lower, hard_upper
+    else:
+        raise ValueError(f"unsupported optimization.joint_limit_source: {limit_source}")
     base_pos = np.asarray(config["robot_base"]["position_m"], dtype=np.float64)
     base_quat = np.asarray(config["robot_base"]["quat_xyzw"], dtype=np.float64)
 
@@ -719,9 +803,10 @@ def main() -> None:
             base_pos=base_pos,
             base_quat=base_quat,
         )
-        metrics = _evaluate(csv_opt, target_npz, config, base_pos, base_quat, active_names)
+        optimized_base_pos = np.asarray(opt_metrics["optimized_base_position_m"], dtype=np.float64)
+        metrics = _evaluate(csv_opt, target_npz, config, optimized_base_pos, base_quat, active_names)
         metrics.update(opt_metrics)
-        layers = _quality_layers(metrics, csv_opt, config, active_names)
+        layers = _quality_layers(metrics, csv_opt, config, active_names, optimized_base_pos)
         fail_category = _classify_failure(item, target_spec, layers)
         reject_reasons = _reject_reasons(metrics, layers, config)
         status = "pass" if layers["replay_ready"] else "reject"

@@ -24,6 +24,7 @@ export AGIBOT_ROBOT_MODEL="${AGIBOT_ROBOT_MODEL:-A3_T2D5}"
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-232}"
 export SIM_MODE="${SIM_MODE:-sil}"
 export MUJOCO_ROBOT="${MUJOCO_ROBOT:-raise_a3_t2d5}"
+export MUJOCO_INITIAL_KEYFRAME="${MUJOCO_INITIAL_KEYFRAME:-0}"
 export LOG_PATH="${LOG_PATH:-${AIMSIM_OFFICIAL_ROOT}/logs/motion_control}"
 
 if [[ ! -x "${AIMSIM_PYTHON}" ]]; then

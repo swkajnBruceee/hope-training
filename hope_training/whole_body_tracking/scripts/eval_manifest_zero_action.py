@@ -25,7 +25,7 @@ del _REPO_ROOT, _p
 import hydra
 from omegaconf import OmegaConf
 
-from train import _apply_task_overrides
+from train import _apply_task_overrides, _as_bool
 
 
 def _print_group_summary(rows):
@@ -205,6 +205,15 @@ def _run(cfg, simulation_app):
         frame_z_offset = cfg.task.get("manifest_frame_z_offset")
     if frame_z_offset is not None:
         env_cfg.commands.motion.manifest_frame_z_offset = float(frame_z_offset)
+    if _as_bool(cfg.get("validate_stance_contract", False)):
+        env_cfg.commands.motion.validate_stance_contract = True
+        stance_mode = cfg.get("stance_contract_mode", None)
+        if stance_mode is not None:
+            env_cfg.commands.motion.stance_contract_mode = str(stance_mode)
+        print(
+            "[INFO] stance contract validation enabled for zero-action evaluation",
+            flush=True,
+        )
 
     env = gym.make(task_id, cfg=env_cfg, render_mode=None)
     device = env.unwrapped.device
@@ -473,6 +482,7 @@ def _run(cfg, simulation_app):
             and torso_tilt <= 32.0
             and torso_roll <= 25.0
             and torso_pitch <= 35.0
+            and joint_near_limit <= 0.10
             and arm_near_limit <= 0.10
             and min_arm_margin >= 0.05
         )
@@ -595,6 +605,13 @@ def _run(cfg, simulation_app):
 
     write_path = cfg.get("write_native_manifest", None)
     if write_path:
+        if not _as_bool(cfg.get("allow_target_relabel", False)):
+            raise ValueError(
+                "write_native_manifest rewrites strike targets to a local Isaac replay result. "
+                "It is diagnostic-only and requires +allow_target_relabel=true. "
+                "Do not use the result as a ball/planner target or promote it to training without "
+                "a separately recorded actuator-aware executability review."
+            )
         write_path = pathlib.Path(str(write_path)).expanduser()
         if not write_path.is_absolute():
             write_path = pathlib.Path.cwd() / write_path
@@ -633,13 +650,15 @@ def _run(cfg, simulation_app):
                 "racket_normal_w": [float(x) for x in normal.tolist()],
             }
             src["native_calibration"] = {
-                "target_source": "zero_residual_native_fk",
+                "target_source": "zero_residual_local_isaac_fk_relabel",
                 "source_manifest": str(manifest_path),
+                "native_actuator_profile": str(getattr(env_cfg, "native_actuator_profile", "unknown")),
+                "control_dt_s": float(env.unwrapped.step_dt),
                 "original_strike_target": original_target,
                 "notes": (
-                    "Strike target was replaced by the racket state reached by the current "
-                    "HOPEA3NativeStrikeManifest fixed-base waist+right-arm zero-residual executor. "
-                    "Use for native-RL executability calibration, not as a substitute for ball-planner targets."
+                    "This entry relabels the strike target with a local Isaac zero-residual replay result. "
+                    "It is diagnostic evidence for exactly the recorded actuator profile and control period, "
+                    "not an original ball-contact target, a planner target, or a cross-profile training asset."
                 ),
             }
             out_entries.append(src)
@@ -647,11 +666,18 @@ def _run(cfg, simulation_app):
         out_manifest = {
             **source_manifest,
             "motions": out_entries,
+            # This path intentionally writes a replay observation as a target
+            # relabel.  It is isolated evidence only and cannot pass the new
+            # A3 strike training admission guard.
+            "dataset_status": "diagnostic_only_target_relabel",
             "native_calibration": {
-                "target_source": "zero_residual_native_fk",
+                "target_source": "zero_residual_local_isaac_fk_relabel",
                 "source_manifest": str(manifest_path),
                 "num_motions": len(out_entries),
                 "frame_z_offset": float(env_cfg.commands.motion.manifest_frame_z_offset),
+                "native_actuator_profile": str(getattr(env_cfg, "native_actuator_profile", "unknown")),
+                "control_dt_s": float(env.unwrapped.step_dt),
+                "promotion_status": "diagnostic_only_not_for_ball_or_planner_training",
                 "task": task_id,
             },
         }

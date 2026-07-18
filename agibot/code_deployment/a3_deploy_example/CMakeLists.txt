@@ -72,6 +72,19 @@ endif()
 
 find_package(onnxruntime REQUIRED)
 
+# When an explicit ONNX Runtime prefix is supplied (for example the official
+# x86 package used by the local A3 validation build), keep its shared library
+# with the deploy executable. The aarch64 path already sets this directory
+# below; this covers x86 validation/deploy packages without changing systems
+# that provide ONNX Runtime globally.
+if(NOT GS_BUNDLED_ONNXRUNTIME_LIB_DIR
+   AND DEFINED onnxruntime_ROOT
+   AND EXISTS "${onnxruntime_ROOT}/lib")
+  set(GS_BUNDLED_ONNXRUNTIME_LIB_DIR
+      "${onnxruntime_ROOT}/lib"
+      CACHE INTERNAL "Explicit ONNX Runtime library directory")
+endif()
+
 if(ENABLE_RKNN_INFERENCE)
   if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     message(FATAL_ERROR
