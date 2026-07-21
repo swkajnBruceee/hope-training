@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "decision_id": "a3_base_stand_recovery_envelope_decision_v1",
+  "date": "2026-07-19",
+  "decision_type": "human_manual_review",
+  "decision": "approve_core_recovery_envelope",
+  "recovery_envelope_approved": true,
+  "approved_envelope": {
+    "name": "B_core_only",
+    "dwell_s": 0.3,
+    "hysteresis_ratio": 1.25,
+    "transient_recovery_definition": "at least one enter-envelope dwell completes",
+    "durable_recovery_definition": "the last completed dwell is followed by no exit-threshold crossing before episode end",
+    "final_1s_stable_definition": "at least 95 percent of the final active second is inside the enter envelope",
+    "channels": {
+      "abs_pelvis_roll_rad": {
+        "enter_threshold": 0.01,
+        "exit_threshold": 0.0125
+      },
+      "abs_pelvis_pitch_rad": {
+        "enter_threshold": 0.042636382486671204,
+        "exit_threshold": 0.053295478108339005
+      },
+      "abs_root_angular_velocity_x_rad_s": {
+        "enter_threshold": 0.05,
+        "exit_threshold": 0.0625
+      },
+      "abs_root_angular_velocity_y_rad_s": {
+        "enter_threshold": 0.08315873490646478,
+        "exit_threshold": 0.10394841863308096
+      },
+      "abs_root_linear_velocity_x_m_s": {
+        "enter_threshold": 0.03866009272169321,
+        "exit_threshold": 0.048325115902116515
+      },
+      "abs_root_linear_velocity_y_m_s": {
+        "enter_threshold": 0.03,
+        "exit_threshold": 0.0375
+      },
+      "abs_base_height_error_m": {
+        "enter_threshold": 0.01,
+        "exit_threshold": 0.0125
+      }
+    }
+  },
+  "metric_roles": {
+    "raw_waist_ankle_velocity": "quality_only",
+    "rms_200ms_waist_ankle_velocity": "quality_only"
+  },
+  "profile_roles": {
+    "clean": "regression",
+    "candidate": "low_difficulty_recovery",
+    "medium": "primary_recovery_candidate",
+    "upper": "diagnostic_only"
+  },
+  "verification": {
+    "analyzer_sha256": "5676f6c41f4f3828a38f2b9ef377c62c54b82ba657015b9e4d9ca955015a84dd",
+    "state_machine_regression_tests_passed": 20,
+    "formal_profiles": {
+      "num_envs": 256,
+      "policy_steps": 500
+    },
+    "threshold_sensitivity_material": false,
+    "difficulty_order": [
+      "candidate",
+      "medium",
+      "upper"
+    ]
+  },
+  "evidence": {
+    "manual_review_package": {
+      "path": "artifacts/a3_base_stand/recovery_envelope_manual_review_package_v1.json",
+      "sha256": "50c978e6341a052f329f86111e3b188e98c09f6e0dfe0c02ff538b7521e7fdfd"
+    },
+    "manual_review_report": {
+      "path": "docs/A3_BASE_RECOVERY_ENVELOPE_MANUAL_REVIEW_V1.md",
+      "sha256": "4cbce982716a9a7c844be55be870e5c511a6899a0af417a542c1d54ef854a4db"
+    },
+    "provisional_envelope_analysis": {
+      "path": "artifacts/a3_base_stand/recovery_envelope_analysis_v1.json",
+      "sha256": "1c9019f54ef103a0ae3d39ff9c2263e38bf3c411f985629227a562a5d29fca63"
+    },
+    "clean_calibration": {
+      "path": "artifacts/a3_base_stand/recovery_clean_calibration_v1.json",
+      "sha256": "168a6c6a82d405d663104fb8d38224808cb8317e1cfea355c74561718077f2ef"
+    },
+    "candidate_calibration": {
+      "path": "artifacts/a3_base_stand/recovery_candidate_calibration_v1.json",
+      "sha256": "86b193fe5e975805e27ad7669d38f3d1560e0ae6703f7203a451d5a1dd5b0203"
+    },
+    "medium_calibration": {
+      "path": "artifacts/a3_base_stand/recovery_medium_calibration_v1.json",
+      "sha256": "c177552333a681e93438881fba4983e1bffd9f409fad79506cbdebbb6fe820cf"
+    },
+    "upper_calibration": {
+      "path": "artifacts/a3_base_stand/recovery_upper_calibration_v1.json",
+      "sha256": "5c4aeefb36e41c313588fbc79dcade41908433670cc72e7579f967a53b931448"
+    }
+  },
+  "qualification_status": {
+    "recovery_envelope_approved": true,
+    "untrained_stochastic_policy_safety_verified": false,
+    "training_distribution_approved": false,
+    "bounded_recovery_smoke_approved": false,
+    "deployment_approved": false
+  },
+  "authorizes_untrained_stochastic_policy_safety_audit": true,
+  "authorizes_ppo": false
+}

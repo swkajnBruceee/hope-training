@@ -1,0 +1,20 @@
+# Bounded A3 Base Stand smoke only.  This task has no motion source, no sampled
+# velocity command, no strike context, no randomization, and no external push.
+name: A3BaseStand
+gym_task: A3BaseStand-v0
+experiment_name: a3_base_stand_smoke
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - _self_
+
+env:
+  num_envs: 256
+  env_spacing: 2.5
+  episode_length_s: 10.0
+
+sim:
+  dt: 0.005
+  decimation: 4
+

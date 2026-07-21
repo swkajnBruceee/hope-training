@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "strike_policy_contract_id": "a3_strike_policy_v2_interface_candidate",
+  "contract_status": "phase0_interface_candidate",
+  "integration_approved": false,
+  "reference_semantics": "absolute_joint_position_and_velocity",
+  "reference_joint_names": [
+    "waist_yaw_joint",
+    "waist_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "reference_joint_order_sha256": "c339f65a76bbdac078b4c45b59cc5b5336ef5b86713bb6fb11013e29893a9402",
+  "future_reference_offsets_s": [0.0, 0.1, 0.2, 0.3],
+  "packet_required_fields": [
+    "sequence_id",
+    "source_timestamp_s",
+    "reference_dt_s",
+    "strike_policy_contract_id",
+    "reference_joint_order_sha256",
+    "q_rad",
+    "dq_radps",
+    "valid_mask",
+    "strike_phase",
+    "time_to_hit_s"
+  ],
+  "waist_ownership_change": {
+    "legacy_native_strike_v1": "waist_yaw_roll_pitch_plus_right_arm_7",
+    "v2": "waist_yaw_and_waist_pitch_reference_plus_right_arm_7",
+    "waist_roll": "removed_from_strike_output_and_owned_by_base"
+  },
+  "stale_packet_behavior": "invalidate_future_context_and_hold_base_stability",
+  "promotion_blockers": [
+    "versioned_conversion_of_qualified_fh_bh_references",
+    "runtime_future_packet_producer",
+    "timestamp_alignment_test",
+    "base_status_consumer"
+  ]
+}

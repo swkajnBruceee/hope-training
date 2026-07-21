@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "evaluation_id": "recovery_a_causal_intervention_eval_v1",
+  "task": "A3BaseStandRecoveryA-v0",
+  "checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/a3_base_stand_recovery_a/2026-07-21_15-14-50_recovery_a_smoke_20260721/model_99.pt",
+  "checkpoint_sha256": "0564c0b1b70280409ff0f4557bb45731af6a9222b2b03a0364e7e2e46efc80ac",
+  "trace": "/home/bruce/\u684c\u9762/HOPETableTennis/hope_training/whole_body_tracking/artifacts/a3_base_stand/recovery_disturbance_trace_v1.npz",
+  "trace_sha256": "9b1e2084d3226d89a3bdade90263d1832e33e42f007366f77ae9555d01a99eee",
+  "pairs": 16,
+  "steps": 500,
+  "modes": [
+    "zero",
+    "full",
+    "waist_pitch_zero",
+    "healthy_then_zero"
+  ],
+  "healthy_definition": {
+    "tilt_rad": 0.05,
+    "ang_vel_rad_s": 0.2,
+    "dwell_steps": 30
+  },
+  "profiles": {
+    "clean": {
+      "zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 1.0,
+        "healthy_enter_step_median": 41.0,
+        "max_tilt_p95_rad": 0.04790009930729866,
+        "minimum_height_p05_m": 1.0677021741867065,
+        "action_rms": 0.0,
+        "waist_pitch_action_mean": 0.0,
+        "waist_pitch_action_mean_abs": 0.0,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.0,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      },
+      "full": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 0.0,
+        "healthy_enter_step_median": 500.0,
+        "max_tilt_p95_rad": 0.04596574604511261,
+        "minimum_height_p05_m": 1.0672531127929688,
+        "action_rms": 1.068450689315796,
+        "waist_pitch_action_mean": -0.04657985687255859,
+        "waist_pitch_action_mean_abs": 0.26308746337890626,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.42603570222854614,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      },
+      "waist_pitch_zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 0.0,
+        "healthy_enter_step_median": 500.0,
+        "max_tilt_p95_rad": 0.05002188682556152,
+        "minimum_height_p05_m": 1.0677992105484009,
+        "action_rms": 1.0380357503890991,
+        "waist_pitch_action_mean": 0.0,
+        "waist_pitch_action_mean_abs": 0.0,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.34468749165534973,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      },
+      "healthy_then_zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 0.0,
+        "healthy_enter_step_median": 500.0,
+        "max_tilt_p95_rad": 0.05040940269827843,
+        "minimum_height_p05_m": 1.0671734809875488,
+        "action_rms": 1.0681072473526,
+        "waist_pitch_action_mean": -0.04641064834594726,
+        "waist_pitch_action_mean_abs": 0.26357806396484373,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.42498213052749634,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      }
+    },
+    "low": {
+      "zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 1.0,
+        "healthy_enter_step_median": 5.0,
+        "max_tilt_p95_rad": 0.058714859187603,
+        "minimum_height_p05_m": 1.0678051710128784,
+        "action_rms": 0.0,
+        "waist_pitch_action_mean": 0.0,
+        "waist_pitch_action_mean_abs": 0.0,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.0,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      },
+      "full": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 0.0,
+        "healthy_enter_step_median": 500.0,
+        "max_tilt_p95_rad": 0.05995122343301773,
+        "minimum_height_p05_m": 1.0670723915100098,
+        "action_rms": 1.0617707967758179,
+        "waist_pitch_action_mean": -0.04609791564941406,
+        "waist_pitch_action_mean_abs": 0.2547896728515625,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.421357125043869,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      },
+      "waist_pitch_zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 0.0,
+        "healthy_enter_step_median": 500.0,
+        "max_tilt_p95_rad": 0.05910785123705864,
+        "minimum_height_p05_m": 1.0675327777862549,
+        "action_rms": 1.0366952419281006,
+        "waist_pitch_action_mean": 0.0,
+        "waist_pitch_action_mean_abs": 0.0,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.34521427750587463,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      },
+      "healthy_then_zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 0.0,
+        "healthy_enter_step_median": 500.0,
+        "max_tilt_p95_rad": 0.05905485153198242,
+        "minimum_height_p05_m": 1.0671789646148682,
+        "action_rms": 1.0601197481155396,
+        "waist_pitch_action_mean": -0.0446416015625,
+        "waist_pitch_action_mean_abs": 0.2515070037841797,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.4205089211463928,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      }
+    },
+    "medium": {
+      "zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 1.0,
+        "healthy_enter_step_median": 4.0,
+        "max_tilt_p95_rad": 0.080982506275177,
+        "minimum_height_p05_m": 1.0668226480484009,
+        "action_rms": 0.0,
+        "waist_pitch_action_mean": 0.0,
+        "waist_pitch_action_mean_abs": 0.0,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.0,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      },
+      "full": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 0.0,
+        "healthy_enter_step_median": 500.0,
+        "max_tilt_p95_rad": 0.0827578455209732,
+        "minimum_height_p05_m": 1.0661336183547974,
+        "action_rms": 1.0505738258361816,
+        "waist_pitch_action_mean": -0.03953273391723633,
+        "waist_pitch_action_mean_abs": 0.25544454956054685,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.4165000021457672,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      },
+      "waist_pitch_zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 0.0,
+        "healthy_enter_step_median": 500.0,
+        "max_tilt_p95_rad": 0.08301038295030594,
+        "minimum_height_p05_m": 1.0664098262786865,
+        "action_rms": 1.023755431175232,
+        "waist_pitch_action_mean": 0.0,
+        "waist_pitch_action_mean_abs": 0.0,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.34350892901420593,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      },
+      "healthy_then_zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 0.0,
+        "healthy_enter_step_median": 500.0,
+        "max_tilt_p95_rad": 0.08562944084405899,
+        "minimum_height_p05_m": 1.06623113155365,
+        "action_rms": 1.0530627965927124,
+        "waist_pitch_action_mean": -0.04059328079223633,
+        "waist_pitch_action_mean_abs": 0.25550112915039064,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "raw_clip_fraction": 0.420223206281662,
+        "termination_counts": {
+          "time_out": 16,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0,
+          "recovery_envelope": 0
+        }
+      }
+    }
+  },
+  "simulation_only": true,
+  "checkpoint_approved": false
+}

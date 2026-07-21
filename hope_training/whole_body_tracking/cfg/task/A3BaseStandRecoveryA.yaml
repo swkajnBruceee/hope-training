@@ -1,0 +1,19 @@
+# Recovery-A development task. PPO is fail-closed until baseline, reward, and
+# disturbance-contract evidence is signed into a separate recovery gate.
+name: A3BaseStandRecoveryA
+gym_task: A3BaseStandRecoveryA-v0
+experiment_name: a3_base_stand_recovery_a
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - _self_
+
+env:
+  num_envs: 256
+  env_spacing: 2.5
+  episode_length_s: 10.0
+
+sim:
+  dt: 0.005
+  decimation: 4

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "audit_id": "a3_base_stand_recovery_a_passive_baseline_v1",
+  "task": "A3BaseStandRecoveryA-v0",
+  "simulation_only": true,
+  "controller": "Base14 PD_STAND plant plus exact zero residual",
+  "num_envs": 64,
+  "policy_steps": 500,
+  "policy_dt_s": 0.02,
+  "disturbance_contract": {
+    "requested_undisturbed_fraction": 0.35,
+    "realized_undisturbed_fraction": 0.4375,
+    "roll_pitch_range_rad": [
+      -0.035,
+      0.035
+    ],
+    "angular_velocity_range_rad_s": [
+      -0.2,
+      0.2
+    ],
+    "actor_observes_disturbance_mask": false,
+    "passed": true
+  },
+  "metrics": {
+    "undisturbed_timeout_success_fraction": 1.0,
+    "disturbed_timeout_success_fraction": 1.0,
+    "undisturbed_max_tilt_rad": {
+      "count": 28,
+      "mean": 0.043657951056957245,
+      "median": 0.043398670852184296,
+      "max": 0.04747961089015007
+    },
+    "disturbed_max_tilt_rad": {
+      "count": 36,
+      "mean": 0.04551945999264717,
+      "median": 0.04231491684913635,
+      "max": 0.07538972049951553
+    },
+    "undisturbed_max_angular_velocity_rad_s": {
+      "count": 28,
+      "mean": 0.3046938180923462,
+      "median": 0.2907809913158417,
+      "max": 0.3825359046459198
+    },
+    "disturbed_max_angular_velocity_rad_s": {
+      "count": 36,
+      "mean": 0.3425583839416504,
+      "median": 0.3439497649669647,
+      "max": 0.5257064700126648
+    },
+    "disturbed_recovered_fraction": 0.8888888955116272,
+    "disturbed_recovery_time_s": {
+      "count": 32,
+      "mean": 2.5,
+      "median": 2.0199999809265137,
+      "max": 7.259999752044678
+    },
+    "termination_term_counts": {
+      "time_out": 64,
+      "torso_tilt": 0,
+      "base_height": 0,
+      "illegal_contact": 0,
+      "joint_limit": 0,
+      "nonfinite_state": 0,
+      "recovery_envelope": 0
+    }
+  },
+  "runtime_integrity_passed": true,
+  "passive_baseline_measured": true,
+  "recovery_training_approved": false,
+  "deployment_approved": false
+}

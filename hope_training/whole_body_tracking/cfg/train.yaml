@@ -17,6 +17,11 @@ defaults:
 headless: true
 device: cuda:0
 seed: 0
+policy_std_scale: 1.0  # continuation diagnostic: multiply loaded policy std after checkpoint load
+policy_std_max: null   # optional Recovery distribution cap, applied after every PPO update
+policy_std_min: null   # optional Recovery distribution floor
+freeze_actor_mean: false  # diagnostic: freeze actor mean after loading a Recovery checkpoint
+recovery_v23: false       # use the separately frozen v2.3 distribution-only smoke budget
 
 # Override the task defaults when set (null -> use the task/algo YAML value).
 num_envs: null

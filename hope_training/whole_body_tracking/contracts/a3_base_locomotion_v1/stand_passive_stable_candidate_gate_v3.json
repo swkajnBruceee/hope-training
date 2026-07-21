@@ -1,0 +1,73 @@
+{
+  "schema_version": 3,
+  "gate_id": "a3_base_stand_passive_stable_candidate_gate_v3",
+  "task": "A3BaseStandPassiveStableCandidate-v0",
+  "purpose": "zero_residual_actor_initialization_followup_smoke",
+  "simulation_only": true,
+  "authorized_max_iterations": 100,
+  "authorized_max_num_envs": 64,
+  "candidate_contract": {
+    "base_joint_gains": "PD_STAND for the 14 Base-owned joints only",
+    "upper_body_gains": "normal policy/deployment starter gains",
+    "action_scale": "per joint 0.25 * effort_limit / candidate_kp",
+    "raw_action_clip_abs": 0.25,
+    "init_noise_std": 0.15,
+    "actor_output_initialization": "exact zero weight and bias for the 14-DOF final linear layer",
+    "action_magnitude_weight": -0.05,
+    "termination_penalty_integrated_at_policy_dt": -2.0,
+    "joint_posture_reduction": "mean_over_14_dof"
+  },
+  "prior_rejections": {
+    "v1_model_99_raw_action_clip_fraction": 0.7787299107142858,
+    "v2_model_0_raw_action_clip_fraction": 0.5207924107142857,
+    "v2_model_99_raw_action_clip_fraction": 0.7593482142857143,
+    "causal_decision": "random actor mean is already outside the residual contract at model_0; initialize only the output mean to zero while preserving Gaussian exploration"
+  },
+  "local_evidence": {
+    "gain_ablation": {
+      "path": "artifacts/a3_base_stand/static_working_point_gain_ablation_original_contact_v1.json",
+      "sha256": "2376f9174f22bef0f6665ab92807ce79b7fee314c52c8d64a7cf74be23292343"
+    },
+    "deterministic_audit": {
+      "path": "artifacts/a3_base_stand/passive_stable_candidate_audit_v2.json",
+      "sha256": "6bd2cb7e0c00477379d436f5df27b09d6d8a7fc61b0c2dccce0f52fc241154a2"
+    },
+    "reward_v2_audit": {
+      "path": "artifacts/a3_base_stand/passive_stable_reward_v2_audit_v2.json",
+      "sha256": "61397d5b3565d83e5cba5b62e76db3a0b8a8c51ac57cc2d95b9f6cc5c2f0d297"
+    },
+    "rejected_v2_model_0_eval": {
+      "path": "artifacts/a3_base_stand/passive_stable_model_0_eval_v2.json",
+      "sha256": "48704ba98b83c54dbfe7177d281b0efcebd89d5e610b6cdab293ad002c8c1c16"
+    },
+    "rejected_v2_model_99_eval": {
+      "path": "artifacts/a3_base_stand/passive_stable_model_99_eval_v2.json",
+      "sha256": "a5a3e25bf0d13a9a069345739c747fb8fbf909ee235f616a48b79d8f85f31a96"
+    },
+    "ppo_candidate": {
+      "path": "cfg/algo/ppo_a3_base_stand_low_noise_candidate.yaml",
+      "sha256": "39627bdc7ebd39e1ceb49be294e1a9ba4a423e9db67a8bbe0f4e64d58ed3fac1"
+    },
+    "environment_source": {
+      "path": "training/tasks/base_locomotion/config/a3/stand_env_cfg.py",
+      "sha256": "8792ccc038f14485cd48d9ac29aa6755c2b8bfd7875c4c67e59f26744e97c30a"
+    },
+    "training_entry_source": {
+      "path": "scripts/train.py",
+      "sha256": "abc04d6f02f6f60f52c0b5bf626b60b2a5612352c093605fb005f4c2ebf7854b"
+    }
+  },
+  "qualification_status": {
+    "deterministic_candidate_audit_approved": true,
+    "reward_v2_audit_approved": true,
+    "v1_and_v2_checkpoints_rejected_for_action_clipping": true,
+    "bounded_100_iteration_smoke_consumed": true,
+    "bounded_100_iteration_smoke_approved": false,
+    "v3_checkpoint_rejected_for_action_clipping": true,
+    "candidate_gain_contract_approved": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  },
+  "promotion_rule": "The v3 checkpoint must retain 100% 10-second deterministic timeout success and reduce raw action clip fraction below 10%; no further PPO is authorized on failure."
+}

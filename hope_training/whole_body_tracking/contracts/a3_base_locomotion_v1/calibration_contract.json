@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "calibration_contract_id": "a3_base_phase0_calibration_v1",
+  "command_trace_schema_id": "a3_base_command_trace_v1",
+  "contract_status": "experiment_protocol_frozen_results_pending",
+  "result_metrics_schema_id": "a3_single_joint_fixture_metrics_v2",
+  "qualification_status": {
+    "fixture_v3_semantics_frozen": true,
+    "fixture_runner_qualified": true,
+    "fixture_matrix_approved": false,
+    "stand_task_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  },
+  "required_contract_ids": {
+    "base_policy_contract_id": "a3_base_policy_v1_candidate",
+    "strike_policy_contract_id": "a3_strike_policy_v2_interface_candidate",
+    "command_composer_contract_id": "a3_base_strike_composer_v1_candidate"
+  },
+  "required_categories": [
+    "command_basis",
+    "joint_zero_baseline",
+    "base_action_step",
+    "waist_pitch_residual",
+    "target_transport"
+  ],
+  "experiment_order": [
+    "command_basis",
+    "joint_zero_baseline",
+    "base_action_step_low_amplitude",
+    "waist_pitch_residual_low_amplitude",
+    "target_transport",
+    "base_action_step_medium_amplitude"
+  ],
+  "repeats_per_case": 3,
+  "policy_rate_hz": 50.0,
+  "response_metric_protocol": {
+    "pre_hold_s": 1.0,
+    "active_hold_s": 1.0,
+    "post_hold_s": 1.0,
+    "end_window_s": 0.2,
+    "settling_min_tolerance_rad": 0.002,
+    "settling_relative_tolerance": 0.02,
+    "steady_state_term_allowed_only_when_settled": true
+  },
+  "candidate_physics_rates_hz": [200.0, 1000.0],
+  "command_payload_protocol": {
+    "schema_version": 1,
+    "joint_command_rate_hz": 50.0,
+    "numeric_dtype": "float64",
+    "npz_container": "stored_uncompressed_npz_v1",
+    "pre_hold_s": 1.0,
+    "post_hold_s": 1.0,
+    "direct_robotio_replay_supported_categories": [
+      "base_action_step",
+      "waist_pitch_residual"
+    ],
+    "direct_robotio_replay_supported_transport": "zero_order_hold",
+    "unsupported_reason_by_category": {
+      "command_basis": "requires_a_trained_base_policy_between_command_and_joint_targets",
+      "target_transport": "requires_simulator_native_substep_hold_or_interpolation_not_a_faster_external_publisher"
+    },
+    "single_publisher_required": true,
+    "isolated_simulator_required": true,
+    "hardware_execution_approved": false
+  },
+  "native_mujoco_runner": {
+    "runner_id": "isolated_native_mujoco_trace_pd_v3",
+    "required_mujoco_version": "3.1.6",
+    "reset_source": "official_stand_keyframe",
+    "actuation_law": "clip(kp*(q_target-q)-kd*dq, actuator_ctrlrange)",
+    "plant_constraint": "single_joint_fixture_v1",
+    "fixture_semantics": "disable_contact_solver_then_restore_freejoint_to_stand_and_all_nonselected_active_joints_to_baseline_after_each_native_substep",
+    "ground_contact_enabled": false,
+    "self_collision_enabled": false,
+    "approved_categories": [
+      "joint_zero_baseline",
+      "base_action_step",
+      "waist_pitch_residual",
+      "target_transport"
+    ],
+    "requires_no_ros_aimrt_or_network_transport": true,
+    "result_status": "phase0_fixture_diagnostic_not_free_base_evidence",
+    "automatic_promotion": false,
+    "hardware_execution_approved": false
+  },
+  "native_isaac_runner": {
+    "runner_id": "isolated_native_isaac_trace_pd_v3",
+    "required_isaac_sim_version": "4.5.0.0",
+    "required_isaac_lab_version": "2.1.0",
+    "reset_source": "AGIBOT_A3_CFG_default_state",
+    "actuation_law": "IsaacLab_ImplicitActuator_position_target_with_A3_kp_kd_and_effort_limits",
+    "plant_constraint": "single_joint_fixture_v1",
+    "fixture_semantics": "restore_free_root_state_to_default_and_all_nonselected_active_joint_states_to_trace_baseline_after_each_native_substep",
+    "ground_contact_enabled": false,
+    "self_collision_enabled": false,
+    "rejected_fixture_semantics": "equal_lower_upper_joint_limits_due_to_measured_solver_drift_and_response_contamination",
+    "superseded_fixture_semantics": "fixed_world_to_root_joint_due_to_cross_simulator_hip_roll_load_contamination",
+    "superseded_ground_contact_semantics": "ground_contact_enabled_due_to_state_restoration_contact_impulse_contamination",
+    "approved_categories": [
+      "joint_zero_baseline",
+      "base_action_step",
+      "waist_pitch_residual",
+      "target_transport"
+    ],
+    "requires_no_ros_aimrt_or_network_transport": true,
+    "constraint_reaction_available": false,
+    "result_status": "phase0_fixture_diagnostic_not_free_base_evidence",
+    "automatic_promotion": false,
+    "hardware_execution_approved": false
+  },
+  "safety_envelope": {
+    "max_tilt_deg": 6.0,
+    "min_pelvis_height_m": 1.0,
+    "max_joint_limit_hit_count": 0,
+    "max_forbidden_contact_count": 0,
+    "max_nonfinite_count": 0,
+    "allow_safety_stop": false
+  },
+  "required_common_result_metrics": [
+    "nonfinite_count",
+    "safety_stop",
+    "forbidden_contact_count",
+    "joint_limit_hit_count",
+    "max_tilt_deg",
+    "min_pelvis_height_m",
+    "max_abs_joint_velocity_radps",
+    "max_abs_torque_nm"
+  ],
+  "required_category_metrics": {
+    "command_basis": [
+      "displacement_heading_xyz_m",
+      "yaw_delta_rad",
+      "observed_command_axis_sign"
+    ],
+    "base_action_step": [
+      "commanded_joint_delta_rad",
+      "selected_joint_peak_torque_nm",
+      "selected_joint_effort_rms_nm",
+      "selected_joint_saturation_duration_s",
+      "constraint_reaction_available",
+      "peak_joint_delta_rad",
+      "overshoot_rad",
+      "target_band_entry_time_s",
+      "target_band_reached_and_held",
+      "end_window_joint_delta_rad",
+      "end_window_response_ratio",
+      "end_window_error_rad",
+      "end_window_slope_radps"
+    ],
+    "joint_zero_baseline": [
+      "selected_joint_peak_torque_nm",
+      "selected_joint_effort_rms_nm",
+      "selected_joint_saturation_duration_s",
+      "constraint_reaction_available",
+      "end_window_mean_q_rad",
+      "end_window_drift_from_baseline_rad",
+      "peak_abs_drift_from_baseline_rad",
+      "end_window_slope_radps"
+    ],
+    "waist_pitch_residual": [
+      "commanded_joint_delta_rad",
+      "selected_joint_peak_torque_nm",
+      "selected_joint_effort_rms_nm",
+      "selected_joint_saturation_duration_s",
+      "constraint_reaction_available",
+      "peak_joint_delta_rad",
+      "overshoot_rad",
+      "target_band_entry_time_s",
+      "target_band_reached_and_held",
+      "end_window_joint_delta_rad",
+      "end_window_response_ratio",
+      "end_window_error_rad",
+      "end_window_slope_radps",
+      "composer_residual_clip_hit"
+    ],
+    "target_transport": [
+      "transport_mode",
+      "commanded_joint_delta_rad",
+      "selected_joint_peak_torque_nm",
+      "selected_joint_effort_rms_nm",
+      "selected_joint_saturation_duration_s",
+      "constraint_reaction_available",
+      "tracking_rmse_rad",
+      "peak_tracking_error_rad",
+      "peak_joint_acceleration_radps2"
+    ]
+  },
+  "promotion_rules": [
+    "all_matrix_cases_have_three_repeats",
+    "all_results_match_contract_and_asset_hashes",
+    "all_runs_remain_inside_safety_envelope",
+    "positive_negative_basis_signs_are_consistent",
+    "selected_action_scales_are_supported_by_step_response_evidence",
+    "selected_waist_residual_limit_is_supported_by_combined_reference_evidence",
+    "one_target_transport_mode_is_selected_with_isaac_and_mujoco_evidence",
+    "human_review_records_selected_values_and_reasoning"
+  ],
+  "automatic_promotion": false
+}

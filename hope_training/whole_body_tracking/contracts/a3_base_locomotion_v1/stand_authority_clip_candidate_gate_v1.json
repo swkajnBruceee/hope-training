@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "gate_id": "a3_base_stand_authority_clip_candidate_gate_v1",
+  "purpose": "final_cell_of_bounded_2x2_authority_smoke",
+  "task": "A3BaseStandAuthorityClipCandidate-v0",
+  "simulation_only": true,
+  "authorized_max_iterations": 100,
+  "authorized_max_num_envs": 64,
+  "candidate_overrides": {
+    "waist_pitch_stiffness_nm_per_rad": 350.0,
+    "waist_pitch_damping_nms_per_rad": 7.0,
+    "normalized_action_clip_abs": 0.5
+  },
+  "factorial_cells": {
+    "baseline": "A3BaseStand-v0",
+    "gain_only": "A3BaseStandAuthorityCandidate-v0",
+    "clip_only": "A3BaseStandClipCandidate-v0",
+    "gain_and_clip": "A3BaseStandAuthorityClipCandidate-v0"
+  },
+  "local_evidence": {
+    "candidate_audit_path": "artifacts/a3_base_stand/stand_authority_clip_candidate_audit_v1.json",
+    "candidate_audit_sha256": "08bee203a37df460e4e1e744039e08b51d60a8b24e88dd9f86d0d06d685d0775",
+    "support_audit_path": "artifacts/a3_base_stand/zero_action_support_audit_v1.json",
+    "support_audit_sha256": "827372809702398946c7c982739d34b4ba88247ead680241cc63aeadb5c338d2"
+  },
+  "qualification_status": {
+    "factorial_final_smoke_approved": true,
+    "candidate_action_contract_approved": false,
+    "candidate_gain_contract_approved": false,
+    "stand_phase1_qualified": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  },
+  "promotion_rule": "complete the deterministic four-cell comparison, then stop authority parameter enumeration; this gate cannot promote a contract or later phase"
+}

@@ -74,6 +74,7 @@ Each document contains a **Section 0 prologue** listing all implementation diffe
 | [A3_ASSETS.md](A3_ASSETS.md) | Asset map for the racket-equipped A3 URDF, generated Isaac copy, joint order, and Agibot-provided A3 reference materials. |
 | [REFERENCE_DOCS.md](REFERENCE_DOCS.md) | Index of preserved architecture, rules, mocap, training, and deployment reference documents. |
 | [ROADMAP.md](ROADMAP.md) | Current starter scope, optional integrations, and future work. |
+| [A3 Base Locomotion 主计划](hope_training/whole_body_tracking/docs/A3_BASE_LOCOMOTION_MASTER_PLAN.md) | Frozen internal development mainline for the project-owned A3 Base Policy, Base/Strike ownership, Composer, curricula, and gated deployment. |
 | `check.sh` | Repository-level checks. Runs lightweight validation before pushing or merging. |
 | `agibot/` | Public Agibot A3 reference bundle. `agibot/URDF/A3T2.5-URDF-std-pingpang/` is the racket-equipped variant required for Isaac; `agibot/A3_MuJoCo_Sim/` contains the Agibot MuJoCo/AimRT simulation reference; `agibot/code_deployment/` contains the Agibot A3 deploy example. |
 | `agibot/code_deployment/` | Optional Agibot A3 deployment example for connecting exported policies to A3 body-drive state/command topics. Not required for Isaac smoke training. |

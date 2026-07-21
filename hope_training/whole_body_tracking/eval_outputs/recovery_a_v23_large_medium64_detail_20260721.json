@@ -1,0 +1,4002 @@
+{
+  "schema_version": 1,
+  "evaluation_id": "recovery_a_causal_intervention_eval_v1",
+  "task": "A3BaseStandRecoveryAV21WaistMask-v0",
+  "checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/a3_base_stand_recovery_a_v21_waist_mask/2026-07-21_16-34-26_recovery_a_v23_meanfreeze_std034_20260721/model_48.pt",
+  "checkpoint_sha256": "b282b8a149d56e0ffc8cb8da5a69279db458e2dea97e1511324b10d0e7de8b56",
+  "trace": "/home/bruce/\u684c\u9762/HOPETableTennis/hope_training/whole_body_tracking/artifacts/a3_base_stand/recovery_disturbance_trace_v1.npz",
+  "trace_sha256": "9b1e2084d3226d89a3bdade90263d1832e33e42f007366f77ae9555d01a99eee",
+  "pairs": 64,
+  "steps": 500,
+  "modes": [
+    "zero",
+    "full",
+    "waist_pitch_zero",
+    "healthy_then_zero"
+  ],
+  "healthy_definition": {
+    "tilt_rad": 0.05,
+    "ang_vel_rad_s": 0.2,
+    "dwell_steps": 30
+  },
+  "policy_std_by_joint": [
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627,
+    0.03293459862470627
+  ],
+  "policy_std_override": 0.0329346,
+  "gated_eval": true,
+  "profiles": {
+    "medium": {
+      "zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 1.0,
+        "healthy_enter_step_median": 9.0,
+        "max_tilt_p95_rad": 0.09045229852199554,
+        "minimum_height_p05_m": 1.066372036933899,
+        "action_rms": 0.0,
+        "sampled_action_rms_estimate": 0.12301819026470184,
+        "waist_pitch_action_mean": 0.0,
+        "waist_pitch_action_mean_abs": 0.0,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "post_healthy_action_mean_by_joint": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "post_healthy_action_std_by_joint": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "post_healthy_action_rms_by_joint": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "post_healthy_physical_residual_rms_by_joint": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "raw_clip_fraction": 0.0,
+        "execution_clip_fraction": 0.0,
+        "sampled_raw_exceed_fraction_estimate": 0.00014955356891732663,
+        "gate_mean": 0.023293497040867805,
+        "gate_active_fraction": 0.11609375476837158,
+        "termination_counts": {
+          "time_out": 64,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0
+        },
+        "cases": [
+          {
+            "initial_roll_pitch_rad": [
+              0.040236253291368484,
+              0.0389808788895607
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04727456718683243,
+              0.2617795467376709
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04824083670973778,
+            "gate_active_fraction": 0.10600000619888306,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.022823814302682877,
+              -0.014779501594603062
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14892183244228363,
+              -0.28757229447364807
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0655260756611824,
+            "gate_active_fraction": 0.09800000488758087,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.024156078696250916,
+              -0.04084828123450279
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.27238067984580994,
+              0.08900678157806396
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07768388837575912,
+            "gate_active_fraction": 0.18200001120567322,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.035832952708005905,
+              0.037097033113241196
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.2178509384393692,
+              0.2817121148109436
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.049886398017406464,
+            "gate_active_fraction": 0.10000000149011612,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02859477885067463,
+              -0.015587194822728634
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.04848063364624977,
+              0.2549067437648773
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05663556605577469,
+            "gate_active_fraction": 0.08800000697374344,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.036611828953027725,
+              -0.02637713961303234
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.1484924703836441,
+              -0.2796742022037506
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0704735815525055,
+            "gate_active_fraction": 0.10000000149011612,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.021608740091323853,
+              0.02630610018968582
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04508137330412865,
+              0.06327612698078156
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.026536965742707253,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.025751298293471336,
+              0.027316244319081306
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.12133719027042389,
+              0.10405023396015167
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.029048625379800797,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03933893144130707,
+              0.04667321592569351
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07215069979429245,
+              -0.20320875942707062
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.050686806440353394,
+            "gate_active_fraction": 0.1420000046491623,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03091019205749035,
+              -0.0448455773293972
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.24002167582511902,
+              -0.25775548815727234
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08764630556106567,
+            "gate_active_fraction": 0.25200000405311584,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.008043188601732254,
+              -0.007631396409124136
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.290237694978714,
+              0.29613491892814636
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05631454661488533,
+            "gate_active_fraction": 0.09800000488758087,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.011193186976015568,
+              0.02488815039396286
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2506387233734131,
+              0.15960603952407837
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.030170049518346786,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.01170902419835329,
+              -0.019122157245874405
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2282824069261551,
+              -0.17607900500297546
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.061315640807151794,
+            "gate_active_fraction": 0.1680000126361847,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04286377504467964,
+              0.030524946749210358
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2897334396839142,
+              -0.2646983861923218
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.039672259241342545,
+            "gate_active_fraction": 0.12400000542402267,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02869233675301075,
+              -0.03982294350862503
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.1760549694299698,
+              0.27333682775497437
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07808224856853485,
+            "gate_active_fraction": 0.22800001502037048,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.026242271065711975,
+              -0.012231968343257904
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.22133058309555054,
+              -0.2025751769542694
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05572906509041786,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0344051718711853,
+              0.047004543244838715
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.26522427797317505,
+              0.16677570343017578
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05237514525651932,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04916326329112053,
+              0.027608554810285568
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.10834256559610367,
+              -0.1107056587934494
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03529345616698265,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.022368330508470535,
+              -0.013759312219917774
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.20137830078601837,
+              -0.2512388527393341
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05943881720304489,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.00898994691669941,
+              0.01671600341796875
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.19959810376167297,
+              -0.11621905118227005
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04645509645342827,
+            "gate_active_fraction": 0.08800000697374344,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.01026723999530077,
+              -0.04819054901599884
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.19873616099357605,
+              0.15038686990737915
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.09133903682231903,
+            "gate_active_fraction": 0.14800000190734863,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.007560331840068102,
+              0.027759285643696785
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.17792659997940063,
+              -0.29112574458122253
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03956541791558266,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.011947795748710632,
+              0.02024191804230213
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.14663363993167877,
+              0.13362102210521698
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.028863338753581047,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.0326523631811142,
+              0.04256800189614296
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2439592480659485,
+              -0.2272414267063141
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04332304373383522,
+            "gate_active_fraction": 0.10000000149011612,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.040521133691072464,
+              0.021151145920157433
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2734983265399933,
+              0.11917304992675781
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.030667828395962715,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04678122699260712,
+              0.040590040385723114
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.19921399652957916,
+              0.173833966255188
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.047483377158641815,
+            "gate_active_fraction": 0.15800000727176666,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02356991171836853,
+              0.032399874180555344
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.27191704511642456,
+              0.05779511481523514
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.033490683883428574,
+            "gate_active_fraction": 0.13600000739097595,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0345720537006855,
+              -0.008393052034080029
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.21578341722488403,
+              0.16386167705059052
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04731481149792671,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04057524353265762,
+              -0.010880420915782452
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.0844518318772316,
+              -0.2849331796169281
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05592881888151169,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04265587404370308,
+              0.03980636224150658
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.119465172290802,
+              0.10855726897716522
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04569285735487938,
+            "gate_active_fraction": 0.18000000715255737,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03371327370405197,
+              0.03650480881333351
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.17218422889709473,
+              0.06294014304876328
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.039188407361507416,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0314728319644928,
+              -0.039826299995183945
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.20337815582752228,
+              -0.2621833384037018
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08608537167310715,
+            "gate_active_fraction": 0.22800001502037048,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.041974421590566635,
+              -0.03414328023791313
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.26976802945137024,
+              -0.24350151419639587
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08175556361675262,
+            "gate_active_fraction": 0.2800000011920929,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04478573054075241,
+              -0.022681962698698044
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07675334066152573,
+              -0.15953880548477173
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06336403638124466,
+            "gate_active_fraction": 0.24000000953674316,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02484903857111931,
+              0.023940768092870712
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.0754874050617218,
+              0.1479274481534958
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.029273496940732002,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02856946736574173,
+              0.017693648114800453
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.24911120533943176,
+              0.12307880073785782
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.027252888306975365,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0263421218842268,
+              0.03566636145114899
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.11333828419446945,
+              -0.09936700016260147
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03646652773022652,
+            "gate_active_fraction": 0.1340000033378601,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.049800559878349304,
+              -0.04219010844826698
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.051360756158828735,
+              -0.2961903512477875
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.09200966358184814,
+            "gate_active_fraction": 0.2900000214576721,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03133172541856766,
+              -0.041378624737262726
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.24883483350276947,
+              -0.21127139031887054
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0846502035856247,
+            "gate_active_fraction": 0.21800000965595245,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03792029619216919,
+              0.028803376480937004
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.073061004281044,
+              0.18280711770057678
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.036086902022361755,
+            "gate_active_fraction": 0.12000000476837158,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.043024834245443344,
+              0.038055840879678726
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14259694516658783,
+              -0.1746492236852646
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.039772823452949524,
+            "gate_active_fraction": 0.13199999928474426,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04282986745238304,
+              0.019980713725090027
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.184304878115654,
+              0.25867512822151184
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.045366767793893814,
+            "gate_active_fraction": 0.1600000113248825,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.01255224458873272,
+              -0.03948564827442169
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.23013602197170258,
+              -0.1743551790714264
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07973667979240417,
+            "gate_active_fraction": 0.23200000822544098,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03132067993283272,
+              0.025028008967638016
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.27370691299438477,
+              -0.15480439364910126
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03216129541397095,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.048455361276865005,
+              0.04098222404718399
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.16691714525222778,
+              0.12372101098299026
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04877921938896179,
+            "gate_active_fraction": 0.17600001394748688,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03343069553375244,
+              -0.009048007428646088
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.2353152185678482,
+              -0.28954625129699707
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05521519482135773,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03942172974348068,
+              -0.008076069876551628
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.13692809641361237,
+              0.2540939450263977
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05855937674641609,
+            "gate_active_fraction": 0.3400000035762787,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03235245868563652,
+              -0.030349694192409515
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04965167120099068,
+              0.254313200712204
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07096368074417114,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.026454346254467964,
+              -0.023513758555054665
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.28177034854888916,
+              -0.14053358137607574
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06479836255311966,
+            "gate_active_fraction": 0.09200000762939453,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04943479970097542,
+              0.017387131229043007
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.29014959931373596,
+              -0.28146955370903015
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04143787920475006,
+            "gate_active_fraction": 0.1380000114440918,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.028429511934518814,
+              -0.04530438780784607
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.1949036419391632,
+              -0.09946852177381516
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.09195774048566818,
+            "gate_active_fraction": 0.2540000081062317,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.014507593587040901,
+              -0.037975165992975235
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2975579798221588,
+              0.1580079197883606
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07950737327337265,
+            "gate_active_fraction": 0.21800000965595245,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.016677500680088997,
+              -0.03347914293408394
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.058983031660318375,
+              -0.07955535501241684
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07665014266967773,
+            "gate_active_fraction": 0.06599999964237213,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03752098232507706,
+              0.04393194988369942
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.10287286341190338,
+              -0.11747672408819199
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.045628871768713,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.011989419348537922,
+              0.047512173652648926
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.09865820407867432,
+              0.05133504047989845
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05026743933558464,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02860685996711254,
+              -0.04940562695264816
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.263725221157074,
+              -0.05094705894589424
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0886591449379921,
+            "gate_active_fraction": 0.2160000056028366,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.030952977016568184,
+              0.020978879183530807
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.1369752734899521,
+              -0.07405248284339905
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.040798429399728775,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03245767205953598,
+              -0.02522655390202999
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2606450319290161,
+              -0.2157435566186905
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06864435970783234,
+            "gate_active_fraction": 0.06599999964237213,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03850287199020386,
+              -0.014189922250807285
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.17579339444637299,
+              -0.2915017306804657
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05959513783454895,
+            "gate_active_fraction": 0.10600000619888306,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.01777416653931141,
+              0.008884658105671406
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07556372880935669,
+              0.28556156158447266
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03954280912876129,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02594027854502201,
+              -0.04949495941400528
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14900898933410645,
+              -0.05141935497522354
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0907687395811081,
+            "gate_active_fraction": 0.1600000113248825,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.025716060772538185,
+              -0.04090949892997742
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.12787728011608124,
+              -0.12150132656097412
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08167815953493118,
+            "gate_active_fraction": 0.18000000715255737,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03492071107029915,
+              0.011953636072576046
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.07353971153497696,
+              -0.2838650941848755
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.044453345239162445,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03805376589298248,
+              0.04565048962831497
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2815897762775421,
+              0.24475407600402832
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.052892908453941345,
+            "gate_active_fraction": 0.08000000566244125,
+            "action_rms": 0.0
+          }
+        ]
+      },
+      "full": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 1.0,
+        "healthy_enter_step_median": 15.0,
+        "max_tilt_p95_rad": 0.08363727480173111,
+        "minimum_height_p05_m": 1.0664829015731812,
+        "action_rms": 0.11798188835382462,
+        "sampled_action_rms_estimate": 0.17091910541057587,
+        "waist_pitch_action_mean": -0.001740522265434265,
+        "waist_pitch_action_mean_abs": 0.027028593063354492,
+        "post_healthy_action_rms": 0.09649722278118134,
+        "post_healthy_waist_pitch_rms": 0.028818488121032715,
+        "post_healthy_action_mean_by_joint": [
+          0.010114118456840515,
+          0.0009132041595876217,
+          0.02279701456427574,
+          0.023878391832113266,
+          -0.013495768420398235,
+          -0.005640167742967606,
+          0.000444209756096825,
+          0.023983296006917953,
+          0.020891642197966576,
+          -0.017717624083161354,
+          -0.011515985243022442,
+          0.0040213498286902905,
+          0.0007106903358362615,
+          -0.001202245126478374
+        ],
+        "post_healthy_action_std_by_joint": [
+          0.014487557113170624,
+          0.013085211627185345,
+          0.021649688482284546,
+          0.017862383276224136,
+          0.029246117919683456,
+          0.021088559180498123,
+          0.017242979258298874,
+          0.02406143955886364,
+          0.01674065552651882,
+          0.021073030307888985,
+          0.014257670380175114,
+          0.03192467242479324,
+          0.014636729843914509,
+          0.02892635017633438
+        ],
+        "post_healthy_action_rms_by_joint": [
+          0.017668750137090683,
+          0.013117038644850254,
+          0.03143903613090515,
+          0.029820168390870094,
+          0.03220979869365692,
+          0.021829769015312195,
+          0.017248699441552162,
+          0.03397280350327492,
+          0.02677144482731819,
+          0.027531560510396957,
+          0.01832755096256733,
+          0.032176949083805084,
+          0.014653973281383514,
+          0.02895132452249527
+        ],
+        "post_healthy_physical_residual_rms_by_joint": [
+          0.0003239270590711385,
+          0.0009017964475788176,
+          0.0028819118160754442,
+          0.0005964033771306276,
+          0.0009517995058558881,
+          0.00029879497014917433,
+          0.0003162261564284563,
+          0.0023356303572654724,
+          0.0024540491867810488,
+          0.0005506312008947134,
+          0.0005415790947154164,
+          0.0004404219798743725,
+          0.0001685206952970475,
+          0.0005978448316454887
+        ],
+        "raw_clip_fraction": 0.0030691963620483875,
+        "execution_clip_fraction": 0.00216071424074471,
+        "sampled_raw_exceed_fraction_estimate": 0.010361607186496258,
+        "gate_mean": 0.020816713571548462,
+        "gate_active_fraction": 0.11446875333786011,
+        "termination_counts": {
+          "time_out": 64,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0
+        },
+        "cases": [
+          {
+            "initial_roll_pitch_rad": [
+              0.040236253291368484,
+              0.0389808788895607
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04727456718683243,
+              0.2617795467376709
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.048842743039131165,
+            "gate_active_fraction": 0.10400000214576721,
+            "action_rms": 0.11973545700311661
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.022823814302682877,
+              -0.014779501594603062
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14892183244228363,
+              -0.28757229447364807
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.060564007610082626,
+            "gate_active_fraction": 0.21400001645088196,
+            "action_rms": 0.11844015121459961
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.024156078696250916,
+              -0.04084828123450279
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.27238067984580994,
+              0.08900678157806396
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07388538867235184,
+            "gate_active_fraction": 0.1300000101327896,
+            "action_rms": 0.1296551674604416
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.035832952708005905,
+              0.037097033113241196
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.2178509384393692,
+              0.2817121148109436
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.051164548844099045,
+            "gate_active_fraction": 0.15600000321865082,
+            "action_rms": 0.12191280722618103
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02859477885067463,
+              -0.015587194822728634
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.04848063364624977,
+              0.2549067437648773
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05651223286986351,
+            "gate_active_fraction": 0.07600000500679016,
+            "action_rms": 0.11374986916780472
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.036611828953027725,
+              -0.02637713961303234
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.1484924703836441,
+              -0.2796742022037506
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07226649671792984,
+            "gate_active_fraction": 0.24000000953674316,
+            "action_rms": 0.13152508437633514
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.021608740091323853,
+              0.02630610018968582
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04508137330412865,
+              0.06327612698078156
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04169320687651634,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.09093058854341507
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.025751298293471336,
+              0.027316244319081306
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.12133719027042389,
+              0.10405023396015167
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.02979426272213459,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.09394698590040207
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03933893144130707,
+              0.04667321592569351
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07215069979429245,
+              -0.20320875942707062
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.048324812203645706,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.11616748571395874
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03091019205749035,
+              -0.0448455773293972
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.24002167582511902,
+              -0.25775548815727234
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08402328193187714,
+            "gate_active_fraction": 0.2460000067949295,
+            "action_rms": 0.1371949166059494
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.008043188601732254,
+              -0.007631396409124136
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.290237694978714,
+              0.29613491892814636
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.057631369680166245,
+            "gate_active_fraction": 0.1600000113248825,
+            "action_rms": 0.09921710193157196
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.011193186976015568,
+              0.02488815039396286
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2506387233734131,
+              0.15960603952407837
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03360973671078682,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.086009182035923
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.01170902419835329,
+              -0.019122157245874405
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2282824069261551,
+              -0.17607900500297546
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06241373345255852,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.1077185869216919
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04286377504467964,
+              0.030524946749210358
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2897334396839142,
+              -0.2646983861923218
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.035674840211868286,
+            "gate_active_fraction": 0.13199999928474426,
+            "action_rms": 0.11560900509357452
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02869233675301075,
+              -0.03982294350862503
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.1760549694299698,
+              0.27333682775497437
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07647714763879776,
+            "gate_active_fraction": 0.22800001502037048,
+            "action_rms": 0.1273234784603119
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.026242271065711975,
+              -0.012231968343257904
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.22133058309555054,
+              -0.2025751769542694
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04646793380379677,
+            "gate_active_fraction": 0.10400000214576721,
+            "action_rms": 0.10765747725963593
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0344051718711853,
+              0.047004543244838715
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.26522427797317505,
+              0.16677570343017578
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05453817918896675,
+            "gate_active_fraction": 0.0820000022649765,
+            "action_rms": 0.12031165510416031
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04916326329112053,
+              0.027608554810285568
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.10834256559610367,
+              -0.1107056587934494
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03530358895659447,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.12046756595373154
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.022368330508470535,
+              -0.013759312219917774
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.20137830078601837,
+              -0.2512388527393341
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05585946515202522,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.10960406064987183
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.00898994691669941,
+              0.01671600341796875
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.19959810376167297,
+              -0.11621905118227005
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03270901367068291,
+            "gate_active_fraction": 0.10400000214576721,
+            "action_rms": 0.07265886664390564
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.01026723999530077,
+              -0.04819054901599884
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.19873616099357605,
+              0.15038686990737915
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08924756199121475,
+            "gate_active_fraction": 0.1420000046491623,
+            "action_rms": 0.12412738800048828
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.007560331840068102,
+              0.027759285643696785
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.17792659997940063,
+              -0.29112574458122253
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.036212239414453506,
+            "gate_active_fraction": 0.10000000149011612,
+            "action_rms": 0.08303563296794891
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.011947795748710632,
+              0.02024191804230213
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.14663363993167877,
+              0.13362102210521698
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.030449340119957924,
+            "gate_active_fraction": 0.12600000202655792,
+            "action_rms": 0.08788084983825684
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.0326523631811142,
+              0.04256800189614296
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2439592480659485,
+              -0.2272414267063141
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.043731242418289185,
+            "gate_active_fraction": 0.11600000411272049,
+            "action_rms": 0.12100587040185928
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.040521133691072464,
+              0.021151145920157433
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2734983265399933,
+              0.11917304992675781
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0460425429046154,
+            "gate_active_fraction": 0.07800000160932541,
+            "action_rms": 0.11137630045413971
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04678122699260712,
+              0.040590040385723114
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.19921399652957916,
+              0.173833966255188
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04757872223854065,
+            "gate_active_fraction": 0.10600000619888306,
+            "action_rms": 0.12588632106781006
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02356991171836853,
+              0.032399874180555344
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.27191704511642456,
+              0.05779511481523514
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.034055545926094055,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.10777898132801056
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0345720537006855,
+              -0.008393052034080029
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.21578341722488403,
+              0.16386167705059052
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04882198944687843,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.12252708524465561
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04057524353265762,
+              -0.010880420915782452
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.0844518318772316,
+              -0.2849331796169281
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05554148182272911,
+            "gate_active_fraction": 0.09800000488758087,
+            "action_rms": 0.13280217349529266
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04265587404370308,
+              0.03980636224150658
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.119465172290802,
+              0.10855726897716522
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04540880396962166,
+            "gate_active_fraction": 0.1300000101327896,
+            "action_rms": 0.12141420692205429
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03371327370405197,
+              0.03650480881333351
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.17218422889709473,
+              0.06294014304876328
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03986416012048721,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.1083294227719307
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0314728319644928,
+              -0.039826299995183945
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.20337815582752228,
+              -0.2621833384037018
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07870028167963028,
+            "gate_active_fraction": 0.22600001096725464,
+            "action_rms": 0.13235732913017273
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.041974421590566635,
+              -0.03414328023791313
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.26976802945137024,
+              -0.24350151419639587
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08134288340806961,
+            "gate_active_fraction": 0.27400001883506775,
+            "action_rms": 0.16228236258029938
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04478573054075241,
+              -0.022681962698698044
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07675334066152573,
+              -0.15953880548477173
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0570363886654377,
+            "gate_active_fraction": 0.23800000548362732,
+            "action_rms": 0.13513939082622528
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02484903857111931,
+              0.023940768092870712
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.0754874050617218,
+              0.1479274481534958
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0313522107899189,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.09072155505418777
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02856946736574173,
+              0.017693648114800453
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.24911120533943176,
+              0.12307880073785782
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.02931622974574566,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.10486150532960892
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0263421218842268,
+              0.03566636145114899
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.11333828419446945,
+              -0.09936700016260147
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04735134169459343,
+            "gate_active_fraction": 0.06599999964237213,
+            "action_rms": 0.09762851148843765
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.049800559878349304,
+              -0.04219010844826698
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.051360756158828735,
+              -0.2961903512477875
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08144991099834442,
+            "gate_active_fraction": 0.2800000011920929,
+            "action_rms": 0.14805541932582855
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03133172541856766,
+              -0.041378624737262726
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.24883483350276947,
+              -0.21127139031887054
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07652628421783447,
+            "gate_active_fraction": 0.2240000069141388,
+            "action_rms": 0.1320050209760666
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03792029619216919,
+              0.028803376480937004
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.073061004281044,
+              0.18280711770057678
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0371452234685421,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.11055057495832443
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.043024834245443344,
+              0.038055840879678726
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14259694516658783,
+              -0.1746492236852646
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04843819886445999,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.12391519546508789
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04282986745238304,
+              0.019980713725090027
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.184304878115654,
+              0.25867512822151184
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04278433695435524,
+            "gate_active_fraction": 0.12400000542402267,
+            "action_rms": 0.12709584832191467
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.01255224458873272,
+              -0.03948564827442169
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.23013602197170258,
+              -0.1743551790714264
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07568511366844177,
+            "gate_active_fraction": 0.2160000056028366,
+            "action_rms": 0.12561774253845215
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03132067993283272,
+              0.025028008967638016
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.27370691299438477,
+              -0.15480439364910126
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03164555877447128,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.10114506632089615
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.048455361276865005,
+              0.04098222404718399
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.16691714525222778,
+              0.12372101098299026
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04891715571284294,
+            "gate_active_fraction": 0.15800000727176666,
+            "action_rms": 0.12266892194747925
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03343069553375244,
+              -0.009048007428646088
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.2353152185678482,
+              -0.28954625129699707
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.055941611528396606,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.1221122294664383
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03942172974348068,
+              -0.008076069876551628
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.13692809641361237,
+              0.2540939450263977
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.042420461773872375,
+            "gate_active_fraction": 0.1080000028014183,
+            "action_rms": 0.11783014237880707
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03235245868563652,
+              -0.030349694192409515
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04965167120099068,
+              0.254313200712204
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06960740685462952,
+            "gate_active_fraction": 0.17800000309944153,
+            "action_rms": 0.12535257637500763
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.026454346254467964,
+              -0.023513758555054665
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.28177034854888916,
+              -0.14053358137607574
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06355858594179153,
+            "gate_active_fraction": 0.09000000357627869,
+            "action_rms": 0.11952361464500427
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04943479970097542,
+              0.017387131229043007
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.29014959931373596,
+              -0.28146955370903015
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03522244095802307,
+            "gate_active_fraction": 0.1420000046491623,
+            "action_rms": 0.12377084791660309
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.028429511934518814,
+              -0.04530438780784607
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.1949036419391632,
+              -0.09946852177381516
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08879770338535309,
+            "gate_active_fraction": 0.24400001764297485,
+            "action_rms": 0.13483934104442596
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.014507593587040901,
+              -0.037975165992975235
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2975579798221588,
+              0.1580079197883606
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0771876871585846,
+            "gate_active_fraction": 0.21400001645088196,
+            "action_rms": 0.12489117681980133
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.016677500680088997,
+              -0.03347914293408394
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.058983031660318375,
+              -0.07955535501241684
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07372371852397919,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.11859004944562912
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03752098232507706,
+              0.04393194988369942
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.10287286341190338,
+              -0.11747672408819199
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.045698076486587524,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.10929405689239502
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.011989419348537922,
+              0.047512173652648926
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.09865820407867432,
+              0.05133504047989845
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.050585534423589706,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.09149669855833054
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02860685996711254,
+              -0.04940562695264816
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.263725221157074,
+              -0.05094705894589424
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07894705981016159,
+            "gate_active_fraction": 0.27000001072883606,
+            "action_rms": 0.1386168748140335
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.030952977016568184,
+              0.020978879183530807
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.1369752734899521,
+              -0.07405248284339905
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04092099517583847,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.10663405060768127
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03245767205953598,
+              -0.02522655390202999
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2606450319290161,
+              -0.2157435566186905
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06514721363782883,
+            "gate_active_fraction": 0.06599999964237213,
+            "action_rms": 0.12365921586751938
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03850287199020386,
+              -0.014189922250807285
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.17579339444637299,
+              -0.2915017306804657
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05931728333234787,
+            "gate_active_fraction": 0.10400000214576721,
+            "action_rms": 0.1401742547750473
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.01777416653931141,
+              0.008884658105671406
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07556372880935669,
+              0.28556156158447266
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.041482456028461456,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.08823320269584656
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02594027854502201,
+              -0.04949495941400528
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14900898933410645,
+              -0.05141935497522354
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08494647592306137,
+            "gate_active_fraction": 0.23200000822544098,
+            "action_rms": 0.1345578283071518
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.025716060772538185,
+              -0.04090949892997742
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.12787728011608124,
+              -0.12150132656097412
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07885100692510605,
+            "gate_active_fraction": 0.1600000113248825,
+            "action_rms": 0.13106362521648407
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03492071107029915,
+              0.011953636072576046
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.07353971153497696,
+              -0.2838650941848755
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04018145799636841,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.10775858163833618
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03805376589298248,
+              0.04565048962831497
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2815897762775421,
+              0.24475407600402832
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.053176261484622955,
+            "gate_active_fraction": 0.1600000113248825,
+            "action_rms": 0.1171904057264328
+          }
+        ]
+      },
+      "waist_pitch_zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 1.0,
+        "healthy_enter_step_median": 5.0,
+        "max_tilt_p95_rad": 0.08935994654893875,
+        "minimum_height_p05_m": 1.0665029287338257,
+        "action_rms": 0.026259712874889374,
+        "sampled_action_rms_estimate": 0.12579627335071564,
+        "waist_pitch_action_mean": 0.000506004810333252,
+        "waist_pitch_action_mean_abs": 0.0011000353097915649,
+        "post_healthy_action_rms": 0.0,
+        "post_healthy_waist_pitch_rms": 0.0,
+        "post_healthy_action_mean_by_joint": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "post_healthy_action_std_by_joint": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "post_healthy_action_rms_by_joint": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "post_healthy_physical_residual_rms_by_joint": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "raw_clip_fraction": 9.375000081490725e-05,
+        "execution_clip_fraction": 7.589285814901814e-05,
+        "sampled_raw_exceed_fraction_estimate": 0.0007455357117578387,
+        "gate_mean": 0.022158976644277573,
+        "gate_active_fraction": 0.11531250178813934,
+        "termination_counts": {
+          "time_out": 64,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0
+        },
+        "cases": [
+          {
+            "initial_roll_pitch_rad": [
+              0.040236253291368484,
+              0.0389808788895607
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04727456718683243,
+              0.2617795467376709
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.048427119851112366,
+            "gate_active_fraction": 0.10200000554323196,
+            "action_rms": 0.012019415386021137
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.022823814302682877,
+              -0.014779501594603062
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14892183244228363,
+              -0.28757229447364807
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06259790062904358,
+            "gate_active_fraction": 0.10200000554323196,
+            "action_rms": 0.014338158071041107
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.024156078696250916,
+              -0.04084828123450279
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.27238067984580994,
+              0.08900678157806396
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07713820040225983,
+            "gate_active_fraction": 0.18200001120567322,
+            "action_rms": 0.0316455215215683
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.035832952708005905,
+              0.037097033113241196
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.2178509384393692,
+              0.2817121148109436
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05004869028925896,
+            "gate_active_fraction": 0.10000000149011612,
+            "action_rms": 0.012247062288224697
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02859477885067463,
+              -0.015587194822728634
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.04848063364624977,
+              0.2549067437648773
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.053604044020175934,
+            "gate_active_fraction": 0.08800000697374344,
+            "action_rms": 0.02490774355828762
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.036611828953027725,
+              -0.02637713961303234
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.1484924703836441,
+              -0.2796742022037506
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07018434256315231,
+            "gate_active_fraction": 0.24000000953674316,
+            "action_rms": 0.031828828155994415
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.021608740091323853,
+              0.02630610018968582
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04508137330412865,
+              0.06327612698078156
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.027697667479515076,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.025751298293471336,
+              0.027316244319081306
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.12133719027042389,
+              0.10405023396015167
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.029032204300165176,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03933893144130707,
+              0.04667321592569351
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07215069979429245,
+              -0.20320875942707062
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0504639707505703,
+            "gate_active_fraction": 0.12600000202655792,
+            "action_rms": 0.016064846888184547
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03091019205749035,
+              -0.0448455773293972
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.24002167582511902,
+              -0.25775548815727234
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0856063961982727,
+            "gate_active_fraction": 0.25,
+            "action_rms": 0.0519767701625824
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.008043188601732254,
+              -0.007631396409124136
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.290237694978714,
+              0.29613491892814636
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05997222661972046,
+            "gate_active_fraction": 0.17000000178813934,
+            "action_rms": 0.02195214107632637
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.011193186976015568,
+              0.02488815039396286
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2506387233734131,
+              0.15960603952407837
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03027065470814705,
+            "gate_active_fraction": 0.14600001275539398,
+            "action_rms": 0.019131634384393692
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.01170902419835329,
+              -0.019122157245874405
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2282824069261551,
+              -0.17607900500297546
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06192927062511444,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.007308661937713623
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04286377504467964,
+              0.030524946749210358
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2897334396839142,
+              -0.2646983861923218
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.039008475840091705,
+            "gate_active_fraction": 0.12400000542402267,
+            "action_rms": 0.01596115715801716
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02869233675301075,
+              -0.03982294350862503
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.1760549694299698,
+              0.27333682775497437
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07624979317188263,
+            "gate_active_fraction": 0.22800001502037048,
+            "action_rms": 0.04576083645224571
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.026242271065711975,
+              -0.012231968343257904
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.22133058309555054,
+              -0.2025751769542694
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.055430784821510315,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0344051718711853,
+              0.047004543244838715
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.26522427797317505,
+              0.16677570343017578
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0526374951004982,
+            "gate_active_fraction": 0.07200000435113907,
+            "action_rms": 0.02117149345576763
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04916326329112053,
+              0.027608554810285568
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.10834256559610367,
+              -0.1107056587934494
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.035295143723487854,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.022368330508470535,
+              -0.013759312219917774
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.20137830078601837,
+              -0.2512388527393341
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.059563104063272476,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.009515256620943546
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.00898994691669941,
+              0.01671600341796875
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.19959810376167297,
+              -0.11621905118227005
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.029965840280056,
+            "gate_active_fraction": 0.09400000423192978,
+            "action_rms": 0.01842842623591423
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.01026723999530077,
+              -0.04819054901599884
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.19873616099357605,
+              0.15038686990737915
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0910569578409195,
+            "gate_active_fraction": 0.14800000190734863,
+            "action_rms": 0.04700274392962456
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.007560331840068102,
+              0.027759285643696785
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.17792659997940063,
+              -0.29112574458122253
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03970981389284134,
+            "gate_active_fraction": 0.11800000816583633,
+            "action_rms": 0.01702127605676651
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.011947795748710632,
+              0.02024191804230213
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.14663363993167877,
+              0.13362102210521698
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.02928978204727173,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.0052643115632236
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.0326523631811142,
+              0.04256800189614296
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2439592480659485,
+              -0.2272414267063141
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04655895009636879,
+            "gate_active_fraction": 0.11800000816583633,
+            "action_rms": 0.028513228520751
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.040521133691072464,
+              0.021151145920157433
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2734983265399933,
+              0.11917304992675781
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.026284169405698776,
+            "gate_active_fraction": 0.07000000029802322,
+            "action_rms": 0.015409346669912338
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04678122699260712,
+              0.040590040385723114
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.19921399652957916,
+              0.173833966255188
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04798801988363266,
+            "gate_active_fraction": 0.10400000214576721,
+            "action_rms": 0.012427319772541523
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02356991171836853,
+              0.032399874180555344
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.27191704511642456,
+              0.05779511481523514
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.034673143178224564,
+            "gate_active_fraction": 0.1300000101327896,
+            "action_rms": 0.016992894932627678
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0345720537006855,
+              -0.008393052034080029
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.21578341722488403,
+              0.16386167705059052
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.045470476150512695,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04057524353265762,
+              -0.010880420915782452
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.0844518318772316,
+              -0.2849331796169281
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05677543953061104,
+            "gate_active_fraction": 0.09800000488758087,
+            "action_rms": 0.01556082721799612
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04265587404370308,
+              0.03980636224150658
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.119465172290802,
+              0.10855726897716522
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04560926556587219,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.006944512017071247
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03371327370405197,
+              0.03650480881333351
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.17218422889709473,
+              0.06294014304876328
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04081449657678604,
+            "gate_active_fraction": 0.07000000029802322,
+            "action_rms": 0.02726862207055092
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0314728319644928,
+              -0.039826299995183945
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.20337815582752228,
+              -0.2621833384037018
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0836717039346695,
+            "gate_active_fraction": 0.22600001096725464,
+            "action_rms": 0.0493922233581543
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.041974421590566635,
+              -0.03414328023791313
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.26976802945137024,
+              -0.24350151419639587
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07983016967773438,
+            "gate_active_fraction": 0.2160000056028366,
+            "action_rms": 0.03433995321393013
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04478573054075241,
+              -0.022681962698698044
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07675334066152573,
+              -0.15953880548477173
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06248536705970764,
+            "gate_active_fraction": 0.1980000138282776,
+            "action_rms": 0.03269323334097862
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02484903857111931,
+              0.023940768092870712
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.0754874050617218,
+              0.1479274481534958
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.029273496940732002,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02856946736574173,
+              0.017693648114800453
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.24911120533943176,
+              0.12307880073785782
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.027233194559812546,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.008805813267827034
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0263421218842268,
+              0.03566636145114899
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.11333828419446945,
+              -0.09936700016260147
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03532890975475311,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.0123648876324296
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.049800559878349304,
+              -0.04219010844826698
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.051360756158828735,
+              -0.2961903512477875
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.09274625778198242,
+            "gate_active_fraction": 0.30000001192092896,
+            "action_rms": 0.0720987543463707
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03133172541856766,
+              -0.041378624737262726
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.24883483350276947,
+              -0.21127139031887054
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08363460749387741,
+            "gate_active_fraction": 0.24400001764297485,
+            "action_rms": 0.04971089959144592
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03792029619216919,
+              0.028803376480937004
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.073061004281044,
+              0.18280711770057678
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03614797443151474,
+            "gate_active_fraction": 0.12200000882148743,
+            "action_rms": 0.009749144315719604
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.043024834245443344,
+              0.038055840879678726
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14259694516658783,
+              -0.1746492236852646
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.039736829698085785,
+            "gate_active_fraction": 0.18000000715255737,
+            "action_rms": 0.012044025585055351
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04282986745238304,
+              0.019980713725090027
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.184304878115654,
+              0.25867512822151184
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04123884439468384,
+            "gate_active_fraction": 0.12400000542402267,
+            "action_rms": 0.01152088399976492
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.01255224458873272,
+              -0.03948564827442169
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.23013602197170258,
+              -0.1743551790714264
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08118647336959839,
+            "gate_active_fraction": 0.1860000044107437,
+            "action_rms": 0.038615208119153976
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03132067993283272,
+              0.025028008967638016
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.27370691299438477,
+              -0.15480439364910126
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06534285098314285,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.012257549911737442
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.048455361276865005,
+              0.04098222404718399
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.16691714525222778,
+              0.12372101098299026
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.048277903348207474,
+            "gate_active_fraction": 0.16600000858306885,
+            "action_rms": 0.01687473990023136
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03343069553375244,
+              -0.009048007428646088
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.2353152185678482,
+              -0.28954625129699707
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05434539169073105,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.013595782220363617
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03942172974348068,
+              -0.008076069876551628
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.13692809641361237,
+              0.2540939450263977
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04224299639463425,
+            "gate_active_fraction": 0.1080000028014183,
+            "action_rms": 0.031229950487613678
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03235245868563652,
+              -0.030349694192409515
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04965167120099068,
+              0.254313200712204
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07101746648550034,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.007163707632571459
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.026454346254467964,
+              -0.023513758555054665
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.28177034854888916,
+              -0.14053358137607574
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06457430124282837,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.012506221421062946
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04943479970097542,
+              0.017387131229043007
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.29014959931373596,
+              -0.28146955370903015
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04524701088666916,
+            "gate_active_fraction": 0.14000000059604645,
+            "action_rms": 0.01729360595345497
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.028429511934518814,
+              -0.04530438780784607
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.1949036419391632,
+              -0.09946852177381516
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08948599547147751,
+            "gate_active_fraction": 0.24800001084804535,
+            "action_rms": 0.053313836455345154
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.014507593587040901,
+              -0.037975165992975235
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2975579798221588,
+              0.1580079197883606
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0784466564655304,
+            "gate_active_fraction": 0.21800000965595245,
+            "action_rms": 0.03706880286335945
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.016677500680088997,
+              -0.03347914293408394
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.058983031660318375,
+              -0.07955535501241684
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07705152034759521,
+            "gate_active_fraction": 0.06599999964237213,
+            "action_rms": 0.014445706270635128
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03752098232507706,
+              0.04393194988369942
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.10287286341190338,
+              -0.11747672408819199
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06281096488237381,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.008150678128004074
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.011989419348537922,
+              0.047512173652648926
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.09865820407867432,
+              0.05133504047989845
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0502626933157444,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.006084314081817865
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02860685996711254,
+              -0.04940562695264816
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.263725221157074,
+              -0.05094705894589424
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08864567428827286,
+            "gate_active_fraction": 0.242000013589859,
+            "action_rms": 0.05038774386048317
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.030952977016568184,
+              0.020978879183530807
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.1369752734899521,
+              -0.07405248284339905
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.02479984238743782,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03245767205953598,
+              -0.02522655390202999
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2606450319290161,
+              -0.2157435566186905
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06949933618307114,
+            "gate_active_fraction": 0.06599999964237213,
+            "action_rms": 0.012679096311330795
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03850287199020386,
+              -0.014189922250807285
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.17579339444637299,
+              -0.2915017306804657
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0606791153550148,
+            "gate_active_fraction": 0.06599999964237213,
+            "action_rms": 0.01366260927170515
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.01777416653931141,
+              0.008884658105671406
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07556372880935669,
+              0.28556156158447266
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03963166102766991,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02594027854502201,
+              -0.04949495941400528
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14900898933410645,
+              -0.05141935497522354
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.09144222736358643,
+            "gate_active_fraction": 0.24400001764297485,
+            "action_rms": 0.055804576724767685
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.025716060772538185,
+              -0.04090949892997742
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.12787728011608124,
+              -0.12150132656097412
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08073246479034424,
+            "gate_active_fraction": 0.17400000989437103,
+            "action_rms": 0.032978858798742294
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03492071107029915,
+              0.011953636072576046
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.07353971153497696,
+              -0.2838650941848755
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.043886397033929825,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.009169292636215687
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03805376589298248,
+              0.04565048962831497
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2815897762775421,
+              0.24475407600402832
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05275179445743561,
+            "gate_active_fraction": 0.164000004529953,
+            "action_rms": 0.024515563622117043
+          }
+        ]
+      },
+      "healthy_then_zero": {
+        "survival_fraction": 1.0,
+        "failure_step_min": 500,
+        "healthy_dwell_fraction": 1.0,
+        "healthy_enter_step_median": 14.0,
+        "max_tilt_p95_rad": 0.08737603574991226,
+        "minimum_height_p05_m": 1.0665476322174072,
+        "action_rms": 0.06828788667917252,
+        "sampled_action_rms_estimate": 0.14088116586208344,
+        "waist_pitch_action_mean": -0.001384479284286499,
+        "waist_pitch_action_mean_abs": 0.007194798469543457,
+        "post_healthy_action_rms": 0.010145493783056736,
+        "post_healthy_waist_pitch_rms": 0.00451123109087348,
+        "post_healthy_action_mean_by_joint": [
+          7.167395961005241e-05,
+          5.973271527182078e-06,
+          3.9893886423669755e-05,
+          4.527728378889151e-05,
+          -6.023987225489691e-05,
+          -5.870978202437982e-05,
+          5.750109630753286e-05,
+          1.4537042261508759e-05,
+          6.008537093293853e-05,
+          5.5710352171445265e-05,
+          -3.011691296705976e-05,
+          1.8830412955139764e-05,
+          -3.5364235372981057e-05,
+          -5.666610741172917e-05
+        ],
+        "post_healthy_action_std_by_joint": [
+          0.0021072865929454565,
+          0.0011413412867113948,
+          0.0027800705283880234,
+          0.0019149257568642497,
+          0.003371353494003415,
+          0.002661284990608692,
+          0.0020225727930665016,
+          0.002412658417597413,
+          0.0026586612220853567,
+          0.0034774052910506725,
+          0.0019233570201322436,
+          0.0040967208333313465,
+          0.0019582060631364584,
+          0.004832171835005283
+        ],
+        "post_healthy_action_rms_by_joint": [
+          0.002108505228534341,
+          0.0011413568863645196,
+          0.0027803569100797176,
+          0.0019154609180986881,
+          0.003371891565620899,
+          0.0026619324926286936,
+          0.0020233900286257267,
+          0.00241270218975842,
+          0.0026593399234116077,
+          0.0034778513945639133,
+          0.001923592877574265,
+          0.004096764139831066,
+          0.001958525273948908,
+          0.004832503851503134
+        ],
+        "post_healthy_physical_residual_rms_by_joint": [
+          3.865592589136213e-05,
+          7.846828520996496e-05,
+          0.0002548660559114069,
+          3.8309219235088676e-05,
+          9.963939373847097e-05,
+          3.643520176410675e-05,
+          3.7095484003657475e-05,
+          0.00016587327991146594,
+          0.00024377282534260303,
+          6.955702701816335e-05,
+          5.6842167396098375e-05,
+          5.607445928035304e-05,
+          2.252304147987161e-05,
+          9.97911993181333e-05
+        ],
+        "raw_clip_fraction": 0.0024933035019785166,
+        "execution_clip_fraction": 0.0017254464328289032,
+        "sampled_raw_exceed_fraction_estimate": 0.0057901786640286446,
+        "gate_mean": 0.022516094148159027,
+        "gate_active_fraction": 0.12184375524520874,
+        "termination_counts": {
+          "time_out": 64,
+          "torso_tilt": 0,
+          "base_height": 0,
+          "illegal_contact": 0,
+          "joint_limit": 0,
+          "nonfinite_state": 0
+        },
+        "cases": [
+          {
+            "initial_roll_pitch_rad": [
+              0.040236253291368484,
+              0.0389808788895607
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04727456718683243,
+              0.2617795467376709
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04875476658344269,
+            "gate_active_fraction": 0.10200000554323196,
+            "action_rms": 0.06664082407951355
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.022823814302682877,
+              -0.014779501594603062
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14892183244228363,
+              -0.28757229447364807
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06482412666082382,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.053589459508657455
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.024156078696250916,
+              -0.04084828123450279
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.27238067984580994,
+              0.08900678157806396
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07678312808275223,
+            "gate_active_fraction": 0.17800000309944153,
+            "action_rms": 0.08364584296941757
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.035832952708005905,
+              0.037097033113241196
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.2178509384393692,
+              0.2817121148109436
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05069269239902496,
+            "gate_active_fraction": 0.15800000727176666,
+            "action_rms": 0.08014586567878723
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02859477885067463,
+              -0.015587194822728634
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.04848063364624977,
+              0.2549067437648773
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05700501427054405,
+            "gate_active_fraction": 0.08800000697374344,
+            "action_rms": 0.044761065393686295
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.036611828953027725,
+              -0.02637713961303234
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.1484924703836441,
+              -0.2796742022037506
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07238610088825226,
+            "gate_active_fraction": 0.24000000953674316,
+            "action_rms": 0.09245291352272034
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.021608740091323853,
+              0.02630610018968582
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04508137330412865,
+              0.06327612698078156
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.026527980342507362,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.025751298293471336,
+              0.027316244319081306
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.12133719027042389,
+              0.10405023396015167
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.028863338753581047,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03933893144130707,
+              0.04667321592569351
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07215069979429245,
+              -0.20320875942707062
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04836181551218033,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03091019205749035,
+              -0.0448455773293972
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.24002167582511902,
+              -0.25775548815727234
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08263111114501953,
+            "gate_active_fraction": 0.24400001764297485,
+            "action_rms": 0.10017562657594681
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.008043188601732254,
+              -0.007631396409124136
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.290237694978714,
+              0.29613491892814636
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05855734273791313,
+            "gate_active_fraction": 0.164000004529953,
+            "action_rms": 0.06700845062732697
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.011193186976015568,
+              0.02488815039396286
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2506387233734131,
+              0.15960603952407837
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.030160170048475266,
+            "gate_active_fraction": 0.14800000190734863,
+            "action_rms": 0.03446974232792854
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.01170902419835329,
+              -0.019122157245874405
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2282824069261551,
+              -0.17607900500297546
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.060248058289289474,
+            "gate_active_fraction": 0.164000004529953,
+            "action_rms": 0.057039517909288406
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04286377504467964,
+              0.030524946749210358
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2897334396839142,
+              -0.2646983861923218
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05091452598571777,
+            "gate_active_fraction": 0.13199999928474426,
+            "action_rms": 0.07718878239393234
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02869233675301075,
+              -0.03982294350862503
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.1760549694299698,
+              0.27333682775497437
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07614565640687943,
+            "gate_active_fraction": 0.22800001502037048,
+            "action_rms": 0.08755537122488022
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.026242271065711975,
+              -0.012231968343257904
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.22133058309555054,
+              -0.2025751769542694
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05571194365620613,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0344051718711853,
+              0.047004543244838715
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.26522427797317505,
+              0.16677570343017578
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05352834239602089,
+            "gate_active_fraction": 0.08000000566244125,
+            "action_rms": 0.06638559699058533
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04916326329112053,
+              0.027608554810285568
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.10834256559610367,
+              -0.1107056587934494
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03527317941188812,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.022368330508470535,
+              -0.013759312219917774
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.20137830078601837,
+              -0.2512388527393341
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05934944748878479,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.057257987558841705
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.00898994691669941,
+              0.01671600341796875
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.19959810376167297,
+              -0.11621905118227005
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.027466412633657455,
+            "gate_active_fraction": 0.09400000423192978,
+            "action_rms": 0.03679792955517769
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.01026723999530077,
+              -0.04819054901599884
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.19873616099357605,
+              0.15038686990737915
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.09119777381420135,
+            "gate_active_fraction": 0.1420000046491623,
+            "action_rms": 0.05874481052160263
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.007560331840068102,
+              0.027759285643696785
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.17792659997940063,
+              -0.29112574458122253
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.037561796605587006,
+            "gate_active_fraction": 0.10200000554323196,
+            "action_rms": 0.053343672305345535
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.011947795748710632,
+              0.02024191804230213
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.14663363993167877,
+              0.13362102210521698
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.028776463121175766,
+            "gate_active_fraction": 0.14800000190734863,
+            "action_rms": 0.03577951341867447
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.0326523631811142,
+              0.04256800189614296
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2439592480659485,
+              -0.2272414267063141
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.044739462435245514,
+            "gate_active_fraction": 0.11800000816583633,
+            "action_rms": 0.07369828969240189
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.040521133691072464,
+              0.021151145920157433
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2734983265399933,
+              0.11917304992675781
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03078617714345455,
+            "gate_active_fraction": 0.07800000160932541,
+            "action_rms": 0.06166218966245651
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04678122699260712,
+              0.040590040385723114
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.19921399652957916,
+              0.173833966255188
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04798305034637451,
+            "gate_active_fraction": 0.164000004529953,
+            "action_rms": 0.08116024732589722
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02356991171836853,
+              0.032399874180555344
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.27191704511642456,
+              0.05779511481523514
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.033476442098617554,
+            "gate_active_fraction": 0.1340000033378601,
+            "action_rms": 0.06574607640504837
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0345720537006855,
+              -0.008393052034080029
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.21578341722488403,
+              0.16386167705059052
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.045437686145305634,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04057524353265762,
+              -0.010880420915782452
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.0844518318772316,
+              -0.2849331796169281
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05747697874903679,
+            "gate_active_fraction": 0.09800000488758087,
+            "action_rms": 0.07056954503059387
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04265587404370308,
+              0.03980636224150658
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.119465172290802,
+              0.10855726897716522
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04460064321756363,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.0558159239590168
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03371327370405197,
+              0.03650480881333351
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.17218422889709473,
+              0.06294014304876328
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0394703708589077,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0314728319644928,
+              -0.039826299995183945
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.20337815582752228,
+              -0.2621833384037018
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08065629750490189,
+            "gate_active_fraction": 0.2540000081062317,
+            "action_rms": 0.10141639411449432
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.041974421590566635,
+              -0.03414328023791313
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.26976802945137024,
+              -0.24350151419639587
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08192399144172668,
+            "gate_active_fraction": 0.2760000228881836,
+            "action_rms": 0.10916677117347717
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04478573054075241,
+              -0.022681962698698044
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07675334066152573,
+              -0.15953880548477173
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06415823101997375,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.06601084023714066
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02484903857111931,
+              0.023940768092870712
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.0754874050617218,
+              0.1479274481534958
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.029265349730849266,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.02856946736574173,
+              0.017693648114800453
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.24911120533943176,
+              0.12307880073785782
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03068920597434044,
+            "gate_active_fraction": 0.06000000238418579,
+            "action_rms": 0.056431666016578674
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.0263421218842268,
+              0.03566636145114899
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.11333828419446945,
+              -0.09936700016260147
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03659708425402641,
+            "gate_active_fraction": 0.06599999964237213,
+            "action_rms": 0.046741362661123276
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.049800559878349304,
+              -0.04219010844826698
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.051360756158828735,
+              -0.2961903512477875
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08475376665592194,
+            "gate_active_fraction": 0.2760000228881836,
+            "action_rms": 0.1151907816529274
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03133172541856766,
+              -0.041378624737262726
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.24883483350276947,
+              -0.21127139031887054
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0805126503109932,
+            "gate_active_fraction": 0.24800001084804535,
+            "action_rms": 0.10141013562679291
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03792029619216919,
+              0.028803376480937004
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.073061004281044,
+              0.18280711770057678
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.042679693549871445,
+            "gate_active_fraction": 0.15000000596046448,
+            "action_rms": 0.07276907563209534
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.043024834245443344,
+              0.038055840879678726
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14259694516658783,
+              -0.1746492236852646
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.039784811437129974,
+            "gate_active_fraction": 0.1680000126361847,
+            "action_rms": 0.08414727449417114
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.04282986745238304,
+              0.019980713725090027
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.184304878115654,
+              0.25867512822151184
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04325968772172928,
+            "gate_active_fraction": 0.12800000607967377,
+            "action_rms": 0.07519456744194031
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.01255224458873272,
+              -0.03948564827442169
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.23013602197170258,
+              -0.1743551790714264
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07826771587133408,
+            "gate_active_fraction": 0.23600001633167267,
+            "action_rms": 0.08351630717515945
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03132067993283272,
+              0.025028008967638016
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.27370691299438477,
+              -0.15480439364910126
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.026245584711432457,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.05439019575715065
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.048455361276865005,
+              0.04098222404718399
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.16691714525222778,
+              0.12372101098299026
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.050282858312129974,
+            "gate_active_fraction": 0.15800000727176666,
+            "action_rms": 0.0838831290602684
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03343069553375244,
+              -0.009048007428646088
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.2353152185678482,
+              -0.28954625129699707
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.056977808475494385,
+            "gate_active_fraction": 0.06400000303983688,
+            "action_rms": 0.062455449253320694
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03942172974348068,
+              -0.008076069876551628
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.13692809641361237,
+              0.2540939450263977
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.040008965879678726,
+            "gate_active_fraction": 0.11600000411272049,
+            "action_rms": 0.07471740245819092
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03235245868563652,
+              -0.030349694192409515
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.04965167120099068,
+              0.254313200712204
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.068959079682827,
+            "gate_active_fraction": 0.2120000123977661,
+            "action_rms": 0.08649291098117828
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.026454346254467964,
+              -0.023513758555054665
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.28177034854888916,
+              -0.14053358137607574
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0651206523180008,
+            "gate_active_fraction": 0.09000000357627869,
+            "action_rms": 0.06731182336807251
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.04943479970097542,
+              0.017387131229043007
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.29014959931373596,
+              -0.28146955370903015
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.03582325950264931,
+            "gate_active_fraction": 0.1420000046491623,
+            "action_rms": 0.08114606142044067
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.028429511934518814,
+              -0.04530438780784607
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.1949036419391632,
+              -0.09946852177381516
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.08849136531352997,
+            "gate_active_fraction": 0.24400001764297485,
+            "action_rms": 0.09248390048742294
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.014507593587040901,
+              -0.037975165992975235
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2975579798221588,
+              0.1580079197883606
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07722941786050797,
+            "gate_active_fraction": 0.21400001645088196,
+            "action_rms": 0.08384659886360168
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.016677500680088997,
+              -0.03347914293408394
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.058983031660318375,
+              -0.07955535501241684
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07660654187202454,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.05366070941090584
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03752098232507706,
+              0.04393194988369942
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.10287286341190338,
+              -0.11747672408819199
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04564062878489494,
+            "gate_active_fraction": 0.12600000202655792,
+            "action_rms": 0.06984878331422806
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.011989419348537922,
+              0.047512173652648926
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.09865820407867432,
+              0.05133504047989845
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0502626933157444,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02860685996711254,
+              -0.04940562695264816
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.263725221157074,
+              -0.05094705894589424
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.0878387987613678,
+            "gate_active_fraction": 0.2120000123977661,
+            "action_rms": 0.09901560097932816
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.030952977016568184,
+              0.020978879183530807
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.1369752734899521,
+              -0.07405248284339905
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05812390521168709,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03245767205953598,
+              -0.02522655390202999
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2606450319290161,
+              -0.2157435566186905
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.06812359392642975,
+            "gate_active_fraction": 0.14800000190734863,
+            "action_rms": 0.08155889809131622
+          },
+          {
+            "initial_roll_pitch_rad": [
+              0.03850287199020386,
+              -0.014189922250807285
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.17579339444637299,
+              -0.2915017306804657
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.059170305728912354,
+            "gate_active_fraction": 0.23400001227855682,
+            "action_rms": 0.09397962689399719
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.01777416653931141,
+              0.008884658105671406
+            ],
+            "initial_angular_velocity_rad_s": [
+              -0.07556372880935669,
+              0.28556156158447266
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04001045599579811,
+            "gate_active_fraction": 0.0,
+            "action_rms": 0.0
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.02594027854502201,
+              -0.04949495941400528
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.14900898933410645,
+              -0.05141935497522354
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.09138542413711548,
+            "gate_active_fraction": 0.14600001275539398,
+            "action_rms": 0.07000131160020828
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.025716060772538185,
+              -0.04090949892997742
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.12787728011608124,
+              -0.12150132656097412
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.07949760556221008,
+            "gate_active_fraction": 0.16600000858306885,
+            "action_rms": 0.08272554725408554
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03492071107029915,
+              0.011953636072576046
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.07353971153497696,
+              -0.2838650941848755
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.04476077854633331,
+            "gate_active_fraction": 0.06200000271201134,
+            "action_rms": 0.05416005849838257
+          },
+          {
+            "initial_roll_pitch_rad": [
+              -0.03805376589298248,
+              0.04565048962831497
+            ],
+            "initial_angular_velocity_rad_s": [
+              0.2815897762775421,
+              0.24475407600402832
+            ],
+            "survival": true,
+            "peak_tilt_rad": 0.05315270647406578,
+            "gate_active_fraction": 0.22600001096725464,
+            "action_rms": 0.08858852088451385
+          }
+        ]
+      }
+    }
+  },
+  "simulation_only": true,
+  "checkpoint_approved": false
+}

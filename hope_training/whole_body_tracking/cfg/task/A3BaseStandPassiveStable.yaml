@@ -1,0 +1,19 @@
+# Simulation-only Base14 PD_STAND/reward-v2 candidate.  scripts/train.py keeps
+# PPO fail-closed until its deterministic and reward-return gates are signed.
+name: A3BaseStandPassiveStable
+gym_task: A3BaseStandPassiveStableCandidate-v0
+experiment_name: a3_base_stand_passive_stable_candidate
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - _self_
+
+env:
+  num_envs: 64
+  env_spacing: 2.5
+  episode_length_s: 10.0
+
+sim:
+  dt: 0.005
+  decimation: 4

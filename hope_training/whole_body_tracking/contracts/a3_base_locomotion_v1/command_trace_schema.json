@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "command_trace_schema_id": "a3_base_command_trace_v1",
+  "status": "phase0_cross_sim_candidate",
+  "required_arrays": {
+    "physics_step_start_time_s": "float64[T]",
+    "policy_sample_time_s": "float64[T]",
+    "command_publish_time_s": "float64[T]",
+    "first_effective_physics_step_time_s": "float64[T]",
+    "state_sample_time_s": "float64[T]",
+    "metric_timestamp_s": "float64[T]",
+    "base_action": "float64[T,14]",
+    "strike_q_reference": "float64[T,9]",
+    "base_residual_rad": "float64[T]",
+    "composed_policy_target_rad": "float64[T,31]",
+    "composed_target_rad": "float64[T,31]",
+    "joint_names": "unicode[31]",
+    "selected_joint_name": "unicode[1]",
+    "transport_mode": "unicode[1]",
+    "physics_dt_s": "float64[1]",
+    "policy_dt_s": "float64[1]"
+  },
+  "time_semantics": {
+    "control_application": "target_for_step_is_applied_before_mj_or_physx_step",
+    "state_sample": "state_after_the_corresponding_physics_step",
+    "metric_timestamp": "equals_state_sample_time",
+    "publish_to_first_effective_delay_steps": 0,
+    "policy_command_is_causal": true
+  },
+  "transport_semantics": {
+    "zero_order_hold": "current_policy_target_applies_on_first_step_after_publish",
+    "linear_substep_interpolation": "after_publish_interpolate_previous_to_current_with_alpha_(substep_index_plus_1)/substeps_per_policy_command",
+    "future_policy_target_access_allowed": false,
+    "global_transport_only": true
+  },
+  "hash_semantics": {
+    "trace_sha256": "ordered_array_name_dtype_shape_and_c_contiguous_bytes_v1",
+    "case_instance_sha256": "canonical_json_of_trace_model_fixture_initial_state_pd_and_timing_v1"
+  },
+  "execution_boundary": {
+    "runners_may_modify_trace": false,
+    "hardware_execution_approved": false,
+    "automatic_promotion": false
+  }
+}

@@ -1,0 +1,20 @@
+# One-variable simulation-only authority smoke.  This keeps the Stand v0 MDP,
+# action clip, rewards, observations, and leg actuators unchanged, while the
+# registered env changes only waist-pitch Kp/Kd from 50/2 to 350/7.
+name: A3BaseStandAuthority
+gym_task: A3BaseStandAuthorityCandidate-v0
+experiment_name: a3_base_stand_authority_smoke
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - _self_
+
+env:
+  num_envs: 64
+  env_spacing: 2.5
+  episode_length_s: 10.0
+
+sim:
+  dt: 0.005
+  decimation: 4

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "gate_id": "a3_base_stand_passive_stable_candidate_gate_v1",
+  "task": "A3BaseStandPassiveStableCandidate-v0",
+  "purpose": "one_bounded_base14_pd_stand_reward_v2_low_noise_smoke",
+  "simulation_only": true,
+  "authorized_max_iterations": 100,
+  "authorized_max_num_envs": 64,
+  "candidate_contract": {
+    "base_joint_gains": "PD_STAND for the 14 Base-owned joints only",
+    "upper_body_gains": "normal policy/deployment starter gains",
+    "action_scale": "per joint 0.25 * effort_limit / candidate_kp",
+    "raw_action_clip_abs": 0.25,
+    "init_noise_std": 0.15,
+    "termination_penalty_weight": -100.0,
+    "termination_penalty_integrated_at_policy_dt": -2.0,
+    "joint_posture_reduction": "mean_over_14_dof"
+  },
+  "local_evidence": {
+    "gain_ablation": {
+      "path": "artifacts/a3_base_stand/static_working_point_gain_ablation_original_contact_v1.json",
+      "sha256": "2376f9174f22bef0f6665ab92807ce79b7fee314c52c8d64a7cf74be23292343"
+    },
+    "deterministic_audit": {
+      "path": "artifacts/a3_base_stand/passive_stable_candidate_audit_v1.json",
+      "sha256": "0c603a2776689f4c52961dde64148bcc3035087ffc908841e3eaa52a9d840e4b"
+    },
+    "reward_v2_audit": {
+      "path": "artifacts/a3_base_stand/passive_stable_reward_v2_audit_v1.json",
+      "sha256": "4137a8742767f9d7f65822121bcf12cc8cf491225381069e14225610307ff92d"
+    },
+    "ppo_candidate": {
+      "path": "cfg/algo/ppo_a3_base_stand_low_noise_candidate.yaml",
+      "sha256": "39627bdc7ebd39e1ceb49be294e1a9ba4a423e9db67a8bbe0f4e64d58ed3fac1"
+    },
+    "environment_source": {
+      "path": "training/tasks/base_locomotion/config/a3/stand_env_cfg.py",
+      "sha256": "9c75be9834638d106bdae8e9c6f3b1e7156c530011fa7ded14d55714e929fa89"
+    }
+  },
+  "qualification_status": {
+    "deterministic_candidate_audit_approved": true,
+    "reward_v2_audit_approved": true,
+    "low_noise_candidate_approved": true,
+    "bounded_100_iteration_smoke_approved": true,
+    "candidate_gain_contract_approved": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  },
+  "promotion_rule": "Evaluate the fresh checkpoint deterministically for 500 steps and measure clip fraction, 10-second timeout success, limit rates, and failure modes before any further PPO."
+}

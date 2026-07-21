@@ -1,5 +1,16 @@
 # A3 Strike Master
 
+> **Strategy transition (2026-07-18):** this document remains authoritative for
+> immutable Strike targets, provenance, diagnostic replay, task-sample evidence,
+> and strike qualification gates. It no longer defines the future normal-control
+> balance/motion owner. Official MOTION is retained only as a comparison or
+> startup/recovery facility, not as the normal Base controller. New Base/Strike
+> ownership, the Strike v2 waist split, the unique 31-DOF Composer, and all future
+> Stand/StrikeSupport/Locomotion development are governed by
+> [`A3_BASE_LOCOMOTION_MASTER_PLAN.md`](A3_BASE_LOCOMOTION_MASTER_PLAN.md).
+> Historical contracts below are not silently reinterpreted; data crosses into
+> the new route only through an explicit versioned conversion and requalification.
+
 Current status: Phase 0A inventory, Phase 1 documentation consolidation, and Phase 2–3 qualification infrastructure are complete. No K8/K12/K24 checkpoint is valid for warm start; no manifest is admitted to PPO until it carries `a3_strike_gate_v3` provenance and passes the official-standalone executor path.
 
 Current blocker: the first direct body-drive fixed-stand contract has been frozen, but it still needs ten-repeat official `RobotIOBackend` standalone evidence, zero-compensation identity, and a positive/negative basis scan. It is a diagnostic contract, not a feedback-balance or real-robot deployment contract.

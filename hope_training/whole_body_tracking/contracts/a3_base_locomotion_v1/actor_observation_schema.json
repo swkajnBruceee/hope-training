@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "actor_observation_schema_version": "a3_base_actor_obs_v1_candidate",
+  "policy_rate_hz": 50.0,
+  "history_length": 10,
+  "history_reset_semantics": "repeat_current_proprioception_and_zero_previous_action",
+  "history_fields": [
+    {"name": "pelvis_angular_velocity_radps", "dimension": 3},
+    {"name": "pelvis_projected_gravity", "dimension": 3},
+    {"name": "torso_angular_velocity_radps", "dimension": 3},
+    {"name": "torso_projected_gravity", "dimension": 3},
+    {"name": "policy_joint_position_relative_rad", "dimension": 29},
+    {"name": "policy_joint_velocity_radps", "dimension": 29},
+    {"name": "previous_base_action", "dimension": 14}
+  ],
+  "current_fields": [
+    {"name": "base_command", "dimension": 5},
+    {"name": "intervention_active", "dimension": 1},
+    {"name": "strike_phase_sin_cos", "dimension": 2},
+    {"name": "time_to_hit_s", "dimension": 1},
+    {"name": "future_strike_q_rad", "dimension": 36},
+    {"name": "future_strike_dq_radps", "dimension": 36},
+    {"name": "future_reference_valid_mask", "dimension": 4}
+  ],
+  "per_history_frame_dimension": 84,
+  "history_dimension": 840,
+  "current_dimension": 85,
+  "total_dimension": 925,
+  "explicitly_forbidden_actor_fields": [
+    "simulator_true_base_linear_velocity",
+    "perfect_foot_contact_state",
+    "perfect_foot_contact_force",
+    "world_frame_root_pose",
+    "domain_randomization_parameters",
+    "injected_external_wrench"
+  ],
+  "normalization_status": "pending_a3_training_statistics"
+}

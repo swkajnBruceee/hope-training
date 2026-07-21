@@ -15,6 +15,9 @@ is preferred for public smoke runs; WandB registry loading is optional.
 
 import os
 import sys
+import hashlib
+import json
+from pathlib import Path
 
 import hydra
 from omegaconf import OmegaConf
@@ -37,6 +40,390 @@ for _p in (
 del _HERE, _REPO_ROOT, _p
 
 from tools.a3_strike_contract import assert_training_manifest
+
+
+def _assert_a3_base_stand_smoke_gate(
+    task_id: str,
+    max_iterations: int,
+    num_envs: int | None = None,
+    init_noise_std: float | None = None,
+    recovery_v23: bool = False,
+) -> None:
+    """Fail closed unless this is an explicitly bounded, audited Stand smoke."""
+    stand_v0 = "A3BaseStand-v0"
+    authority_candidate = "A3BaseStandAuthorityCandidate-v0"
+    clip_candidate = "A3BaseStandClipCandidate-v0"
+    authority_clip_candidate = "A3BaseStandAuthorityClipCandidate-v0"
+    passive_stable_candidate = "A3BaseStandPassiveStableCandidate-v0"
+    recovery_a = "A3BaseStandRecoveryA-v0"
+    recovery_v2_tasks = {
+        "A3BaseStandRecoveryAV2-v0",
+        "A3BaseStandRecoveryAV2WaistMask-v0",
+    }
+    recovery_v21_tasks = {"A3BaseStandRecoveryAV21WaistMask-v0"}
+    if task_id not in (
+        stand_v0,
+        authority_candidate,
+        clip_candidate,
+        authority_clip_candidate,
+        passive_stable_candidate,
+        recovery_a,
+        *recovery_v2_tasks,
+        *recovery_v21_tasks,
+    ):
+        return
+
+    root = Path(__file__).resolve().parents[1]
+    if task_id == recovery_a or task_id in recovery_v2_tasks or task_id in recovery_v21_tasks:
+        passive_decision_path = (
+            root
+            / "contracts"
+            / "a3_base_locomotion_v1"
+            / "stand_passive_stable_decision_v1.json"
+        )
+        recovery_gate_path = (
+            root
+            / "contracts"
+            / "a3_base_locomotion_v1"
+            / "stand_recovery_a_gate_v1.json"
+        )
+        passive_decision = json.loads(passive_decision_path.read_text(encoding="utf-8"))
+        recovery_gate = json.loads(recovery_gate_path.read_text(encoding="utf-8"))
+        passive_status = passive_decision["qualification_status"]
+        recovery_status = recovery_gate["qualification_status"]
+        if not (
+            passive_status.get("passive_stand_plant_approved") is True
+            and passive_status.get("stand_recovery_task_development_approved") is True
+            and recovery_status.get("recovery_a_environment_runtime_qualified") is True
+            and recovery_status.get("recovery_reward_v3_semantics_approved") is True
+            and recovery_status.get("recovery_disturbance_contract_approved") is True
+            and recovery_status.get("recovery_envelope_approved") is True
+            and recovery_status.get("zero_actor_initialization_runtime_verified") is True
+            and recovery_status.get("untrained_stochastic_policy_safety_verified") is True
+            and recovery_status.get("bounded_recovery_smoke_approved") is True
+            and (
+                task_id == recovery_a
+                or recovery_status.get("recovery_a_v2_training_approved") is True
+                or recovery_status.get("recovery_a_v21_training_approved") is True
+            )
+        ):
+            raise RuntimeError(
+                "A3BaseStandRecoveryA-v0 PPO is closed until its disturbance, passive-baseline, "
+                "reward-v3, action-bound, and zero-actor gates pass."
+            )
+        for evidence in recovery_gate["evidence"].values():
+            evidence_path = root / evidence["path"]
+            if not evidence_path.is_file():
+                raise RuntimeError(f"A3 Base Recovery evidence is missing: {evidence_path}")
+            if hashlib.sha256(evidence_path.read_bytes()).hexdigest() != evidence["sha256"]:
+                raise RuntimeError(f"A3 Base Recovery evidence hash mismatch: {evidence_path}")
+        budget = (
+            recovery_gate["v23_smoke_budget"]
+            if recovery_v23
+            else
+            recovery_gate["v21_smoke_budget"]
+            if task_id in recovery_v21_tasks
+            else recovery_gate["v2_smoke_budget"]
+            if task_id in recovery_v2_tasks
+            else recovery_gate["bounded_smoke_budget"]
+        )
+        if budget["max_iterations"] is None or budget["max_num_envs"] is None:
+            raise RuntimeError("A3 Base Recovery bounded smoke budget is not frozen")
+        if not (
+            int(max_iterations) == int(budget["max_iterations"])
+            and num_envs is not None
+            and 1 <= int(num_envs) <= int(budget["max_num_envs"])
+            and init_noise_std is not None
+            and abs(float(init_noise_std) - float(budget["required_init_noise_std"])) <= 1.0e-9
+        ):
+            raise RuntimeError(
+                "A3 Base Recovery request does not match its bounded smoke budget: "
+                f"iterations={max_iterations}, envs={num_envs}, noise={init_noise_std}"
+            )
+        return
+    final_decision_path = (
+        root
+        / "contracts"
+        / "a3_base_locomotion_v1"
+        / "stand_causal_audit_decision_v1.json"
+    )
+    if final_decision_path.is_file() and task_id != passive_stable_candidate:
+        final_decision = json.loads(final_decision_path.read_text(encoding="utf-8"))
+        final_status = final_decision.get("qualification_status", {})
+        if final_status.get("additional_ppo_smoke_approved") is not True:
+            raise RuntimeError(
+                "All additional A3 Base Stand PPO is closed by "
+                "stand_causal_audit_decision_v1.json until static working-point, "
+                "reward-v2, contact, and low-noise exploration gates pass."
+            )
+    if task_id == passive_stable_candidate:
+        if int(max_iterations) != 100 or num_envs is None or not 1 <= int(num_envs) <= 64:
+            raise RuntimeError(
+                "A3BaseStandPassiveStableCandidate-v0 is approved only for exactly "
+                f"100 iterations and at most 64 environments; requested {max_iterations}/{num_envs}."
+            )
+        if init_noise_std is None or abs(float(init_noise_std) - 0.15) > 1.0e-9:
+            raise RuntimeError(
+                "A3BaseStandPassiveStableCandidate-v0 requires init_noise_std=0.15; "
+                f"requested {init_noise_std}."
+            )
+        gate_path = (
+            root
+            / "contracts"
+            / "a3_base_locomotion_v1"
+            / "stand_passive_stable_candidate_gate_v3.json"
+        )
+        if not gate_path.is_file():
+            raise RuntimeError("A3 Base passive-stable candidate gate is missing")
+        gate = json.loads(gate_path.read_text(encoding="utf-8"))
+        status = gate["qualification_status"]
+        if not (
+            status.get("bounded_100_iteration_smoke_approved") is True
+            and status.get("candidate_gain_contract_approved") is False
+            and status.get("stand_long_training_approved") is False
+            and status.get("deployment_approved") is False
+        ):
+            raise RuntimeError("A3 Base passive-stable candidate gate status mismatch")
+        for evidence in gate["local_evidence"].values():
+            evidence_path = root / evidence["path"]
+            if not evidence_path.is_file():
+                raise RuntimeError(f"A3 Base passive-stable evidence is missing: {evidence_path}")
+            if hashlib.sha256(evidence_path.read_bytes()).hexdigest() != evidence["sha256"]:
+                raise RuntimeError(f"A3 Base passive-stable evidence hash mismatch: {evidence_path}")
+        audit = json.loads(
+            (root / gate["local_evidence"]["deterministic_audit"]["path"]).read_text(encoding="utf-8")
+        )
+        reward = json.loads(
+            (root / gate["local_evidence"]["reward_v2_audit"]["path"]).read_text(encoding="utf-8")
+        )
+        ablation = json.loads(
+            (root / gate["local_evidence"]["gain_ablation"]["path"]).read_text(encoding="utf-8")
+        )
+        if not (
+            audit.get("task") == passive_stable_candidate
+            and audit.get("passed") is True
+            and audit.get("zero_action_baseline_stable_for_requested_window") is True
+            and reward.get("passed") is True
+            and reward.get("termination_penalty_equivalent_alive_seconds") == 2
+            and ablation["passive_gain_ablation"]["pd_base14"]["recorded_steps"] == 500
+            and ablation["passive_gain_ablation"]["pd_base14"]["non_timeout_failure"] is False
+        ):
+            raise RuntimeError("A3 Base passive-stable evidence payload mismatch")
+        print(
+            "[train.py] A3 Base passive-stable 100-iteration gate passed: "
+            f"gate={gate['gate_id']}",
+            flush=True,
+        )
+        return
+    if task_id == authority_candidate:
+        if int(max_iterations) != 100:
+            raise RuntimeError(
+                "A3BaseStandAuthorityCandidate-v0 is approved for exactly one "
+                f"100-iteration diagnostic smoke; requested {max_iterations}."
+            )
+        if num_envs is None or not 1 <= int(num_envs) <= 64:
+            raise RuntimeError(
+                "A3BaseStandAuthorityCandidate-v0 is capped at 64 environments; "
+                f"requested {num_envs}."
+            )
+        gate_path = (
+            root
+            / "contracts"
+            / "a3_base_locomotion_v1"
+            / "stand_authority_candidate_gate_v1.json"
+        )
+        if not gate_path.is_file():
+            raise RuntimeError("A3 Base authority candidate gate is missing")
+        gate = json.loads(gate_path.read_text(encoding="utf-8"))
+        status = gate["qualification_status"]
+        if not (
+            status.get("stand_authority_candidate_smoke_approved") is True
+            and status.get("candidate_gain_contract_approved") is False
+            and status.get("stand_phase1_qualified") is False
+            and status.get("stand_long_training_approved") is False
+            and status.get("deployment_approved") is False
+        ):
+            raise RuntimeError("A3 Base authority candidate gate status mismatch")
+        for path_key, hash_key in (
+            ("authority_audit_path", "authority_audit_sha256"),
+            ("waist_scan_path", "waist_scan_sha256"),
+        ):
+            evidence_path = root / gate["local_evidence"][path_key]
+            if not evidence_path.is_file():
+                raise RuntimeError(f"A3 Base authority evidence is missing: {evidence_path}")
+            actual_hash = hashlib.sha256(evidence_path.read_bytes()).hexdigest()
+            if actual_hash != gate["local_evidence"][hash_key]:
+                raise RuntimeError(
+                    f"A3 Base authority evidence hash mismatch: {evidence_path}"
+                )
+        audit = json.loads(
+            (root / gate["local_evidence"]["authority_audit_path"]).read_text(encoding="utf-8")
+        )
+        scan = json.loads(
+            (root / gate["local_evidence"]["waist_scan_path"]).read_text(encoding="utf-8")
+        )
+        if not (
+            audit.get("task") == authority_candidate
+            and audit.get("passed") is True
+            and scan.get("runtime_integrity_passed") is True
+            and scan.get("waist_pitch_kp_nm_per_rad") == 350.0
+            and scan.get("waist_pitch_kd_nms_per_rad") == 7.0
+        ):
+            raise RuntimeError("A3 Base authority candidate evidence payload mismatch")
+        print(
+            "[train.py] A3 Base Stand authority candidate gate passed: "
+            f"iterations={max_iterations}, gate={gate['gate_id']}",
+            flush=True,
+        )
+        return
+
+    if task_id == authority_clip_candidate:
+        if int(max_iterations) != 100 or num_envs is None or not 1 <= int(num_envs) <= 64:
+            raise RuntimeError(
+                "A3BaseStandAuthorityClipCandidate-v0 is approved only for exactly "
+                f"100 iterations and at most 64 environments; requested {max_iterations}/{num_envs}."
+            )
+        gate_path = (
+            root
+            / "contracts"
+            / "a3_base_locomotion_v1"
+            / "stand_authority_clip_candidate_gate_v1.json"
+        )
+        gate = json.loads(gate_path.read_text(encoding="utf-8"))
+        status = gate["qualification_status"]
+        if not (
+            status.get("factorial_final_smoke_approved") is True
+            and status.get("candidate_action_contract_approved") is False
+            and status.get("candidate_gain_contract_approved") is False
+            and status.get("stand_phase1_qualified") is False
+            and status.get("stand_long_training_approved") is False
+            and status.get("deployment_approved") is False
+        ):
+            raise RuntimeError("A3 Base authority+clip gate status mismatch")
+        for path_key, hash_key in (
+            ("candidate_audit_path", "candidate_audit_sha256"),
+            ("support_audit_path", "support_audit_sha256"),
+        ):
+            evidence_path = root / gate["local_evidence"][path_key]
+            if not evidence_path.is_file():
+                raise RuntimeError(f"A3 Base authority+clip evidence is missing: {evidence_path}")
+            if hashlib.sha256(evidence_path.read_bytes()).hexdigest() != gate["local_evidence"][hash_key]:
+                raise RuntimeError(f"A3 Base authority+clip evidence hash mismatch: {evidence_path}")
+        audit = json.loads(
+            (root / gate["local_evidence"]["candidate_audit_path"]).read_text(encoding="utf-8")
+        )
+        if not (
+            audit.get("task") == authority_clip_candidate
+            and audit.get("passed") is True
+            and audit.get("reset_contract", {}).get("raw_action_clip_abs") == 0.5
+        ):
+            raise RuntimeError("A3 Base authority+clip audit payload mismatch")
+        print(
+            "[train.py] A3 Base Stand authority+clip factorial gate passed: "
+            f"iterations={max_iterations}, gate={gate['gate_id']}",
+            flush=True,
+        )
+        return
+
+    if task_id == clip_candidate:
+        if int(max_iterations) != 100:
+            raise RuntimeError(
+                "A3BaseStandClipCandidate-v0 is approved for exactly one "
+                f"100-iteration diagnostic smoke; requested {max_iterations}."
+            )
+        if num_envs is None or not 1 <= int(num_envs) <= 64:
+            raise RuntimeError(
+                "A3BaseStandClipCandidate-v0 is capped at 64 environments; "
+                f"requested {num_envs}."
+            )
+        gate_path = (
+            root
+            / "contracts"
+            / "a3_base_locomotion_v1"
+            / "stand_clip_candidate_gate_v1.json"
+        )
+        gate = json.loads(gate_path.read_text(encoding="utf-8"))
+        status = gate["qualification_status"]
+        if not (
+            status.get("stand_clip_candidate_smoke_approved") is True
+            and status.get("candidate_action_contract_approved") is False
+            and status.get("stand_phase1_qualified") is False
+            and status.get("stand_long_training_approved") is False
+            and status.get("deployment_approved") is False
+        ):
+            raise RuntimeError("A3 Base clip candidate gate status mismatch")
+        for path_key, hash_key in (
+            ("clip_audit_path", "clip_audit_sha256"),
+            ("v1_checkpoint_eval_path", "v1_checkpoint_eval_sha256"),
+        ):
+            evidence_path = root / gate["local_evidence"][path_key]
+            if not evidence_path.is_file():
+                raise RuntimeError(f"A3 Base clip evidence is missing: {evidence_path}")
+            if hashlib.sha256(evidence_path.read_bytes()).hexdigest() != gate["local_evidence"][hash_key]:
+                raise RuntimeError(f"A3 Base clip evidence hash mismatch: {evidence_path}")
+        audit = json.loads(
+            (root / gate["local_evidence"]["clip_audit_path"]).read_text(encoding="utf-8")
+        )
+        if not (
+            audit.get("task") == clip_candidate
+            and audit.get("passed") is True
+            and audit.get("reset_contract", {}).get("raw_action_clip_abs") == 0.5
+        ):
+            raise RuntimeError("A3 Base clip candidate audit payload mismatch")
+        print(
+            "[train.py] A3 Base Stand clip candidate gate passed: "
+            f"iterations={max_iterations}, gate={gate['gate_id']}",
+            flush=True,
+        )
+        return
+
+    if not 100 <= int(max_iterations) <= 500:
+        raise RuntimeError(
+            "A3BaseStand-v0 is approved only for a 100--500 iteration PPO smoke; "
+            f"requested {max_iterations}. Long training remains closed."
+        )
+
+    gate_path = root / "contracts" / "a3_base_locomotion_v1" / "stand_fixture_gate_v1.json"
+    audit_path = root / "artifacts" / "a3_base_stand" / "stand_audit_v1.json"
+    if not gate_path.is_file() or not audit_path.is_file():
+        raise RuntimeError(
+            "A3 Base Stand smoke requires both stand_fixture_gate_v1.json and the local "
+            "artifacts/a3_base_stand/stand_audit_v1.json evidence."
+        )
+    gate = json.loads(gate_path.read_text(encoding="utf-8"))
+    status = gate["qualification_status"]
+    required_status = {
+        "fixture_runner_qualified": True,
+        "fixture_matrix_approved": True,
+        "stand_task_approved": True,
+        "stand_smoke_approved": True,
+        "stand_long_training_approved": False,
+        "locomotion_command_approved": False,
+        "deployment_approved": False,
+    }
+    mismatched = {
+        key: status.get(key) for key, expected in required_status.items() if status.get(key) is not expected
+    }
+    if mismatched:
+        raise RuntimeError(f"A3 Base Stand gate status mismatch: {mismatched}")
+
+    audit_bytes = audit_path.read_bytes()
+    audit = json.loads(audit_bytes)
+    if not (
+        audit.get("task") == task_id
+        and audit.get("passed") is True
+        and audit.get("reset_contract", {}).get("passed") is True
+        and audit.get("composer_full_target_passed") is True
+        and all(stage.get("passed_runtime_integrity") is True for stage in audit.get("stages", []))
+        and audit.get("stand_long_training_approved") is False
+        and audit.get("deployment_approved") is False
+    ):
+        raise RuntimeError("A3 Base Stand deterministic audit does not satisfy the bounded smoke preconditions")
+    print(
+        "[train.py] A3 Base Stand bounded smoke gate passed: "
+        f"iterations={max_iterations}, audit_sha256={hashlib.sha256(audit_bytes).hexdigest()}",
+        flush=True,
+    )
 
 
 def dump_pickle(filename: str, data):
@@ -406,6 +793,7 @@ def _run(cfg):
     import training  # noqa: F401
     import training.tasks  # noqa: F401  -- registers the gym tasks
     from training.utils.my_on_policy_runner import MotionOnPolicyRunner, MyOnPolicyRunner
+    from training.utils.a3_base_actor_init import initialize_zero_residual_actor_mean
     from training.utils.ppo_cfg import runner_kwargs
 
     torch.backends.cuda.matmul.allow_tf32 = True
@@ -472,6 +860,14 @@ def _run(cfg):
         agent_cfg.load_run = str(cfg.load_run)
     if cfg.get("checkpoint", None) is not None:
         agent_cfg.load_checkpoint = str(cfg.checkpoint)
+
+    _assert_a3_base_stand_smoke_gate(
+        task_id,
+        agent_cfg.max_iterations,
+        num_envs,
+        getattr(agent_cfg.policy, "init_noise_std", None),
+        bool(cfg.get("recovery_v23", False)),
+    )
 
     # 3) motion source. Motion-imitation tasks require a clip; pure table-tennis RL tasks do not.
     registry_name = None
@@ -574,11 +970,81 @@ def _run(cfg):
         )
     else:
         runner = MyOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    zero_residual_tasks = {
+        "A3BaseStandPassiveStableCandidate-v0",
+        "A3BaseStandRecoveryA-v0",
+        "A3BaseStandRecoveryAV2-v0",
+        "A3BaseStandRecoveryAV2WaistMask-v0",
+        "A3BaseStandRecoveryAV21WaistMask-v0",
+    }
+    if task_id in zero_residual_tasks and not agent_cfg.resume:
+        # This task controls a non-integrating residual around a passively
+        # stable nominal posture.  A random output layer can create a large
+        # deterministic residual before PPO sees one transition (observed as
+        # 52% raw-action clipping in the v2 model_0 audit).  Keep exploration
+        # in the Gaussian std, but make the initial mean policy exactly zero.
+        initialize_zero_residual_actor_mean(runner, action_dim=14)
+        print(
+            "[train.py] initialized A3 Base/Recovery actor mean to exact zero residual; "
+            f"exploration remains init_noise_std={agent_cfg.policy.init_noise_std}",
+            flush=True,
+        )
     runner.add_git_repo_to_log(__file__)
     if agent_cfg.resume:
         resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
         print(f"[INFO] Loading model checkpoint from: {resume_path}", flush=True)
         runner.load(resume_path)
+        std_scale = float(cfg.get("policy_std_scale", 1.0))
+        if std_scale <= 0.0:
+            raise ValueError("policy_std_scale must be positive")
+        if abs(std_scale - 1.0) > 1.0e-9:
+            with torch.no_grad():
+                before = runner.alg.policy.std.detach().clone()
+                runner.alg.policy.std.mul_(std_scale)
+                after = runner.alg.policy.std.detach().clone()
+            print(
+                "[train.py] continuation policy std scaled after checkpoint load: "
+                f"scale={std_scale} before_mean={before.mean().item():.6f} "
+                f"after_mean={after.mean().item():.6f}",
+                flush=True,
+            )
+
+        std_max_cfg = cfg.get("policy_std_max", None)
+        std_min_cfg = cfg.get("policy_std_min", None)
+        std_max = None if std_max_cfg is None else float(std_max_cfg)
+        std_min = None if std_min_cfg is None else float(std_min_cfg)
+        if std_max is not None and std_max <= 0.0:
+            raise ValueError("policy_std_max must be positive")
+        if std_min is not None and std_min <= 0.0:
+            raise ValueError("policy_std_min must be positive")
+        if std_min is not None and std_max is not None and std_min > std_max:
+            raise ValueError("policy_std_min cannot exceed policy_std_max")
+        if std_min is not None or std_max is not None:
+            with torch.no_grad():
+                before = runner.alg.policy.std.detach().clone()
+                runner.alg.policy.std.clamp_(min=std_min, max=std_max)
+                after = runner.alg.policy.std.detach().clone()
+            print(
+                "[train.py] recovery policy std bounded after checkpoint load: "
+                f"min={std_min} max={std_max} before_mean={before.mean().item():.6f} "
+                f"after_mean={after.mean().item():.6f}",
+                flush=True,
+            )
+
+            original_update = runner.alg.update
+
+            def bounded_update(*args, **kwargs):
+                result = original_update(*args, **kwargs)
+                with torch.no_grad():
+                    runner.alg.policy.std.clamp_(min=std_min, max=std_max)
+                return result
+
+            runner.alg.update = bounded_update
+
+        if bool(cfg.get("freeze_actor_mean", False)):
+            for parameter in runner.alg.policy.actor.parameters():
+                parameter.requires_grad_(False)
+            print("[train.py] frozen Recovery actor mean parameters after checkpoint load", flush=True)
 
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)

@@ -72,6 +72,19 @@ A3_WAIST_JOINTS = [
     "waist_roll_joint",
     "waist_pitch_joint",
 ]
+A3_HEAD_JOINTS = [
+    "head_yaw_joint",
+    "head_pitch_joint",
+]
+A3_LEFT_ARM_JOINTS = [
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "left_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "left_wrist_yaw_joint",
+]
 A3_RIGHT_ARM_JOINTS = [
     "right_shoulder_pitch_joint",
     "right_shoulder_roll_joint",
@@ -81,7 +94,36 @@ A3_RIGHT_ARM_JOINTS = [
     "right_wrist_pitch_joint",
     "right_wrist_yaw_joint",
 ]
+A3_LEFT_LEG_JOINTS = [
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+]
+A3_RIGHT_LEG_JOINTS = [
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint",
+]
 A3_NATIVE_STRIKE_JOINTS = A3_WAIST_JOINTS + A3_RIGHT_ARM_JOINTS
+
+# Base Locomotion v1 contract views. The actor controls 12 legs plus bounded
+# waist roll/pitch corrections; Strike v2 owns waist yaw, supplies the waist
+# pitch feed-forward reference, and owns the right arm. These lists are exact
+# ordered interfaces, not regex selectors.
+A3_BASE_ACTION_JOINTS = A3_LEFT_LEG_JOINTS + A3_RIGHT_LEG_JOINTS + [
+    "waist_roll_joint",
+    "waist_pitch_joint",
+]
+A3_STRIKE_V2_REFERENCE_JOINTS = [
+    "waist_yaw_joint",
+    "waist_pitch_joint",
+] + A3_RIGHT_ARM_JOINTS
 
 # Joint order for reading the retargeted-motion CSV in scripts/csv_to_npz.py. This is the order of
 # the *DOF columns* in the A3 retargeted CSV (columns 7: after base pos/quat), i.e. the order your
@@ -122,6 +164,18 @@ AGIBOT_A3_JOINT_NAMES = [
     "right_ankle_pitch_joint",
     "right_ankle_roll_joint",
 ]
+
+# Deployment/backend and policy views. The 31-DOF backend order matches the
+# official MuJoCo/AimRT layout. The 29-DOF policy view preserves that order
+# while omitting the two head joints.
+A3_BACKEND_JOINTS = AGIBOT_A3_JOINT_NAMES
+A3_POLICY_JOINTS = (
+    A3_WAIST_JOINTS
+    + A3_LEFT_ARM_JOINTS
+    + A3_RIGHT_ARM_JOINTS
+    + A3_LEFT_LEG_JOINTS
+    + A3_RIGHT_LEG_JOINTS
+)
 
 # Racket mount (right arm). See training/tasks/tracking/mdp/hope_commands.py.
 A3_WRIST_BODY = "right_wrist_yaw_Link"          # last actuated link of the paddle arm

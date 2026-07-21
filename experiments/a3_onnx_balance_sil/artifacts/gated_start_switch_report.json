@@ -1,0 +1,19 @@
+{
+  "scope": "local_sil_native_pdstand_stability_gate_then_onnx_static_handoff",
+  "pass": false,
+  "limits": {
+    "native_stand_hold_s": 3.0,
+    "native_min_height_m": 1.0,
+    "native_max_tilt_deg": 4.0,
+    "native_max_angular_speed_rad_s": 0.35,
+    "handoff_max_tilt_deg": 6.0,
+    "handoff_max_angular_speed_rad_s": 0.75,
+    "handoff_max_height_drop_m": 0.05
+  },
+  "onnx_policy_window_s": 1.0,
+  "native_action_before_gate": "MotionControlAction_USE_EXT_CMD",
+  "failure": "native PD_STAND did not satisfy the 3 s stability gate",
+  "recovery_failure": "recovery did not return to native MOTION",
+  "handoff_samples": [],
+  "timestamp_utc": "2026-07-18T07:17:33.354422+00:00"
+}

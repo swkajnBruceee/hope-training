@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "stand_fixture_gate_contract_id": "a3_stand_fixture_gate_v1",
+  "decision_status": "approved_for_bounded_stand_smoke_only",
+  "decision_date": "2026-07-18",
+  "legacy_evidence_contract": {
+    "calibration_contract_id": "a3_base_phase0_calibration_v1",
+    "calibration_contract_canonical_sha256": "931c510bee71b922f413d3270b832bbebd06560b7d23aba206d3d4fba4d5c882",
+    "matrix_sha256": "dab3974e5a890f6d2cc1fd4d50957662c463a9a5d0e03ea850de311df814f94d",
+    "fixture_runner_id_isaac": "isolated_native_isaac_trace_pd_v3",
+    "fixture_runner_id_mujoco": "isolated_native_mujoco_trace_pd_v3",
+    "fixture_semantics_frozen": true,
+    "legacy_full_339_case_promotion_rule_satisfied": false,
+    "legacy_rule_interpretation": "The legacy matrix mixes pre-Stand actuator fixture cases with post-Stand command-basis and broader diagnostic cases. This versioned gate approves only the explicitly enumerated pre-Stand scope and does not mutate or supersede the evidence contract."
+  },
+  "approved_fixture_scope": {
+    "logical_case_count": 89,
+    "repeat_count": 3,
+    "executed_case_count_per_engine": 267,
+    "families": {
+      "nominal_zero_baseline_all_14_dof": 14,
+      "positive_negative_low_amplitude_all_14_dof": 28,
+      "positive_negative_medium_amplitude_representative_12_dof": 24,
+      "waist_pitch_three_workpoints_zero_and_positive_negative_residual": 9,
+      "zoh_linear_200hz_representative_7_dof": 14
+    },
+    "excluded_until_later_gate": [
+      "command_basis_requires_trained_stand_policy",
+      "1000hz_transport_diagnostic",
+      "nonrepresentative_medium_amplitude_hip_yaw",
+      "free_base_contact_model_audit",
+      "locomotion_commands",
+      "strike_intervention",
+      "hardware_execution"
+    ]
+  },
+  "evidence": [
+    {"path": "artifacts/a3_base_phase0/low_zoh_cross_engine_v1.json", "sha256": "79e12e70301b8cd01ceaee2481f5c5da3b053a5dcf4193ac1f330df6408db579"},
+    {"path": "artifacts/a3_base_phase0/isaac_joint_friction_scan_v1.json", "sha256": "a62d9e5cc38f136154f73616d17ff2ff38906be59968a2f4f35974378cddd4ea"},
+    {"path": "artifacts/a3_base_phase0/representative_medium_cross_engine_v1.json", "sha256": "023ff8b03f830d00a2f602085d6d3e26f81d5ace2eef8c973eb99bd133d52a7f"},
+    {"path": "artifacts/a3_base_phase0/waist_working_points_v1.json", "sha256": "28b9d08f2dd697542f5bb05b4e4ba9fcefdeff28d63144403c9c02af5276440e"},
+    {"path": "artifacts/a3_base_phase0/transport_200hz_v1.json", "sha256": "4845337ae5cabdd2cd678e8b159d0a8f75a6f787d3c38acdff63fd8223bcfd66"},
+    {"path": "artifacts/a3_base_phase0/stand_fixture_repeatability_v1.json", "sha256": "f28ddcb84fa9ceb452c21bc74094903b33414bef37c823cdfc233b14e3cd7126"}
+  ],
+  "review_findings": {
+    "all_14_dof_low_amplitude_directions_correct_both_engines": true,
+    "no_active_response_direction_reversal_both_engines": true,
+    "representative_medium_response_exceeds_low_response_both_engines_24_of_24": true,
+    "all_534_repeat_cases_inside_safety_envelope": true,
+    "repeat_metrics_and_evidence_arrays_exact_within_each_engine": true,
+    "left_right_mapping_and_mirror_response_reviewed": true,
+    "waist_composition_semantics_correct": true,
+    "hidden_saturation_or_limit_hit_observed": false,
+    "primary_cross_engine_difference_label": "expected_actuator_difference",
+    "primary_difference_cause": "official_mujoco_fixed_passive_frictionloss_vs_zero_default_physx_joint_friction_with_non_equivalent_friction_semantics",
+    "unexplained_sign_or_order_of_magnitude_error_present": false,
+    "training_joint_friction_contract_frozen": false,
+    "final_action_scale_frozen": false,
+    "waist_residual_limit_expansion_supported": false,
+    "phase0_transport": "zero_order_hold",
+    "final_transport_frozen": false
+  },
+  "stand_smoke_execution_contract": {
+    "task": "A3BaseStand-v0",
+    "simulation_only": true,
+    "commands": {"vx_mps": 0.0, "vy_mps": 0.0, "yaw_rate_radps": 0.0, "body_height": "fixed_nominal", "body_pitch_rad": 0.0},
+    "strike_reference_enabled": false,
+    "upper_body_intervention_enabled": false,
+    "domain_randomization_enabled": false,
+    "external_push_enabled": false,
+    "target_transport": "zero_order_hold",
+    "normalized_action_clip_abs": 0.25,
+    "action_semantics": "non_integrating_position_residual",
+    "actor_foot_contact_input_enabled": false,
+    "actor_true_base_linear_velocity_input_enabled": false,
+    "allowed_sequence": [
+      "environment_reset_audit",
+      "zero_action_rollout",
+      "bounded_scripted_action_rollout",
+      "bounded_random_action_rollout",
+      "ppo_100_to_500_iteration_smoke",
+      "deterministic_checkpoint_evaluation"
+    ],
+    "long_training_allowed": false,
+    "hardware_execution_allowed": false
+  },
+  "qualification_status": {
+    "fixture_runner_qualified": true,
+    "fixture_matrix_approved": true,
+    "stand_task_approved": true,
+    "stand_smoke_approved": true,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  },
+  "automatic_promotion": false,
+  "human_review_required_for_next_gate": true
+}

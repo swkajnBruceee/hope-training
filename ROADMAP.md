@@ -1,5 +1,21 @@
 # Roadmap
 
+## Active Engineering Mainline (2026-07-18)
+
+The current A3 control mainline is the project-owned Base Locomotion policy:
+
+- keep the existing Isaac Lab/RSL-RL training stack;
+- train a new A3-specific 14-DOF lower-body/waist Base Policy from scratch;
+- remove official MOTION from normal balance/lateral-motion ownership;
+- combine Base and Strike through one versioned 31-DOF Command Composer;
+- qualify Stand, StrikeSupport, Locomotion, SIL, and hardware in gated stages.
+
+The authoritative architecture, contracts, implementation order, and acceptance
+gates are in
+[`hope_training/whole_body_tracking/docs/A3_BASE_LOCOMOTION_MASTER_PLAN.md`](hope_training/whole_body_tracking/docs/A3_BASE_LOCOMOTION_MASTER_PLAN.md).
+Existing strike evidence remains valid under its recorded contracts, while future
+normal-control ownership follows the new plan.
+
 ## v1 Public Starter
 
 - Keep the existing HOPE reference documents and rules.

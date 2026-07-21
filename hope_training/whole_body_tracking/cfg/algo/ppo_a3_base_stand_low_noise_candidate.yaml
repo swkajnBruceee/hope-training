@@ -1,0 +1,31 @@
+# Diagnostic candidate for the next A3 Base Stand smoke.  This file is not an
+# approval to train; scripts/train.py remains fail-closed until a later gate
+# approves the static working point, reward-v2, and this exact config hash.
+
+name: ppo_a3_base_stand_low_noise_candidate
+
+runner:
+  num_steps_per_env: 24
+  max_iterations: 500
+  save_interval: 100
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [512, 256, 128]
+  critic_hidden_dims: [512, 256, 128]
+  activation: elu
+  init_noise_std: 0.15
+
+algorithm:
+  learning_rate: 0.001
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.004
+  num_learning_epochs: 5
+  num_mini_batches: 4
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0
