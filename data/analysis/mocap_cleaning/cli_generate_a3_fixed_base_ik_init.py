@@ -340,6 +340,14 @@ def main() -> None:
         default=None,
         help="Override config time.fps for a source dataset with a different sampling rate.",
     )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help=(
+            "Reuse an existing per-episode IK CSV and quality report under the output root. "
+            "This makes a long batch resumable without changing its input manifest."
+        ),
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -369,6 +377,23 @@ def main() -> None:
     entries = []
     status_counts = Counter()
     for item in samples:
+        episode_id = str(item["episode_id"])
+        csv_path = ik_dir / f"{episode_id}.csv"
+        quality_path = quality_dir / f"{episode_id}.json"
+        if args.skip_existing and csv_path.is_file() and quality_path.is_file():
+            metrics = json.loads(quality_path.read_text(encoding="utf-8"))
+            status = str(metrics.get("status", "reject"))
+            status_counts[status] += 1
+            entries.append(
+                {
+                    **item,
+                    "ik_init_csv": str(csv_path),
+                    "ik_quality_report": str(quality_path),
+                    "ik_status": status,
+                    "ik_pose_status": str(metrics.get("ik_pose_status", "unknown")),
+                }
+            )
+            continue
         target = np.load(item["target_npz"], allow_pickle=True)
         target_pos, nonfinite_target_pos_frames = _fill_nonfinite_rows(target["racket_pos"].astype(np.float64), np.zeros(3, dtype=np.float64))
         target_quat, nonfinite_target_quat_frames = _fill_nonfinite_rows(
@@ -400,8 +425,6 @@ def main() -> None:
             rows.append(np.concatenate([base_pos, base_quat, q_full]))
             frame_reports.append(frame_report)
         csv_data = np.asarray(rows, dtype=np.float64)
-        episode_id = str(item["episode_id"])
-        csv_path = ik_dir / f"{episode_id}.csv"
         write_retarget_csv(csv_path, csv_data)
         metrics = _evaluate(csv_data, target_pos, target_quat, hit_index, base_pos, base_quat)
         quality_thresholds = dict(config["quality_thresholds"])
@@ -426,7 +449,6 @@ def main() -> None:
         status = "pass" if ik_pose_status == "seed_ready" else "reject"
         metrics["status"] = status
         status_counts[status] += 1
-        quality_path = quality_dir / f"{episode_id}.json"
         quality_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         entries.append(
             {

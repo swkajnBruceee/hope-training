@@ -229,6 +229,22 @@ class A3StrikeConditionedBaseCompositePositionAction(A3BaseCompositePositionActi
             # activate the same policy without a reset or target discontinuity.
             active = (motion_cmd.time_steps >= handoff_steps).to(masked.dtype).unsqueeze(-1)
             masked = masked * active
+        # A finite strike ends with a return to the ready reference.  Once that
+        # return is complete, the learned residual must not remain a permanent
+        # hidden stand controller: smoothly hand authority back to the nominal
+        # PD ready pose.  This is deliberately a whole-leg gate (rather than a
+        # joint template) and is disabled by default for legacy tasks.
+        release_steps = int(self.cfg.ready_hold_residual_release_steps)
+        if release_steps > 0 and motion_cmd.return_to_default_steps > 0:
+            ready_elapsed = (
+                motion_cmd.tail_steps
+                - int(motion_cmd.cfg.hold_last_frame_steps)
+                - int(motion_cmd.return_to_default_steps)
+            ).clamp(min=0).to(dtype=masked.dtype)
+            u = (ready_elapsed / float(release_steps)).clamp(0.0, 1.0)
+            smooth_u = u * u * (3.0 - 2.0 * u)
+            ready_gate = (1.0 - smooth_u).unsqueeze(-1)
+            masked = masked * ready_gate
         self._unbounded_actions[:] = masked
         self._raw_actions[:] = self._bound_actions(masked)
         reference_full = motion_cmd.joint_pos
@@ -282,3 +298,7 @@ class A3StrikeConditionedBaseCompositePositionActionCfg(A3BaseCompositePositionA
     phase_gate_start: float = 0.0
     phase_gate_end: float = 1.0
     phase_gate_tail_release_steps: int = 0
+    # Beginning only after the upper-body reference has fully returned to the
+    # ready pose, fade all learned leg residuals to zero over this many policy
+    # steps.  Zero preserves legacy persistent-residual behavior.
+    ready_hold_residual_release_steps: int = 0

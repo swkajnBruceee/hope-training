@@ -169,6 +169,31 @@ def _run_play(cfg, simulation_app):
     ppo_runner.load(resume_path)
     policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
 
+    forced_motion_id = cfg.get("motion_id", None)
+    if has_motion_command and forced_motion_id is not None:
+        motion = env.unwrapped.command_manager.get_term("motion")
+        motion_id = int(forced_motion_id)
+        if not 0 <= motion_id < motion.motion.num_motions:
+            raise ValueError(
+                f"motion_id={motion_id} outside manifest range [0, {motion.motion.num_motions - 1}]"
+            )
+        # The wrapped env has already performed the task's physical
+        # strike-ready reset.  Only replace the future reference and reset its
+        # phase bookkeeping; do not teleport the floating base into a motion
+        # frame, which would create an artificial reset seam in the video.
+        motion.motion_ids.fill_(motion_id)
+        motion.time_steps.zero_()
+        motion.tail_steps.zero_()
+        motion.prelude_elapsed_steps.zero_()
+        env.unwrapped.strike_stabilizer_handoff_steps = torch.zeros(
+            env.num_envs, dtype=torch.long, device=env.unwrapped.device
+        )
+        env_ids = torch.arange(env.num_envs, device=env.unwrapped.device)
+        racket = env.unwrapped.command_manager.get_term("racket_target")
+        racket._resample_command(env_ids)
+        racket._compute_strike_timing()
+        print(f"[INFO] forced manifest motion_id={motion_id} for deterministic replay", flush=True)
+
     # Export is convenient for deployment, but it must never prevent an
     # interactive/video replay.  Some stateful custom observation terms are
     # not serializable by the generic metadata helper.
@@ -299,7 +324,12 @@ def _run_play(cfg, simulation_app):
 
         video_dir = os.path.join(log_dir, "videos", "play")
         os.makedirs(video_dir, exist_ok=True)
-        video_path = os.path.join(video_dir, "play.mp4")
+        video_name = str(cfg.get("video_name", "play"))
+        if not video_name or os.path.basename(video_name) != video_name:
+            raise ValueError("video_name must be a plain filename without a path")
+        if not video_name.endswith(".mp4"):
+            video_name += ".mp4"
+        video_path = os.path.join(video_dir, video_name)
         valid = [np.asarray(f) for f in frames if f is not None and getattr(f, "size", 0) > 0]
         print(f"[INFO] captured {len(frames)} frames ({len(valid)} non-empty)", flush=True)
         if valid:

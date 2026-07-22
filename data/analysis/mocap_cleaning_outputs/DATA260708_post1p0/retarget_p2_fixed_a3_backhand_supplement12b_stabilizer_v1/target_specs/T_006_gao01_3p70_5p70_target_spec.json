@@ -1,0 +1,199 @@
+{
+  "spec_version": "competition_a3_fixed_v1",
+  "episode_id": "T_006_gao01_3p70_5p70",
+  "source_index": 919,
+  "dataset_index": 903,
+  "robot": "agibot_a3",
+  "robot_side": "p2",
+  "base_mode": "fixed",
+  "coordinate_contract": {
+    "position_frame": "competition_table_m",
+    "orientation_frame": "competition_table_m",
+    "position_unit": "m",
+    "angle_unit": "rad",
+    "time_unit": "s",
+    "quat_order": "xyzw",
+    "fps": 200.0,
+    "hit_index": 120,
+    "sequence_length_frames": 321
+  },
+  "robot_base": {
+    "position_m": [
+      3.15,
+      -0.35,
+      0.3084
+    ],
+    "quat_xyzw": [
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    "note": "fixed P2 base, facing P1"
+  },
+  "source": {
+    "source_csv": "CSV/T_006.csv",
+    "source_bvh": "/home/bruce/桌面/HOPETableTennis/DATA_PingPang/DATA260708/BVH/T_006_gao.bvh",
+    "racket": "gao01",
+    "stroke_type_rule_v2": "backhand",
+    "stroke_confidence_rule_v2": 1.0,
+    "success": 1,
+    "landing_pos": [
+      0.9523173579025945,
+      -0.597311999340065,
+      -0.0004254520876069232
+    ]
+  },
+  "racket_reference_point": {
+    "racket_pos": "Motive rigid-body center inside the racket, not the physical ball-contact point on the racket face",
+    "distance_at_hit_m": "ball center to racket rigid-body center distance; nonzero contact distance is expected",
+    "contact_distance_note": "Hit detection uses tolerance because the racket center is internal. Do not interpret dist_at_hit_m as contact error."
+  },
+  "hit_target": {
+    "racket_position_m": [
+      2.6162518194627107,
+      -0.8409676692757517,
+      0.29010914200092386
+    ],
+    "racket_quat_xyzw": [
+      0.4686199816069004,
+      0.4788329812060453,
+      0.5404509787875698,
+      -0.5089469800240859
+    ],
+    "racket_normal_w": [
+      0.9989031927010983,
+      -0.02338389526738771,
+      0.04056605790160511
+    ],
+    "racket_tangent_w": [
+      -0.042736568726222224,
+      -0.1013403813188814,
+      0.9939334549192178
+    ],
+    "racket_velocity_mps": [
+      -2.0762282944105914,
+      0.4155652231571839,
+      0.6369767591523798
+    ],
+    "racket_velocity_direction_w": [
+      -0.938983755432393,
+      0.18794127549350598,
+      0.28807565672918967
+    ],
+    "ball_position_m": [
+      2.5907498664123803,
+      -0.8247651460032953,
+      0.2935532811724839
+    ],
+    "ball_in_velocity_mps": [
+      2.621434114460274,
+      -0.5639635639116087,
+      0.39048112502651133
+    ],
+    "ball_out_velocity_mps": [
+      -5.0400025288788814,
+      0.772692692156588,
+      0.3112250499780663
+    ],
+    "ball_to_racket_center_distance_m": 0.030409430517667105
+  },
+  "phase_windows": {
+    "pre_hit": [
+      -24,
+      -4
+    ],
+    "hit": [
+      -3,
+      3
+    ],
+    "post_hit": [
+      4,
+      40
+    ]
+  },
+  "active_joints": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "quality_thresholds": {
+    "hit_position_warning_m": 0.035,
+    "hit_position_reject_m": 0.06,
+    "hit_orientation_warning_deg": 12.0,
+    "hit_orientation_reject_deg": 20.0,
+    "hit_tangent_warning_deg": 25.0,
+    "hit_tangent_reject_deg": 45.0,
+    "velocity_direction_warning_deg": 15.0,
+    "velocity_direction_reject_deg": 25.0,
+    "velocity_magnitude_warning_mps": 0.8,
+    "velocity_magnitude_reject_mps": 1.5,
+    "max_joint_velocity_warning_radps": 10.0,
+    "max_joint_velocity_reject_radps": 12.0,
+    "max_joint_acceleration_warning_radps2": 90.0,
+    "max_joint_acceleration_reject_radps2": 120.0,
+    "max_joint_jerk_warning_radps3": 1800.0,
+    "max_joint_jerk_reject_radps3": 2600.0,
+    "max_abs_waist_yaw_reject_rad": 1.0,
+    "right_wrist_roll_neutral_delta_p95_reject_deg": 65.0,
+    "right_wrist_pitch_neutral_delta_p95_reject_deg": 28.0,
+    "right_wrist_yaw_neutral_delta_p95_reject_deg": 30.0
+  },
+  "artifacts": {
+    "target_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_backhand_supplement12b_stabilizer_v1/target_npz/T_006_gao01_3p70_5p70_target.npz",
+    "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_backhand_supplement12b_stabilizer_v1/target_specs/T_006_gao01_3p70_5p70_target_spec.json",
+    "ik_init_csv": "",
+    "optimized_csv": "",
+    "quality_report_json": "",
+    "motion_npz": ""
+  },
+  "quality_flags": {
+    "has_finite_data": true,
+    "hit_distance_ok": true,
+    "racket_speed_ok": true,
+    "ball_velocity_change_ok": true,
+    "cleaning_usable": true,
+    "missing_near_hit": false,
+    "racket_quat_available": true,
+    "racket_omega_available": true,
+    "ball_speed_reasonable": true,
+    "racket_speed_reasonable": true,
+    "racket_omega_reasonable": true,
+    "max_ball_speed_mps": 5.290921267205527,
+    "max_racket_speed_mps": 2.320025258812109,
+    "max_racket_omega_radps": 4.3896645718911635,
+    "coordinate_transform_available": true,
+    "coordinate_frame": "competition_table_m",
+    "table_config_available": true,
+    "landing_detected": true,
+    "success_label_reliable": true,
+    "success_label_reason": "opponent_table_landing_rule",
+    "stroke_type": "forehand",
+    "stroke_label_source": "rule",
+    "stroke_label_confidence": 0.8970485372136936,
+    "stroke_label_reason": "body_lateral_offset_rule",
+    "stroke_lateral_offset_m": 0.21529164893128647,
+    "stroke_handedness": "right",
+    "stroke_pre_hit_ball_speed_mps": 2.862289302232875,
+    "usable_for_training": true,
+    "source_coordinate_frame": "motive_global_m",
+    "table_transform_available": true,
+    "table_z_m": 0.0,
+    "table_y_min_m": -1.525,
+    "table_y_max_m": 0.0,
+    "table_net_x_m": 1.37,
+    "landing_index": 189,
+    "landing_time_rel_s": 0.34499999999999975,
+    "landing_side": "p1_half",
+    "expected_landing_side": "p1_half",
+    "landing_in_table_y": true,
+    "landing_in_expected_x": true
+  }
+}

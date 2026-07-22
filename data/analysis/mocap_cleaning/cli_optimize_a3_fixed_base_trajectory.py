@@ -748,6 +748,14 @@ def main() -> None:
         default=None,
         help="Override config time.fps for a source dataset with a different sampling rate.",
     )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help=(
+            "Reuse existing optimized CSV and quality report files under the output root. "
+            "This makes a long optimization batch resumable without changing its source manifest."
+        ),
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -789,6 +797,27 @@ def main() -> None:
     replay_ready_count = 0
     for item in samples:
         episode_id = str(item["episode_id"])
+        opt_path = opt_dir / f"{episode_id}.csv"
+        quality_path = quality_dir / f"{episode_id}.json"
+        if args.skip_existing and opt_path.is_file() and quality_path.is_file():
+            metrics = json.loads(quality_path.read_text(encoding="utf-8"))
+            status = str(metrics.get("status", "reject"))
+            fail_category = str(metrics.get("fail_category", "unknown"))
+            replay_ready = bool(metrics.get("replay_ready", False))
+            replay_ready_count += int(replay_ready)
+            status_counts[status] += 1
+            fail_category_counts[fail_category] += 1
+            entries.append(
+                {
+                    **item,
+                    "optimized_csv": str(opt_path),
+                    "optimized_quality_report": str(quality_path),
+                    "optimized_status": status,
+                    "replay_ready": replay_ready,
+                    "fail_category": fail_category,
+                }
+            )
+            continue
         csv_init = load_retarget_csv(item["ik_init_csv"])
         target_npz = Path(item["target_npz"])
         target_spec = json.loads(Path(item["target_spec_json"]).read_text(encoding="utf-8"))
@@ -822,8 +851,6 @@ def main() -> None:
                 "target_spec_json": item["target_spec_json"],
             }
         )
-        opt_path = opt_dir / f"{episode_id}.csv"
-        quality_path = quality_dir / f"{episode_id}.json"
         write_retarget_csv(opt_path, csv_opt)
         quality_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         entries.append(

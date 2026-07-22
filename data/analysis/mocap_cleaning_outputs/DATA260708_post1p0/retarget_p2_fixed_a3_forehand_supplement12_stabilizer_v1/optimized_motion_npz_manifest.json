@@ -1,0 +1,103 @@
+{
+  "stage": "optimized_motion_npz",
+  "count": 1,
+  "all_joint_pos_shape": [
+    [
+      80,
+      31
+    ]
+  ],
+  "all_body_pos_w_shape": [
+    [
+      80,
+      32,
+      3
+    ]
+  ],
+  "all_fps": [
+    50
+  ],
+  "entries": [
+    {
+      "episode_id": "T03_004_gao01_3p08_5p08",
+      "motion_npz": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_supplement12_stabilizer_v1/optimized_motion_npz/T03_004_gao01_3p08_5p08.npz",
+      "fps": 50,
+      "joint_pos_shape": [
+        80,
+        31
+      ],
+      "joint_vel_shape": [
+        80,
+        31
+      ],
+      "body_pos_w_shape": [
+        80,
+        32,
+        3
+      ],
+      "body_quat_w_shape": [
+        80,
+        32,
+        4
+      ],
+      "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_supplement12_stabilizer_v1/target_specs/T03_004_gao01_3p08_5p08_target_spec.json",
+      "hit_event": {
+        "source_hit_index": 120,
+        "source_fps": 200.0,
+        "hit_time_from_start_s": 0.6,
+        "motion_fps": 50,
+        "motion_hit_frame": 30,
+        "motion_hit_subframe_alpha": 0.0
+      },
+      "strike_target": {
+        "racket_position_m": [
+          2.5069906567098093,
+          -0.0031754469082687954,
+          0.3101019652813119
+        ],
+        "racket_quat_xyzw": [
+          0.2752259957608316,
+          -0.49604399235968244,
+          -0.7158879889735353,
+          -0.4070569937303047
+        ],
+        "racket_normal_w": [
+          -0.8558628287551455,
+          -0.17648992299822774,
+          0.4861585394038862
+        ],
+        "racket_tangent_w": [
+          -0.5171105102254105,
+          0.30976602180165774,
+          -0.7978983218127422
+        ],
+        "racket_velocity_mps": [
+          -2.107561154689494,
+          -0.09835634233347766,
+          0.9418448064016276
+        ],
+        "racket_velocity_direction_w": [
+          -0.9121539356267259,
+          -0.0425686934652907,
+          0.407631088188
+        ],
+        "ball_position_m": [
+          2.4874393652193105,
+          -0.02542929629936963,
+          0.30551744962589916
+        ],
+        "ball_in_velocity_mps": [
+          2.2083941673285863,
+          1.0621939480272538,
+          0.448345560615881
+        ],
+        "ball_out_velocity_mps": [
+          -4.498812328736382,
+          -1.9111743597076027,
+          1.1444234404683653
+        ],
+        "ball_to_racket_center_distance_m": 0.029975066229501
+      }
+    }
+  ]
+}

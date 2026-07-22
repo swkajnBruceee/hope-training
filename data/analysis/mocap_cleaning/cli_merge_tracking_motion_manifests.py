@@ -43,6 +43,12 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", action="append", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--exclude-episode-id",
+        action="append",
+        default=[],
+        help="Episode id to omit from the merged output; may be supplied more than once.",
+    )
     args = parser.parse_args()
 
     merged: dict[str, dict] = {}
@@ -53,9 +59,14 @@ def main() -> None:
         for motion in payload["motions"]:
             merged[motion["episode_id"]] = motion
 
-    motions = sorted(merged.values(), key=lambda item: (item["stroke_type"], item["episode_id"]))
+    excluded_episode_ids = {str(episode_id) for episode_id in args.exclude_episode_id}
+    motions = sorted(
+        (motion for episode_id, motion in merged.items() if episode_id not in excluded_episode_ids),
+        key=lambda item: (item["stroke_type"], item["episode_id"]),
+    )
     manifest = {
         "source_manifests": source_manifests,
+        "excluded_episode_ids": sorted(excluded_episode_ids),
         "replay_ready_count": len(motions),
         "stroke_counts": dict(Counter(item["stroke_type"] for item in motions)),
         "smoke_picks": {},

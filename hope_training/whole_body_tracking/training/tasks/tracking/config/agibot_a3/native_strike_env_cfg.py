@@ -867,6 +867,11 @@ class A3StrikeStabilizerAEnvCfg(A3StrikeConditionedBaseEnvCfg):
         self.commands.motion.reset_to_default_pose = True
         self.commands.motion.hold_last_frame_steps = 75
         self.commands.motion.return_to_default_steps = 50
+        # The learned stabilizer is task-active during the full swing, final
+        # hold and smooth return.  Once ready is reached, hand the legs back to
+        # the verified PD strike-ready plant instead of retaining a permanent
+        # residual bias.  At 50 Hz this is a one-second minimum-jerk release.
+        self.actions.joint_pos.ready_hold_residual_release_steps = 50
 
 
 @configclass

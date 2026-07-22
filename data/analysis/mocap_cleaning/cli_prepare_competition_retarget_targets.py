@@ -294,11 +294,41 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--offset", type=int, default=None)
     parser.add_argument("--selected-candidates", type=Path, default=None)
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=None,
+        help="Override the configured output root so an expansion batch cannot overwrite an earlier one.",
+    )
+    parser.add_argument(
+        "--preferred-strokes",
+        nargs="+",
+        default=None,
+        help="Override selection.preferred_strokes for a focused expansion batch.",
+    )
+    parser.add_argument(
+        "--per-stroke-target",
+        type=int,
+        default=None,
+        help="Override selection.per_stroke_target for a focused expansion batch.",
+    )
+    parser.add_argument(
+        "--disable-diversity-sampling",
+        action="store_true",
+        help="Use the per-stroke ranking order instead of mixed-family diversity sampling.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
+    selection = config["selection"]
+    if args.preferred_strokes is not None:
+        selection["preferred_strokes"] = [str(value) for value in args.preferred_strokes]
+    if args.per_stroke_target is not None:
+        selection["per_stroke_target"] = int(args.per_stroke_target)
+    if args.disable_diversity_sampling:
+        selection["diversity_sampling"] = False
     dataset_path = Path(str(config["dataset"]))
-    output_root = Path(str(config["output_root"]))
+    output_root = args.output_root or Path(str(config["output_root"]))
     ready_dir = output_root / "retarget_ready"
     target_dir = output_root / "target_npz"
     spec_dir = output_root / "target_specs"
