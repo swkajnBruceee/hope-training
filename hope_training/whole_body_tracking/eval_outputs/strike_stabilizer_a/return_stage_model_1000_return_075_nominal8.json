@@ -1,0 +1,420 @@
+{
+  "checkpoint": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/logs/rsl_rl/agibot_a3_strike_stabilizer_a/2026-07-22_16-15-09_swing_hold_smooth_c2_128env_fresh/model_1000.pt",
+  "seed": 20260722,
+  "policy_mode": "deterministic_actor_mean",
+  "task_contract": "ready_pose -> prelude -> full_swing -> 3s final_pose_hold",
+  "policy_steps": 330,
+  "paired_reset_perturbations": {
+    "mode": "none",
+    "root_roll_rad": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "root_pitch_rad": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "root_linear_velocity_xy_m_s": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "root_angular_velocity_xy_rad_s": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ]
+  },
+  "zero_residual": {
+    "summary": {
+      "cases": 8,
+      "completed_timeout_fraction": 0.125,
+      "failure_fraction": 0.875,
+      "minimum_root_height_m_mean": 0.718030571937561,
+      "tail_root_linear_velocity_rms_mean": 0.8824411164969206,
+      "tail_root_angular_velocity_rms_mean": 0.9346905136480927,
+      "actor_leg_action_rms_mean": 0.0,
+      "actor_leg_trust_exceed_fraction_mean": 0.0,
+      "actor_leg_envelope_exceed_fraction_mean": 0.0,
+      "executed_leg_action_rms_mean": 0.0,
+      "executed_leg_saturation_fraction_mean": 0.0
+    },
+    "cases": [
+      {
+        "motion_id": 0,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6520133018493652,
+        "tail_root_linear_velocity_rms": 0.8569732308387756,
+        "tail_root_angular_velocity_rms": 0.9040848016738892,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_trust_exceed_fraction": 0.0,
+        "actor_leg_envelope_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_saturation_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 1,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6687397360801697,
+        "tail_root_linear_velocity_rms": 0.9593040347099304,
+        "tail_root_angular_velocity_rms": 1.013927698135376,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_trust_exceed_fraction": 0.0,
+        "actor_leg_envelope_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_saturation_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 2,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6722922325134277,
+        "tail_root_linear_velocity_rms": 1.035204529762268,
+        "tail_root_angular_velocity_rms": 1.0958852767944336,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_trust_exceed_fraction": 0.0,
+        "actor_leg_envelope_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_saturation_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 3,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.0962849110364914,
+        "tail_root_angular_velocity_rms": 0.11934215575456619,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_trust_exceed_fraction": 0.0,
+        "actor_leg_envelope_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_saturation_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 4,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6919317245483398,
+        "tail_root_linear_velocity_rms": 1.0137114524841309,
+        "tail_root_angular_velocity_rms": 1.0698086023330688,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_trust_exceed_fraction": 0.0,
+        "actor_leg_envelope_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_saturation_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 5,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6759569644927979,
+        "tail_root_linear_velocity_rms": 1.0445340871810913,
+        "tail_root_angular_velocity_rms": 1.1031525135040283,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_trust_exceed_fraction": 0.0,
+        "actor_leg_envelope_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_saturation_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 6,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6608862280845642,
+        "tail_root_linear_velocity_rms": 1.0640742778778076,
+        "tail_root_angular_velocity_rms": 1.1217551231384277,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_trust_exceed_fraction": 0.0,
+        "actor_leg_envelope_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_saturation_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 7,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6824244260787964,
+        "tail_root_linear_velocity_rms": 0.9894424080848694,
+        "tail_root_angular_velocity_rms": 1.0495679378509521,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_trust_exceed_fraction": 0.0,
+        "actor_leg_envelope_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_saturation_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      }
+    ]
+  },
+  "learned_policy": {
+    "summary": {
+      "cases": 8,
+      "completed_timeout_fraction": 1.0,
+      "failure_fraction": 0.0,
+      "minimum_root_height_m_mean": 1.0399999618530273,
+      "tail_root_linear_velocity_rms_mean": 0.06444110535085201,
+      "tail_root_angular_velocity_rms_mean": 0.10096093825995922,
+      "actor_leg_action_rms_mean": 0.9534063264727592,
+      "actor_leg_trust_exceed_fraction_mean": 0.49072315096251257,
+      "actor_leg_envelope_exceed_fraction_mean": 0.37132725430597774,
+      "executed_leg_action_rms_mean": 0.5267539694905281,
+      "executed_leg_saturation_fraction_mean": 0.07104863221884498
+    },
+    "cases": [
+      {
+        "motion_id": 0,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.049794986844062805,
+        "tail_root_angular_velocity_rms": 0.10189364850521088,
+        "actor_leg_action_rms": 0.9930291175842285,
+        "actor_leg_trust_exceed_fraction": 0.5387537993920972,
+        "actor_leg_envelope_exceed_fraction": 0.4138804457953394,
+        "executed_leg_action_rms": 0.5437017679214478,
+        "executed_leg_saturation_fraction": 0.07725430597771023,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 1,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.05812641233205795,
+        "tail_root_angular_velocity_rms": 0.10118314623832703,
+        "actor_leg_action_rms": 0.9643740653991699,
+        "actor_leg_trust_exceed_fraction": 0.5303951367781155,
+        "actor_leg_envelope_exceed_fraction": 0.39792299898682876,
+        "executed_leg_action_rms": 0.5385913848876953,
+        "executed_leg_saturation_fraction": 0.07142857142857142,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 2,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.0596255324780941,
+        "tail_root_angular_velocity_rms": 0.09570436924695969,
+        "actor_leg_action_rms": 0.9243723750114441,
+        "actor_leg_trust_exceed_fraction": 0.4769503546099291,
+        "actor_leg_envelope_exceed_fraction": 0.36524822695035464,
+        "executed_leg_action_rms": 0.5210110545158386,
+        "executed_leg_saturation_fraction": 0.0668693009118541,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 3,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.05681822821497917,
+        "tail_root_angular_velocity_rms": 0.10123258084058762,
+        "actor_leg_action_rms": 1.0097185373306274,
+        "actor_leg_trust_exceed_fraction": 0.5468591691995948,
+        "actor_leg_envelope_exceed_fraction": 0.41742654508611954,
+        "executed_leg_action_rms": 0.5493787527084351,
+        "executed_leg_saturation_fraction": 0.07750759878419453,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 4,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.05324564129114151,
+        "tail_root_angular_velocity_rms": 0.08118177950382233,
+        "actor_leg_action_rms": 0.9238667488098145,
+        "actor_leg_trust_exceed_fraction": 0.4369300911854103,
+        "actor_leg_envelope_exceed_fraction": 0.32041540020263426,
+        "executed_leg_action_rms": 0.5086453557014465,
+        "executed_leg_saturation_fraction": 0.07218844984802432,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 5,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.09672292321920395,
+        "tail_root_angular_velocity_rms": 0.121837317943573,
+        "actor_leg_action_rms": 0.9428943991661072,
+        "actor_leg_trust_exceed_fraction": 0.475177304964539,
+        "actor_leg_envelope_exceed_fraction": 0.3619554204660588,
+        "executed_leg_action_rms": 0.5211150646209717,
+        "executed_leg_saturation_fraction": 0.06965552178318135,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 6,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.060467980802059174,
+        "tail_root_angular_velocity_rms": 0.107367604970932,
+        "actor_leg_action_rms": 0.9616020917892456,
+        "actor_leg_trust_exceed_fraction": 0.48733535967578523,
+        "actor_leg_envelope_exceed_fraction": 0.3718338399189463,
+        "executed_leg_action_rms": 0.5306596159934998,
+        "executed_leg_saturation_fraction": 0.06965552178318135,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 7,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.08072713762521744,
+        "tail_root_angular_velocity_rms": 0.09728705883026123,
+        "actor_leg_action_rms": 0.9073932766914368,
+        "actor_leg_trust_exceed_fraction": 0.43338399189463017,
+        "actor_leg_envelope_exceed_fraction": 0.32193515704154,
+        "executed_leg_action_rms": 0.5009287595748901,
+        "executed_leg_saturation_fraction": 0.06382978723404255,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      }
+    ]
+  }
+}

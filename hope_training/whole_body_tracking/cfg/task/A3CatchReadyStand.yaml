@@ -1,0 +1,12 @@
+name: A3CatchReadyStand
+gym_task: A3CatchReadyStand-v0
+experiment_name: a3_catch_ready_stand
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  episode_length_s: 10.0

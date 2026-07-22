@@ -314,6 +314,48 @@ class MotionCommand(CommandTerm):
             self.motion_ids = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
             self._use_motion_library = False
         self.time_steps = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        # A task may define a static, named joint offset around the retargeted
+        # motion.  Strike Stabilizer uses this for a leg ``strike-ready``
+        # working point: the upper-body motion remains unchanged while hip,
+        # knee, and ankle references can be scanned as one coherent plant
+        # contract.  Keeping this in MotionCommand ensures reset, action
+        # reference, and reference observations all see the same pose.
+        self._joint_position_offset = torch.zeros(self.robot.num_joints, device=self.device)
+        for joint_name, offset in dict(self.cfg.joint_position_offset).items():
+            joint_ids, resolved = self.robot.find_joints([joint_name], preserve_order=True)
+            if resolved != [joint_name]:
+                raise ValueError(f"Unknown motion joint_position_offset joint: {joint_name!r}")
+            self._joint_position_offset[int(joint_ids[0])] = float(offset)
+        self._root_position_offset = torch.tensor(
+            self.cfg.root_position_offset, dtype=torch.float, device=self.device
+        )
+        if self._root_position_offset.shape != (3,):
+            raise ValueError("root_position_offset must contain exactly three values")
+        # Optional terminal hold for finite task motions.  ``time_steps`` stays
+        # at the final valid reference frame until the environment resets; this
+        # avoids a discontinuous wrap from the end of a strike back to its
+        # start. ``tail_steps`` remains observable for diagnostics.
+        self.tail_steps = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        # Optional physically continuous bridge used by the strike stabilizer:
+        # reset from the configured ready pose, then blend upper-body targets
+        # into reference frame zero before the strike phase starts.  This avoids
+        # using an inconsistent "ready legs + old floating root" teleport.
+        self.prelude_steps = int(self.cfg.prelude_steps)
+        if self.prelude_steps < 0:
+            raise ValueError("prelude_steps must be non-negative")
+        self.prelude_elapsed_steps = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
+        # Audit-only reset provenance.  These buffers are not observations and
+        # do not affect control; they make it possible to verify that a task
+        # configured with root randomization actually writes those sampled
+        # errors into the physical reset state.
+        self.last_reset_pose_offset = torch.zeros(self.num_envs, 6, device=self.device)
+        self.last_reset_velocity_offset = torch.zeros(self.num_envs, 6, device=self.device)
+        self.last_reset_hard_case = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+        self.return_to_default_steps = int(self.cfg.return_to_default_steps)
+        if self.return_to_default_steps < 0:
+            raise ValueError("return_to_default_steps must be non-negative")
         self.body_pos_relative_w = torch.zeros(self.num_envs, len(cfg.body_names), 3, device=self.device)
         self.body_quat_relative_w = torch.zeros(self.num_envs, len(cfg.body_names), 4, device=self.device)
         self.body_quat_relative_w[:, :, 0] = 1.0
@@ -360,20 +402,73 @@ class MotionCommand(CommandTerm):
     @property
     def joint_pos(self) -> torch.Tensor:
         if self._use_motion_library:
-            return self.motion.joint_pos[self.motion_ids, self.time_steps]
-        return self.motion.joint_pos[self.time_steps]
+            reference = self.motion.joint_pos[self.motion_ids, self.time_steps]
+        else:
+            reference = self.motion.joint_pos[self.time_steps]
+        reference = reference + self._joint_position_offset
+        if self.prelude_steps > 0:
+            alpha = (
+                self.prelude_elapsed_steps.to(dtype=reference.dtype)
+                / float(self.prelude_steps)
+            ).clamp_(0.0, 1.0).unsqueeze(-1)
+            reference = self.robot.data.default_joint_pos + alpha * (
+                reference - self.robot.data.default_joint_pos
+            )
+
+        # A finite strike must not abruptly release the arm at its final
+        # frame.  Keep the final pose long enough for the legs to absorb the
+        # swing momentum, then smoothly return the whole-body reference to the
+        # task's configured ready pose.  ``hold_last_frame_steps`` is the
+        # first tail segment; the remaining episode time is the ready hold.
+        if self.return_to_default_steps > 0:
+            hold_steps = int(self.cfg.hold_last_frame_steps)
+            return_elapsed = (self.tail_steps - hold_steps).clamp(
+                min=0, max=self.return_to_default_steps
+            ).to(dtype=reference.dtype)
+            u = return_elapsed / float(self.return_to_default_steps)
+            # Quintic minimum-jerk blend: position, target velocity and
+            # target acceleration are all continuous at the hold/return and
+            # return/ready boundaries.
+            smooth_u = u * u * u * (10.0 - 15.0 * u + 6.0 * u * u)
+            reference = reference + smooth_u.unsqueeze(-1) * (
+                self.robot.data.default_joint_pos - reference
+            )
+        return reference
 
     @property
     def joint_vel(self) -> torch.Tensor:
         if self._use_motion_library:
-            return self.motion.joint_vel[self.motion_ids, self.time_steps]
-        return self.motion.joint_vel[self.time_steps]
+            reference_vel = self.motion.joint_vel[self.motion_ids, self.time_steps]
+            final_joint_pos = self.motion.joint_pos[self.motion_ids, self.time_steps]
+        else:
+            reference_vel = self.motion.joint_vel[self.time_steps]
+            final_joint_pos = self.motion.joint_pos[self.time_steps]
+        if self.return_to_default_steps <= 0:
+            return reference_vel
+
+        hold_steps = int(self.cfg.hold_last_frame_steps)
+        return_elapsed = (self.tail_steps - hold_steps).clamp(
+            min=0, max=self.return_to_default_steps
+        ).to(dtype=reference_vel.dtype)
+        u = return_elapsed / float(self.return_to_default_steps)
+        # d minimum-jerk(u) / dt, using one policy/control step as dt.
+        control_dt = float(self._env.cfg.decimation * self._env.cfg.sim.dt)
+        smooth_rate = 30.0 * u * u * (1.0 - u) * (1.0 - u) / (
+            float(self.return_to_default_steps) * control_dt
+        )
+        return_velocity = smooth_rate.unsqueeze(-1) * (
+            self.robot.data.default_joint_pos - final_joint_pos - self._joint_position_offset
+        )
+        in_return_or_ready = self.tail_steps > hold_steps
+        return torch.where(in_return_or_ready.unsqueeze(-1), return_velocity, reference_vel)
 
     @property
     def body_pos_w(self) -> torch.Tensor:
         if self._use_motion_library:
-            return self.motion.body_pos_w[self.motion_ids, self.time_steps] + self._env.scene.env_origins[:, None, :]
-        return self.motion.body_pos_w[self.time_steps] + self._env.scene.env_origins[:, None, :]
+            reference = self.motion.body_pos_w[self.motion_ids, self.time_steps]
+        else:
+            reference = self.motion.body_pos_w[self.time_steps]
+        return reference + self._env.scene.env_origins[:, None, :] + self._root_position_offset
 
     @property
     def body_quat_w(self) -> torch.Tensor:
@@ -411,17 +506,18 @@ class MotionCommand(CommandTerm):
             root_ori = self.motion._body_quat_w[self.time_steps, root_idx].clone()
             root_lin_vel = self.motion._body_lin_vel_w[self.time_steps, root_idx].clone()
             root_ang_vel = self.motion._body_ang_vel_w[self.time_steps, root_idx].clone()
-        root_pos += self._env.scene.env_origins
+        root_pos += self._env.scene.env_origins + self._root_position_offset
         return root_pos, root_ori, root_lin_vel, root_ang_vel
 
     @property
     def anchor_pos_w(self) -> torch.Tensor:
         if self._use_motion_library:
-            return (
+            reference = (
                 self.motion.body_pos_w[self.motion_ids, self.time_steps, self.motion_anchor_body_index]
-                + self._env.scene.env_origins
             )
-        return self.motion.body_pos_w[self.time_steps, self.motion_anchor_body_index] + self._env.scene.env_origins
+        else:
+            reference = self.motion.body_pos_w[self.time_steps, self.motion_anchor_body_index]
+        return reference + self._env.scene.env_origins + self._root_position_offset
 
     @property
     def anchor_quat_w(self) -> torch.Tensor:
@@ -598,29 +694,81 @@ class MotionCommand(CommandTerm):
     def _resample_command(self, env_ids: Sequence[int]):
         if len(env_ids) == 0:
             return
+        self.tail_steps[env_ids] = 0
+        self.prelude_elapsed_steps[env_ids] = 0
+        hard_case_probability = float(self.cfg.hard_case_probability)
+        if not 0.0 <= hard_case_probability <= 1.0:
+            raise ValueError("hard_case_probability must be in [0, 1]")
+        hard_case = torch.rand(len(env_ids), device=self.device) < hard_case_probability
+        self.last_reset_hard_case[env_ids] = hard_case
         if self._use_motion_library:
             self.motion_ids[env_ids] = self._sample_motion_ids(len(env_ids))
+            if torch.any(hard_case):
+                hard_ids = tuple(int(x) for x in self.cfg.hard_case_motion_ids)
+                if not hard_ids:
+                    raise ValueError("hard_case_motion_ids must be non-empty when hard_case_probability > 0")
+                if min(hard_ids) < 0 or max(hard_ids) >= self.motion.num_motions:
+                    raise ValueError(
+                        f"hard_case_motion_ids={hard_ids} outside motion library size {self.motion.num_motions}"
+                    )
+                choices = torch.tensor(hard_ids, dtype=torch.long, device=self.device)
+                self.motion_ids[env_ids[hard_case]] = choices[
+                    torch.randint(len(hard_ids), (int(hard_case.sum()),), device=self.device)
+                ]
         self._adaptive_sampling(env_ids)
         if self._use_motion_library:
             lengths = self.motion.motion_lengths[self.motion_ids[env_ids]]
             self.time_steps[env_ids] = torch.minimum(self.time_steps[env_ids], lengths - 1)
 
-        root_pos, root_ori, root_lin_vel, root_ang_vel = self._motion_root_state_w()
+        if self.cfg.reset_to_default_pose:
+            # ``default_*`` includes the task-configured strike-ready pose.
+            # It is the only valid reset source for a prelude; mixing ready
+            # leg joints with a root taken from the old swing trace is not a
+            # physically coherent contact state.
+            root_state = self.robot.data.default_root_state.clone()
+            root_pos = root_state[:, :3] + self._env.scene.env_origins
+            root_ori = root_state[:, 3:7]
+            root_lin_vel = root_state[:, 7:10]
+            root_ang_vel = root_state[:, 10:13]
+            joint_pos = self.robot.data.default_joint_pos.clone()
+            joint_vel = self.robot.data.default_joint_vel.clone()
+        else:
+            root_pos, root_ori, root_lin_vel, root_ang_vel = self._motion_root_state_w()
+            joint_pos = self.joint_pos.clone()
+            joint_vel = self.joint_vel.clone()
 
+        # Apply reset randomization after choosing its physical source.  In
+        # particular, a strike-ready reset must not sample a perturbation and
+        # then overwrite it with default_root_state; that silently turns a
+        # configured robustness curriculum into a deterministic reset.
         range_list = [self.cfg.pose_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]]
         ranges = torch.tensor(range_list, device=self.device)
         rand_samples = sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=self.device)
+        perturb_probability = float(self.cfg.reset_perturbation_probability)
+        if not 0.0 <= perturb_probability <= 1.0:
+            raise ValueError("reset_perturbation_probability must be in [0, 1]")
+        perturb_active = (torch.rand(len(env_ids), device=self.device) < perturb_probability) | hard_case
+        rand_samples *= perturb_active.unsqueeze(-1)
+        self.last_reset_pose_offset[env_ids] = rand_samples
         root_pos[env_ids] += rand_samples[:, 0:3]
         orientations_delta = quat_from_euler_xyz(rand_samples[:, 3], rand_samples[:, 4], rand_samples[:, 5])
         root_ori[env_ids] = quat_mul(orientations_delta, root_ori[env_ids])
         range_list = [self.cfg.velocity_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]]
         ranges = torch.tensor(range_list, device=self.device)
         rand_samples = sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=self.device)
+        rand_samples *= perturb_active.unsqueeze(-1)
+        if torch.any(hard_case):
+            hard_ranges = [
+                self.cfg.hard_case_velocity_range.get(key, (0.0, 0.0))
+                for key in ["x", "y", "z", "roll", "pitch", "yaw"]
+            ]
+            hard_ranges = torch.tensor(hard_ranges, device=self.device)
+            rand_samples[hard_case] = sample_uniform(
+                hard_ranges[:, 0], hard_ranges[:, 1], (int(hard_case.sum()), 6), device=self.device
+            )
+        self.last_reset_velocity_offset[env_ids] = rand_samples
         root_lin_vel[env_ids] += rand_samples[:, :3]
         root_ang_vel[env_ids] += rand_samples[:, 3:]
-
-        joint_pos = self.joint_pos.clone()
-        joint_vel = self.joint_vel.clone()
 
         joint_pos += sample_uniform(*self.cfg.joint_position_range, joint_pos.shape, joint_pos.device)
         soft_joint_pos_limits = self.robot.data.soft_joint_pos_limits[env_ids]
@@ -634,12 +782,36 @@ class MotionCommand(CommandTerm):
         )
 
     def _update_command(self):
-        self.time_steps += 1
-        if self._use_motion_library:
-            motion_lengths = self.motion.motion_lengths[self.motion_ids]
-            env_ids = torch.where(self.time_steps >= motion_lengths)[0]
+        advance_mask = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
+        if self.prelude_steps > 0:
+            prelude_active = self.prelude_elapsed_steps < self.prelude_steps
+            self.prelude_elapsed_steps[prelude_active] += 1
+            # Do not advance the finite strike reference while it is being
+            # blended in.  Each environment enters the real phase-0 strike
+            # only after its configured prelude completes.
+            advance_mask = ~prelude_active
+        hold_steps = int(self.cfg.hold_last_frame_steps)
+        if hold_steps > 0:
+            if self._use_motion_library:
+                motion_lengths = self.motion.motion_lengths[self.motion_ids]
+            else:
+                motion_lengths = torch.full_like(self.time_steps, self.motion.time_step_total)
+            final_steps = motion_lengths - 1
+            advancing = advance_mask & (self.time_steps < final_steps)
+            self.time_steps[advancing] += 1
+            holding = advance_mask & ~advancing
+            self.tail_steps[holding] += 1
+            # A finite strike episode is terminated by the environment timeout.
+            # Do not resample here: even one reference-frame wrap would create
+            # an artificial post-swing impulse and invalidate the settling tail.
+            env_ids = torch.empty(0, dtype=torch.long, device=self.device)
         else:
-            env_ids = torch.where(self.time_steps >= self.motion.time_step_total)[0]
+            self.time_steps[advance_mask] += 1
+            if self._use_motion_library:
+                motion_lengths = self.motion.motion_lengths[self.motion_ids]
+                env_ids = torch.where(advance_mask & (self.time_steps >= motion_lengths))[0]
+            else:
+                env_ids = torch.where(advance_mask & (self.time_steps >= self.motion.time_step_total))[0]
         self._resample_command(env_ids)
 
         anchor_pos_w_repeat = self.anchor_pos_w[:, None, :].repeat(1, len(self.cfg.body_names), 1)
@@ -737,7 +909,35 @@ class MotionCommandCfg(CommandTermCfg):
     velocity_range: dict[str, tuple[float, float]] = {}
 
     joint_position_range: tuple[float, float] = (-0.52, 0.52)
+    # Static named reference offsets.  Empty preserves the retargeted motion.
+    # Strike Stabilizer scans leg-only offsets here rather than encoding a
+    # joint-action template in the learned actor or reward.
+    joint_position_offset: dict[str, float] = {}
+    # Translational counterpart of a static joint working-point adjustment.
+    # A knee-flexed ready pose normally requires a lower pelvis reference to
+    # preserve foot contact; this is scanned together with joint offsets.
+    root_position_offset: tuple[float, float, float] = (0.0, 0.0, 0.0)
     sample_random_start_phase: bool = True
+    # Hold a finite motion's final reference frame until the environment reset.
+    # The task episode length defines the required settling-tail duration. Zero
+    # preserves legacy looping behaviour.
+    hold_last_frame_steps: int = 0
+    # After ``hold_last_frame_steps`` at the final motion pose, blend the
+    # complete joint reference back to ``robot.init_state`` over this many
+    # control steps.  The remaining episode time holds that ready pose, so a
+    # task can require post-return stability rather than hiding a fall at the
+    # end of the strike clip.
+    return_to_default_steps: int = 0
+    # A pre-swing bridge from ``robot.init_state`` into motion frame zero.
+    # It is disabled for legacy tracking tasks.
+    prelude_steps: int = 0
+    reset_to_default_pose: bool = False
+    # Reset curriculum for task-conditioned stabilizers.  A hard case is a
+    # physically sampled initial condition, not a hand-authored leg action.
+    reset_perturbation_probability: float = 1.0
+    hard_case_probability: float = 0.0
+    hard_case_motion_ids: tuple[int, ...] = ()
+    hard_case_velocity_range: dict[str, tuple[float, float]] = {}
 
     adaptive_kernel_size: int = 1
     adaptive_lambda: float = 0.8

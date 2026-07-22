@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "stage": "native_strike_realized_rsi_bank_v1",
+  "training_eligible": false,
+  "state_semantics": "actual_native_zero_residual_simulation_rollout",
+  "captured_context": [
+    "motion_step",
+    "root_state_w",
+    "joint_pos",
+    "joint_vel",
+    "joint_pos_target",
+    "applied_torque",
+    "time_to_strike_s"
+  ],
+  "missing_context": [
+    "actuator_hidden_state_not_exposed",
+    "contact_sensor_not_configured",
+    "ball_state_not_present_in_native_strike_task",
+    "filter_state_not_present",
+    "observation_history_not_captured"
+  ],
+  "entries": [
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "state_file": "realized_0.npz",
+      "source_case": {
+        "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+        "state_file": "T002_015_gao01_15p25_17p25_dyp5cm.npz",
+        "phase": "preparation",
+        "phase_id": 0,
+        "frame": 0,
+        "hit_frame": 30
+      },
+      "realized_state": true,
+      "captured_frames": 79
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp10cm",
+      "state_file": "realized_1.npz",
+      "source_case": {
+        "episode_id": "T002_015_gao01_15p25_17p25_dyp10cm",
+        "state_file": "T002_015_gao01_15p25_17p25_dyp10cm.npz",
+        "phase": "preparation",
+        "phase_id": 0,
+        "frame": 0,
+        "hit_frame": 30
+      },
+      "realized_state": true,
+      "captured_frames": 79
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp15cm",
+      "state_file": "realized_2.npz",
+      "source_case": {
+        "episode_id": "T002_015_gao01_15p25_17p25_dyp15cm",
+        "state_file": "T002_015_gao01_15p25_17p25_dyp15cm.npz",
+        "phase": "preparation",
+        "phase_id": 0,
+        "frame": 0,
+        "hit_frame": 30
+      },
+      "realized_state": true,
+      "captured_frames": 79
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp20cm",
+      "state_file": "realized_3.npz",
+      "source_case": {
+        "episode_id": "T002_015_gao01_15p25_17p25_dyp20cm",
+        "state_file": "T002_015_gao01_15p25_17p25_dyp20cm.npz",
+        "phase": "preparation",
+        "phase_id": 0,
+        "frame": 0,
+        "hit_frame": 30
+      },
+      "realized_state": true,
+      "captured_frames": 79
+    },
+    {
+      "episode_id": "T03_012_gao01_12p10_14p10_dyp5cm",
+      "state_file": "realized_4.npz",
+      "source_case": {
+        "episode_id": "T03_012_gao01_12p10_14p10_dyp5cm",
+        "state_file": "T03_012_gao01_12p10_14p10_dyp5cm.npz",
+        "phase": "preparation",
+        "phase_id": 0,
+        "frame": 0,
+        "hit_frame": 30
+      },
+      "realized_state": true,
+      "captured_frames": 79
+    },
+    {
+      "episode_id": "T03_012_gao01_12p10_14p10_dyp10cm",
+      "state_file": "realized_5.npz",
+      "source_case": {
+        "episode_id": "T03_012_gao01_12p10_14p10_dyp10cm",
+        "state_file": "T03_012_gao01_12p10_14p10_dyp10cm.npz",
+        "phase": "preparation",
+        "phase_id": 0,
+        "frame": 0,
+        "hit_frame": 30
+      },
+      "realized_state": true,
+      "captured_frames": 79
+    },
+    {
+      "episode_id": "T03_012_gao01_12p10_14p10_dyp15cm",
+      "state_file": "realized_6.npz",
+      "source_case": {
+        "episode_id": "T03_012_gao01_12p10_14p10_dyp15cm",
+        "state_file": "T03_012_gao01_12p10_14p10_dyp15cm.npz",
+        "phase": "preparation",
+        "phase_id": 0,
+        "frame": 0,
+        "hit_frame": 30
+      },
+      "realized_state": true,
+      "captured_frames": 79
+    },
+    {
+      "episode_id": "T03_012_gao01_12p10_14p10_dyp20cm",
+      "state_file": "realized_7.npz",
+      "source_case": {
+        "episode_id": "T03_012_gao01_12p10_14p10_dyp20cm",
+        "state_file": "T03_012_gao01_12p10_14p10_dyp20cm.npz",
+        "phase": "preparation",
+        "phase_id": 0,
+        "frame": 0,
+        "hit_frame": 30
+      },
+      "realized_state": true,
+      "captured_frames": 79
+    }
+  ]
+}

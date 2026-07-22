@@ -135,6 +135,9 @@ def _run_profile(vec_env, env, robot, policy, obs, pose_np, velocity_np, waist_i
     gate_active_count = torch.zeros(total, device=device)
     gate_latched = torch.zeros(total, dtype=torch.bool, device=device)
     gate_exit_count = torch.zeros(total, dtype=torch.long, device=device)
+    gate_on_step = torch.full((total,), args_cli.steps, dtype=torch.long, device=device)
+    peak_tilt_step = torch.zeros(total, dtype=torch.long, device=device)
+    actor_first_step = torch.full((total,), args_cli.steps, dtype=torch.long, device=device)
 
     for step in range(args_cli.steps):
         with torch.inference_mode():
@@ -155,6 +158,11 @@ def _run_profile(vec_env, env, robot, policy, obs, pose_np, velocity_np, waist_i
         )
         gate_fraction = gate_fraction * gate_fraction * (3.0 - 2.0 * gate_fraction)
         gate_fraction = torch.where(gate_latched, gate_fraction, torch.zeros_like(gate_fraction))
+        newly_gate = (gate_latched & (gate_on_step == args_cli.steps))
+        gate_on_step[newly_gate] = step
+        actor_effective = torch.max(torch.abs(actor_action), dim=-1).values > 0.01
+        newly_actor = actor_effective & (actor_first_step == args_cli.steps)
+        actor_first_step[newly_actor] = step
         action = actor_action.clone()
         action[:pair_count] = 0.0
         ready = healthy_count >= args_cli.healthy_dwell_steps
@@ -177,6 +185,8 @@ def _run_profile(vec_env, env, robot, policy, obs, pose_np, velocity_np, waist_i
         tilt = _tilt(robot.data.projected_gravity_b)
         ang = torch.linalg.vector_norm(robot.data.root_ang_vel_b[:, :2], dim=-1)
         healthy = (tilt <= args_cli.healthy_tilt_rad) & (ang <= args_cli.healthy_ang_vel_rad_s)
+        new_peak = tilt > max_tilt
+        peak_tilt_step[new_peak] = step
         max_tilt = torch.maximum(max_tilt, tilt)
         min_height = torch.minimum(min_height, robot.data.root_pos_w[:, 2])
         action_sq += torch.sum(torch.square(action), dim=1)
@@ -243,6 +253,10 @@ def _run_profile(vec_env, env, robot, policy, obs, pose_np, velocity_np, waist_i
                     "peak_tilt_rad": float(max_tilt[sl][i].item()),
                     "gate_active_fraction": float((gate_active_count[sl][i] / args_cli.steps).item()),
                     "action_rms": float(torch.sqrt(action_sq[sl][i] / args_cli.steps).item()),
+                    "gate_on_step": int(gate_on_step[sl][i].item()),
+                    "actor_first_effective_step": int(actor_first_step[sl][i].item()),
+                    "peak_tilt_step": int(peak_tilt_step[sl][i].item()),
+                    "gate_lead_time_steps": int((peak_tilt_step[sl][i] - gate_on_step[sl][i]).item()),
                 }
                 for i in range(pair_count)
             ],

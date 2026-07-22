@@ -55,6 +55,18 @@ gym.register(
     },
 )
 
+# Static receive-ready stance: a wider, flexed base working point qualified
+# before it is combined with any upper-body strike reference.
+gym.register(
+    id="A3CatchReadyStand-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": stand_env_cfg.A3CatchReadyStandEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:A3BaseStandLowNoisePPORunnerCfg",
+    },
+)
+
 gym.register(
     id="A3BaseStandRecoveryA-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",

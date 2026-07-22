@@ -1,0 +1,580 @@
+{
+  "schema_version": 1,
+  "stage": "strike_conditioned_rsi_bank_v1",
+  "training_eligible": false,
+  "state_semantics": "full_native_retargeted_state_with_continuation_context",
+  "required_arrays": [
+    "joint_pos",
+    "joint_vel",
+    "body_pos_w",
+    "body_quat_w",
+    "body_lin_vel_w",
+    "body_ang_vel_w",
+    "root_pos_w",
+    "root_quat_w",
+    "root_lin_vel_w",
+    "root_ang_vel_w",
+    "phase_id",
+    "frame_offset_from_hit",
+    "time_to_hit_s"
+  ],
+  "continuation_context": {
+    "present": [
+      "root_state",
+      "joint_state",
+      "phase_index"
+    ],
+    "not_present_and_must_be_captured_before_training": [
+      "previous_action",
+      "pd_target",
+      "actuator_internal_state",
+      "observation_history",
+      "action_history",
+      "phase_accumulator",
+      "filter_state",
+      "foot_contact_state",
+      "ball_state",
+      "racket_state"
+    ]
+  },
+  "phase_names": [
+    "preparation",
+    "swing_acceleration",
+    "pre_contact",
+    "contact",
+    "deceleration",
+    "follow_through",
+    "ready_recovery"
+  ],
+  "source_manifest": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz_manifest.json",
+  "entries": [
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "state_file": "T002_015_gao01_15p25_17p25_dyp5cm.npz",
+      "source_motion": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz/T002_015_gao01_15p25_17p25_dyp5cm.npz",
+      "fps": 50.0,
+      "num_frames": 80,
+      "hit_frame": 30,
+      "phase_names": [
+        "preparation",
+        "swing_acceleration",
+        "pre_contact",
+        "contact",
+        "deceleration",
+        "follow_through",
+        "ready_recovery"
+      ],
+      "strike_target": {
+        "racket_position_m": [
+          2.685343449295345,
+          0.31797272354782696,
+          0.3190760193911114
+        ],
+        "racket_quat_xyzw": [
+          -0.2801719581680884,
+          0.5624819160169564,
+          0.6511119027837913,
+          0.42564193644825854
+        ],
+        "racket_normal_w": [
+          -0.8694643819800241,
+          -0.004886072180940726,
+          0.4939714716122151
+        ],
+        "racket_tangent_w": [
+          -0.4806652315856712,
+          0.2390977426015885,
+          -0.8436783774801377
+        ],
+        "racket_velocity_mps": [
+          -2.1478530280249615,
+          -0.08451630563117413,
+          1.4951749981184501
+        ],
+        "racket_velocity_direction_w": [
+          -0.820295443136043,
+          -0.03227797222405644,
+          0.5710284743157261
+        ],
+        "ball_position_m": [
+          2.6438798820089553,
+          0.2893662958346657,
+          0.3530752489895562
+        ],
+        "ball_in_velocity_mps": [
+          1.5181294360845046,
+          1.0399656462656874,
+          -0.6650447128163015
+        ],
+        "ball_out_velocity_mps": [
+          -4.218549986966393,
+          -2.222371524129866,
+          1.478827333315237
+        ],
+        "ball_to_racket_center_distance_m": 0.05773092724522034
+      }
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp10cm",
+      "state_file": "T002_015_gao01_15p25_17p25_dyp10cm.npz",
+      "source_motion": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz/T002_015_gao01_15p25_17p25_dyp10cm.npz",
+      "fps": 50.0,
+      "num_frames": 80,
+      "hit_frame": 30,
+      "phase_names": [
+        "preparation",
+        "swing_acceleration",
+        "pre_contact",
+        "contact",
+        "deceleration",
+        "follow_through",
+        "ready_recovery"
+      ],
+      "strike_target": {
+        "racket_position_m": [
+          2.685343449295345,
+          0.36797272354782695,
+          0.3190760193911114
+        ],
+        "racket_quat_xyzw": [
+          -0.2801719581680884,
+          0.5624819160169564,
+          0.6511119027837913,
+          0.42564193644825854
+        ],
+        "racket_normal_w": [
+          -0.8694643819800241,
+          -0.004886072180940726,
+          0.4939714716122151
+        ],
+        "racket_tangent_w": [
+          -0.4806652315856712,
+          0.2390977426015885,
+          -0.8436783774801377
+        ],
+        "racket_velocity_mps": [
+          -2.1478530280249615,
+          -0.08451630563117413,
+          1.4951749981184501
+        ],
+        "racket_velocity_direction_w": [
+          -0.820295443136043,
+          -0.03227797222405644,
+          0.5710284743157261
+        ],
+        "ball_position_m": [
+          2.6438798820089553,
+          0.2893662958346657,
+          0.3530752489895562
+        ],
+        "ball_in_velocity_mps": [
+          1.5181294360845046,
+          1.0399656462656874,
+          -0.6650447128163015
+        ],
+        "ball_out_velocity_mps": [
+          -4.218549986966393,
+          -2.222371524129866,
+          1.478827333315237
+        ],
+        "ball_to_racket_center_distance_m": 0.05773092724522034
+      }
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp15cm",
+      "state_file": "T002_015_gao01_15p25_17p25_dyp15cm.npz",
+      "source_motion": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz/T002_015_gao01_15p25_17p25_dyp15cm.npz",
+      "fps": 50.0,
+      "num_frames": 80,
+      "hit_frame": 30,
+      "phase_names": [
+        "preparation",
+        "swing_acceleration",
+        "pre_contact",
+        "contact",
+        "deceleration",
+        "follow_through",
+        "ready_recovery"
+      ],
+      "strike_target": {
+        "racket_position_m": [
+          2.685343449295345,
+          0.417972723547827,
+          0.3190760193911114
+        ],
+        "racket_quat_xyzw": [
+          -0.2801719581680884,
+          0.5624819160169564,
+          0.6511119027837913,
+          0.42564193644825854
+        ],
+        "racket_normal_w": [
+          -0.8694643819800241,
+          -0.004886072180940726,
+          0.4939714716122151
+        ],
+        "racket_tangent_w": [
+          -0.4806652315856712,
+          0.2390977426015885,
+          -0.8436783774801377
+        ],
+        "racket_velocity_mps": [
+          -2.1478530280249615,
+          -0.08451630563117413,
+          1.4951749981184501
+        ],
+        "racket_velocity_direction_w": [
+          -0.820295443136043,
+          -0.03227797222405644,
+          0.5710284743157261
+        ],
+        "ball_position_m": [
+          2.6438798820089553,
+          0.2893662958346657,
+          0.3530752489895562
+        ],
+        "ball_in_velocity_mps": [
+          1.5181294360845046,
+          1.0399656462656874,
+          -0.6650447128163015
+        ],
+        "ball_out_velocity_mps": [
+          -4.218549986966393,
+          -2.222371524129866,
+          1.478827333315237
+        ],
+        "ball_to_racket_center_distance_m": 0.05773092724522034
+      }
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp20cm",
+      "state_file": "T002_015_gao01_15p25_17p25_dyp20cm.npz",
+      "source_motion": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz/T002_015_gao01_15p25_17p25_dyp20cm.npz",
+      "fps": 50.0,
+      "num_frames": 80,
+      "hit_frame": 30,
+      "phase_names": [
+        "preparation",
+        "swing_acceleration",
+        "pre_contact",
+        "contact",
+        "deceleration",
+        "follow_through",
+        "ready_recovery"
+      ],
+      "strike_target": {
+        "racket_position_m": [
+          2.685343449295345,
+          0.467972723547827,
+          0.3190760193911114
+        ],
+        "racket_quat_xyzw": [
+          -0.2801719581680884,
+          0.5624819160169564,
+          0.6511119027837913,
+          0.42564193644825854
+        ],
+        "racket_normal_w": [
+          -0.8694643819800241,
+          -0.004886072180940726,
+          0.4939714716122151
+        ],
+        "racket_tangent_w": [
+          -0.4806652315856712,
+          0.2390977426015885,
+          -0.8436783774801377
+        ],
+        "racket_velocity_mps": [
+          -2.1478530280249615,
+          -0.08451630563117413,
+          1.4951749981184501
+        ],
+        "racket_velocity_direction_w": [
+          -0.820295443136043,
+          -0.03227797222405644,
+          0.5710284743157261
+        ],
+        "ball_position_m": [
+          2.6438798820089553,
+          0.2893662958346657,
+          0.3530752489895562
+        ],
+        "ball_in_velocity_mps": [
+          1.5181294360845046,
+          1.0399656462656874,
+          -0.6650447128163015
+        ],
+        "ball_out_velocity_mps": [
+          -4.218549986966393,
+          -2.222371524129866,
+          1.478827333315237
+        ],
+        "ball_to_racket_center_distance_m": 0.05773092724522034
+      }
+    },
+    {
+      "episode_id": "T03_012_gao01_12p10_14p10_dyp5cm",
+      "state_file": "T03_012_gao01_12p10_14p10_dyp5cm.npz",
+      "source_motion": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz/T03_012_gao01_12p10_14p10_dyp5cm.npz",
+      "fps": 50.0,
+      "num_frames": 80,
+      "hit_frame": 30,
+      "phase_names": [
+        "preparation",
+        "swing_acceleration",
+        "pre_contact",
+        "contact",
+        "deceleration",
+        "follow_through",
+        "ready_recovery"
+      ],
+      "strike_target": {
+        "racket_position_m": [
+          2.482127152951041,
+          0.0828701154098355,
+          0.3220059740636206
+        ],
+        "racket_quat_xyzw": [
+          0.23185290001554515,
+          -0.4831217916581204,
+          -0.7627696710625153,
+          -0.36196684390509
+        ],
+        "racket_normal_w": [
+          -0.776221037835327,
+          -0.2711466766768722,
+          0.5691751752746566
+        ],
+        "racket_tangent_w": [
+          -0.63044847333554,
+          0.3281682840087622,
+          -0.7034488608560198
+        ],
+        "racket_velocity_mps": [
+          -2.3886234507058144,
+          -0.1336503951415071,
+          1.1050994939139767
+        ],
+        "racket_velocity_direction_w": [
+          -0.9064068047984386,
+          -0.050716084020889125,
+          0.41935019141127317
+        ],
+        "ball_position_m": [
+          2.479195041294936,
+          -0.01290371315051829,
+          0.3290565187077023
+        ],
+        "ball_in_velocity_mps": [
+          2.304052582438041,
+          0.9284608319122868,
+          1.3646360858717015
+        ],
+        "ball_out_velocity_mps": [
+          -4.652787271719825,
+          -1.9969313705246508,
+          1.1114214877141237
+        ],
+        "ball_to_racket_center_distance_m": 0.04640636636944023
+      }
+    },
+    {
+      "episode_id": "T03_012_gao01_12p10_14p10_dyp10cm",
+      "state_file": "T03_012_gao01_12p10_14p10_dyp10cm.npz",
+      "source_motion": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz/T03_012_gao01_12p10_14p10_dyp10cm.npz",
+      "fps": 50.0,
+      "num_frames": 80,
+      "hit_frame": 30,
+      "phase_names": [
+        "preparation",
+        "swing_acceleration",
+        "pre_contact",
+        "contact",
+        "deceleration",
+        "follow_through",
+        "ready_recovery"
+      ],
+      "strike_target": {
+        "racket_position_m": [
+          2.482127152951041,
+          0.13287011540983548,
+          0.3220059740636206
+        ],
+        "racket_quat_xyzw": [
+          0.23185290001554515,
+          -0.4831217916581204,
+          -0.7627696710625153,
+          -0.36196684390509
+        ],
+        "racket_normal_w": [
+          -0.776221037835327,
+          -0.2711466766768722,
+          0.5691751752746566
+        ],
+        "racket_tangent_w": [
+          -0.63044847333554,
+          0.3281682840087622,
+          -0.7034488608560198
+        ],
+        "racket_velocity_mps": [
+          -2.3886234507058144,
+          -0.1336503951415071,
+          1.1050994939139767
+        ],
+        "racket_velocity_direction_w": [
+          -0.9064068047984386,
+          -0.050716084020889125,
+          0.41935019141127317
+        ],
+        "ball_position_m": [
+          2.479195041294936,
+          -0.01290371315051829,
+          0.3290565187077023
+        ],
+        "ball_in_velocity_mps": [
+          2.304052582438041,
+          0.9284608319122868,
+          1.3646360858717015
+        ],
+        "ball_out_velocity_mps": [
+          -4.652787271719825,
+          -1.9969313705246508,
+          1.1114214877141237
+        ],
+        "ball_to_racket_center_distance_m": 0.04640636636944023
+      }
+    },
+    {
+      "episode_id": "T03_012_gao01_12p10_14p10_dyp15cm",
+      "state_file": "T03_012_gao01_12p10_14p10_dyp15cm.npz",
+      "source_motion": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz/T03_012_gao01_12p10_14p10_dyp15cm.npz",
+      "fps": 50.0,
+      "num_frames": 80,
+      "hit_frame": 30,
+      "phase_names": [
+        "preparation",
+        "swing_acceleration",
+        "pre_contact",
+        "contact",
+        "deceleration",
+        "follow_through",
+        "ready_recovery"
+      ],
+      "strike_target": {
+        "racket_position_m": [
+          2.482127152951041,
+          0.18287011540983547,
+          0.3220059740636206
+        ],
+        "racket_quat_xyzw": [
+          0.23185290001554515,
+          -0.4831217916581204,
+          -0.7627696710625153,
+          -0.36196684390509
+        ],
+        "racket_normal_w": [
+          -0.776221037835327,
+          -0.2711466766768722,
+          0.5691751752746566
+        ],
+        "racket_tangent_w": [
+          -0.63044847333554,
+          0.3281682840087622,
+          -0.7034488608560198
+        ],
+        "racket_velocity_mps": [
+          -2.3886234507058144,
+          -0.1336503951415071,
+          1.1050994939139767
+        ],
+        "racket_velocity_direction_w": [
+          -0.9064068047984386,
+          -0.050716084020889125,
+          0.41935019141127317
+        ],
+        "ball_position_m": [
+          2.479195041294936,
+          -0.01290371315051829,
+          0.3290565187077023
+        ],
+        "ball_in_velocity_mps": [
+          2.304052582438041,
+          0.9284608319122868,
+          1.3646360858717015
+        ],
+        "ball_out_velocity_mps": [
+          -4.652787271719825,
+          -1.9969313705246508,
+          1.1114214877141237
+        ],
+        "ball_to_racket_center_distance_m": 0.04640636636944023
+      }
+    },
+    {
+      "episode_id": "T03_012_gao01_12p10_14p10_dyp20cm",
+      "state_file": "T03_012_gao01_12p10_14p10_dyp20cm.npz",
+      "source_motion": "/home/bruce/桌面/HOPETableTennis/data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_forehand_combined_gate_v1/optimized_motion_npz/T03_012_gao01_12p10_14p10_dyp20cm.npz",
+      "fps": 50.0,
+      "num_frames": 80,
+      "hit_frame": 30,
+      "phase_names": [
+        "preparation",
+        "swing_acceleration",
+        "pre_contact",
+        "contact",
+        "deceleration",
+        "follow_through",
+        "ready_recovery"
+      ],
+      "strike_target": {
+        "racket_position_m": [
+          2.482127152951041,
+          0.2328701154098355,
+          0.3220059740636206
+        ],
+        "racket_quat_xyzw": [
+          0.23185290001554515,
+          -0.4831217916581204,
+          -0.7627696710625153,
+          -0.36196684390509
+        ],
+        "racket_normal_w": [
+          -0.776221037835327,
+          -0.2711466766768722,
+          0.5691751752746566
+        ],
+        "racket_tangent_w": [
+          -0.63044847333554,
+          0.3281682840087622,
+          -0.7034488608560198
+        ],
+        "racket_velocity_mps": [
+          -2.3886234507058144,
+          -0.1336503951415071,
+          1.1050994939139767
+        ],
+        "racket_velocity_direction_w": [
+          -0.9064068047984386,
+          -0.050716084020889125,
+          0.41935019141127317
+        ],
+        "ball_position_m": [
+          2.479195041294936,
+          -0.01290371315051829,
+          0.3290565187077023
+        ],
+        "ball_in_velocity_mps": [
+          2.304052582438041,
+          0.9284608319122868,
+          1.3646360858717015
+        ],
+        "ball_out_velocity_mps": [
+          -4.652787271719825,
+          -1.9969313705246508,
+          1.1114214877141237
+        ],
+        "ball_to_racket_center_distance_m": 0.04640636636944023
+      }
+    }
+  ]
+}

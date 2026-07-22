@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "stage": "native_strike_realized_rsi_direct_load_continuity_audit_v1",
+  "training_eligible": false,
+  "passed": false,
+  "criteria": {
+    "max_first_step_joint_delta_ratio": 1.25,
+    "max_first_step_torque_ratio": 1.5
+  },
+  "summary": {
+    "cases": 8,
+    "max_joint_delta_ratio": 7.665568786605534,
+    "max_torque_ratio": 3.3312470086082095,
+    "diagnosis": "direct load preserves q/dq/root/PD target but not the full PhysX contact and solver history"
+  },
+  "cases": [
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "phase": "preparation",
+      "loaded_step": 1,
+      "direct_joint_delta_norm": 0.2053374946117401,
+      "continuous_joint_delta_norm": 0.14760786294937134,
+      "joint_delta_ratio": 1.3911013309783484,
+      "direct_torque_abs_max_nm": 94.41378021240234,
+      "continuous_torque_abs_max_nm": 28.341873168945312,
+      "torque_ratio": 3.3312470086082095
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "phase": "swing_start",
+      "loaded_step": 10,
+      "direct_joint_delta_norm": 0.17762647569179535,
+      "continuous_joint_delta_norm": 0.0913446769118309,
+      "joint_delta_ratio": 1.94457391166041,
+      "direct_torque_abs_max_nm": 64.86595153808594,
+      "continuous_torque_abs_max_nm": 38.664207458496094,
+      "torque_ratio": 1.6776744126390275
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "phase": "acceleration",
+      "loaded_step": 18,
+      "direct_joint_delta_norm": 0.1499989777803421,
+      "continuous_joint_delta_norm": 0.04700643941760063,
+      "joint_delta_ratio": 3.191030412828459,
+      "direct_torque_abs_max_nm": 63.80804443359375,
+      "continuous_torque_abs_max_nm": 29.46752166748047,
+      "torque_ratio": 2.165368542140092
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "phase": "pre_contact",
+      "loaded_step": 25,
+      "direct_joint_delta_norm": 0.1568257063627243,
+      "continuous_joint_delta_norm": 0.0472504124045372,
+      "joint_delta_ratio": 3.319033599538809,
+      "direct_torque_abs_max_nm": 77.29337310791016,
+      "continuous_torque_abs_max_nm": 38.92951965332031,
+      "torque_ratio": 1.985469479105627
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "phase": "contact",
+      "loaded_step": 30,
+      "direct_joint_delta_norm": 0.14400434494018555,
+      "continuous_joint_delta_norm": 0.029186056926846504,
+      "joint_delta_ratio": 4.934011651561078,
+      "direct_torque_abs_max_nm": 74.32257843017578,
+      "continuous_torque_abs_max_nm": 38.55644989013672,
+      "torque_ratio": 1.9276302315682996
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "phase": "deceleration",
+      "loaded_step": 35,
+      "direct_joint_delta_norm": 0.17755167186260223,
+      "continuous_joint_delta_norm": 0.0460691936314106,
+      "joint_delta_ratio": 3.854021697951863,
+      "direct_torque_abs_max_nm": 82.51359558105469,
+      "continuous_torque_abs_max_nm": 39.82280731201172,
+      "torque_ratio": 2.0720185529503388
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "phase": "follow_through",
+      "loaded_step": 50,
+      "direct_joint_delta_norm": 0.1560373157262802,
+      "continuous_joint_delta_norm": 0.02035560831427574,
+      "joint_delta_ratio": 7.665568786605534,
+      "direct_torque_abs_max_nm": 92.40097045898438,
+      "continuous_torque_abs_max_nm": 28.399497985839844,
+      "torque_ratio": 3.253612810517145
+    },
+    {
+      "episode_id": "T002_015_gao01_15p25_17p25_dyp5cm",
+      "phase": "ready_recovery",
+      "loaded_step": 70,
+      "direct_joint_delta_norm": 0.15669003129005432,
+      "continuous_joint_delta_norm": 0.022537384182214737,
+      "joint_delta_ratio": 6.952449761836401,
+      "direct_torque_abs_max_nm": 91.16902923583984,
+      "continuous_torque_abs_max_nm": 38.537071228027344,
+      "torque_ratio": 2.365748779827726
+    }
+  ]
+}

@@ -332,11 +332,48 @@ def _run(cfg, simulation_app):
         "forearm_racket_angle_deg": torch.full((n,), float("nan"), device=device),
         "captured": torch.zeros(n, dtype=torch.bool, device=device),
     }
+    strike_seen = torch.zeros(n, dtype=torch.bool, device=device)
+    strike_step = torch.full((n,), -1, dtype=torch.long, device=device)
+    pre_count = torch.zeros(n, dtype=torch.long, device=device)
+    post_count = torch.zeros(n, dtype=torch.long, device=device)
+    pre_max_tilt = torch.zeros(n, device=device)
+    post_max_tilt = torch.zeros(n, device=device)
+    pre_max_ang = torch.zeros(n, device=device)
+    post_max_ang = torch.zeros(n, device=device)
+    pre_min_joint_margin = torch.full((n,), float("inf"), device=device)
+    post_min_joint_margin = torch.full((n,), float("inf"), device=device)
 
     max_steps = int(cfg.get("max_steps") or 100)
-    for _ in range(max_steps):
+    for step_index in range(max_steps):
         env.step(zeros)
         exact = torch.abs(racket_cmd.time_to_strike[:n]) <= (0.5 * env.unwrapped.step_dt + 1.0e-6)
+        new_strike = exact & (~strike_seen)
+        strike_step[new_strike] = step_index
+        strike_seen |= exact
+        body_quat_now = robot.data.body_quat_w[:n, torso_body_id]
+        torso_up_now = matrix_from_quat(body_quat_now)[:, :, 2]
+        torso_tilt_now = torch.rad2deg(torch.acos(torso_up_now[:, 2].clamp(-1.0, 1.0)))
+        ang_now = torch.linalg.vector_norm(robot.data.root_ang_vel_w[:n, :2], dim=-1)
+        if native_joint_ids is not None:
+            joint_now = robot.data.joint_pos[:n, native_joint_ids]
+            limits_now = robot.data.soft_joint_pos_limits[:n, native_joint_ids]
+            span_now = torch.clamp(limits_now[..., 1] - limits_now[..., 0], min=1.0e-6)
+            joint_margin_now = torch.minimum(joint_now - limits_now[..., 0], limits_now[..., 1] - joint_now) / span_now
+            min_margin_now = joint_margin_now.min(dim=-1).values
+        else:
+            min_margin_now = torch.full((n,), float("nan"), device=device)
+        t_to_strike = racket_cmd.time_to_strike[:n]
+        pre = (~strike_seen) & (t_to_strike >= 0.10) & (t_to_strike <= 0.20)
+        age = step_index - strike_step
+        post = strike_seen & (age >= 15) & (age <= 50)
+        pre_count += pre
+        post_count += post
+        pre_max_tilt = torch.maximum(pre_max_tilt, torch.where(pre, torso_tilt_now, torch.zeros_like(torso_tilt_now)))
+        post_max_tilt = torch.maximum(post_max_tilt, torch.where(post, torso_tilt_now, torch.zeros_like(torso_tilt_now)))
+        pre_max_ang = torch.maximum(pre_max_ang, torch.where(pre, ang_now, torch.zeros_like(ang_now)))
+        post_max_ang = torch.maximum(post_max_ang, torch.where(post, ang_now, torch.zeros_like(ang_now)))
+        pre_min_joint_margin = torch.minimum(pre_min_joint_margin, torch.where(pre, min_margin_now, torch.full_like(min_margin_now, float("inf"))))
+        post_min_joint_margin = torch.minimum(post_min_joint_margin, torch.where(post, min_margin_now, torch.full_like(min_margin_now, float("inf"))))
         take = exact & (~captured["captured"])
         if bool(take.any()):
             captured["pos"][take] = racket_cmd.racket_pos_w[:n][take]
@@ -591,6 +628,16 @@ def _run(cfg, simulation_app):
             flush=True,
         )
     if rows:
+        print("[INFO] strike-centered windows (pre=100-200ms, post=300-1000ms):", flush=True)
+        print("rank,stroke,episode_id,pre_samples,pre_tilt_max_deg,pre_ang_vel_max_rad_s,pre_min_joint_margin,post_samples,post_tilt_max_deg,post_ang_vel_max_rad_s,post_min_joint_margin", flush=True)
+        for i, (stroke, name) in enumerate(zip(strokes, names), start=1):
+            print(
+                f"{i},{stroke},{name},{int(pre_count[i-1].item())},{float(pre_max_tilt[i-1].item()):.2f},"
+                f"{float(pre_max_ang[i-1].item()):.4f},{float(pre_min_joint_margin[i-1].item()):.4f},"
+                f"{int(post_count[i-1].item())},{float(post_max_tilt[i-1].item()):.2f},"
+                f"{float(post_max_ang[i-1].item()):.4f},{float(post_min_joint_margin[i-1].item()):.4f}",
+                flush=True,
+            )
         hit_rate = sum(1 for r in rows if r[3]) / len(rows)
         posture_rate = sum(1 for r in rows if r[15]) / len(rows)
         robot_posture_rate = sum(1 for r in rows if r[26]) / len(rows)

@@ -21,22 +21,7 @@ from training.robots.agibot_a3 import A3_ANCHOR_BODY
 # under the PD_STAND gains selected by the passive-stability ablation.  The raw
 # v1 clip remains +/-0.25, so the first smoke can command at most 6.25% of the
 # simulated effort limit.  Neither these scales nor the gains are deployment-approved.
-A3_PD_STAND_BASE_ACTION_SCALE_RAD = (
-    0.03666666666666667,  # left hip pitch: 0.25 * 220 / 1500
-    0.1375,               # left hip roll:  0.25 * 220 / 400
-    0.18333333333333332,  # left hip yaw:   0.25 * 220 / 300
-    0.04,                 # left knee:      0.25 * 320 / 2000
-    0.0591,               # left ankle pitch: 0.25 * 118.2 / 500
-    0.027375,             # left ankle roll:  0.25 * 54.75 / 500
-    0.03666666666666667,
-    0.1375,
-    0.18333333333333332,
-    0.04,
-    0.0591,
-    0.027375,
-    0.023,                # waist roll:  0.25 * 46 / 500
-    0.059,                # waist pitch: 0.25 * 118 / 500
-)
+A3_PD_STAND_BASE_ACTION_SCALE_RAD = mdp.A3_PD_STAND_BASE_ACTION_SCALE_RAD
 
 
 @configclass
@@ -139,6 +124,112 @@ class A3BaseStandPassiveStableCandidateEnvCfg(A3BaseStandEnvCfg):
         }
         self.actions.base.action_scale_rad = A3_PD_STAND_BASE_ACTION_SCALE_RAD
         self.actions.base.raw_clip = 0.25
+
+
+@configclass
+class A3CatchReadyStandEnvCfg(A3BaseStandPassiveStableCandidateEnvCfg):
+    """Static receive-ready plant before any swing is introduced.
+
+    This is a task reference, not a prescribed policy action: the robot starts
+    and the zero-action controller both use a moderately flexed, symmetric
+    hip/knee/ankle posture with a slightly wider support base.  PPO will later
+    learn residual coordination around this working point; it is never told to
+    reproduce a knee-bend or hip-roll action sequence.
+    """
+
+    # The static receive-ready policy controls legs only.  Waist motion is a
+    # swing reference responsibility in the next stage, not an extra degree of
+    # freedom for the standing policy to exploit here.
+    def __post_init__(self):
+        super().__post_init__()
+        # Instantiate after the passive-plant setup.  Keeping the event/reward
+        # declarations below this class makes the receive-ready additions easy
+        # to audit without changing the approved passive plant.
+        self.events = A3CatchReadyStandEventCfg()
+        self.rewards = A3CatchReadyStandRewardsCfg()
+        ready_q = {
+            # Existing A3 stand is already mildly flexed.  This is a deeper but
+            # still conservative receiving stance: hip/knee/ankle move together
+            # and left/right hip roll opens the support base symmetrically.
+            ".*_hip_pitch_joint": -0.1600,
+            ".*_knee_joint": 0.3200,
+            ".*_ankle_pitch_joint": -0.1550,
+            "left_hip_roll_joint": 0.0800,
+            "right_hip_roll_joint": -0.0800,
+        }
+        self.scene.robot.init_state.pos = (0.0, 0.0, 1.0400)
+        self.scene.robot.init_state.joint_pos = {
+            **self.scene.robot.init_state.joint_pos,
+            **ready_q,
+        }
+        # The ready stance has a deliberately lower pelvis.  Stabilize around
+        # this physical working point rather than rewarding a return to the
+        # old straight-stand height.
+        self.rewards.base_height.params["target_height"] = 1.0400
+        # The actor's command-context height must describe the same working
+        # point as the reset and reward, otherwise it advertises the old
+        # straight-stand height to the policy.
+        self.observations.policy.actor.params["nominal_body_height_m"] = 1.0400
+        self.observations.critic.critic.params["nominal_body_height_m"] = 1.0400
+        self.actions.base.action_mask = tuple(
+            0.0 if joint.startswith("waist_") else 1.0
+            for joint in A3_BASE_ACTION_JOINTS
+        )
+
+
+@configclass
+class A3CatchReadyStandEventCfg(BaseEventCfg):
+    """Small observable reset errors for leg-only receive-ready stabilization.
+
+    The clean slice preserves the qualified zero-residual plant.  The remaining
+    resets contain only small root roll/pitch and angular-velocity errors; no
+    joint-action template or scripted recovery motion is supplied.
+    """
+
+    reset_all = EventTerm(
+        func=mdp.reset_scene_with_recovery_a_disturbance,
+        mode="reset",
+        params={
+            "undisturbed_fraction": 0.50,
+            "roll_pitch_range_rad": (-0.025, 0.025),
+            "angular_velocity_range_rad_s": (-0.12, 0.12),
+            "linear_velocity_range_m_s": (-0.10, 0.10),
+            "medium_fraction": 0.0,
+        },
+    )
+
+
+@configclass
+class A3CatchReadyStandRewardsCfg(A3BaseStandRewardV2Cfg):
+    """Outcome-only shaping for the receive-ready stance."""
+
+    stability_progress = RewTerm(
+        func=mdp.RecoveryPotentialProgress,
+        weight=0.50,
+        params={
+            "tilt_scale_rad": 0.04,
+            "angular_velocity_scale_rad_s": 0.15,
+            "height_scale_m": 0.02,
+        },
+    )
+    healthy_action = RewTerm(
+        func=mdp.healthy_action_l2,
+        weight=-0.25,
+        params={
+            "tilt_scale_rad": 0.04,
+            "angular_velocity_scale_rad_s": 0.15,
+            "height_scale_m": 0.02,
+        },
+    )
+    # A raw output beyond this trust band has no extra physical benefit once
+    # the action term clips at +/-0.25.  PPO must pay for attempting it rather
+    # than treating actuator clipping as ordinary control.
+    raw_action_excess = RewTerm(
+        func=mdp.raw_action_excess_l2,
+        weight=-8.0,
+        params={"raw_limit": 0.125},
+    )
+    physical_residual = RewTerm(func=mdp.physical_residual_l2, weight=-1.0)
 
 
 @configclass

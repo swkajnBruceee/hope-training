@@ -1,0 +1,427 @@
+{
+  "schema_version": 1,
+  "audit_id": "strike_stabilizer_a_untrained_bounded_leg_safety_smoke_v1",
+  "task": "HOPE-StrikeStabilizerA-AgibotA3-v0",
+  "simulation_only": true,
+  "training_authorization": false,
+  "pairs": 2,
+  "policy_steps": 3,
+  "swing_steps": 79,
+  "post_swing_tail_steps": 150,
+  "random_action_bound": 0.05,
+  "hold_steps": 5,
+  "seed": 20260722,
+  "case_offset": 0,
+  "motion_ids_per_pair": [
+    0,
+    1
+  ],
+  "handoff_steps_per_pair": [
+    0,
+    10
+  ],
+  "metrics": {
+    "zero_residual": {
+      "survival_fraction": 1.0,
+      "max_base_torque_nm": {
+        "min": 17.460445404052734,
+        "mean": 17.517303466796875,
+        "median": 17.460445404052734,
+        "p95": 17.568477630615234,
+        "max": 17.57416343688965
+      },
+      "min_soft_joint_margin_rad": {
+        "min": 0.24383169412612915,
+        "mean": 0.24384889006614685,
+        "median": 0.24383169412612915,
+        "p95": 0.24386437237262726,
+        "max": 0.24386608600616455
+      },
+      "foot_contact_fraction": {
+        "min": 1.0,
+        "mean": 1.0,
+        "median": 1.0,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "torso_angular_velocity_rms": {
+        "min": 0.13065023720264435,
+        "mean": 0.1394544243812561,
+        "median": 0.13065023720264435,
+        "p95": 0.14737817645072937,
+        "max": 0.14825859665870667
+      },
+      "torque_saturation_fraction": 0.0,
+      "velocity_saturation_fraction": 0.0,
+      "max_consecutive_torque_saturation_steps": 0,
+      "max_consecutive_velocity_saturation_steps": 0,
+      "torque_saturation_by_joint": {
+        "left_hip_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_hip_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_hip_yaw_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_knee_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_ankle_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_ankle_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_yaw_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_knee_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_ankle_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_ankle_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "waist_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "waist_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        }
+      },
+      "velocity_saturation_by_joint": {
+        "left_hip_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_hip_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_hip_yaw_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_knee_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_ankle_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_ankle_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_yaw_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_knee_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_ankle_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_ankle_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "waist_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "waist_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        }
+      },
+      "post_swing_tail": {
+        "observed_frames": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "both_feet_contact_fraction": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "root_angular_velocity_rms": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "root_linear_velocity_rms": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "minimum_root_height_m": {
+          "min": Infinity,
+          "mean": Infinity,
+          "median": Infinity,
+          "p95": NaN,
+          "max": Infinity
+        },
+        "max_base_torque_nm": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        }
+      }
+    },
+    "bounded_random_legs": {
+      "survival_fraction": 1.0,
+      "max_base_torque_nm": {
+        "min": 17.576814651489258,
+        "mean": 18.678096771240234,
+        "median": 17.576814651489258,
+        "p95": 19.66925048828125,
+        "max": 19.77937889099121
+      },
+      "min_soft_joint_margin_rad": {
+        "min": 0.24386534094810486,
+        "mean": 0.24411910772323608,
+        "median": 0.24386534094810486,
+        "p95": 0.2443474978208542,
+        "max": 0.2443728744983673
+      },
+      "foot_contact_fraction": {
+        "min": 1.0,
+        "mean": 1.0,
+        "median": 1.0,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "torso_angular_velocity_rms": {
+        "min": 0.11598560214042664,
+        "mean": 0.13209210336208344,
+        "median": 0.11598560214042664,
+        "p95": 0.14658795297145844,
+        "max": 0.14819860458374023
+      },
+      "raw_action_rms": 0.020044948905706406,
+      "sampled_raw_exceed_fraction": 0.0,
+      "execution_clip_fraction": 0.0,
+      "waist_action_max": 0.0,
+      "torque_saturation_fraction": 0.0,
+      "velocity_saturation_fraction": 0.0,
+      "max_consecutive_torque_saturation_steps": 0,
+      "max_consecutive_velocity_saturation_steps": 0,
+      "torque_saturation_by_joint": {
+        "left_hip_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_hip_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_hip_yaw_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_knee_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_ankle_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_ankle_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_yaw_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_knee_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_ankle_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_ankle_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "waist_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "waist_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        }
+      },
+      "velocity_saturation_by_joint": {
+        "left_hip_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_hip_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_hip_yaw_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_knee_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_ankle_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "left_ankle_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_hip_yaw_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_knee_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_ankle_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "right_ankle_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "waist_roll_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        },
+        "waist_pitch_joint": {
+          "fraction": 0.0,
+          "max_consecutive_steps": 0
+        }
+      },
+      "post_swing_tail": {
+        "observed_frames": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "both_feet_contact_fraction": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "root_angular_velocity_rms": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "root_linear_velocity_rms": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "minimum_root_height_m": {
+          "min": Infinity,
+          "mean": Infinity,
+          "median": Infinity,
+          "p95": NaN,
+          "max": Infinity
+        },
+        "max_base_torque_nm": {
+          "min": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        }
+      }
+    }
+  },
+  "finite": true,
+  "runtime_safety_smoke_passed": false,
+  "notes": [
+    "The policy is never trained or loaded in this audit.",
+    "Random actions are applied only to the 12 leg channels after a continuous-prefix handoff.",
+    "Both waist residual channels remain structurally zero.",
+    "This smoke is not a PPO or checkpoint approval."
+  ]
+}

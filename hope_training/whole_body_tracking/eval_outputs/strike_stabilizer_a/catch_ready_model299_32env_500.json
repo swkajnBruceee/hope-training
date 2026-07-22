@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "evaluation_id": "a3_base_stand_checkpoint_eval_v1",
+  "task": "A3CatchReadyStand-v0",
+  "checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/a3_catch_ready_stand/2026-07-22_14-00-17_legs12_ready_stand_v1/model_299.pt",
+  "checkpoint_sha256": "cbf3d07f213a65beae867c2ee417c62d050c801cda60204804fff49a6049a2d3",
+  "num_envs": 32,
+  "policy_steps": 500,
+  "physics_dt_s": 0.005,
+  "policy_dt_s": 0.02,
+  "deterministic_inference": true,
+  "raw_action_clip_abs": 0.25,
+  "non_default_clip_is_diagnostic_only": false,
+  "completed_episode_count": 32,
+  "timeout_episode_count": 32,
+  "timeout_fraction_of_completed": 1.0,
+  "mean_completed_episode_length_steps": 500.0,
+  "min_completed_episode_length_steps": 500,
+  "max_completed_episode_length_steps": 500,
+  "censored_env_count_at_end": 0,
+  "termination_term_counts": {
+    "time_out": 32,
+    "torso_tilt": 0,
+    "base_height": 0,
+    "illegal_contact": 0,
+    "joint_limit": 0,
+    "nonfinite_state": 0
+  },
+  "joint_limit_violations_by_joint": [],
+  "mean_reward_per_policy_step": 0.03814289909647778,
+  "root_height_min_sampled_m": 1.0399999618530273,
+  "root_tilt_max_sampled_rad": 0.054940178990364075,
+  "torso_tilt_max_sampled_rad": 0.07779823988676071,
+  "raw_action_mean_abs": 0.07468002544982093,
+  "raw_action_max_abs": 0.4431818127632141,
+  "raw_action_clip_fraction": 0.03779017857142857,
+  "effective_action_mean_abs": 0.06805108834164483,
+  "effective_action_max_abs": 0.25,
+  "effective_action_clip_fraction": 0.03779017857142857,
+  "action_statistics_by_joint": [
+    {
+      "joint_name": "left_hip_pitch_joint",
+      "raw_mean": 0.011727510452270508,
+      "raw_mean_abs": 0.047797870635986325,
+      "raw_clip_fraction": 0.0,
+      "effective_mean": 0.011727510452270508,
+      "effective_min": -0.12344755232334137,
+      "effective_max": 0.11323921382427216
+    },
+    {
+      "joint_name": "left_hip_roll_joint",
+      "raw_mean": -0.04156039047241211,
+      "raw_mean_abs": 0.062388660430908204,
+      "raw_clip_fraction": 0.000625,
+      "effective_mean": -0.04155374526977539,
+      "effective_min": -0.25,
+      "effective_max": 0.10262543708086014
+    },
+    {
+      "joint_name": "left_hip_yaw_joint",
+      "raw_mean": 0.022874088287353517,
+      "raw_mean_abs": 0.18822486877441405,
+      "raw_clip_fraction": 0.3409375,
+      "effective_mean": 0.018695446014404298,
+      "effective_min": -0.25,
+      "effective_max": 0.25
+    },
+    {
+      "joint_name": "left_knee_joint",
+      "raw_mean": 0.005750993728637696,
+      "raw_mean_abs": 0.06496998596191406,
+      "raw_clip_fraction": 0.002,
+      "effective_mean": 0.005682962417602539,
+      "effective_min": -0.15675754845142365,
+      "effective_max": 0.25
+    },
+    {
+      "joint_name": "left_ankle_pitch_joint",
+      "raw_mean": -0.017619564056396485,
+      "raw_mean_abs": 0.08130847930908203,
+      "raw_clip_fraction": 0.000125,
+      "effective_mean": -0.017621082305908205,
+      "effective_min": -0.1803942769765854,
+      "effective_max": 0.25
+    },
+    {
+      "joint_name": "left_ankle_roll_joint",
+      "raw_mean": -0.006075896263122558,
+      "raw_mean_abs": 0.0787963638305664,
+      "raw_clip_fraction": 0.0024375,
+      "effective_mean": -0.00613038444519043,
+      "effective_min": -0.25,
+      "effective_max": 0.25
+    },
+    {
+      "joint_name": "right_hip_pitch_joint",
+      "raw_mean": 0.020800708770751953,
+      "raw_mean_abs": 0.06006394577026367,
+      "raw_clip_fraction": 0.0,
+      "effective_mean": 0.020800708770751953,
+      "effective_min": -0.12647645175457,
+      "effective_max": 0.24346815049648285
+    },
+    {
+      "joint_name": "right_hip_roll_joint",
+      "raw_mean": -0.017215885162353516,
+      "raw_mean_abs": 0.034899188995361326,
+      "raw_clip_fraction": 0.0,
+      "effective_mean": -0.017215885162353516,
+      "effective_min": -0.19333508610725403,
+      "effective_max": 0.09130047261714935
+    },
+    {
+      "joint_name": "right_hip_yaw_joint",
+      "raw_mean": 0.0011353899240493775,
+      "raw_mean_abs": 0.16901988220214845,
+      "raw_clip_fraction": 0.18025,
+      "effective_mean": -0.00012319357693195342,
+      "effective_min": -0.25,
+      "effective_max": 0.25
+    },
+    {
+      "joint_name": "right_knee_joint",
+      "raw_mean": -0.007139525413513184,
+      "raw_mean_abs": 0.04487034606933594,
+      "raw_clip_fraction": 0.0,
+      "effective_mean": -0.007139525413513184,
+      "effective_min": -0.14870323240756989,
+      "effective_max": 0.18565988540649414
+    },
+    {
+      "joint_name": "right_ankle_pitch_joint",
+      "raw_mean": -0.0439969596862793,
+      "raw_mean_abs": 0.09670719146728515,
+      "raw_clip_fraction": 0.0026875,
+      "effective_mean": -0.04375392532348633,
+      "effective_min": -0.25,
+      "effective_max": 0.25
+    },
+    {
+      "joint_name": "right_ankle_roll_joint",
+      "raw_mean": 0.01177257251739502,
+      "raw_mean_abs": 0.03651597213745117,
+      "raw_clip_fraction": 0.0,
+      "effective_mean": 0.01177257251739502,
+      "effective_min": -0.14308129251003265,
+      "effective_max": 0.12377743422985077
+    },
+    {
+      "joint_name": "waist_roll_joint",
+      "raw_mean": -0.023943389892578125,
+      "raw_mean_abs": 0.057035423278808596,
+      "raw_clip_fraction": 0.0,
+      "effective_mean": 0.0,
+      "effective_min": -0.0,
+      "effective_max": 0.0
+    },
+    {
+      "joint_name": "waist_pitch_joint",
+      "raw_mean": -0.004800392150878906,
+      "raw_mean_abs": 0.02292215919494629,
+      "raw_clip_fraction": 0.0,
+      "effective_mean": 0.0,
+      "effective_min": -0.0,
+      "effective_max": 0.0
+    }
+  ],
+  "nonfinite_step_count": 0,
+  "runtime_integrity_passed": true,
+  "stand_phase1_qualified": false,
+  "stand_long_training_approved": false,
+  "deployment_approved": false
+}

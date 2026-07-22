@@ -12,6 +12,33 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv
 
 
+def sample_strike_stabilizer_handoff_step(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor | None,
+    full_swing_probability: float,
+    candidate_steps: tuple[int, ...],
+):
+    """Sample a policy handoff phase without teleporting simulator state.
+
+    The Stage-A action term holds leg residuals at zero before this step. The
+    physics still runs from the start of the swing, so the policy never learns
+    an artificial reset/contact impulse.
+    """
+
+    if env_ids is None:
+        env_ids = torch.arange(env.num_envs, device=env.device)
+    if not hasattr(env, "strike_stabilizer_handoff_steps"):
+        env.strike_stabilizer_handoff_steps = torch.zeros(
+            env.num_envs, dtype=torch.long, device=env.device
+        )
+    draw_full = torch.rand(len(env_ids), device=env.device) < float(full_swing_probability)
+    candidates = torch.as_tensor(candidate_steps, dtype=torch.long, device=env.device)
+    sampled = candidates[torch.randint(len(candidates), (len(env_ids),), device=env.device)]
+    env.strike_stabilizer_handoff_steps[env_ids] = torch.where(
+        draw_full, torch.zeros_like(sampled), sampled
+    )
+
+
 def randomize_joint_default_pos(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor | None,

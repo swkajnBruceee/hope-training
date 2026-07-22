@@ -59,11 +59,11 @@ def header(sequence: int) -> dict:
     }
 
 
-def velocity_payload(sequence: int, lateral_velocity_mps: float) -> dict:
+def velocity_payload(sequence: int, lateral_velocity_mps: float, mode: int) -> dict:
     return {
         "header": header(sequence),
         "data": {
-            "mode": 0,
+            "mode": mode,
             "forward_velocity": 0.0,
             "lateral_velocity": lateral_velocity_mps,
             "angular_velocity": 0.0,
@@ -126,6 +126,7 @@ def summarize(samples: list[dict], command_duration_s: float) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--lateral-velocity-mps", type=float, default=0.3)
+    parser.add_argument("--mode", type=int, default=20)
     parser.add_argument("--command-duration-s", type=float, default=4.0)
     parser.add_argument("--settle-s", type=float, default=3.0)
     parser.add_argument("--rate-hz", type=float, default=20.0)
@@ -154,7 +155,7 @@ def main() -> int:
             if elapsed_s >= args.command_duration_s + args.settle_s:
                 break
             command = args.lateral_velocity_mps if elapsed_s < args.command_duration_s else 0.0
-            post_json(f"{args.mc_endpoint}{LOCOMOTION_CHANNEL}", velocity_payload(sequence, command))
+            post_json(f"{args.mc_endpoint}{LOCOMOTION_CHANNEL}", velocity_payload(sequence, command, args.mode))
             samples.append(pose_sample(args.simulator_endpoint, elapsed_s, initial_yaw_rad))
             sequence += 1
             time.sleep(max(0.0, start_s + sequence * period_s - time.monotonic()))
@@ -165,7 +166,7 @@ def main() -> int:
         # maximum-velocity command in the official controller.
         for _ in range(3):
             try:
-                post_json(f"{args.mc_endpoint}{LOCOMOTION_CHANNEL}", velocity_payload(sequence, 0.0))
+                post_json(f"{args.mc_endpoint}{LOCOMOTION_CHANNEL}", velocity_payload(sequence, 0.0, args.mode))
             except Exception:
                 pass
             sequence += 1
@@ -182,6 +183,7 @@ def main() -> int:
             "duration_s": args.command_duration_s,
             "settle_s": args.settle_s,
             "rate_hz": args.rate_hz,
+            "mode": args.mode,
             "channel": "/motion/control/locomotion_velocity",
         },
         "initial_base_yaw_rad": initial_yaw_rad,

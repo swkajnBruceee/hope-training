@@ -22,6 +22,11 @@ policy_std_max: null   # optional Recovery distribution cap, applied after every
 policy_std_min: null   # optional Recovery distribution floor
 freeze_actor_mean: false  # diagnostic: freeze actor mean after loading a Recovery checkpoint
 recovery_v23: false       # use the separately frozen v2.3 distribution-only smoke budget
+# Controlled feature-contract migration for the first unified forehand/backhand
+# continuation.  It resets only the semantic swing label normalizer slot and
+# its actor first-layer weights after loading a forehand-only checkpoint.
+reset_manifest_swing_type_input: false
+manifest_swing_type_obs_index: 70
 
 # Override the task defaults when set (null -> use the task/algo YAML value).
 num_envs: null

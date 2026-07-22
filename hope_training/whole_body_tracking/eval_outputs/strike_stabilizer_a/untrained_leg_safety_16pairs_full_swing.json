@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "audit_id": "strike_stabilizer_a_untrained_bounded_leg_safety_16pair_v1",
+  "input_batches": [
+    "eval_outputs/strike_stabilizer_a/untrained_leg_safety_batch01.json",
+    "eval_outputs/strike_stabilizer_a/untrained_leg_safety_batch02.json",
+    "eval_outputs/strike_stabilizer_a/untrained_leg_safety_batch03.json",
+    "eval_outputs/strike_stabilizer_a/untrained_leg_safety_batch04.json"
+  ],
+  "sequential_batches_required": "32 simultaneous environments trigger a PhysX GPU device-side assert on this 8GB GPU; each source batch uses 8 environments.",
+  "aggregate": {
+    "zero_residual": {
+      "pairs": 16,
+      "survival_fraction": 1.0,
+      "worst_max_base_torque_nm": 60.669822692871094,
+      "worst_min_soft_joint_margin_rad": 0.06973354518413544,
+      "minimum_foot_contact_fraction": 1.0,
+      "max_torque_saturation_fraction": 0.0024864376130198916,
+      "max_velocity_saturation_fraction": 0.0,
+      "max_consecutive_torque_saturation_steps": 7,
+      "max_consecutive_velocity_saturation_steps": 0
+    },
+    "bounded_random_legs": {
+      "pairs": 16,
+      "survival_fraction": 1.0,
+      "worst_max_base_torque_nm": 61.34231948852539,
+      "worst_min_soft_joint_margin_rad": 0.06612463295459747,
+      "minimum_foot_contact_fraction": 1.0,
+      "max_torque_saturation_fraction": 0.0027124773960217,
+      "max_velocity_saturation_fraction": 0.0,
+      "max_consecutive_torque_saturation_steps": 8,
+      "max_consecutive_velocity_saturation_steps": 0,
+      "max_sampled_raw_exceed_fraction": 0.0,
+      "max_execution_clip_fraction": 0.0,
+      "max_waist_action": 0.0,
+      "max_raw_action_rms": 0.025441672652959824
+    }
+  },
+  "full_swing_bounded_leg_safety_verified": true,
+  "ppo_training_approved": false,
+  "notes": [
+    "This validates only untrained bounded-action runtime safety over continuous-prefix handoffs.",
+    "It does not establish a learned stabilization benefit or authorize PPO."
+  ]
+}

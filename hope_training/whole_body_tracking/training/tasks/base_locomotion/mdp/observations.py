@@ -13,7 +13,7 @@ from isaaclab.sensors import ContactSensor
 
 
 HISTORY_LENGTH = 10
-PROPRIO_DIM = 84
+PROPRIO_DIM = 87
 CURRENT_CONTEXT_DIM = 85
 ACTOR_OBSERVATION_DIM = HISTORY_LENGTH * PROPRIO_DIM + CURRENT_CONTEXT_DIM
 PRIVILEGED_DIM = 45
@@ -89,6 +89,10 @@ class _A3BaseObservationBuilder:
         joint_vel = data.joint_vel[:, joint_ids]
         frame = torch.cat(
             (
+                # Linear velocity in the body frame is essential for a
+                # receive-ready controller: it must detect a forward/lateral
+                # fall tendency before a large tilt has already developed.
+                data.root_lin_vel_b,
                 data.root_ang_vel_b,
                 data.projected_gravity_b,
                 torso_ang_vel_b,

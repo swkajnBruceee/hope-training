@@ -1,0 +1,32 @@
+# Pure-RL catch curriculum for Stage-A.  The actor begins at zero residual;
+# no joint-specific action prior or scripted recovery sequence is supplied.
+
+name: ppo_strike_stabilizer_a_catch_smoke
+
+runner:
+  num_steps_per_env: 64
+  max_iterations: 120
+  save_interval: 20
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [256, 128, 64]
+  critic_hidden_dims: [256, 128, 64]
+  activation: elu
+  # The actor mean is exactly zero.  This variance is intentionally wide enough
+  # to discover bounded whole-leg recovery combinations without prescribing one.
+  init_noise_std: 0.10
+
+algorithm:
+  learning_rate: 0.0003
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.002
+  num_learning_epochs: 3
+  num_mini_batches: 2
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0

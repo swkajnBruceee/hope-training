@@ -11,6 +11,27 @@ from isaaclab.managers import ActionTerm, ActionTermCfg
 from isaaclab.utils import configclass
 
 
+# Diagnostic Base14 actuator authority selected for the PD_STAND plant.  Kept
+# next to the action semantics so Stand and Strike-conditioned environments use
+# one physical residual contract.
+A3_PD_STAND_BASE_ACTION_SCALE_RAD = (
+    0.03666666666666667,
+    0.1375,
+    0.18333333333333332,
+    0.04,
+    0.0591,
+    0.027375,
+    0.03666666666666667,
+    0.1375,
+    0.18333333333333332,
+    0.04,
+    0.0591,
+    0.027375,
+    0.023,
+    0.059,
+)
+
+
 class A3BaseCompositePositionAction(ActionTerm):
     """Compose a bounded 14-DOF Base residual into one full articulation target.
 
@@ -56,7 +77,15 @@ class A3BaseCompositePositionAction(ActionTerm):
         self._backend_joint_ids_tensor = torch.tensor(self._backend_joint_ids, dtype=torch.long, device=self.device)
         self._scale = torch.tensor(cfg.action_scale_rad, dtype=torch.float, device=self.device).unsqueeze(0)
         self._mask = torch.tensor(cfg.action_mask, dtype=torch.float, device=self.device).unsqueeze(0)
+        self._phase_gate_base_indices = tuple(
+            self._base_joint_ids.index(self._asset.find_joints([name], preserve_order=True)[0][0])
+            for name in cfg.phase_gate_joint_names
+        )
         self._raw_actions = torch.zeros((self.num_envs, self.action_dim), device=self.device)
+        # Latent policy action after structural masks/gates but before the
+        # optional execution bound.  It lets rewards distinguish an actor
+        # that uses the available authority from one that lives in saturation.
+        self._unbounded_actions = torch.zeros_like(self._raw_actions)
         self._processed_actions = torch.zeros_like(self._raw_actions)
         self._full_joint_targets = self._asset.data.default_joint_pos.clone()
 
@@ -67,6 +96,19 @@ class A3BaseCompositePositionAction(ActionTerm):
     @property
     def raw_actions(self) -> torch.Tensor:
         return self._raw_actions
+
+    @property
+    def unbounded_actions(self) -> torch.Tensor:
+        """Action after structural gates, before hard/smooth bounding."""
+        return self._unbounded_actions
+
+    def _bound_actions(self, actions: torch.Tensor) -> torch.Tensor:
+        """Map latent residuals into the immutable execution envelope."""
+        if self.cfg.smooth_raw_bound:
+            # Unit slope around zero preserves the existing small-action
+            # semantics while approaching +/-raw_clip continuously.
+            return self.cfg.raw_clip * torch.tanh(actions / self.cfg.raw_clip)
+        return torch.clamp(actions, -self.cfg.raw_clip, self.cfg.raw_clip)
 
     @property
     def processed_actions(self) -> torch.Tensor:
@@ -85,7 +127,8 @@ class A3BaseCompositePositionAction(ActionTerm):
             raise ValueError("A3 Base action contains NaN or infinity")
 
         masked = actions * self._mask
-        self._raw_actions[:] = torch.clamp(masked, -self.cfg.raw_clip, self.cfg.raw_clip)
+        self._unbounded_actions[:] = masked
+        self._raw_actions[:] = self._bound_actions(masked)
         default_base = self._asset.data.default_joint_pos[:, self._base_joint_ids_tensor]
         self._processed_actions[:] = default_base + self._raw_actions * self._scale
 
@@ -116,4 +159,126 @@ class A3BaseCompositePositionActionCfg(ActionTermCfg):
     action_scale_rad: tuple[float, ...] = MISSING
     action_mask: tuple[float, ...] = MISSING
     raw_clip: float = 0.25
+    smooth_raw_bound: bool = False
     clip_to_soft_joint_limits: bool = True
+
+
+class A3StrikeConditionedBaseCompositePositionAction(A3BaseCompositePositionAction):
+    """Compose Base14 residuals around a phase-indexed whole-body reference.
+
+    Strike owns waist yaw, supplies the waist-pitch feed-forward reference,
+    and owns the right arm.  Base owns both legs and waist roll; its bounded
+    waist-pitch residual is added to the strike reference.  The actor therefore
+    remains exactly 14 DOF while the action term emits one 31-DOF target.
+    """
+
+    cfg: "A3StrikeConditionedBaseCompositePositionActionCfg"
+
+    def __init__(self, cfg: "A3StrikeConditionedBaseCompositePositionActionCfg", env):
+        super().__init__(cfg, env)
+        self._env = env
+        self._strike_joint_ids, resolved_strike_names = self._asset.find_joints(
+            list(cfg.strike_joint_names), preserve_order=True
+        )
+        if resolved_strike_names != list(cfg.strike_joint_names):
+            raise ValueError(
+                "A3 Strike reference joint order mismatch: "
+                f"expected={list(cfg.strike_joint_names)}, resolved={resolved_strike_names}"
+            )
+        self._strike_joint_ids_tensor = torch.tensor(
+            self._strike_joint_ids, dtype=torch.long, device=self.device
+        )
+        waist_pitch_ids, waist_pitch_names = self._asset.find_joints(
+            [cfg.waist_pitch_joint_name], preserve_order=True
+        )
+        if waist_pitch_names != [cfg.waist_pitch_joint_name]:
+            raise ValueError(f"A3 waist-pitch joint not resolved: {cfg.waist_pitch_joint_name}")
+        self._waist_pitch_id = int(waist_pitch_ids[0])
+        self._waist_pitch_base_index = self._base_joint_ids.index(self._waist_pitch_id)
+
+    def process_actions(self, actions: torch.Tensor):
+        if actions.shape != self._raw_actions.shape:
+            raise ValueError(f"Expected Base action shape {self._raw_actions.shape}, got {actions.shape}")
+        if not torch.isfinite(actions).all():
+            raise ValueError("A3 Strike-conditioned Base action contains NaN or infinity")
+
+        motion_cmd = self._env.command_manager.get_term(self.cfg.reference_command_name)
+        masked = actions * self._mask
+        if self._phase_gate_base_indices:
+            if motion_cmd._use_motion_library:
+                lengths = motion_cmd.motion.motion_lengths[motion_cmd.motion_ids].clamp(min=2)
+                phase = motion_cmd.time_steps.float() / (lengths - 1).float()
+            else:
+                phase = motion_cmd.time_steps.float() / max(motion_cmd.motion.time_step_total - 1, 1)
+            u = ((phase - self.cfg.phase_gate_start) / max(
+                self.cfg.phase_gate_end - self.cfg.phase_gate_start, 1.0e-6
+            )).clamp(0.0, 1.0)
+            smooth = u * u * (3.0 - 2.0 * u)
+            gate = self.cfg.phase_gate_min_scale + (1.0 - self.cfg.phase_gate_min_scale) * smooth
+            if self.cfg.phase_gate_tail_release_steps > 0:
+                tail = motion_cmd.tail_steps.to(dtype=gate.dtype)
+                release_u = (tail / float(self.cfg.phase_gate_tail_release_steps)).clamp(0.0, 1.0)
+                release_smooth = release_u * release_u * (3.0 - 2.0 * release_u)
+                tail_gate = self.cfg.phase_gate_min_scale + (1.0 - self.cfg.phase_gate_min_scale) * (1.0 - release_smooth)
+                gate = torch.where(tail > 0, tail_gate, gate)
+            for index in self._phase_gate_base_indices:
+                masked[:, index] *= gate
+        handoff_steps = getattr(self._env, "strike_stabilizer_handoff_steps", None)
+        if handoff_steps is not None:
+            # Stage-A curriculum: run the prefix under zero residual, then
+            # activate the same policy without a reset or target discontinuity.
+            active = (motion_cmd.time_steps >= handoff_steps).to(masked.dtype).unsqueeze(-1)
+            masked = masked * active
+        self._unbounded_actions[:] = masked
+        self._raw_actions[:] = self._bound_actions(masked)
+        reference_full = motion_cmd.joint_pos
+
+        self._full_joint_targets[:] = self._asset.data.default_joint_pos
+        self._full_joint_targets[:, self._strike_joint_ids_tensor] = reference_full[
+            :, self._strike_joint_ids_tensor
+        ]
+
+        if self.cfg.base_reference_mode == "motion":
+            base_reference = reference_full[:, self._base_joint_ids_tensor]
+        elif self.cfg.base_reference_mode == "default":
+            base_reference = self._asset.data.default_joint_pos[:, self._base_joint_ids_tensor]
+        else:
+            raise ValueError(f"Unsupported base_reference_mode={self.cfg.base_reference_mode!r}")
+        self._processed_actions[:] = base_reference + self._raw_actions * self._scale
+        self._full_joint_targets[:, self._base_joint_ids_tensor] = self._processed_actions
+
+        # Waist pitch is the only intentional overlap: strike supplies the
+        # phase reference and Base contributes only a bounded residual.
+        waist_residual = (
+            self._raw_actions[:, self._waist_pitch_base_index]
+            * self._scale[:, self._waist_pitch_base_index]
+        )
+        self._full_joint_targets[:, self._waist_pitch_id] = (
+            reference_full[:, self._waist_pitch_id] + waist_residual
+        )
+        self._processed_actions[:, self._waist_pitch_base_index] = self._full_joint_targets[
+            :, self._waist_pitch_id
+        ]
+
+        if self.cfg.clip_to_soft_joint_limits:
+            limits = self._asset.data.soft_joint_pos_limits
+            self._full_joint_targets[:] = torch.clamp(
+                self._full_joint_targets, min=limits[..., 0], max=limits[..., 1]
+            )
+            self._processed_actions[:] = self._full_joint_targets[:, self._base_joint_ids_tensor]
+
+
+@configclass
+class A3StrikeConditionedBaseCompositePositionActionCfg(A3BaseCompositePositionActionCfg):
+    class_type: type[ActionTerm] = A3StrikeConditionedBaseCompositePositionAction
+    strike_joint_names: tuple[str, ...] = MISSING
+    reference_command_name: str = "motion"
+    waist_pitch_joint_name: str = "waist_pitch_joint"
+    base_reference_mode: str = "motion"
+    # Optional continuous authority schedule for joints that should be quiet
+    # in the ready state but available during task-relevant swing dynamics.
+    phase_gate_joint_names: tuple[str, ...] = ()
+    phase_gate_min_scale: float = 1.0
+    phase_gate_start: float = 0.0
+    phase_gate_end: float = 1.0
+    phase_gate_tail_release_steps: int = 0

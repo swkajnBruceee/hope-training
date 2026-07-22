@@ -38,3 +38,41 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
     },
 )
+
+# Floating-base diagnostic for the self-developed Strike-conditioned Base14
+# route.  It is intentionally registered separately from the native-MOTION
+# strike executor and is not training-approved by registration alone.
+gym.register(
+    id="HOPE-StrikeConditionedBase-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3StrikeConditionedBaseEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# Stage-A: fixed upper-body/waist replay with a learned 12-DOF leg stabilizer.
+gym.register(
+    id="HOPE-StrikeStabilizerA-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3StrikeStabilizerAEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# Unified Stage-A: same leg-only stabilizer plant, with the swing-family
+# observation read directly from each manifest entry rather than inferred from
+# target geometry.  Keep this ID separate so historical forehand-only runs
+# remain bit-for-bit reproducible.
+gym.register(
+    id="HOPE-StrikeStabilizerAUnified-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3StrikeStabilizerAUnifiedEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)

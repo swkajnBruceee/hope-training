@@ -14,6 +14,7 @@ def reset_scene_with_recovery_a_disturbance(
     undisturbed_fraction: float,
     roll_pitch_range_rad: tuple[float, float],
     angular_velocity_range_rad_s: tuple[float, float],
+    linear_velocity_range_m_s: tuple[float, float] | None = None,
     medium_fraction: float = 0.0,
     medium_roll_pitch_range_rad: tuple[float, float] | None = None,
     medium_angular_velocity_range_rad_s: tuple[float, float] | None = None,
@@ -37,6 +38,7 @@ def reset_scene_with_recovery_a_disturbance(
 
     pose_samples = torch.zeros((count, 2), device=env.device)
     velocity_samples = torch.zeros((count, 2), device=env.device)
+    linear_velocity_samples = torch.zeros((count, 2), device=env.device)
     if disturbed.any():
         disturbed_count = int(disturbed.sum().item())
         pose_samples[disturbed] = math_utils.sample_uniform(
@@ -51,6 +53,13 @@ def reset_scene_with_recovery_a_disturbance(
             (disturbed_count, 2),
             env.device,
         )
+        if linear_velocity_range_m_s is not None:
+            linear_velocity_samples[disturbed] = math_utils.sample_uniform(
+                linear_velocity_range_m_s[0],
+                linear_velocity_range_m_s[1],
+                (disturbed_count, 2),
+                env.device,
+            )
         if medium.any():
             medium_count = int(medium.sum().item())
             pose_samples[medium] = math_utils.sample_uniform(
@@ -74,6 +83,7 @@ def reset_scene_with_recovery_a_disturbance(
     root_state[:, 3:7] = math_utils.quat_mul(root_state[:, 3:7], orientation_delta)
     root_state[:, 10] += velocity_samples[:, 0]
     root_state[:, 11] += velocity_samples[:, 1]
+    root_state[:, 7:9] += linear_velocity_samples
     robot.write_root_pose_to_sim(root_state[:, :7], env_ids=env_ids)
     robot.write_root_velocity_to_sim(root_state[:, 7:13], env_ids=env_ids)
 

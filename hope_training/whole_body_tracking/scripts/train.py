@@ -684,6 +684,7 @@ def _apply_task_overrides(env_cfg, task):
         for _name, _key in (
             ("action_rate_l2", "action_rate_weight"),
             ("action_residual_l2", "action_residual_weight"),
+            ("action_execution_gap", "action_execution_gap_weight"),
             ("joint_limit", "joint_limit_weight"),
             ("undesired_contacts", "undesired_contacts_weight"),
         ):
@@ -771,6 +772,50 @@ def _apply_task_overrides(env_cfg, task):
         if sample_random_start_phase is not None:
             C.sample_random_start_phase = _as_bool(sample_random_start_phase)
             applied.append(f"commands.motion.sample_random_start_phase={C.sample_random_start_phase}")
+        for key, cast in (
+            ("prelude_steps", int),
+            ("hold_last_frame_steps", int),
+            ("return_to_default_steps", int),
+        ):
+            value = _get(motion, key)
+            if value is not None:
+                _require(hasattr(C, key), f"commands.motion.{key}")
+                setattr(C, key, cast(value))
+                applied.append(f"commands.motion.{key}={getattr(C, key)}")
+        reset_to_default_pose = _get(motion, "reset_to_default_pose")
+        if reset_to_default_pose is not None:
+            _require(hasattr(C, "reset_to_default_pose"), "commands.motion.reset_to_default_pose")
+            C.reset_to_default_pose = _as_bool(reset_to_default_pose)
+            applied.append(f"commands.motion.reset_to_default_pose={C.reset_to_default_pose}")
+        for key in ("reset_perturbation_probability", "hard_case_probability"):
+            value = _get(motion, key)
+            if value is not None:
+                _require(hasattr(C, key), f"commands.motion.{key}")
+                setattr(C, key, float(value))
+                applied.append(f"commands.motion.{key}={getattr(C, key)}")
+        hard_case_motion_ids = _get(motion, "hard_case_motion_ids")
+        if hard_case_motion_ids is not None:
+            _require(hasattr(C, "hard_case_motion_ids"), "commands.motion.hard_case_motion_ids")
+            C.hard_case_motion_ids = tuple(int(v) for v in hard_case_motion_ids)
+            applied.append(f"commands.motion.hard_case_motion_ids={C.hard_case_motion_ids}")
+        hard_case_velocity_range = _get(motion, "hard_case_velocity_range")
+        if hard_case_velocity_range is not None:
+            _require(hasattr(C, "hard_case_velocity_range"), "commands.motion.hard_case_velocity_range")
+            C.hard_case_velocity_range = {
+                str(k): (float(v[0]), float(v[1])) for k, v in hard_case_velocity_range.items()
+            }
+            applied.append(f"commands.motion.hard_case_velocity_range={C.hard_case_velocity_range}")
+        joint_position_offset = _get(motion, "joint_position_offset")
+        if joint_position_offset is not None:
+            _require(hasattr(C, "joint_position_offset"), "commands.motion.joint_position_offset")
+            C.joint_position_offset = {str(k): float(v) for k, v in joint_position_offset.items()}
+            applied.append(f"commands.motion.joint_position_offset={C.joint_position_offset}")
+        root_position_offset = _get(motion, "root_position_offset")
+        if root_position_offset is not None:
+            _require(hasattr(C, "root_position_offset"), "commands.motion.root_position_offset")
+            _require(len(root_position_offset) == 3, "commands.motion.root_position_offset length == 3")
+            C.root_position_offset = tuple(float(v) for v in root_position_offset)
+            applied.append(f"commands.motion.root_position_offset={C.root_position_offset}")
 
     return applied
 
@@ -822,7 +867,7 @@ def _run(cfg):
     # Human-readable confirmation of the strike-training knobs, straight from the post-override cfg, so
     # you can read the actual runtime values off the launch log without opening logs/.../params/env.yaml.
     R = env_cfg.rewards
-    if hasattr(R, "racket_position"):
+    if hasattr(R, "racket_position") and R.racket_position is not None:
         fine = ""
         if hasattr(R, "racket_position_fine") and R.racket_position_fine is not None:
             fine = (
@@ -972,10 +1017,12 @@ def _run(cfg):
         runner = MyOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     zero_residual_tasks = {
         "A3BaseStandPassiveStableCandidate-v0",
+        "A3CatchReadyStand-v0",
         "A3BaseStandRecoveryA-v0",
         "A3BaseStandRecoveryAV2-v0",
         "A3BaseStandRecoveryAV2WaistMask-v0",
         "A3BaseStandRecoveryAV21WaistMask-v0",
+        "HOPE-StrikeStabilizerA-AgibotA3-v0",
     }
     if task_id in zero_residual_tasks and not agent_cfg.resume:
         # This task controls a non-integrating residual around a passively
@@ -991,9 +1038,66 @@ def _run(cfg):
         )
     runner.add_git_repo_to_log(__file__)
     if agent_cfg.resume:
-        resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+        # A new task contract may intentionally reuse a compatible checkpoint
+        # from another experiment directory (for example final-pose hold ->
+        # return-to-ready).  Accept an explicit file path before falling back
+        # to RSL-RL's experiment-relative lookup.
+        direct_checkpoint = Path(str(agent_cfg.load_checkpoint)).expanduser()
+        if direct_checkpoint.is_file():
+            resume_path = str(direct_checkpoint)
+        else:
+            resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
         print(f"[INFO] Loading model checkpoint from: {resume_path}", flush=True)
         runner.load(resume_path)
+        if bool(cfg.get("reset_manifest_swing_type_input", False)):
+            # A forehand-only checkpoint observed a constant swing-type value,
+            # so its empirical-normalizer slot has effectively zero variance.
+            # Feeding the first semantic backhand label through that old slot
+            # would create an artificial O(10^2) feature.  Migrate *only* this
+            # one input: normalize the explicit manifest label around 0 with
+            # unit scale, and start the corresponding actor input weights at
+            # zero.  The critic has a different privileged-observation schema,
+            # so its input column 70 must not be altered.  All learned
+            # dynamics/control features remain untouched.
+            swing_idx = int(cfg.get("manifest_swing_type_obs_index", 70))
+            policy = runner.alg.policy
+            normalized_terms = []
+            normalizer = getattr(runner, "obs_normalizer", None)
+            if normalizer is None:
+                raise RuntimeError("runner has no obs_normalizer; cannot safely migrate manifest swing_type input")
+            state = normalizer.state_dict()
+            if not all(key in state for key in ("_mean", "_var", "_std")):
+                raise RuntimeError("obs_normalizer does not expose empirical-normalizer state")
+            if swing_idx >= state["_mean"].numel():
+                raise RuntimeError(
+                    f"manifest_swing_type_obs_index={swing_idx} outside obs_normalizer "
+                    f"dimension {state['_mean'].numel()}"
+                )
+            state["_mean"][..., swing_idx] = 0.0
+            state["_var"][..., swing_idx] = 1.0
+            state["_std"][..., swing_idx] = 1.0
+            normalizer.load_state_dict(state)
+            normalized_terms.append("runner.obs_normalizer")
+
+            first_linear = next(
+                (module for module in policy.actor.modules() if isinstance(module, torch.nn.Linear)), None
+            )
+            if first_linear is None or swing_idx >= first_linear.weight.shape[1]:
+                raise RuntimeError("actor input does not contain the manifest swing_type observation")
+            with torch.no_grad():
+                first_linear.weight[:, swing_idx].zero_()
+            optimizer_state = runner.alg.optimizer.state.get(first_linear.weight, {})
+            for value in optimizer_state.values():
+                if torch.is_tensor(value) and value.shape == first_linear.weight.shape:
+                    value[:, swing_idx].zero_()
+            reset_layers = ["actor"]
+
+            print(
+                "[train.py] migrated manifest swing_type input contract: "
+                f"index={swing_idx} normalizers={normalized_terms} "
+                f"zeroed_first_layer_columns={reset_layers}",
+                flush=True,
+            )
         std_scale = float(cfg.get("policy_std_scale", 1.0))
         if std_scale <= 0.0:
             raise ValueError("policy_std_scale must be positive")

@@ -91,12 +91,15 @@ def _angle_between_deg(a, b):
     return torch.rad2deg(torch.acos(cos.clamp(-1.0, 1.0)))
 
 
-def _sync_motion_state(env, motion_cmd, n, device):
+def _sync_motion_state(env, motion_cmd, n, device, start_steps=None):
     import torch
 
     ids = torch.arange(n, device=device, dtype=torch.long)
     motion_cmd.motion_ids[:n] = ids
-    motion_cmd.time_steps[:n] = 0
+    if start_steps is None:
+        motion_cmd.time_steps[:n] = 0
+    else:
+        motion_cmd.time_steps[:n] = torch.as_tensor(start_steps, dtype=torch.long, device=device)
 
     env_ids = torch.arange(n, device=device)
     root_pos = motion_cmd.motion._body_pos_w[motion_cmd.motion_ids[:n], motion_cmd.time_steps[:n], 0]

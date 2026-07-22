@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "audit_id": "strike_stabilizer_a_untrained_bounded_leg_safety_smoke_v1",
+  "task": "HOPE-StrikeStabilizerA-AgibotA3-v0",
+  "simulation_only": true,
+  "training_authorization": false,
+  "pairs": 2,
+  "policy_steps": 5,
+  "random_action_bound": 0.05,
+  "hold_steps": 5,
+  "seed": 20260722,
+  "motion_ids_per_pair": [
+    0,
+    1
+  ],
+  "handoff_steps_per_pair": [
+    0,
+    10
+  ],
+  "metrics": {
+    "zero_residual": {
+      "survival_fraction": 1.0,
+      "max_base_torque_nm": {
+        "mean": 17.517303466796875,
+        "median": 17.460445404052734,
+        "p95": 17.568477630615234,
+        "max": 17.57416343688965
+      },
+      "min_soft_joint_margin_rad": {
+        "mean": 0.24303916096687317,
+        "median": 0.24303418397903442,
+        "p95": 0.24304364621639252,
+        "max": 0.24304413795471191
+      },
+      "foot_contact_fraction": {
+        "mean": 1.0,
+        "median": 1.0,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "torso_angular_velocity_rms": {
+        "mean": 0.1758028268814087,
+        "median": 0.16823026537895203,
+        "p95": 0.1826181262731552,
+        "max": 0.18337538838386536
+      }
+    },
+    "bounded_random_legs": {
+      "survival_fraction": 1.0,
+      "max_base_torque_nm": {
+        "mean": 18.678096771240234,
+        "median": 17.576814651489258,
+        "p95": 19.66925048828125,
+        "max": 19.77937889099121
+      },
+      "min_soft_joint_margin_rad": {
+        "mean": 0.24347665905952454,
+        "median": 0.24303197860717773,
+        "p95": 0.2438768744468689,
+        "max": 0.24392133951187134
+      },
+      "foot_contact_fraction": {
+        "mean": 1.0,
+        "median": 1.0,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "torso_angular_velocity_rms": {
+        "mean": 0.17040196061134338,
+        "median": 0.15715444087982178,
+        "p95": 0.18232473731040955,
+        "max": 0.18364949524402618
+      },
+      "raw_action_rms": 0.020044948905706406,
+      "sampled_raw_exceed_fraction": 0.0,
+      "execution_clip_fraction": 0.0,
+      "waist_action_max": 0.0
+    }
+  },
+  "finite": true,
+  "runtime_safety_smoke_passed": true,
+  "notes": [
+    "The policy is never trained or loaded in this audit.",
+    "Random actions are applied only to the 12 leg channels after a continuous-prefix handoff.",
+    "Both waist residual channels remain structurally zero.",
+    "This smoke is not a PPO or checkpoint approval."
+  ]
+}

@@ -206,6 +206,36 @@
       "medium_zero_peak_tilt_rad": 0.08722,
       "clean_smooth_gate_action_rms": 0.00362,
       "interpretation": "Observable-state smooth gating suppresses clean residual while retaining more than 10 percent Medium peak-tilt improvement; larger paired validation remains pending."
+    },
+    "recovery_a_v23_large_scale_validation": {
+      "verified": true,
+      "clean_path": "eval_outputs/recovery_a_v23_large_clean32_20260721.json",
+      "clean_sha256": "807a320ab1c08cc3c31ccb7270febba62832e9ee487e99ff177686121ef4fbdd",
+      "low_path": "eval_outputs/recovery_a_v23_large_low32_20260721.json",
+      "low_sha256": "8144e3706086505dbde7ba242b1cc3645774537f126b6bbaa0d5880f778e7bc4",
+      "medium_path": "eval_outputs/recovery_a_v23_large_medium64_detail_20260721.json",
+      "medium_sha256": "da3c52e6bd3ca320e8e179930d4d8f211b76128338c8fceab95e5ff9abddb367",
+      "counts": {"clean": 32, "low": 32, "medium": 64},
+      "clean_survival": 1.0,
+      "low_survival": 1.0,
+      "medium_survival": 1.0,
+      "medium_smooth_gate_peak_tilt_median_improvement": 0.00064,
+      "medium_smooth_gate_peak_tilt_mean_improvement": -0.00332,
+      "medium_improved_case_fraction": 0.546875,
+      "interpretation": "The frozen smooth gate passes hard safety and Clean suppression, but the Medium recovery improvement does not generalize across the full 64-case paired trace; checkpoint approval remains closed."
+    },
+    "recovery_a_v23_medium_fourway_timing": {
+      "path": "eval_outputs/recovery_a_v23_medium64_fourway_timing_20260721.json",
+      "sha256": "b312c83247fc5f41a8dfc7ede5cec0dc658d40baa80d2bb35a184fece1199875",
+      "verified": true,
+      "pairs": 64,
+      "ungated_actor_median_peak_tilt_improvement": 0.0056,
+      "smooth_gate_median_peak_tilt_improvement": 0.0006,
+      "hard_gate_median_peak_tilt_improvement": 0.0004,
+      "ungated_actor_p95_peak_tilt_improvement": 0.0753,
+      "smooth_gate_cases_with_gate_on": 56,
+      "smooth_gate_mean_lead_time_steps": 65.27,
+      "interpretation": "The ungated actor itself has no stable paired recovery benefit across the full Medium trace; gate suppression is not the sole cause of the failed generalization."
     }
   },
   "pending_before_bounded_ppo": [
@@ -267,6 +297,9 @@
     "recovery_a_v23_meanfreeze_smoke_verified": true,
     "recovery_a_v23_smooth_gate_smoke_verified": true,
     "recovery_a_v23_clean_tail_suppression_verified": true,
+    "recovery_a_v23_large_scale_validation_verified": false,
+    "recovery_a_v23_hard_safety_verified": true,
+    "recovery_a_v23_generalized_recovery_value_verified": false,
     "bounded_recovery_smoke_approved": true,
     "stand_recovery_policy_approved": false,
     "stand_long_training_approved": false,

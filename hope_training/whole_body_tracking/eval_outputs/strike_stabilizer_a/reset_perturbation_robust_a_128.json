@@ -1,0 +1,4502 @@
+{
+  "task": "HOPE-StrikeStabilizerA-AgibotA3-v0",
+  "num_envs": 128,
+  "velocity_range": {
+    "x": [
+      -0.08,
+      0.08
+    ],
+    "y": [
+      -0.08,
+      0.08
+    ],
+    "z": [
+      0.0,
+      0.0
+    ],
+    "roll": [
+      -0.15,
+      0.15
+    ],
+    "pitch": [
+      -0.15,
+      0.15
+    ],
+    "yaw": [
+      0.0,
+      0.0
+    ]
+  },
+  "policy_base_lin_vel_terms": [
+    "base_lin_vel",
+    "base_ang_vel",
+    "joint_pos",
+    "joint_vel",
+    "actions",
+    "projected_gravity",
+    "racket_target_pos_b",
+    "racket_target_vel_b",
+    "racket_target_normal_b",
+    "racket_pos_b",
+    "racket_lin_vel_b",
+    "racket_normal_b",
+    "time_to_strike",
+    "swing_type",
+    "strike_joint_pos",
+    "strike_joint_vel",
+    "strike_reference_joint_pos",
+    "strike_reference_joint_vel",
+    "strike_reference_joint_vel_8",
+    "strike_reference_joint_vel_16",
+    "strike_phase"
+  ],
+  "policy_base_lin_vel_slice": [
+    0,
+    3
+  ],
+  "sampled_world_velocity_mean": [
+    -0.02675444632768631,
+    0.0009558720048516989,
+    0.0
+  ],
+  "sampled_world_velocity_abs_max": [
+    0.07936500012874603,
+    0.07988846302032471,
+    0.0
+  ],
+  "hard_case_fraction": 0.4375,
+  "hard_case_motion_ids": [
+    2,
+    6,
+    1,
+    4,
+    7,
+    7,
+    6,
+    2,
+    7,
+    4,
+    1,
+    4,
+    5,
+    7,
+    1,
+    6,
+    4,
+    2,
+    4,
+    5,
+    7,
+    1,
+    5,
+    2,
+    5,
+    5,
+    6,
+    6,
+    5,
+    1,
+    1,
+    5,
+    2,
+    7,
+    4,
+    4,
+    6,
+    7,
+    5,
+    5,
+    2,
+    6,
+    6,
+    5,
+    2,
+    7,
+    6,
+    4,
+    1,
+    5,
+    4,
+    4,
+    2,
+    7,
+    5,
+    5
+  ],
+  "write_error_abs_max": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "write_error_rms": 0.0,
+  "observation_error_abs_max": [
+    0.09998741745948792,
+    0.09975918382406235,
+    0.09933675080537796
+  ],
+  "observation_error_rms": 0.05912654474377632,
+  "first_step_body_velocity_abs_mean": [
+    0.05526362359523773,
+    0.02809738740324974,
+    0.3413376212120056
+  ],
+  "first_step_body_velocity_abs_max": [
+    0.17093637585639954,
+    0.15063858032226562,
+    0.358418345451355
+  ],
+  "samples": [
+    {
+      "sampled_world_velocity": [
+        -0.046216804534196854,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.046216804534196854,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.046216804534196854,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.10099850594997406,
+        0.09678519517183304,
+        -0.06045764312148094
+      ],
+      "actual_body_after_first_step": [
+        0.0208127424120903,
+        -0.000549805467016995,
+        0.3537463843822479
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07916399091482162,
+        -0.09065087884664536,
+        0.34947240352630615
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06662949174642563,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.06662949174642563,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06662949174642563,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.06075531244277954,
+        0.08812301605939865,
+        -0.025263622403144836
+      ],
+      "actual_body_after_first_step": [
+        0.034986648708581924,
+        0.0018087781500071287,
+        0.3533545434474945
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.06607457250356674,
+        -0.06415833532810211,
+        0.26062729954719543
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04690578207373619,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.04690578207373619,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04690578207373619,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.022273965179920197,
+        0.04883302003145218,
+        -0.03561864793300629
+      ],
+      "actual_body_after_first_step": [
+        0.026270180940628052,
+        0.03091035597026348,
+        0.3226960003376007
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.08135322481393814,
+        0.08665769547224045,
+        0.288795530796051
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07849796116352081,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.07849796116352081,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07849796116352081,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.017867572605609894,
+        0.0646601989865303,
+        -0.093380868434906
+      ],
+      "actual_body_after_first_step": [
+        -0.005985690746456385,
+        0.03675173223018646,
+        0.3578413128852844
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.059406302869319916,
+        0.11057581752538681,
+        0.4107743203639984
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.0480116605758667,
+        0.08622968941926956,
+        -0.017978616058826447
+      ],
+      "actual_body_after_first_step": [
+        0.06955067813396454,
+        -0.001626447425223887,
+        0.34974008798599243
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.02351701259613037,
+        -0.08265692740678787,
+        0.25299468636512756
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.061780769377946854,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.061780769377946854,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.061780769377946854,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.153262197971344,
+        -0.03089147061109543,
+        0.03068595379590988
+      ],
+      "actual_body_after_first_step": [
+        0.03981455788016319,
+        0.0027844044379889965,
+        0.3522167503833771
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.05902419239282608,
+        -0.0765412226319313,
+        0.3967401683330536
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.0016495734453201294,
+        0.06737548857927322,
+        0.0943293645977974
+      ],
+      "actual_body_after_first_step": [
+        0.06964993476867676,
+        -0.0016848256345838308,
+        0.3495626151561737
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.020396649837493896,
+        0.07812156528234482,
+        0.29429131746292114
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 3,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.09414546191692352,
+        0.02388995885848999,
+        -0.012790665030479431
+      ],
+      "actual_body_after_first_step": [
+        0.0776715874671936,
+        0.02775239571928978,
+        0.30754610896110535
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.10810548812150955,
+        0.07949995249509811,
+        0.27539971470832825
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07200257480144501,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.07200257480144501,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07200257480144501,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.042427487671375275,
+        0.0432816818356514,
+        0.08360118418931961
+      ],
+      "actual_body_after_first_step": [
+        0.00033675917075015604,
+        0.03162761405110359,
+        0.32443392276763916
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.05994869023561478,
+        0.04005906730890274,
+        0.28574228286743164
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.08679749816656113,
+        0.0016978606581687927,
+        -0.06656128168106079
+      ],
+      "actual_body_after_first_step": [
+        0.06950782984495163,
+        -0.0010946360416710377,
+        0.3493805229663849
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.04788096994161606,
+        -0.022898152470588684,
+        0.44105568528175354
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.024555526673793793,
+        0.0053708553314208984,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.024555526673793793,
+        0.0053708553314208984,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.024555526673793793,
+        0.0053708553314208984,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.05442481487989426,
+        -0.020996324717998505,
+        0.03466186672449112
+      ],
+      "actual_body_after_first_step": [
+        0.0940856859087944,
+        0.014984307810664177,
+        0.34776604175567627
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.14093124866485596,
+        0.0807601734995842,
+        0.27912065386772156
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.024512849748134613,
+        0.05568666011095047,
+        0.0255168154835701
+      ],
+      "actual_body_after_first_step": [
+        0.06957091391086578,
+        -0.0017713176785036922,
+        0.3498303294181824
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.003766067326068878,
+        -0.09263680130243301,
+        0.2727924585342407
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 0,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.04968751594424248,
+        0.04405117779970169,
+        -0.02404053509235382
+      ],
+      "actual_body_after_first_step": [
+        0.06943703442811966,
+        -0.0012197077739983797,
+        0.3497304320335388
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.0859697088599205,
+        -0.09727967530488968,
+        0.2716904282569885
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06983689963817596,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.06983689963817596,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06983689963817596,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.00025325268507003784,
+        0.09704228490591049,
+        0.04260677844285965
+      ],
+      "actual_body_after_first_step": [
+        0.004323332104831934,
+        0.03283250704407692,
+        0.3418212831020355
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.018293052911758423,
+        0.012293092906475067,
+        0.2701093256473541
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.08676201850175858,
+        0.013040363788604736,
+        0.05657868832349777
+      ],
+      "actual_body_after_first_step": [
+        0.11095625162124634,
+        0.07801397889852524,
+        0.29010075330734253
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.03791002184152603,
+        0.07740513235330582,
+        0.27016231417655945
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.06820319592952728,
+        0.07988846302032471,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 3,
+      "actual_world_after_reset": [
+        0.06820319592952728,
+        0.07988846302032471,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.06820319592952728,
+        0.07988846302032471,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.03161139786243439,
+        0.10114667564630508,
+        0.06736399978399277
+      ],
+      "actual_body_after_first_step": [
+        0.17093637585639954,
+        0.07889123260974884,
+        0.34198182821273804
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.10041672736406326,
+        0.031208612024784088,
+        0.33215922117233276
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.023487798869609833,
+        0.03806186467409134,
+        -0.03366241604089737
+      ],
+      "actual_body_after_first_step": [
+        0.10468708723783493,
+        0.0016660107066854835,
+        0.3486188054084778
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.03908296674489975,
+        -0.0074639469385147095,
+        0.31699806451797485
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.06468793749809265,
+        0.024119779467582703,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 0,
+      "actual_world_after_reset": [
+        0.06468793749809265,
+        0.024119779467582703,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.06468793749809265,
+        0.024119779467582703,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.020390085875988007,
+        0.04465409368276596,
+        -0.06642989814281464
+      ],
+      "actual_body_after_first_step": [
+        0.13733933866024017,
+        0.01472160778939724,
+        0.3466128408908844
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.23408517241477966,
+        0.07278644293546677,
+        0.35293149948120117
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07616619765758514,
+        -0.047099292278289795,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.07616619765758514,
+        -0.047099292278289795,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07616619765758514,
+        -0.047099292278289795,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.017276860773563385,
+        -0.12868790328502655,
+        -0.06213168427348137
+      ],
+      "actual_body_after_first_step": [
+        0.006520968396216631,
+        -0.024195566773414612,
+        0.3192022144794464
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.004011332988739014,
+        -0.006727911531925201,
+        0.34379395842552185
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.05762546509504318,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.05762546509504318,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.05762546509504318,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.10082186758518219,
+        -0.07906381785869598,
+        -0.08011951297521591
+      ],
+      "actual_body_after_first_step": [
+        0.014457611367106438,
+        0.04081173613667488,
+        0.3134322762489319
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.10948779433965683,
+        0.08372548967599869,
+        0.3571934103965759
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06425721943378448,
+        -0.042266275733709335,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.06425721943378448,
+        -0.042266275733709335,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06425721943378448,
+        -0.042266275733709335,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.12490080296993256,
+        0.03209882229566574,
+        -0.05235115811228752
+      ],
+      "actual_body_after_first_step": [
+        0.006767714861780405,
+        -0.04756428301334381,
+        0.3529522120952606
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.06124541163444519,
+        -0.07719505578279495,
+        0.27342289686203003
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.05112690478563309,
+        0.03643346577882767,
+        0.02986464649438858
+      ],
+      "actual_body_after_first_step": [
+        0.06957215070724487,
+        -0.0016220982652157545,
+        0.34957197308540344
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.022207647562026978,
+        -0.09193569421768188,
+        0.2499685287475586
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07618063688278198,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.07618063688278198,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07618063688278198,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.07650939375162125,
+        -0.07120528817176819,
+        -0.07709887623786926
+      ],
+      "actual_body_after_first_step": [
+        0.02467268705368042,
+        0.0019595620688050985,
+        0.35364753007888794
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.11634952574968338,
+        -0.009754106402397156,
+        0.44584718346595764
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06783626228570938,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.06783626228570938,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06783626228570938,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.0032438337802886963,
+        -0.05767090246081352,
+        0.05261034518480301
+      ],
+      "actual_body_after_first_step": [
+        0.03349402919411659,
+        0.004577528685331345,
+        0.3505290150642395
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.10334549099206924,
+        -0.022916056215763092,
+        0.41576698422431946
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0012143030762672424,
+        0.0469462126493454,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.0012143030762672424,
+        0.0469462126493454,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.0012143030762672424,
+        0.0469462126493454,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.017908461391925812,
+        -0.006777860224246979,
+        -0.0855010449886322
+      ],
+      "actual_body_after_first_step": [
+        0.09105952084064484,
+        0.09347520768642426,
+        0.3462633788585663
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.1366274356842041,
+        0.03151767700910568,
+        0.26330941915512085
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.05410796403884888,
+        0.03981875628232956,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        0.05410796403884888,
+        0.03981875628232956,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.05410796403884888,
+        0.03981875628232956,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.087221659719944,
+        0.13253501057624817,
+        0.02978227287530899
+      ],
+      "actual_body_after_first_step": [
+        0.12341433018445969,
+        0.11128221452236176,
+        0.30711594223976135
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.18851333856582642,
+        0.19999158382415771,
+        0.2688390612602234
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04273930564522743,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.04273930564522743,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04273930564522743,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.0030399635434150696,
+        0.0721324160695076,
+        0.027435369789600372
+      ],
+      "actual_body_after_first_step": [
+        0.05924227088689804,
+        0.00194153084885329,
+        0.35182294249534607
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.12796878814697266,
+        -0.09380732476711273,
+        0.2528977394104004
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.051023468375205994,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.051023468375205994,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.051023468375205994,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.13816465437412262,
+        -0.009726002812385559,
+        -0.05575123801827431
+      ],
+      "actual_body_after_first_step": [
+        0.051195383071899414,
+        0.0017050601309165359,
+        0.351157546043396
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.12849032878875732,
+        0.10089417546987534,
+        0.3820328414440155
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.010168030858039856,
+        0.04575113207101822,
+        0.003679916262626648
+      ],
+      "actual_body_after_first_step": [
+        0.06966131180524826,
+        -0.001714722951874137,
+        0.3496533930301666
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.12422620505094528,
+        -0.03997974097728729,
+        0.2701662480831146
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.0731148049235344,
+        0.036692045629024506,
+        -0.07250893115997314
+      ],
+      "actual_body_after_first_step": [
+        0.07846778631210327,
+        0.03231651708483696,
+        0.3411737382411957
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.0010498836636543274,
+        0.020896516740322113,
+        0.42956700921058655
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.049727633595466614,
+        -0.03237225115299225,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.049727633595466614,
+        -0.03237225115299225,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.049727633595466614,
+        -0.03237225115299225,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.07916262000799179,
+        -0.03187358379364014,
+        -0.02644694596529007
+      ],
+      "actual_body_after_first_step": [
+        0.12951797246932983,
+        -0.01626168191432953,
+        0.3079815208911896
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.12696018815040588,
+        -0.028907664120197296,
+        0.21916046738624573
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 0,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.040557630360126495,
+        -0.016378670930862427,
+        -0.0005548819899559021
+      ],
+      "actual_body_after_first_step": [
+        0.06890011578798294,
+        -0.0006302973488345742,
+        0.3516721725463867
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.16676965355873108,
+        0.028671689331531525,
+        0.25380247831344604
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07156265527009964,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.07156265527009964,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07156265527009964,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.08364752680063248,
+        -0.035001881420612335,
+        -0.017518147826194763
+      ],
+      "actual_body_after_first_step": [
+        0.030097290873527527,
+        0.004660788923501968,
+        0.34980666637420654
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.0633997693657875,
+        0.025926031172275543,
+        0.2820085287094116
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.05812026560306549,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.05812026560306549,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.05812026560306549,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.007636718451976776,
+        -0.09751688688993454,
+        0.08044599741697311
+      ],
+      "actual_body_after_first_step": [
+        0.04414360225200653,
+        0.002005482790991664,
+        0.3533756136894226
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.13593369722366333,
+        -0.03337188810110092,
+        0.4123384654521942
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.05604484677314758,
+        -0.07412505894899368,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        0.05604484677314758,
+        -0.07412505894899368,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.05604484677314758,
+        -0.07412505894899368,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.038839831948280334,
+        -0.12886741757392883,
+        -0.06239249184727669
+      ],
+      "actual_body_after_first_step": [
+        0.12171764671802521,
+        -0.07957188040018082,
+        0.3531033396720886
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.09208013862371445,
+        -0.05966508388519287,
+        0.29721012711524963
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04704808071255684,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.04704808071255684,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04704808071255684,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.020514152944087982,
+        0.07892479747533798,
+        0.015790104866027832
+      ],
+      "actual_body_after_first_step": [
+        0.025282572954893112,
+        0.030958957970142365,
+        0.32669082283973694
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.046010009944438934,
+        0.021580427885055542,
+        0.2984311282634735
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.05936756730079651,
+        0.021262645721435547,
+        -0.03591505438089371
+      ],
+      "actual_body_after_first_step": [
+        0.08616096526384354,
+        0.06165555864572525,
+        0.34424012899398804
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07529827207326889,
+        0.08614280074834824,
+        0.3403598666191101
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.054769568145275116,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.054769568145275116,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.054769568145275116,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.032004259526729584,
+        0.014970466494560242,
+        -0.05817411467432976
+      ],
+      "actual_body_after_first_step": [
+        0.04709022492170334,
+        0.002981695579364896,
+        0.35294854640960693
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.035175174474716187,
+        -0.07556074112653732,
+        0.3265768587589264
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.026634566485881805,
+        -0.0014788955450057983,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        0.026634566485881805,
+        -0.0014788955450057983,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.026634566485881805,
+        -0.0014788955450057983,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.01352805644273758,
+        0.05428547412157059,
+        0.030424274504184723
+      ],
+      "actual_body_after_first_step": [
+        0.097799152135849,
+        0.0018630571430549026,
+        0.3481760621070862
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.0006304159760475159,
+        -0.005270011723041534,
+        0.37766948342323303
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04835642874240875,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.04835642874240875,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04835642874240875,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.039674438536167145,
+        0.001366160809993744,
+        0.058984167873859406
+      ],
+      "actual_body_after_first_step": [
+        0.05441054701805115,
+        0.001867696177214384,
+        0.3524226248264313
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.08227329701185226,
+        0.06795453280210495,
+        0.36674705147743225
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.055223025381565094,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.055223025381565094,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.055223025381565094,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.016642481088638306,
+        0.040598608553409576,
+        0.08574538677930832
+      ],
+      "actual_body_after_first_step": [
+        0.019335586577653885,
+        0.07622188329696655,
+        0.30229970812797546
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.07443509995937347,
+        0.04284589737653732,
+        0.2055400311946869
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.05129222571849823,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.05129222571849823,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.05129222571849823,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.02319888025522232,
+        -0.00044626742601394653,
+        0.05002588778734207
+      ],
+      "actual_body_after_first_step": [
+        0.024383459240198135,
+        0.027844013646245003,
+        0.30919161438941956
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07118193060159683,
+        0.10537073761224747,
+        0.28373172879219055
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.020777665078639984,
+        0.057959116995334625,
+        0.04134676605463028
+      ],
+      "actual_body_after_first_step": [
+        0.10440762341022491,
+        0.002895970596000552,
+        0.35004982352256775
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07091517001390457,
+        0.07730164378881454,
+        0.2984117567539215
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.05300271511077881,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.05300271511077881,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.05300271511077881,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.045620396733284,
+        -0.09864078462123871,
+        0.007815659046173096
+      ],
+      "actual_body_after_first_step": [
+        0.014041401445865631,
+        2.7568687073653564e-05,
+        0.35464751720428467
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.032662831246852875,
+        0.0682995393872261,
+        0.36167898774147034
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.09580672532320023,
+        -0.06687290966510773,
+        -0.0068487748503685
+      ],
+      "actual_body_after_first_step": [
+        0.08670265972614288,
+        0.06397520750761032,
+        0.34823036193847656
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.1693125069141388,
+        -0.0038452669978141785,
+        0.2605765759944916
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06630527973175049,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.06630527973175049,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06630527973175049,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.1608653962612152,
+        -0.01844717562198639,
+        0.026834256947040558
+      ],
+      "actual_body_after_first_step": [
+        0.00598629517480731,
+        0.030492844060063362,
+        0.33077272772789
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.015828177332878113,
+        -0.046139173209667206,
+        0.23631122708320618
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.004348456859588623,
+        0.06541471183300018,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.004348456859588623,
+        0.06541471183300018,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.004348456859588623,
+        0.06541471183300018,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.042098671197891235,
+        0.08629467338323593,
+        0.0024724602699279785
+      ],
+      "actual_body_after_first_step": [
+        0.11776681244373322,
+        0.06116422638297081,
+        0.34296849370002747
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.14269372820854187,
+        0.11784190684556961,
+        0.39553961157798767
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04703909158706665,
+        -0.017608221620321274,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.04703909158706665,
+        -0.017608221620321274,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04703909158706665,
+        -0.017608221620321274,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.042475998401641846,
+        0.04619859904050827,
+        -0.052438076585531235
+      ],
+      "actual_body_after_first_step": [
+        0.054058291018009186,
+        -0.02332233637571335,
+        0.35273483395576477
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.006450943648815155,
+        -0.09631633758544922,
+        0.25428128242492676
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06748434156179428,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.06748434156179428,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06748434156179428,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.018417075276374817,
+        0.09021826833486557,
+        0.09091676026582718
+      ],
+      "actual_body_after_first_step": [
+        0.004056029487401247,
+        0.03862740844488144,
+        0.3571982979774475
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.0231747105717659,
+        0.12303300946950912,
+        0.31379374861717224
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.05514855682849884,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.05514855682849884,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.05514855682849884,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.14473497867584229,
+        -0.018507584929466248,
+        0.09933675080537796
+      ],
+      "actual_body_after_first_step": [
+        0.022395985201001167,
+        0.03408309817314148,
+        0.3397369980812073
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.02857670933008194,
+        0.08037606626749039,
+        0.3119734525680542
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07936500012874603,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.07936500012874603,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07936500012874603,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.11983709782361984,
+        0.061994768679142,
+        0.011277630925178528
+      ],
+      "actual_body_after_first_step": [
+        0.004499979317188263,
+        0.04602472856640816,
+        0.34900861978530884
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.024045877158641815,
+        0.07357471436262131,
+        0.438062459230423
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.006163403391838074,
+        -0.08419549465179443,
+        -0.06549607217311859
+      ],
+      "actual_body_after_first_step": [
+        0.0697384625673294,
+        -7.953176827868447e-05,
+        0.3514673113822937
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.038580961525440216,
+        0.009849444031715393,
+        0.34989017248153687
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04136462137103081,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.04136462137103081,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04136462137103081,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.056840378791093826,
+        0.01596543937921524,
+        -0.03790650516748428
+      ],
+      "actual_body_after_first_step": [
+        0.026287345215678215,
+        -0.0004618088423740119,
+        0.35414180159568787
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.06489989906549454,
+        -0.002736911177635193,
+        0.39581039547920227
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04512333497405052,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.04512333497405052,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04512333497405052,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.027027957141399384,
+        0.09292178601026535,
+        -0.07047610729932785
+      ],
+      "actual_body_after_first_step": [
+        0.031148036941885948,
+        0.02817205898463726,
+        0.3086342215538025
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.06232913210988045,
+        -0.010852642357349396,
+        0.34456995129585266
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.03427279740571976,
+        0.004497021436691284,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.03427279740571976,
+        0.004497021436691284,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.03427279740571976,
+        0.004497021436691284,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.05745776742696762,
+        -0.04657360166311264,
+        -0.03802097961306572
+      ],
+      "actual_body_after_first_step": [
+        0.04283303767442703,
+        0.045676492154598236,
+        0.32913938164711
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.034543149173259735,
+        0.12589862942695618,
+        0.4013214409351349
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.060830872505903244,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.060830872505903244,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.060830872505903244,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.036285676062107086,
+        0.07179703563451767,
+        -0.07111483812332153
+      ],
+      "actual_body_after_first_step": [
+        0.04155915230512619,
+        0.0020205287728458643,
+        0.3529820442199707
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.0990920290350914,
+        0.07954300194978714,
+        0.32031652331352234
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.08297068625688553,
+        -0.037271566689014435,
+        0.01691196858882904
+      ],
+      "actual_body_after_first_step": [
+        0.07071513682603836,
+        -0.0018116544233635068,
+        0.34966376423835754
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.10743799060583115,
+        -0.055368442088365555,
+        0.38442084193229675
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.09866441041231155,
+        0.06725854426622391,
+        -0.08790720254182816
+      ],
+      "actual_body_after_first_step": [
+        0.07954947650432587,
+        0.032262057065963745,
+        0.33932003378868103
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.003440387547016144,
+        0.09407626837491989,
+        0.2616346478462219
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07080359756946564,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.07080359756946564,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07080359756946564,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.013309814035892487,
+        -0.0027820318937301636,
+        0.025742463767528534
+      ],
+      "actual_body_after_first_step": [
+        0.00119543366599828,
+        0.03316383808851242,
+        0.33816203474998474
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.0650288537144661,
+        0.03454544395208359,
+        0.27189797163009644
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.035431087017059326,
+        -0.03435441106557846,
+        0.08503501862287521
+      ],
+      "actual_body_after_first_step": [
+        0.07049991935491562,
+        -0.001507905195467174,
+        0.348867803812027
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.01764427125453949,
+        -0.008905835449695587,
+        0.4072246253490448
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.03479967266321182,
+        0.055781662464141846,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.03479967266321182,
+        0.055781662464141846,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.03479967266321182,
+        0.055781662464141846,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.03974210470914841,
+        0.031181685626506805,
+        -0.06375792622566223
+      ],
+      "actual_body_after_first_step": [
+        0.11983804404735565,
+        0.0906674861907959,
+        0.3045302629470825
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.029242999851703644,
+        0.011916123330593109,
+        0.31274011731147766
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.010655499994754791,
+        -0.049081481993198395,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 3,
+      "actual_world_after_reset": [
+        -0.010655499994754791,
+        -0.049081481993198395,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.010655499994754791,
+        -0.049081481993198395,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.02261906862258911,
+        0.022337347269058228,
+        0.02898351103067398
+      ],
+      "actual_body_after_first_step": [
+        0.06351526826620102,
+        -0.06711329519748688,
+        0.3481045067310333
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.00017208606004714966,
+        -0.10277996212244034,
+        0.24865573644638062
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.007907159626483917,
+        0.08592445403337479,
+        0.06591599434614182
+      ],
+      "actual_body_after_first_step": [
+        0.08408515900373459,
+        0.04234069585800171,
+        0.3444746136665344
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.011463820934295654,
+        -0.017153508961200714,
+        0.36535021662712097
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.020883779972791672,
+        0.006620064377784729,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 3,
+      "actual_world_after_reset": [
+        -0.020883779972791672,
+        0.006620064377784729,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.020883779972791672,
+        0.006620064377784729,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.006799839437007904,
+        0.0041939616203308105,
+        -0.0016972050070762634
+      ],
+      "actual_body_after_first_step": [
+        0.04734113812446594,
+        0.026742063462734222,
+        0.31989094614982605
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.06971579045057297,
+        -0.0006074756383895874,
+        0.389157235622406
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 0,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.010082259774208069,
+        -0.023532390594482422,
+        -0.05070054158568382
+      ],
+      "actual_body_after_first_step": [
+        0.07046627253293991,
+        -0.0014979449333623052,
+        0.34923821687698364
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07492358237504959,
+        0.04231838136911392,
+        0.3302004337310791
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.057696543633937836,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.057696543633937836,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.057696543633937836,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.04231513291597366,
+        0.055936895310878754,
+        -0.08154645562171936
+      ],
+      "actual_body_after_first_step": [
+        0.044687669724226,
+        0.0026957730296999216,
+        0.35211238265037537
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.001552082598209381,
+        0.0017251074314117432,
+        0.2723347246646881
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.062193553894758224,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.062193553894758224,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.062193553894758224,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.1533140242099762,
+        -0.03345678001642227,
+        -0.07508876174688339
+      ],
+      "actual_body_after_first_step": [
+        0.005129566416144371,
+        -0.0003971279948018491,
+        0.3540055453777313
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.09320119768381119,
+        0.045883841812610626,
+        0.43805786967277527
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.034678906202316284,
+        0.013567544519901276,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.034678906202316284,
+        0.013567544519901276,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.034678906202316284,
+        0.013567544519901276,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.11768960952758789,
+        0.09166731685400009,
+        -0.09409429877996445
+      ],
+      "actual_body_after_first_step": [
+        0.03439030796289444,
+        0.02518325112760067,
+        0.3524615466594696
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.034272365272045135,
+        -0.06203789636492729,
+        0.43036898970603943
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.04600543528795242,
+        -0.0953829437494278,
+        0.08346497267484665
+      ],
+      "actual_body_after_first_step": [
+        0.07940598577260971,
+        0.04393516480922699,
+        0.35512539744377136
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.03055702894926071,
+        0.006569720804691315,
+        0.4391176402568817
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 0,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.06469795852899551,
+        -0.09514577686786652,
+        -0.0363549068570137
+      ],
+      "actual_body_after_first_step": [
+        0.07707198709249496,
+        0.03872636705636978,
+        0.34875309467315674
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07952939718961716,
+        0.09702342003583908,
+        0.4191795885562897
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06453292071819305,
+        -0.07695875316858292,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 0,
+      "actual_world_after_reset": [
+        -0.06453292071819305,
+        -0.07695875316858292,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06453292071819305,
+        -0.07695875316858292,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.007645897567272186,
+        -0.017083317041397095,
+        -0.0768033042550087
+      ],
+      "actual_body_after_first_step": [
+        -0.0009144869400188327,
+        -0.0707889273762703,
+        0.358418345451355
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.02154778689146042,
+        -0.03669579327106476,
+        0.2865101993083954
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04225689545273781,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.04225689545273781,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04225689545273781,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.009779296815395355,
+        0.05802067369222641,
+        0.03521827608346939
+      ],
+      "actual_body_after_first_step": [
+        0.03651747107505798,
+        0.06251703202724457,
+        0.30617010593414307
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.034909456968307495,
+        0.11019337922334671,
+        0.2972051501274109
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07785870134830475,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.07785870134830475,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07785870134830475,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.16609406471252441,
+        -0.04692760109901428,
+        0.07348240166902542
+      ],
+      "actual_body_after_first_step": [
+        -0.011426211334764957,
+        0.00037571389111690223,
+        0.3565201759338379
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.030086740851402283,
+        -0.04996270686388016,
+        0.35164880752563477
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.011210545897483826,
+        -0.06565633416175842,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.011210545897483826,
+        -0.06565633416175842,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.011210545897483826,
+        -0.06565633416175842,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.06512734293937683,
+        -0.0842989906668663,
+        -0.0638447254896164
+      ],
+      "actual_body_after_first_step": [
+        0.08014947175979614,
+        -0.03548731282353401,
+        0.3531360924243927
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.15092605352401733,
+        -0.09044650197029114,
+        0.2578468322753906
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.010484464466571808,
+        0.06693114340305328,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.010484464466571808,
+        0.06693114340305328,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.010484464466571808,
+        0.06693114340305328,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.037965886294841766,
+        0.03571435064077377,
+        -0.08437881618738174
+      ],
+      "actual_body_after_first_step": [
+        0.07113044708967209,
+        0.15063858032226562,
+        0.2959142327308655
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.061786048114299774,
+        0.062039293348789215,
+        0.25955161452293396
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06384745240211487,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.06384745240211487,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06384745240211487,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.03575468808412552,
+        -0.011363007128238678,
+        -0.04666474461555481
+      ],
+      "actual_body_after_first_step": [
+        0.004321644548326731,
+        -0.0014762836508452892,
+        0.35267964005470276
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07113995403051376,
+        0.04272807389497757,
+        0.3076688349246979
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07199012488126755,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.07199012488126755,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07199012488126755,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.01482875645160675,
+        0.01029285043478012,
+        0.059115372598171234
+      ],
+      "actual_body_after_first_step": [
+        -0.005829744040966034,
+        8.137697295751423e-05,
+        0.3558327555656433
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.032161734998226166,
+        0.0829392746090889,
+        0.35253578424453735
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 3,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.05463654547929764,
+        -0.07419582456350327,
+        0.06746790558099747
+      ],
+      "actual_body_after_first_step": [
+        0.07456361502408981,
+        0.03337927907705307,
+        0.32320162653923035
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.013255409896373749,
+        -0.026706434786319733,
+        0.4181306064128876
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.041576631367206573,
+        -0.05955321714282036,
+        0.07933979481458664
+      ],
+      "actual_body_after_first_step": [
+        0.07974270731210709,
+        0.044266339391469955,
+        0.3548988699913025
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07845940440893173,
+        0.13067835569381714,
+        0.42763665318489075
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07703603804111481,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.07703603804111481,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07703603804111481,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.17702345550060272,
+        -0.039932917803525925,
+        -0.0429486520588398
+      ],
+      "actual_body_after_first_step": [
+        -0.009877067990601063,
+        -0.0014700317988172174,
+        0.3538527488708496
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.08491823822259903,
+        0.012554191052913666,
+        0.2683854103088379
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.02518804371356964,
+        0.027263939380645752,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.02518804371356964,
+        0.027263939380645752,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.02518804371356964,
+        0.027263939380645752,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.04011876508593559,
+        0.0656132772564888,
+        0.07444561272859573
+      ],
+      "actual_body_after_first_step": [
+        0.1347673088312149,
+        0.0477542020380497,
+        0.34151074290275574
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.13725069165229797,
+        -0.03365345299243927,
+        0.24838700890541077
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07276690751314163,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.07276690751314163,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07276690751314163,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.12788492441177368,
+        0.020906999707221985,
+        -0.09433755278587341
+      ],
+      "actual_body_after_first_step": [
+        4.073897798662074e-05,
+        0.031114084646105766,
+        0.34086984395980835
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.03636477142572403,
+        0.008277378976345062,
+        0.25851136445999146
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.026705540716648102,
+        -0.07521358877420425,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.026705540716648102,
+        -0.07521358877420425,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.026705540716648102,
+        -0.07521358877420425,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.031261712312698364,
+        -0.017801538109779358,
+        0.0512549951672554
+      ],
+      "actual_body_after_first_step": [
+        0.05283235013484955,
+        -0.0044201938435435295,
+        0.3035350441932678
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.05354257673025131,
+        0.09095697849988937,
+        0.38130876421928406
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.07311732321977615,
+        0.06039496511220932,
+        -0.07558034360408783
+      ],
+      "actual_body_after_first_step": [
+        0.07646578550338745,
+        0.07813426852226257,
+        0.297860324382782
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.017458826303482056,
+        0.11558184772729874,
+        0.29052284359931946
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07894116640090942,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.07894116640090942,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07894116640090942,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.13143308460712433,
+        0.09614310413599014,
+        0.09673631936311722
+      ],
+      "actual_body_after_first_step": [
+        -0.012270723469555378,
+        -0.00029518158407881856,
+        0.35568398237228394
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.04029950872063637,
+        0.0407928004860878,
+        0.28706780076026917
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.014381945133209229,
+        0.028943993151187897,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.014381945133209229,
+        0.028943993151187897,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.014381945133209229,
+        0.028943993151187897,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.10072167962789536,
+        0.09450732916593552,
+        0.02661321312189102
+      ],
+      "actual_body_after_first_step": [
+        0.09317756444215775,
+        0.047948598861694336,
+        0.3478390574455261
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.17694306373596191,
+        -0.04903849959373474,
+        0.2607744038105011
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.042535342276096344,
+        -0.09429901093244553,
+        -0.06559891253709793
+      ],
+      "actual_body_after_first_step": [
+        0.07685953378677368,
+        0.03182395547628403,
+        0.3361070156097412
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.03924546390771866,
+        -0.04741939902305603,
+        0.43130597472190857
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.04311744123697281,
+        -0.021014750003814697,
+        -0.0552545003592968
+      ],
+      "actual_body_after_first_step": [
+        0.07865732163190842,
+        0.06998315453529358,
+        0.3068164587020874
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.060795076191425323,
+        -0.020579174160957336,
+        0.32093510031700134
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.03848744183778763,
+        0.05702642351388931,
+        -0.06256525218486786
+      ],
+      "actual_body_after_first_step": [
+        0.06986787915229797,
+        -0.0011284896172583103,
+        0.3501325845718384
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.034963302314281464,
+        -0.022141672670841217,
+        0.35801807045936584
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04552854597568512,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.04552854597568512,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04552854597568512,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.026604674756526947,
+        -0.020622454583644867,
+        0.044942550361156464
+      ],
+      "actual_body_after_first_step": [
+        0.05667398124933243,
+        0.002979908138513565,
+        0.35244134068489075
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.021719306707382202,
+        0.01756768673658371,
+        0.25461897253990173
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.0018157139420509338,
+        0.006158053874969482,
+        0.05390831083059311
+      ],
+      "actual_body_after_first_step": [
+        0.08918103575706482,
+        0.04958850517868996,
+        0.3462771475315094
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.016273871064186096,
+        0.14560377597808838,
+        0.3909623324871063
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07509486377239227,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.07509486377239227,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07509486377239227,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.11546482890844345,
+        -0.07093992084264755,
+        -0.0385625921189785
+      ],
+      "actual_body_after_first_step": [
+        -0.0007929413695819676,
+        0.06550922989845276,
+        0.30035263299942017
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.027378849685192108,
+        0.08813322335481644,
+        0.28697365522384644
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04784589260816574,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.04784589260816574,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04784589260816574,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.04296570271253586,
+        -0.0397166907787323,
+        0.048709116876125336
+      ],
+      "actual_body_after_first_step": [
+        0.020125845447182655,
+        -0.0009841556893661618,
+        0.3523358702659607
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.05573420971632004,
+        -0.010034576058387756,
+        0.4350501000881195
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04737658053636551,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.04737658053636551,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04737658053636551,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.05005445331335068,
+        -0.09104820340871811,
+        0.022915460169315338
+      ],
+      "actual_body_after_first_step": [
+        0.05589098855853081,
+        0.003944616299122572,
+        0.34891170263290405
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.050699494779109955,
+        -0.05912710726261139,
+        0.28337496519088745
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.007321476936340332,
+        0.041160352528095245,
+        -0.0811847373843193
+      ],
+      "actual_body_after_first_step": [
+        0.10444291681051254,
+        0.001970651326701045,
+        0.35006090998649597
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.12883895635604858,
+        -0.017633311450481415,
+        0.28297561407089233
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04760869964957237,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.04760869964957237,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04760869964957237,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.14312013983726501,
+        0.06704235821962357,
+        -0.057452667504549026
+      ],
+      "actual_body_after_first_step": [
+        0.02560427039861679,
+        0.03737427666783333,
+        0.32728350162506104
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.06927885860204697,
+        -0.024571187794208527,
+        0.3546665608882904
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.057362526655197144,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.057362526655197144,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.057362526655197144,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.08483103662729263,
+        0.001050315797328949,
+        -0.00010560452938079834
+      ],
+      "actual_body_after_first_step": [
+        0.01609530858695507,
+        0.026714660227298737,
+        0.32889440655708313
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.11037636548280716,
+        0.01539214700460434,
+        0.3492027521133423
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04865402728319168,
+        0.0573062002658844,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.04865402728319168,
+        0.0573062002658844,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04865402728319168,
+        0.0573062002658844,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.025910980999469757,
+        0.11841277033090591,
+        0.0003421306610107422
+      ],
+      "actual_body_after_first_step": [
+        0.023043492808938026,
+        0.055219054222106934,
+        0.3501744568347931
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.07122921943664551,
+        0.060996972024440765,
+        0.40399137139320374
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04102109745144844,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.04102109745144844,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04102109745144844,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.12722645699977875,
+        0.001355186104774475,
+        -0.09867740422487259
+      ],
+      "actual_body_after_first_step": [
+        0.0613769069314003,
+        0.0050969976000487804,
+        0.3481224477291107
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.03407951444387436,
+        0.08080700784921646,
+        0.315965473651886
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04623064026236534,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.04623064026236534,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04623064026236534,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.11118558049201965,
+        0.0439850315451622,
+        0.003068789839744568
+      ],
+      "actual_body_after_first_step": [
+        0.021067598834633827,
+        -0.0009183510555885732,
+        0.35456305742263794
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.05288016051054001,
+        0.03863189369440079,
+        0.4007028639316559
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.05137653276324272,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.05137653276324272,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.05137653276324272,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.048055972903966904,
+        -0.04416447877883911,
+        -0.028660908341407776
+      ],
+      "actual_body_after_first_step": [
+        0.050655633211135864,
+        0.00466143898665905,
+        0.3495699167251587
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07291563600301743,
+        0.051302872598171234,
+        0.30945903062820435
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06319229304790497,
+        0.003280334174633026,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.06319229304790497,
+        0.003280334174633026,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06319229304790497,
+        0.003280334174633026,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.07057701051235199,
+        -0.04159678891301155,
+        0.0983421728014946
+      ],
+      "actual_body_after_first_step": [
+        0.020537743344902992,
+        0.049130629748106,
+        0.35043865442276
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.07879511266946793,
+        0.038205139338970184,
+        0.348475843667984
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.060979388654232025,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.060979388654232025,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.060979388654232025,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.10499219596385956,
+        -0.0872892439365387,
+        0.09848324209451675
+      ],
+      "actual_body_after_first_step": [
+        0.02143663354218006,
+        0.044627442955970764,
+        0.3513667583465576
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.08318210393190384,
+        0.08784206956624985,
+        0.271359920501709
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04253460466861725,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.04253460466861725,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04253460466861725,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.0351656973361969,
+        -0.001177951693534851,
+        0.08442779630422592
+      ],
+      "actual_body_after_first_step": [
+        0.05971173569560051,
+        0.00421511847525835,
+        0.34780436754226685
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.1252070963382721,
+        0.07567720860242844,
+        0.29912081360816956
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 0,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.05321870744228363,
+        0.062309227883815765,
+        -0.09530346840620041
+      ],
+      "actual_body_after_first_step": [
+        0.10411576181650162,
+        0.0017601556610316038,
+        0.34855830669403076
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.08308593183755875,
+        0.08430802077054977,
+        0.40847811102867126
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.05882421135902405,
+        -0.04774048551917076,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.05882421135902405,
+        -0.04774048551917076,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.05882421135902405,
+        -0.04774048551917076,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.10383329540491104,
+        -0.12337727099657059,
+        0.018479958176612854
+      ],
+      "actual_body_after_first_step": [
+        0.12925398349761963,
+        -0.06484062224626541,
+        0.3494596481323242
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.14293161034584045,
+        -0.09681978076696396,
+        0.2682381272315979
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.07314764708280563,
+        -0.011529818177223206,
+        0.09893877059221268
+      ],
+      "actual_body_after_first_step": [
+        0.07534337043762207,
+        0.03427167236804962,
+        0.32654792070388794
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.0664847120642662,
+        0.03295543044805527,
+        0.3542766571044922
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 0,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.06302984803915024,
+        -0.05486444756388664,
+        0.06670442968606949
+      ],
+      "actual_body_after_first_step": [
+        0.08623655885457993,
+        0.04399944096803665,
+        0.34657254815101624
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.000568687915802002,
+        0.015627622604370117,
+        0.34598827362060547
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04555979371070862,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.04555979371070862,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04555979371070862,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.05919782072305679,
+        -0.07604530453681946,
+        0.07463163882493973
+      ],
+      "actual_body_after_first_step": [
+        0.021486947312951088,
+        -0.000518356857355684,
+        0.35440194606781006
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.03686349838972092,
+        -0.06627750396728516,
+        0.42503729462623596
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.00023748725652694702,
+        -0.01413564383983612,
+        0.07909894734621048
+      ],
+      "actual_body_after_first_step": [
+        0.06969664990901947,
+        -0.0015310931485146284,
+        0.34971877932548523
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.12448842078447342,
+        0.018993742763996124,
+        0.3313630223274231
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.06967455893754959,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.06967455893754959,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.06967455893754959,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.11197185516357422,
+        -0.061863139271736145,
+        -0.009658508002758026
+      ],
+      "actual_body_after_first_step": [
+        0.03153302147984505,
+        0.004859202541410923,
+        0.34879449009895325
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.041235052049160004,
+        0.0017046406865119934,
+        0.39382150769233704
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.033681318163871765,
+        0.06504976749420166,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        0.033681318163871765,
+        0.06504976749420166,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.033681318163871765,
+        0.06504976749420166,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.09887758642435074,
+        0.03492165356874466,
+        0.08905044943094254
+      ],
+      "actual_body_after_first_step": [
+        0.09959033876657486,
+        0.06660275906324387,
+        0.3505534827709198
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.039713211357593536,
+        0.06500064581632614,
+        0.41985800862312317
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.05430322140455246,
+        0.03895750641822815,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 0,
+      "actual_world_after_reset": [
+        -0.05430322140455246,
+        0.03895750641822815,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.05430322140455246,
+        0.03895750641822815,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.02723310887813568,
+        0.13287696242332458,
+        0.04392953962087631
+      ],
+      "actual_body_after_first_step": [
+        0.06244043633341789,
+        0.12007680535316467,
+        0.28512272238731384
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.013784728944301605,
+        0.10508137196302414,
+        0.29690900444984436
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.05638299137353897,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.05638299137353897,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.05638299137353897,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.15341266989707947,
+        -0.07489262521266937,
+        -0.09132575243711472
+      ],
+      "actual_body_after_first_step": [
+        0.016878781840205193,
+        0.03397885710000992,
+        0.3133450746536255
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.04882108420133591,
+        0.06800007075071335,
+        0.23455804586410522
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0550447553396225,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 4,
+      "actual_world_after_reset": [
+        -0.0550447553396225,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.0550447553396225,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.008791901171207428,
+        -0.06784667074680328,
+        0.052638985216617584
+      ],
+      "actual_body_after_first_step": [
+        0.04678922891616821,
+        0.002670462243258953,
+        0.35270482301712036
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.09949683398008347,
+        0.043179698288440704,
+        0.35477131605148315
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.016052216291427612,
+        0.07337023317813873,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.016052216291427612,
+        0.07337023317813873,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.016052216291427612,
+        0.07337023317813873,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.02257952094078064,
+        0.16110524535179138,
+        0.03792669624090195
+      ],
+      "actual_body_after_first_step": [
+        0.045634955167770386,
+        0.0712929293513298,
+        0.3525090515613556
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.05054110288619995,
+        0.05229420214891434,
+        0.4324912130832672
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        0.011646859347820282,
+        -0.004994161427021027,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.011646859347820282,
+        -0.004994161427021027,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.011646859347820282,
+        -0.004994161427021027,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.065798319876194,
+        0.012331157922744751,
+        0.07206334918737411
+      ],
+      "actual_body_after_first_step": [
+        0.0789710208773613,
+        -0.01245924923568964,
+        0.35162192583084106
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.17349475622177124,
+        0.0688929632306099,
+        0.3971927762031555
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0582226924598217,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.0582226924598217,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.0582226924598217,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.03589262813329697,
+        -0.08237511664628983,
+        -0.06929134577512741
+      ],
+      "actual_body_after_first_step": [
+        0.012610919773578644,
+        0.03741705045104027,
+        0.35487809777259827
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        -0.040289897471666336,
+        0.11541403084993362,
+        0.30141085386276245
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 3,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.09891832619905472,
+        -0.030987538397312164,
+        -0.06819866597652435
+      ],
+      "actual_body_after_first_step": [
+        0.08306710422039032,
+        0.03901974856853485,
+        0.34324806928634644
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.017937198281288147,
+        -0.053450848907232285,
+        0.2565051019191742
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.03630397468805313,
+        0.027626164257526398,
+        -0.033422574400901794
+      ],
+      "actual_body_after_first_step": [
+        0.06951978802680969,
+        -0.0018459631828591228,
+        0.3492918610572815
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.09139721840620041,
+        -0.09029434621334076,
+        0.316476434469223
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.05508480221033096,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        -0.05508480221033096,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.05508480221033096,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.1373724490404129,
+        0.010688938200473785,
+        -0.07422757893800735
+      ],
+      "actual_body_after_first_step": [
+        0.04690731316804886,
+        0.0038272335659712553,
+        0.34985339641571045
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.014565087854862213,
+        -0.07929753512144089,
+        0.42072203755378723
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.07812407612800598,
+        0.020700976252555847,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 1,
+      "actual_world_after_reset": [
+        -0.07812407612800598,
+        0.020700976252555847,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.07812407612800598,
+        0.020700976252555847,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.07578215003013611,
+        0.06901576370000839,
+        -0.08464569598436356
+      ],
+      "actual_body_after_first_step": [
+        0.03166792169213295,
+        0.03417067974805832,
+        0.3486257791519165
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.01620442420244217,
+        -0.06072055920958519,
+        0.42980340123176575
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.017010167241096497,
+        -0.051141925156116486,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 2,
+      "actual_world_after_reset": [
+        -0.017010167241096497,
+        -0.051141925156116486,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.017010167241096497,
+        -0.051141925156116486,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.05828004330396652,
+        -0.15090110898017883,
+        0.06620634347200394
+      ],
+      "actual_body_after_first_step": [
+        0.05001179873943329,
+        -0.05898648872971535,
+        0.35310786962509155
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.06601615995168686,
+        -0.06128590926527977,
+        0.28540974855422974
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.04530739784240723,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.04530739784240723,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.04530739784240723,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.015241332352161407,
+        0.08560498803853989,
+        0.06646133214235306
+      ],
+      "actual_body_after_first_step": [
+        0.025277672335505486,
+        0.03472504764795303,
+        0.34443020820617676
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.02393180876970291,
+        0.005220517516136169,
+        0.37699487805366516
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.044954605400562286,
+        0.0,
+        0.0
+      ],
+      "hard_case": true,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        -0.044954605400562286,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.044954605400562286,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.06212593615055084,
+        0.09364458173513412,
+        0.004339933395385742
+      ],
+      "actual_body_after_first_step": [
+        0.028802689164876938,
+        0.03289627283811569,
+        0.3142451047897339
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.11527124792337418,
+        0.10417970269918442,
+        0.22751113772392273
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.00476691871881485,
+        -0.015740826725959778,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 6,
+      "actual_world_after_reset": [
+        -0.00476691871881485,
+        -0.015740826725959778,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        -0.00476691871881485,
+        -0.015740826725959778,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.049600888043642044,
+        -0.0070722997188568115,
+        0.058145396411418915
+      ],
+      "actual_body_after_first_step": [
+        0.06096717715263367,
+        -0.010098571889102459,
+        0.35315054655075073
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.062004439532756805,
+        -0.07496973872184753,
+        0.433673232793808
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 5,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        -0.04450778290629387,
+        -0.0613974928855896,
+        -0.027172766625881195
+      ],
+      "actual_body_after_first_step": [
+        0.10468054562807083,
+        0.0016895015724003315,
+        0.3485817313194275
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.008147992193698883,
+        -0.04997246339917183,
+        0.34280651807785034
+      ]
+    },
+    {
+      "sampled_world_velocity": [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "hard_case": false,
+      "motion_id": 7,
+      "actual_world_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "actual_body_after_reset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "policy_base_lin_vel_after_reset": [
+        0.001351378858089447,
+        -0.04864754155278206,
+        -0.09597618132829666
+      ],
+      "actual_body_after_first_step": [
+        0.06955131143331528,
+        -0.0014600158901885152,
+        0.3504820168018341
+      ],
+      "policy_base_lin_vel_after_first_step": [
+        0.03220776468515396,
+        0.01820957660675049,
+        0.34020787477493286
+      ]
+    }
+  ]
+}

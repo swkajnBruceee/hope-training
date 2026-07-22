@@ -169,23 +169,27 @@ def _run_play(cfg, simulation_app):
     ppo_runner.load(resume_path)
     policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
 
-    # export the policy to ONNX next to the checkpoint
+    # Export is convenient for deployment, but it must never prevent an
+    # interactive/video replay.  Some stateful custom observation terms are
+    # not serializable by the generic metadata helper.
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    if has_motion_command:
-        export_motion_policy_as_onnx(
-            env.unwrapped, ppo_runner.alg.policy,
-            normalizer=getattr(ppo_runner.alg.policy, "actor_obs_normalizer", None),
-            path=export_model_dir, filename="policy.onnx",
-        )
-    else:
-        export_policy_as_onnx(
-            ppo_runner.alg.policy,
-            normalizer=getattr(ppo_runner.alg.policy, "actor_obs_normalizer", None),
-            path=export_model_dir,
-            filename="policy.onnx",
-        )
-    attach_onnx_metadata(env.unwrapped, str(wandb_path) if wandb_path else "none", export_model_dir)
-    print(f"[INFO] Exported ONNX policy to: {export_model_dir}")
+    try:
+        if has_motion_command:
+            export_motion_policy_as_onnx(
+                env.unwrapped, ppo_runner.alg.policy,
+                normalizer=getattr(ppo_runner.alg.policy, "actor_obs_normalizer", None),
+                path=export_model_dir, filename="policy.onnx",
+            )
+        else:
+            export_policy_as_onnx(
+                ppo_runner.alg.policy,
+                normalizer=getattr(ppo_runner.alg.policy, "actor_obs_normalizer", None),
+                path=export_model_dir,
+            )
+        attach_onnx_metadata(env.unwrapped, str(wandb_path) if wandb_path else "none", export_model_dir)
+        print(f"[INFO] Exported ONNX policy to: {export_model_dir}")
+    except Exception as exc:
+        print(f"[WARN] ONNX export/metadata skipped; replay continues: {exc}", flush=True)
 
     # Manual video capture: grab env.render() each step and encode to mp4 with imageio
     # (imageio-ffmpeg). Avoids gym RecordVideo's vec-env / flush quirks and reports exactly

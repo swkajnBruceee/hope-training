@@ -1,0 +1,31 @@
+# Stage-A tail-recovery smoke: fixed arm/waist strike, 12-DOF leg residual only.
+# The 4.58 s episode includes the full 79-frame swing plus a 150-step settling
+# tail and now terminates on a physical fall.
+
+name: ppo_strike_stabilizer_a_tail_smoke
+
+runner:
+  num_steps_per_env: 48
+  max_iterations: 40
+  save_interval: 5
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [256, 128, 64]
+  critic_hidden_dims: [256, 128, 64]
+  activation: elu
+  init_noise_std: 0.02
+
+algorithm:
+  learning_rate: 0.0003
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.001
+  num_learning_epochs: 3
+  num_mini_batches: 2
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0

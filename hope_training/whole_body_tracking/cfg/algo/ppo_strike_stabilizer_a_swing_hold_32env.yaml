@@ -1,0 +1,33 @@
+# Curriculum 1: full predictive leg control through the swing, followed by a
+# three-second final-pose hold.  The actor receives no handcrafted joint-motion
+# template; it starts from zero residual and learns all hip/knee/ankle
+# coordination from the complete-cycle stability objective.
+name: ppo_strike_stabilizer_a_swing_hold_32env
+
+runner:
+  num_steps_per_env: 64
+  max_iterations: 2048
+  save_interval: 50
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [256, 128, 64]
+  critic_hidden_dims: [256, 128, 64]
+  activation: elu
+  # Large enough to discover meaningful leg reactions, still bounded by the
+  # action contract and raw clip.  The actor mean starts at exact zero.
+  init_noise_std: 0.08
+
+algorithm:
+  learning_rate: 0.0003
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.002
+  num_learning_epochs: 3
+  num_mini_batches: 2
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0

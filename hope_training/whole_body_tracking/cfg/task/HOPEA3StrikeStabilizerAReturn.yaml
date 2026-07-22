@@ -1,0 +1,55 @@
+# Stage-A.1: preserve the proven 12-DOF leg stabilizer contract, but make a
+# complete single-ball cycle: swing, minimum-jerk upper-body return, then a
+# second ready hold.  This is deliberately a separate task contract so the
+# frozen final-pose-hold Stage-A results remain reproducible.
+name: HOPEA3StrikeStabilizerAReturn
+gym_task: HOPE-StrikeStabilizerA-AgibotA3-v0
+experiment_name: agibot_a3_strike_stabilizer_a_return
+
+motion_manifest: sample_motions/p2_fixed_forehand_combined_gate_v1/native_zero_residual_manifest.json
+manifest_subset_size: null
+manifest_frame_z_offset: 0.76
+realized_phase_reference_bank: eval_outputs/strike_rsi_bank_v1/floating_base_prefix_bank_v4
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  # 50 prelude + 79 swing + 25 final-pose hold + 50 (1.0 s) minimum-jerk
+  # return + 100 final-ready hold = 304 policy steps at 50 Hz.
+  episode_length_s: 6.08
+
+actions:
+  raw_clip: 0.25
+
+rewards:
+  motion_scale: 1.0
+  joint_torques_weight: -0.000001
+  action_rate_weight: -0.03
+  action_residual_weight: -0.05
+  joint_limit_weight: -15.0
+
+racket:
+  target_mode: manifest
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  strike_time_std_s: 0.04
+  ref_perturb_success_gated: false
+  forehand_on_negative_y: true
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0
+
+domain_rand:
+  pd_gain_range: null
+
+motion:
+  sample_random_start_phase: false
+  prelude_steps: 50
+  reset_to_default_pose: true
+  hold_last_frame_steps: 25
+  return_to_default_steps: 50
+  joint_position_offset: {}
+  root_position_offset: [0.0, 0.0, 0.0]

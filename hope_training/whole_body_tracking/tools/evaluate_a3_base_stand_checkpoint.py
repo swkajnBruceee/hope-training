@@ -25,6 +25,7 @@ parser.add_argument(
         "A3BaseStandClipCandidate-v0",
         "A3BaseStandAuthorityClipCandidate-v0",
         "A3BaseStandPassiveStableCandidate-v0",
+        "A3CatchReadyStand-v0",
     ),
     default="A3BaseStand-v0",
 )

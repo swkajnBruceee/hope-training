@@ -1,0 +1,311 @@
+{
+  "checkpoint": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/logs/rsl_rl/agibot_a3_strike_stabilizer_a/2026-07-22_15-08-22_swing_hold_c1_resume_from50/model_1200.pt",
+  "seed": 20260722,
+  "policy_mode": "deterministic_actor_mean",
+  "task_contract": "ready_pose -> prelude -> full_swing -> 3s final_pose_hold",
+  "policy_steps": 280,
+  "zero_residual": {
+    "summary": {
+      "cases": 8,
+      "completed_timeout_fraction": 0.125,
+      "failure_fraction": 0.875,
+      "minimum_root_height_m_mean": 0.7177098095417023,
+      "tail_root_linear_velocity_rms_mean": 0.8746647727675736,
+      "tail_root_angular_velocity_rms_mean": 0.9255190379917622,
+      "actor_leg_action_rms_mean": 0.0,
+      "actor_leg_exceed_fraction_mean": 0.0,
+      "executed_leg_action_rms_mean": 0.0,
+      "executed_leg_boundary_fraction_mean": 0.0
+    },
+    "cases": [
+      {
+        "motion_id": 0,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6750542521476746,
+        "tail_root_linear_velocity_rms": 0.830862820148468,
+        "tail_root_angular_velocity_rms": 0.877230167388916,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_boundary_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 1,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6750459671020508,
+        "tail_root_linear_velocity_rms": 0.945695698261261,
+        "tail_root_angular_velocity_rms": 1.0032249689102173,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_boundary_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 2,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6742806434631348,
+        "tail_root_linear_velocity_rms": 1.030770182609558,
+        "tail_root_angular_velocity_rms": 1.0926977396011353,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_boundary_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 3,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.05131128802895546,
+        "tail_root_angular_velocity_rms": 0.05482354760169983,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_boundary_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 4,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6523770689964294,
+        "tail_root_linear_velocity_rms": 1.055172085762024,
+        "tail_root_angular_velocity_rms": 1.111842393875122,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_boundary_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 5,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6777368187904358,
+        "tail_root_linear_velocity_rms": 1.0404059886932373,
+        "tail_root_angular_velocity_rms": 1.1011396646499634,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_boundary_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 6,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.662700891494751,
+        "tail_root_linear_velocity_rms": 1.0598548650741577,
+        "tail_root_angular_velocity_rms": 1.1190040111541748,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_boundary_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 7,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6844828724861145,
+        "tail_root_linear_velocity_rms": 0.9832452535629272,
+        "tail_root_angular_velocity_rms": 1.0441898107528687,
+        "actor_leg_action_rms": 0.0,
+        "actor_leg_exceed_fraction": 0.0,
+        "executed_leg_action_rms": 0.0,
+        "executed_leg_boundary_fraction": 0.0,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      }
+    ]
+  },
+  "learned_policy": {
+    "summary": {
+      "cases": 8,
+      "completed_timeout_fraction": 0.75,
+      "failure_fraction": 0.25,
+      "minimum_root_height_m_mean": 0.9486139044165611,
+      "tail_root_linear_velocity_rms_mean": 0.2440940886735916,
+      "tail_root_angular_velocity_rms_mean": 0.2919082837179303,
+      "actor_leg_action_rms_mean": 1.005955994129181,
+      "actor_leg_exceed_fraction_mean": 0.5018351292233336,
+      "executed_leg_action_rms_mean": 0.6782498732209206,
+      "executed_leg_boundary_fraction_mean": 0.47291067830057865
+    },
+    "cases": [
+      {
+        "motion_id": 0,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.09289507567882538,
+        "tail_root_angular_velocity_rms": 0.13337288796901703,
+        "actor_leg_action_rms": 1.046282410621643,
+        "actor_leg_exceed_fraction": 0.540621266427718,
+        "executed_leg_action_rms": 0.6970406174659729,
+        "executed_leg_boundary_fraction": 0.5229988052568698,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 1,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.08642152696847916,
+        "tail_root_angular_velocity_rms": 0.13599146902561188,
+        "actor_leg_action_rms": 1.0639766454696655,
+        "actor_leg_exceed_fraction": 0.5594384707287933,
+        "executed_leg_action_rms": 0.7034339904785156,
+        "executed_leg_boundary_fraction": 0.545400238948626,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 2,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.09055321663618088,
+        "tail_root_angular_velocity_rms": 0.13392041623592377,
+        "actor_leg_action_rms": 1.050877332687378,
+        "actor_leg_exceed_fraction": 0.5397252090800478,
+        "executed_leg_action_rms": 0.6989842653274536,
+        "executed_leg_boundary_fraction": 0.529868578255675,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 3,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.10557367652654648,
+        "tail_root_angular_velocity_rms": 0.1219257041811943,
+        "actor_leg_action_rms": 1.0362350940704346,
+        "actor_leg_exceed_fraction": 0.5256869772998806,
+        "executed_leg_action_rms": 0.6936955451965332,
+        "executed_leg_boundary_fraction": 0.5137395459976105,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 4,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6651166081428528,
+        "tail_root_linear_velocity_rms": 0.7539089322090149,
+        "tail_root_angular_velocity_rms": 0.8129029273986816,
+        "actor_leg_action_rms": 0.9445257782936096,
+        "actor_leg_exceed_fraction": 0.44957081545064376,
+        "executed_leg_action_rms": 0.6620401740074158,
+        "executed_leg_boundary_fraction": 0.4270386266094421,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 5,
+        "completed_timeout": false,
+        "failed": true,
+        "minimum_root_height_m": 0.6837948560714722,
+        "tail_root_linear_velocity_rms": 0.6293056011199951,
+        "tail_root_angular_velocity_rms": 0.6893432140350342,
+        "actor_leg_action_rms": 0.9700082540512085,
+        "actor_leg_exceed_fraction": 0.45818070818070816,
+        "executed_leg_action_rms": 0.66097092628479,
+        "executed_leg_boundary_fraction": 0.4126984126984127,
+        "termination_reasons": {
+          "time_out": 0,
+          "base_height": 1,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 6,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.1002645343542099,
+        "tail_root_angular_velocity_rms": 0.1594792604446411,
+        "actor_leg_action_rms": 0.9979525208473206,
+        "actor_leg_exceed_fraction": 0.4862604540023895,
+        "executed_leg_action_rms": 0.6634342670440674,
+        "executed_leg_boundary_fraction": 0.4292114695340502,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      },
+      {
+        "motion_id": 7,
+        "completed_timeout": true,
+        "failed": false,
+        "minimum_root_height_m": 1.0399999618530273,
+        "tail_root_linear_velocity_rms": 0.09383014589548111,
+        "tail_root_angular_velocity_rms": 0.14833039045333862,
+        "actor_leg_action_rms": 0.9377899169921875,
+        "actor_leg_exceed_fraction": 0.4551971326164875,
+        "executed_leg_action_rms": 0.646399199962616,
+        "executed_leg_boundary_fraction": 0.40232974910394265,
+        "termination_reasons": {
+          "time_out": 1,
+          "base_height": 0,
+          "non_foot_ground_contact": 0
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "audit_id": "a3_base_stand_deterministic_audit_v1",
+  "task": "A3CatchReadyStand-v0",
+  "simulation_only": true,
+  "physics_dt_s": 0.005,
+  "policy_dt_s": 0.02,
+  "num_envs": 32,
+  "reset_contract": {
+    "action_dimension": 14,
+    "actor_observation_dimension": 955,
+    "critic_observation_dimension": 1000,
+    "actor_critic_shared_prefix_equal": true,
+    "history_repeats_current_proprioception": true,
+    "history_previous_action_is_zero": true,
+    "base_command_is_zero_velocity_nominal_height": false,
+    "strike_context_is_zero": true,
+    "actor_finite": true,
+    "critic_finite": true,
+    "backend_joint_set_matches": true,
+    "base_joint_order_matches": true,
+    "raw_action_clip_abs": 0.25,
+    "target_transport": "zero_order_hold",
+    "passed": false
+  },
+  "composer_full_target_passed": false,
+  "stages": [
+    {
+      "stage": "zero_action",
+      "steps": 500,
+      "max_abs_raw_action": 0.0,
+      "min_root_height_m": 1.0399999618530273,
+      "max_root_tilt_rad": 0.07581664621829987,
+      "mean_reward_per_step": 0.032871591250877824,
+      "terminated_env_count": 0,
+      "truncated_env_count": 32,
+      "termination_term_counts": {
+        "time_out": 32,
+        "torso_tilt": 0,
+        "base_height": 0,
+        "illegal_contact": 0,
+        "joint_limit": 0,
+        "nonfinite_state": 0
+      },
+      "non_timeout_termination_count": 0,
+      "first_non_timeout_termination_step": null,
+      "top_contact_forces": [
+        {
+          "body_name": "right_ankle_roll_Link",
+          "max_force_n": 1009.1301879882812
+        },
+        {
+          "body_name": "left_ankle_roll_Link",
+          "max_force_n": 943.4450073242188
+        }
+      ],
+      "nonfinite_step_count": 0,
+      "passed_finite": true,
+      "completed_without_safety_reset": true,
+      "passed_runtime_integrity": true
+    },
+    {
+      "stage": "bounded_scripted_action",
+      "steps": 0,
+      "max_abs_raw_action": 0.0,
+      "min_root_height_m": null,
+      "max_root_tilt_rad": null,
+      "mean_reward_per_step": null,
+      "terminated_env_count": 0,
+      "truncated_env_count": 0,
+      "termination_term_counts": {
+        "time_out": 0,
+        "torso_tilt": 0,
+        "base_height": 0,
+        "illegal_contact": 0,
+        "joint_limit": 0,
+        "nonfinite_state": 0
+      },
+      "non_timeout_termination_count": 0,
+      "first_non_timeout_termination_step": null,
+      "top_contact_forces": [],
+      "nonfinite_step_count": 0,
+      "passed_finite": true,
+      "completed_without_safety_reset": true,
+      "passed_runtime_integrity": true
+    },
+    {
+      "stage": "bounded_random_action",
+      "steps": 0,
+      "max_abs_raw_action": 0.0,
+      "min_root_height_m": null,
+      "max_root_tilt_rad": null,
+      "mean_reward_per_step": null,
+      "terminated_env_count": 0,
+      "truncated_env_count": 0,
+      "termination_term_counts": {
+        "time_out": 0,
+        "torso_tilt": 0,
+        "base_height": 0,
+        "illegal_contact": 0,
+        "joint_limit": 0,
+        "nonfinite_state": 0
+      },
+      "non_timeout_termination_count": 0,
+      "first_non_timeout_termination_step": null,
+      "top_contact_forces": [],
+      "nonfinite_step_count": 0,
+      "passed_finite": true,
+      "completed_without_safety_reset": true,
+      "passed_runtime_integrity": true
+    }
+  ],
+  "zero_action_baseline_stable_for_requested_window": true,
+  "stand_long_training_approved": false,
+  "locomotion_command_approved": false,
+  "deployment_approved": false,
+  "passed": false
+}

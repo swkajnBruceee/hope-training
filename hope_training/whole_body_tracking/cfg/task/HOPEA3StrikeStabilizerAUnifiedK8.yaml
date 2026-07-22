@@ -1,0 +1,77 @@
+# Unified Stage-A continuation: the same 12-DOF leg-only stabilizer contract
+# as Robust-B, now trained on the native-calibrated K8 library (4 forehands +
+# 4 backhands).  Sampling is balanced by MotionCommandCfg.manifest_balance_strokes.
+# The explicit semantic swing label comes from the manifest, not target geometry.
+name: HOPEA3StrikeStabilizerAUnifiedK8
+gym_task: HOPE-StrikeStabilizerAUnified-AgibotA3-v0
+experiment_name: agibot_a3_strike_stabilizer_a_unified_k8
+
+motion_manifest: sample_motions/p2_fixed_balanced_k8_torso_control_v2_nativecal_20260716/manifest.json
+manifest_subset_size: null
+manifest_frame_z_offset: 0.76
+realized_phase_reference_bank: eval_outputs/strike_rsi_bank_v1/floating_base_prefix_bank_v4
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  # 50 prelude + swing + 25 final hold + 50 smooth return + 100 ready hold.
+  episode_length_s: 6.08
+
+actions:
+  raw_clip: 0.25
+
+rewards:
+  motion_scale: 1.0
+  joint_torques_weight: -0.000001
+  action_rate_weight: -0.03
+  action_residual_weight: -0.05
+  action_execution_gap_weight: -0.15
+  joint_limit_weight: -15.0
+
+racket:
+  target_mode: manifest
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  strike_time_std_s: 0.04
+  ref_perturb_success_gated: false
+  forehand_on_negative_y: true
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0
+
+domain_rand:
+  pd_gain_range: null
+
+motion:
+  # MotionCommand samples forehand/backhand 50:50 when both labels exist.
+  sample_random_start_phase: false
+  prelude_steps: 50
+  reset_to_default_pose: true
+  hold_last_frame_steps: 25
+  return_to_default_steps: 50
+  joint_position_offset: {}
+  root_position_offset: [0.0, 0.0, 0.0]
+  # Keep the validated backward-velocity robustness curriculum, but distribute
+  # hard cases over all K8 motions so it cannot become forehand-biased.
+  hard_case_probability: 0.40
+  hard_case_motion_ids: [0, 1, 2, 3, 4, 5, 6, 7]
+  hard_case_velocity_range:
+    x: [-0.08, -0.04]
+    y: [0.0, 0.0]
+    z: [0.0, 0.0]
+    roll: [0.0, 0.0]
+    pitch: [0.0, 0.0]
+    yaw: [0.0, 0.0]
+  reset_perturbation_probability: 0.50
+  pose_range: {}
+  velocity_range:
+    x: [-0.08, 0.08]
+    y: [-0.08, 0.08]
+    z: [0.0, 0.0]
+    roll: [-0.15, 0.15]
+    pitch: [-0.15, 0.15]
+    yaw: [0.0, 0.0]
+  joint_position_range: [0.0, 0.0]
