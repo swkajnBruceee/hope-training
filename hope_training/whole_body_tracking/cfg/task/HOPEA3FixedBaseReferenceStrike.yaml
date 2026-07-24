@@ -1,0 +1,99 @@
+# =============================================================================
+# Fixed-base reference-residual strike training, from scratch.
+#
+# The processed motion library supplies the forehand/backhand timing and
+# upper-body trajectory. PPO learns only a bounded residual around that
+# reference for waist + right arm (10 DOF). The root/base is fixed in this
+# stage so this run evaluates strike-chain learning, not whole-body balance.
+# =============================================================================
+
+name: HOPEA3FixedBaseReferenceStrike
+gym_task: HOPE-FixedBaseReferenceStrike-AgibotA3-v0
+experiment_name: agibot_a3_fixed_base_reference_strike_fore_back_v1
+registry_name: local:sample_motions/p2_strike_stabilizer_library_k17_v1/tracking_motion_manifest.json
+
+motion_manifest: sample_motions/p2_strike_stabilizer_library_k17_v1/tracking_motion_manifest.json
+manifest_subset_size: null
+manifest_frame_z_offset: 0.76
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  episode_length_s: 2.20
+
+actions:
+  # Keep commands bounded.  The actor starts at zero residual and learns
+  # corrections around the 50 Hz processed motion reference.
+  raw_clip: 0.50
+  native_residual_scale: 1.0
+  reference_lookahead_steps: 0
+  interpolate_reference: true
+  native_joint_scale_multipliers:
+    waist_roll_joint: 0.50
+    waist_pitch_joint: 0.50
+    right_shoulder_roll_joint: 0.65
+    right_elbow_joint: 0.65
+    right_wrist_yaw_joint: 0.60
+
+rewards:
+  # Strike objective: position first, then velocity and face orientation.
+  racket_position_weight: 8.0
+  racket_position_std: 0.06
+  racket_position_y_weight: 3.0
+  racket_position_y_std: 0.08
+  racket_velocity_weight: 3.0
+  racket_velocity_std: 0.80
+  racket_normal_weight: 2.5
+  racket_normal_std: 0.30
+  racket_hit_coupled_weight: 2.0
+
+  # Motion reference is a soft prior: it prevents arbitrary motion collapse,
+  # but the strike objective can still improve the reference at impact.
+  motion_scale: 1.0
+  motion_body_pos_weight: 0.60
+  motion_body_pos_std: 0.25
+  motion_body_ori_weight: 0.60
+  motion_body_ori_std: 0.35
+  motion_torso_ori_weight: 0.80
+  motion_torso_ori_std: 0.22
+  motion_native_joint_pos_weight: 0.70
+  motion_native_joint_pos_std: 0.35
+  motion_body_lin_vel_weight: 0.25
+  motion_body_ang_vel_weight: 0.25
+
+  # Small regularization only.  Strong residual penalties would simply teach
+  # the policy to reproduce zero action without testing the strike objective.
+  joint_torques_weight: -0.000001
+  action_rate_weight: -0.03
+  action_residual_weight: -0.04
+  joint_limit_weight: -15.0
+
+racket:
+  target_mode: manifest
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  strike_time_std_s: 0.04
+  strike_success_pos_thresh: 0.10
+  strike_success_vel_thresh: 2.0
+  strike_success_normal_thresh_deg: 20.0
+  forehand_on_negative_y: true
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0
+
+motion:
+  # Start each episode at frame 0 so the first from-scratch run learns the
+  # complete forehand/backhand sequence.  Later runs can enable random phase.
+  sample_random_start_phase: false
+  hold_last_frame_steps: 20
+  return_to_default_steps: 20
+  reset_to_default_pose: false
+
+domain_rand:
+  # First run is a fixed-base contract audit; add small randomization only
+  # after the reference-residual task passes deterministic evaluation.
+  pd_gain_range: null
+

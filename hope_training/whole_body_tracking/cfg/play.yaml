@@ -37,6 +37,27 @@ video_length: 200
 video_name: play
 max_steps: null
 
+# Optional static table added to the original training scene.  null keeps the
+# pure training environment; negative X moves the table away from the A3 at
+# the P2-side replay position.
+table_offset_x: null
+# The original tracking scene places the floor at z=0, while the formal table
+# geometry uses the table surface as z=0 and floor as z=-0.76.  Lift the full
+# table assembly by 0.76 m when it is added to the tracking scene.
+table_z_offset: 0.76
+
+# Optional dynamic-ball validation in the original tracking scene.  The ball
+# is launched toward the actual replayed racket at the selected strike time.
+ball: false
+ball_flight_time: 0.10
+ball_incoming_vx: 2.85075
+ball_incoming_vy: -0.51961
+ball_incoming_vz: 0.22545
+ball_hit_time: null
+ball_bounce_once: false
+ball_bounce_time_before_hit: 0.33
+ball_pre_bounce_time: 0.30
+
 # Optional live/video camera override. These values frame the fixed-base A3
 # native strike scene around the robot at x~=3.15, y~=-0.34.
 camera_eye: [5.0, -2.5, 2.2]

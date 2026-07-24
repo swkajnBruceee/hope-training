@@ -69,13 +69,13 @@ def _robot_posture_tier(
     robot_posture_pass: bool,
     wrist_naturalness_pass: bool,
     arm_near_limit: float,
-    torso_tilt: float,
+    torso_tilt_delta: float,
 ) -> str:
     if hit_pass and robot_posture_pass and wrist_naturalness_pass:
         return "A_robot_usable_candidate"
     if hit_pass and robot_posture_pass and not wrist_naturalness_pass:
         return "B_wrist_retarget_required"
-    if hit_pass and arm_near_limit <= 0.10 and torso_tilt <= 35.0:
+    if hit_pass and arm_near_limit <= 0.10 and torso_tilt_delta <= 20.0:
         return "B_robot_borderline"
     if hit_pass:
         return "C_requires_stance_or_retarget"
@@ -547,15 +547,17 @@ def _run(cfg, simulation_app):
         passed = pos <= pos_thresh and vel <= vel_thresh and normal <= normal_thresh
         posture_pass = (
             pelvis_ref <= 15.0
-            and torso_ref <= 20.0
+            and torso_ref <= 25.0
             and arm_near_limit <= 0.10
+            and min_arm_margin >= 0.05
         )
         robot_posture_pass = (
             pelvis_ref <= 15.0
-            and torso_tilt <= 32.0
+            and torso_ref <= 25.0
+            and torso_tilt_delta <= 20.0
+            and torso_yaw_delta <= 15.0
             and torso_roll <= 25.0
             and torso_pitch <= 35.0
-            and joint_near_limit <= 0.10
             and arm_near_limit <= 0.10
             and min_arm_margin >= 0.05
         )
@@ -572,7 +574,7 @@ def _run(cfg, simulation_app):
             robot_posture_pass=robot_posture_pass,
             wrist_naturalness_pass=wrist_naturalness_pass,
             arm_near_limit=arm_near_limit,
-            torso_tilt=torso_tilt,
+            torso_tilt_delta=torso_tilt_delta,
         )
         rows.append(
             (

@@ -49,6 +49,33 @@ def racket_target_normal_b(env: ManagerBasedRLEnv, command_name: str) -> torch.T
     return _cmd(env, command_name).racket_target_normal_b()
 
 
+def racket_target_error_pos_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Desired-minus-actual racket position in the current base yaw frame."""
+
+    command = _cmd(env, command_name)
+    base_yaw = yaw_quat(command.base_quat_w)
+    actual = quat_rotate_inverse(base_yaw, command.racket_pos_w - command.base_pos_w)
+    return command.racket_target_pos_b() - actual
+
+
+def racket_target_error_vel_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Desired-minus-actual racket velocity in the current base yaw frame."""
+
+    command = _cmd(env, command_name)
+    base_yaw = yaw_quat(command.base_quat_w)
+    actual = quat_rotate_inverse(base_yaw, command.racket_lin_vel_w)
+    return command.racket_target_vel_b() - actual
+
+
+def racket_target_error_normal_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Desired-minus-actual racket face normal in the current base yaw frame."""
+
+    command = _cmd(env, command_name)
+    base_yaw = yaw_quat(command.base_quat_w)
+    actual = quat_rotate_inverse(base_yaw, command.racket_normal_w)
+    return command.racket_target_normal_b() - actual
+
+
 def time_to_strike(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
     return _cmd(env, command_name).time_to_strike.unsqueeze(-1)
 

@@ -39,6 +39,34 @@ gym.register(
     },
 )
 
+# Fixed-base reference-residual strike training.  This is intentionally a
+# separate task id from the native deployment-contract task: it is a local
+# motion-library training sandbox for balanced forehand/backhand data and does
+# not assert the standalone A3 executor provenance contract used by the native
+# deployment path.
+gym.register(
+    id="HOPE-FixedBaseReferenceStrike-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FixedBaseReferenceStrikeEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# Backhand-only fixed-base target-conditioned residual stage.  This is kept as
+# a separate task so the older mixed forehand/backhand fixed-base experiment
+# and its checkpoints remain reproducible.
+gym.register(
+    id="HOPE-FixedBaseBackhandReferenceStrike-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FixedBaseBackhandReferenceStrikeEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
 # Floating-base diagnostic for the self-developed Strike-conditioned Base14
 # route.  It is intentionally registered separately from the native-MOTION
 # strike executor and is not training-approved by registration alone.

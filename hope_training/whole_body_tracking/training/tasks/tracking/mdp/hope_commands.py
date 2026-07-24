@@ -306,7 +306,15 @@ class RacketTargetCommand(CommandTerm):
             return
         motion = self._motion().motion  # MotionLoader
         total = max(int(motion.time_step_total), 1)
-        strike_step = round(self.cfg.strike_phase * (total - 1))
+        # Manifest-backed motions carry their own calibrated hit frame.  Do
+        # not fall back to a single global phase for target-conditioned
+        # training; that would shift the target window for motions whose hit
+        # timing differs from the legacy 0.46 convention.
+        if isinstance(motion, MotionLibraryLoader):
+            motion_ids = self._motion().motion_ids
+            strike_step = int(motion.hit_frame[motion_ids[0]].item())
+        else:
+            strike_step = round(self.cfg.strike_phase * (total - 1))
         if self._racket_mode == "body":
             idx = self._racket_body_index
             pos, quat, lin, _ang = self._reference_body_state(motion, strike_step, idx)
@@ -348,7 +356,7 @@ class RacketTargetCommand(CommandTerm):
         clamped to ``[ref_perturb_curriculum_start, 1.0]``.
         """
         start = float(self.cfg.ref_perturb_curriculum_start)
-        if self.cfg.target_mode == "reference_perturbed" and self.cfg.ref_perturb_success_gated:
+        if self.cfg.target_mode in ("reference_perturbed", "manifest_perturbed") and self.cfg.ref_perturb_success_gated:
             scale = self._curr_perturb_scale
         else:
             steps = float(getattr(self._env, "common_step_counter", 0))
@@ -406,6 +414,42 @@ class RacketTargetCommand(CommandTerm):
 
         self.metrics["ref_perturb_scale"][env_ids] = scale
 
+    def _sample_targets_manifest_perturbed(self, env_ids: Sequence[int], origins: torch.Tensor, n: int):
+        """Perturb each motion's calibrated manifest strike state locally.
+
+        This is the fixed-base target-conditioned stage: the motion remains
+        the teacher, while the actor must map the same reference family to
+        nearby impact targets.  The perturbation is deliberately small and
+        tied to the selected motion rather than sampled from a global box.
+        """
+
+        motion_cmd = self._motion()
+        motion = motion_cmd.motion
+        if not isinstance(motion, MotionLibraryLoader):
+            raise RuntimeError("target_mode='manifest_perturbed' requires MotionCommandCfg.motion_manifest")
+
+        motion_ids = motion_cmd.motion_ids[env_ids]
+        scale = self._perturb_scale()
+        dev = self.device
+        pos_h = torch.tensor(self.cfg.manifest_perturb_pos, device=dev) * scale
+        vel_h = torch.tensor(self.cfg.manifest_perturb_vel, device=dev) * scale
+        nrm_h = float(self.cfg.manifest_perturb_normal) * scale
+
+        nominal = torch.rand(n, device=dev) < float(self.cfg.manifest_nominal_probability)
+        dpos = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * pos_h
+        dpos[nominal] = 0.0
+        self.racket_target_pos_w[env_ids] = origins + motion.strike_pos_w[motion_ids] + dpos
+
+        dvel = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * vel_h
+        dvel[nominal] = 0.0
+        self.racket_target_vel_w[env_ids] = motion.strike_vel_w[motion_ids] + dvel
+
+        dnrm = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * nrm_h
+        dnrm[nominal] = 0.0
+        normal = motion.strike_normal_w[motion_ids] + dnrm
+        self.racket_target_normal_w[env_ids] = normal / (torch.norm(normal, dim=-1, keepdim=True) + 1e-6)
+        self.metrics["ref_perturb_scale"][env_ids] = scale
+
     def _resample_command(self, env_ids: Sequence[int]):
         if len(env_ids) == 0:
             return
@@ -418,6 +462,8 @@ class RacketTargetCommand(CommandTerm):
             self._sample_targets_manifest(env_ids, origins, n)
         elif self.cfg.target_mode == "reference_perturbed":
             self._sample_targets_reference_perturbed(env_ids, origins, n)
+        elif self.cfg.target_mode == "manifest_perturbed":
+            self._sample_targets_manifest_perturbed(env_ids, origins, n)
         else:
             self._sample_targets_uniform(env_ids, origins, n)
 
@@ -434,6 +480,11 @@ class RacketTargetCommand(CommandTerm):
         elif self.cfg.target_mode == "reference_perturbed":
             self._ensure_reference_strike_state()
             base_xy = self.racket_target_pos_w[env_ids][:, :2] - self._ref_reach_offset_xy.unsqueeze(0)
+        elif self.cfg.target_mode == "manifest_perturbed":
+            # Fixed-base training has no base-position objective.  Keep the
+            # command well-defined without coupling a multi-motion batch to
+            # the cached reference state of the first environment.
+            base_xy = origins[:, :2].clone()
         else:
             base_xy = origins[:, :2].clone()
         base_xy[:, 0] += sample_uniform(*self.cfg.base_target_x_range, (n,), self.device)
@@ -574,7 +625,7 @@ class RacketTargetCommand(CommandTerm):
         self.metrics["time_to_strike_s"] = self.time_to_strike
         self.metrics["pre_strike_flag"] = self.pre_strike.float()
         self.metrics["strike_window_hit_rate"] = self.strike_window.float()
-        if self.cfg.target_mode == "reference_perturbed":
+        if self.cfg.target_mode in ("reference_perturbed", "manifest_perturbed"):
             self.metrics["ref_perturb_scale"] = torch.full_like(pos_err, self._perturb_scale())
         else:
             self.metrics["ref_perturb_scale"].zero_()
@@ -639,7 +690,7 @@ class RacketTargetCommand(CommandTerm):
             )
         # Success-gated curriculum: widen the perturbation only once the smoothed CONDITIONAL exact-strike
         # composite success (fraction of exact-strike samples passing all three thresholds) clears the bar.
-        if self.cfg.target_mode == "reference_perturbed" and self.cfg.ref_perturb_success_gated:
+        if self.cfg.target_mode in ("reference_perturbed", "manifest_perturbed") and self.cfg.ref_perturb_success_gated:
             if (
                 self._curr_perturb_scale < 1.0
                 and enough
@@ -802,6 +853,8 @@ class RacketTargetCommandCfg(CommandTermCfg):
     #   normal, computed by the same FK as the actual racket) + a curriculum-scaled uniform perturbation.
     #   Reachable by construction (a perfect imitator scores exactly); the *_range fields are ignored.
     # "manifest": target = per-motion manifest impact racket state; requires motion_manifest.
+    # "manifest_perturbed": the same calibrated state plus a small local
+    # target offset, used for target-conditioned fixed-base training.
     target_mode: str = "reference_perturbed"
     manifest_base_aligned: bool = False
 
@@ -821,6 +874,14 @@ class RacketTargetCommandCfg(CommandTermCfg):
     ref_perturb_success_gated: bool = True
     ref_perturb_advance_threshold: float = 0.30  # widen once smoothed exact-strike composite success > this
     ref_perturb_advance_rate: float = 1.0e-5  # scale increment per control step while above threshold
+
+    # Manifest-centered local target conditioning.  These ranges are small on
+    # purpose: the action library covers the broad workspace; residual PPO
+    # learns interpolation around each motion's own strike point.
+    manifest_perturb_pos: tuple[float, float, float] = (0.0, 0.02, 0.015)
+    manifest_perturb_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    manifest_perturb_normal: float = 0.0
+    manifest_nominal_probability: float = 0.50
 
     # --- conditional exact-strike success metric (logging + curriculum gating) ---
     # The logged strike_*_pass_exact / strike_composite_success_exact are a sample-weighted EMA of the

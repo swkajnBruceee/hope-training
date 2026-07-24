@@ -888,3 +888,107 @@ class A3StrikeStabilizerAUnifiedEnvCfg(A3StrikeStabilizerAEnvCfg):
         super().__post_init__()
         self.observations.policy.swing_type.func = mdp.manifest_swing_type
         self.observations.policy.swing_type.params = {"command_name": "racket_target"}
+
+
+@configclass
+class A3FixedBaseBackhandRewardsCfg(A3NativeStrikeRewardsCfg):
+    """Backhand residual rewards with a soft latent-action trust band."""
+
+    action_residual_l2 = RewTerm(
+        func=mdp.action_raw_l2,
+        weight=-0.04,
+        params={"action_name": "joint_pos"},
+    )
+    raw_action_excess = RewTerm(
+        func=mdp.action_unbounded_excess_l2,
+        weight=-1.0,
+        params={
+            "action_name": "joint_pos",
+            "raw_limit": 0.20,
+            "action_indices": tuple(range(10)),
+        },
+    )
+    action_execution_gap = RewTerm(
+        func=mdp.action_execution_gap_l2,
+        weight=-0.10,
+        params={
+            "action_name": "joint_pos",
+            "action_indices": tuple(range(10)),
+            "deadband": 0.02,
+        },
+    )
+
+
+@configclass
+class A3FixedBaseStrikeObservationsCfg(A3StrikeConditionedBaseObservationsCfg):
+    """Fixed-base strike observations with explicit target-error channels."""
+
+    @configclass
+    class PolicyCfg(A3StrikeConditionedBaseObservationsCfg.PolicyCfg):
+        # Give the residual actor the two task errors explicitly.  The target
+        # and actual states remain available as well, but these channels make
+        # the intended interpolation relation direct and easy to audit.
+        racket_target_error_pos_b = ObsTerm(
+            func=mdp.racket_target_error_pos_b,
+            params={"command_name": "racket_target"},
+        )
+        racket_target_error_vel_b = ObsTerm(
+            func=mdp.racket_target_error_vel_b,
+            params={"command_name": "racket_target"},
+        )
+        racket_target_error_normal_b = ObsTerm(
+            func=mdp.racket_target_error_normal_b,
+            params={"command_name": "racket_target"},
+        )
+
+    @configclass
+    class CriticCfg(A3StrikeConditionedBaseObservationsCfg.CriticCfg):
+        racket_target_error_pos_b = ObsTerm(
+            func=mdp.racket_target_error_pos_b,
+            params={"command_name": "racket_target"},
+        )
+        racket_target_error_vel_b = ObsTerm(
+            func=mdp.racket_target_error_vel_b,
+            params={"command_name": "racket_target"},
+        )
+        racket_target_error_normal_b = ObsTerm(
+            func=mdp.racket_target_error_normal_b,
+            params={"command_name": "racket_target"},
+        )
+
+    policy: PolicyCfg = PolicyCfg()
+    critic: CriticCfg = CriticCfg()
+
+
+@configclass
+class A3FixedBaseReferenceStrikeEnvCfg(A3NativeStrikeEnvCfg):
+    """Fixed-base strike executor with explicit motion-reference preview.
+
+    The reference-residual action already follows the processed motion, but a
+    residual policy should also observe the current phase, reference pose,
+    reference velocity, and short-horizon velocity preview.  Reusing the
+    strike-conditioned observation contract makes the forehand/backhand
+    conditioning explicit instead of asking PPO to infer phase from raw joint
+    positions alone.
+    """
+
+    observations: A3FixedBaseStrikeObservationsCfg = A3FixedBaseStrikeObservationsCfg()
+
+
+@configclass
+class A3FixedBaseBackhandReferenceStrikeEnvCfg(A3FixedBaseReferenceStrikeEnvCfg):
+    """Backhand-only fixed-base residual PPO contract from the reviewed plan.
+
+    The default YAML is Stage 1B (manifest target, no target perturbation).
+    Stage 1C reuses the same environment with
+    ``racket_target.target_mode=manifest_perturbed``.
+    """
+
+    rewards: A3FixedBaseBackhandRewardsCfg = A3FixedBaseBackhandRewardsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        # A separate family policy must not infer the stroke from target-side
+        # geometry.  Backhand is an explicit semantic contract (+1).
+        self.observations.policy.swing_type.func = mdp.fixed_swing_type
+        self.observations.policy.swing_type.params = {"value": 1.0}

@@ -1,0 +1,54 @@
+{
+  "status": "diagnostic_only_not_training_approved",
+  "base_contract": {
+    "native_actuator_profile": "official_pd_stand_approx",
+    "interpolate_reference": true,
+    "global_reference_lookahead_steps": 1,
+    "speed_scale": 0.9
+  },
+  "waist_pitch_scan_T002_027": [
+    {"extra_lead_steps": 0.25, "position_error_m": 0.0892, "velocity_error_mps": 0.3967, "normal_error_deg": 4.40},
+    {"extra_lead_steps": 0.50, "position_error_m": 0.0900, "velocity_error_mps": 0.3974, "normal_error_deg": 4.44},
+    {"extra_lead_steps": 0.75, "position_error_m": 0.0909, "velocity_error_mps": 0.3981, "normal_error_deg": 4.47},
+    {"extra_lead_steps": 1.00, "position_error_m": 0.0917, "velocity_error_mps": 0.3988, "normal_error_deg": 4.50}
+  ],
+  "shoulder_pitch_scan_T002_027": [
+    {"extra_lead_steps": 0.25, "position_error_m": 0.0844, "velocity_error_mps": 0.3972, "normal_error_deg": 4.23},
+    {"extra_lead_steps": 0.50, "position_error_m": 0.0805, "velocity_error_mps": 0.4007, "normal_error_deg": 4.09},
+    {"extra_lead_steps": 0.75, "position_error_m": 0.0767, "velocity_error_mps": 0.4066, "normal_error_deg": 3.95},
+    {"extra_lead_steps": 1.00, "position_error_m": 0.0729, "velocity_error_mps": 0.4147, "normal_error_deg": 3.81},
+    {"extra_lead_steps": 1.25, "position_error_m": 0.0687, "velocity_error_mps": 0.4186, "normal_error_deg": 3.69},
+    {"extra_lead_steps": 1.50, "position_error_m": 0.0647, "velocity_error_mps": 0.4235, "normal_error_deg": 3.57},
+    {"extra_lead_steps": 1.75, "position_error_m": 0.0606, "velocity_error_mps": 0.4294, "normal_error_deg": 3.45}
+  ],
+  "cross_motion_validation": [
+    {
+      "episode_id": "T002_022_gao01_1p61_3p61",
+      "shoulder_pitch_extra_lead_steps": 1.75,
+      "position_error_m": 0.0661,
+      "velocity_error_mps": 0.6422,
+      "normal_error_deg": 5.04,
+      "composite_pass": false,
+      "failure_reason": "velocity_error"
+    },
+    {
+      "episode_id": "T002_023_gao01_26p64_28p64",
+      "shoulder_pitch_extra_lead_steps": 1.75,
+      "position_error_m": 0.0557,
+      "velocity_error_mps": 0.9660,
+      "normal_error_deg": 6.50,
+      "composite_pass": false,
+      "failure_reason": "velocity_error"
+    },
+    {
+      "episode_id": "T03_032_gao01_7p92_9p92",
+      "shoulder_pitch_extra_lead_steps": 1.75,
+      "position_error_m": 0.0669,
+      "velocity_error_mps": 0.3613,
+      "normal_error_deg": 3.57,
+      "composite_pass": true,
+      "failure_reason": null
+    }
+  ],
+  "conclusion": "Shoulder-pitch local phase lead improves position error across the tested motions, but a single global lead does not satisfy the velocity contract for all motions. Do not promote this correction globally or start PPO. Next action is motion-specific phase/velocity audit and actuator-aware timing correction."
+}

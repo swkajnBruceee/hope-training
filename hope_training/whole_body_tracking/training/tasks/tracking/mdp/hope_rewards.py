@@ -36,7 +36,7 @@ def racket_position_tracking_exp(env: ManagerBasedRLEnv, command_name: str, std:
     The legacy sampled modes keep the old swing-through target for compatibility.
     """
     cmd = _cmd(env, command_name)
-    if cmd.cfg.target_mode == "manifest":
+    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed"):
         target_pos_now = cmd.racket_target_pos_w
     else:
         target_pos_now = cmd.racket_target_pos_w - cmd.racket_target_vel_w * cmd.time_to_strike.unsqueeze(-1)
@@ -51,7 +51,7 @@ def racket_position_axis_tracking_exp(env: ManagerBasedRLEnv, command_name: str,
     stubborn axis from being hidden by a broad 3D position kernel.
     """
     cmd = _cmd(env, command_name)
-    if cmd.cfg.target_mode == "manifest":
+    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed"):
         target_pos_now = cmd.racket_target_pos_w
     else:
         target_pos_now = cmd.racket_target_pos_w - cmd.racket_target_vel_w * cmd.time_to_strike.unsqueeze(-1)
@@ -98,7 +98,7 @@ def racket_hit_coupled_tracking_exp(
     hard sparse gate.
     """
     cmd = _cmd(env, command_name)
-    if cmd.cfg.target_mode == "manifest":
+    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed"):
         target_pos_now = cmd.racket_target_pos_w
     else:
         target_pos_now = cmd.racket_target_pos_w - cmd.racket_target_vel_w * cmd.time_to_strike.unsqueeze(-1)

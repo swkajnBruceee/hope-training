@@ -1,0 +1,21 @@
+terminate called after throwing an instance of 'carb::cpp::bad_optional_access'
+  what():  bad optional access
+Fatal Python error: Aborted
+
+Thread 0x000078e1edd91480 (most recent call first):
+  File "/workspace/anaconda3/envs/hope/lib/python3.10/site-packages/isaacsim/exts/isaacsim.simulation_app/isaacsim/simulation_app/simulation_app.py", line 427 in _start_app
+  File "/workspace/anaconda3/envs/hope/lib/python3.10/site-packages/isaacsim/exts/isaacsim.simulation_app/isaacsim/simulation_app/simulation_app.py", line 212 in __init__
+  File "/home/bruce/\u684c\u9762/HOPETableTennis/external_repos/IsaacLab/source/isaaclab/isaaclab/app/app_launcher.py", line 780 in _create_app
+  File "/home/bruce/\u684c\u9762/HOPETableTennis/external_repos/IsaacLab/source/isaaclab/isaaclab/app/app_launcher.py", line 131 in __init__
+  File "/home/bruce/\u684c\u9762/HOPETableTennis/hope_training/whole_body_tracking/scripts/eval_manifest_zero_action.py", line 796 in main
+  File "/workspace/anaconda3/envs/hope/lib/python3.10/site-packages/hydra/core/utils.py", line 186 in run_job
+  File "/workspace/anaconda3/envs/hope/lib/python3.10/site-packages/hydra/_internal/hydra.py", line 119 in run
+  File "/workspace/anaconda3/envs/hope/lib/python3.10/site-packages/hydra/_internal/utils.py", line 458 in <lambda>
+  File "/workspace/anaconda3/envs/hope/lib/python3.10/site-packages/hydra/_internal/utils.py", line 220 in run_and_report
+  File "/workspace/anaconda3/envs/hope/lib/python3.10/site-packages/hydra/_internal/utils.py", line 457 in _run_app
+  File "/workspace/anaconda3/envs/hope/lib/python3.10/site-packages/hydra/_internal/utils.py", line 394 in _run_hydra
+  File "/workspace/anaconda3/envs/hope/lib/python3.10/site-packages/hydra/main.py", line 94 in decorated_main
+  File "/home/bruce/\u684c\u9762/HOPETableTennis/hope_training/whole_body_tracking/scripts/eval_manifest_zero_action.py", line 811 in <module>
+
+Extension modules: numpy.core._multiarray_umath, numpy.core._multiarray_tests, numpy.linalg._umath_linalg, numpy.fft._pocketfft_internal, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._mt19937, numpy.random.mtrand, numpy.random._philox, numpy.random._pcg64, numpy.random._sfc64, numpy.random._generator, yaml._yaml (total: 14)
+timeout: 被监视的命令已核心转储

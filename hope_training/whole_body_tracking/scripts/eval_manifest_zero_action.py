@@ -13,6 +13,7 @@ import os
 import sys
 import json
 import pathlib
+import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -150,13 +151,13 @@ def _robot_posture_tier(
     robot_posture_pass: bool,
     wrist_naturalness_pass: bool,
     arm_near_limit: float,
-    torso_tilt: float,
+    torso_tilt_delta: float,
 ) -> str:
     if hit_pass and robot_posture_pass and wrist_naturalness_pass:
         return "A_robot_usable_candidate"
     if hit_pass and robot_posture_pass and not wrist_naturalness_pass:
         return "B_wrist_retarget_required"
-    if hit_pass and arm_near_limit <= 0.10 and torso_tilt <= 35.0:
+    if hit_pass and arm_near_limit <= 0.10 and torso_tilt_delta <= 20.0:
         return "B_robot_borderline"
     if hit_pass:
         return "C_requires_stance_or_retarget"
@@ -343,9 +344,41 @@ def _run(cfg, simulation_app):
     pre_min_joint_margin = torch.full((n,), float("inf"), device=device)
     post_min_joint_margin = torch.full((n,), float("inf"), device=device)
 
+    trace_path = cfg.get("write_trace", None)
+    trace = {key: [] for key in (
+        "step", "motion_step", "q_reference", "q_target_after_clip", "q_actual",
+        "dq_reference", "dq_actual", "applied_torque", "racket_pos", "racket_target_pos",
+        "racket_vel", "racket_target_vel", "racket_position_jacobian"
+    )} if trace_path else None
+
     max_steps = int(cfg.get("max_steps") or 100)
     for step_index in range(max_steps):
         env.step(zeros)
+        if trace is not None:
+            ref_q_full = motion_cmd.joint_pos[:n]
+            ref_dq_full = motion_cmd.joint_vel[:n]
+            actual_q = robot.data.joint_pos[:n, native_joint_ids]
+            actual_dq = robot.data.joint_vel[:n, native_joint_ids]
+            processed_target = action_term._processed_actions[:n]
+            applied_torque = getattr(robot.data, "applied_torque", None)
+            if applied_torque is None:
+                applied_torque = torch.full_like(robot.data.joint_pos[:n], float("nan"))
+            trace["step"].append(np.arange(n, dtype=np.int64) * 0 + step_index)
+            trace["motion_step"].append(motion_cmd.time_steps[:n].detach().cpu().numpy().copy())
+            trace["q_reference"].append(ref_q_full[:, native_joint_ids].detach().cpu().numpy().copy())
+            trace["q_target_after_clip"].append(processed_target.detach().cpu().numpy().copy())
+            trace["q_actual"].append(actual_q.detach().cpu().numpy().copy())
+            trace["dq_reference"].append(ref_dq_full[:, native_joint_ids].detach().cpu().numpy().copy())
+            trace["dq_actual"].append(actual_dq.detach().cpu().numpy().copy())
+            trace["applied_torque"].append(applied_torque[:n, native_joint_ids].detach().cpu().numpy().copy())
+            trace["racket_pos"].append(racket_cmd.racket_pos_w[:n].detach().cpu().numpy().copy())
+            trace["racket_target_pos"].append(racket_cmd.racket_target_pos_w[:n].detach().cpu().numpy().copy())
+            trace["racket_vel"].append(racket_cmd.racket_lin_vel_w[:n].detach().cpu().numpy().copy())
+            trace["racket_target_vel"].append(racket_cmd.racket_target_vel_w[:n].detach().cpu().numpy().copy())
+            jac_all = robot.root_physx_view.get_jacobians()
+            jac_body_index = right_wrist_body_id - 1 if robot.is_fixed_base else right_wrist_body_id
+            jac_pos = jac_all[:n, jac_body_index, :3, native_joint_ids]
+            trace["racket_position_jacobian"].append(jac_pos.detach().cpu().numpy().copy())
         exact = torch.abs(racket_cmd.time_to_strike[:n]) <= (0.5 * env.unwrapped.step_dt + 1.0e-6)
         new_strike = exact & (~strike_seen)
         strike_step[new_strike] = step_index
@@ -511,15 +544,17 @@ def _run(cfg, simulation_app):
         )
         posture_pass = (
             pelvis_ref <= 15.0
-            and torso_ref <= 20.0
+            and torso_ref <= 25.0
             and arm_near_limit <= 0.10
+            and min_arm_margin >= 0.05
         )
         robot_posture_pass = (
             pelvis_ref <= 15.0
-            and torso_tilt <= 32.0
+            and torso_ref <= 25.0
+            and torso_tilt_delta <= 20.0
+            and torso_yaw_delta <= 15.0
             and torso_roll <= 25.0
             and torso_pitch <= 35.0
-            and joint_near_limit <= 0.10
             and arm_near_limit <= 0.10
             and min_arm_margin >= 0.05
         )
@@ -536,7 +571,7 @@ def _run(cfg, simulation_app):
             robot_posture_pass=robot_posture_pass,
             wrist_naturalness_pass=wrist_naturalness_pass,
             arm_near_limit=arm_near_limit,
-            torso_tilt=torso_tilt,
+            torso_tilt_delta=torso_tilt_delta,
         )
         rows.append(
             (
@@ -648,7 +683,22 @@ def _run(cfg, simulation_app):
         print(f"[INFO] robot_posture_pass_rate={robot_posture_rate:.3f} ({len(rows)} captured motions)", flush=True)
         print(f"[INFO] wrist_naturalness_pass_rate={wrist_rate:.3f} ({len(rows)} captured motions)", flush=True)
         print(f"[INFO] whole_cycle_pass_rate={whole_rate:.3f} ({len(rows)} captured motions)", flush=True)
-        _print_group_summary(rows)
+    _print_group_summary(rows)
+
+    if trace is not None:
+        trace_file = pathlib.Path(str(trace_path)).expanduser()
+        if not trace_file.is_absolute():
+            trace_file = pathlib.Path.cwd() / trace_file
+        trace_file.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(
+            trace_file,
+            **{key: np.asarray(value) for key, value in trace.items()},
+            joint_names=np.asarray(native_joint_names),
+            episode_ids=np.asarray([str(x) for x in motion_cmd.motion.episode_ids[:n]]),
+            control_dt_s=np.asarray([float(env.unwrapped.step_dt)], dtype=np.float32),
+            reference_lookahead_steps=np.asarray([int(getattr(action_term.cfg, "reference_lookahead_steps", 0))]),
+        )
+        print(f"[INFO] wrote execution trace: {trace_file}", flush=True)
 
     write_path = cfg.get("write_native_manifest", None)
     if write_path:

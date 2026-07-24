@@ -1,0 +1,158 @@
+{
+  "date": "2026-07-24",
+  "scope": "backhand manifest per-motion strike-target and zero-residual execution contract",
+  "source_manifest": "sample_motions/p2_strike_stabilizer_library_k17_v1/tracking_motion_manifest_backhand.json",
+  "candidate_manifest": "sample_motions/p2_strike_stabilizer_library_k17_v1/tracking_motion_manifest_backhand_fk_recalibrated_v1.json",
+  "motion_count": 9,
+  "conclusion": "per_motion_targets_are_required;_target_mapping_fixed_but_zero_residual_execution_contract_not_qualified",
+  "findings": {
+    "targets_are_unique": true,
+    "original_manifest_target_mismatches": 4,
+    "candidate_reset_fk_max_position_error_m": 0.0,
+    "candidate_reset_fk_max_rotation_error_rad": 0.0,
+    "static_joint_limit_audit_pass": 8,
+    "static_joint_limit_audit_near": 1,
+    "near_limit_motion": "T03_014_gao01_15p35_17p35",
+    "default_official_pd": {
+      "hit_composite_pass_rate": 0.0,
+      "position_error_mean_m": 0.3833,
+      "velocity_error_mean_mps": 1.3929,
+      "normal_error_mean_deg": 28.05
+    },
+    "official_pd_stand_approx": {
+      "hit_composite_pass_rate": 0.0,
+      "position_error_mean_m": 0.1140,
+      "velocity_error_mean_mps": 0.6707,
+      "normal_error_mean_deg": 7.07,
+      "robot_posture_pass_rate": 0.889
+    }
+  },
+  "approval": {
+    "candidate_manifest_training_approved": false,
+    "diagnostic_native_zero_contract_manifest_training_approved": false,
+    "ppo_training_approved": false,
+    "next_gate": "repair_or_retarget_reference_execution_contract_then_repeat_zero_residual"
+  },
+  "single_motion_execution_scan": {
+    "motion": "T002_027_gao01_15p59_17p59",
+    "purpose": "separate_reference_phase_lag_from_gain_or_limit_failure",
+    "results": [
+      {
+        "profile": "official_pd_stand_approx",
+        "interpolate_reference": true,
+        "lookahead_steps": 0,
+        "position_error_m": 0.1054,
+        "velocity_error_mps": 0.2997,
+        "normal_error_deg": 3.83,
+        "hit_composite_pass": false
+      },
+      {
+        "profile": "official_pd_stand_approx",
+        "interpolate_reference": false,
+        "lookahead_steps": 0,
+        "position_error_m": 0.1104,
+        "velocity_error_mps": 0.4027,
+        "normal_error_deg": 4.62,
+        "hit_composite_pass": false
+      },
+      {
+        "profile": "official_pd_stand_approx",
+        "interpolate_reference": true,
+        "lookahead_steps": 1,
+        "position_error_m": 0.0957,
+        "velocity_error_mps": 0.1849,
+        "normal_error_deg": 2.73,
+        "hit_composite_pass": false
+      },
+      {
+        "profile": "official_pd_stand_approx",
+        "interpolate_reference": true,
+        "lookahead_steps": 2,
+        "position_error_m": 0.0952,
+        "velocity_error_mps": 0.3056,
+        "normal_error_deg": 4.92,
+        "hit_composite_pass": false
+      },
+      {
+        "profile": "calibrated",
+        "interpolate_reference": true,
+        "lookahead_steps": 1,
+        "position_error_m": 0.2276,
+        "velocity_error_mps": 1.1114,
+        "normal_error_deg": 14.76,
+        "hit_composite_pass": false
+      }
+    ],
+    "interpretation": "one_control_step_lookahead_is_helpful; blindly_increasing_gain_is_not_the_next_fix"
+  },
+  "uniform_time_scale_scan": {
+    "motion": "T002_027_gao01_15p59_17p59",
+    "profile": "official_pd_stand_approx",
+    "interpolate_reference": true,
+    "lookahead_steps": 1,
+    "hit_spatial_state_preserved_after_v2_resampling": true,
+    "results": [
+      {"speed_scale": 0.75, "position_error_m": 0.1053, "velocity_error_mps": 0.4417, "normal_error_deg": 7.24, "hit_composite_pass": false},
+      {"speed_scale": 0.85, "position_error_m": 0.0878, "velocity_error_mps": 0.4829, "normal_error_deg": 5.68, "hit_composite_pass": false},
+      {"speed_scale": 0.90, "position_error_m": 0.0883, "velocity_error_mps": 0.3961, "normal_error_deg": 4.37, "hit_composite_pass": false},
+      {"speed_scale": 0.95, "position_error_m": 0.0912, "velocity_error_mps": 0.3216, "normal_error_deg": 3.83, "hit_composite_pass": false}
+    ],
+    "interpretation": "uniform_slowdown_reduces_velocity_error_but_does_not_reach_position_threshold; use_local_retiming_or_reference_geometry_audit_next"
+  },
+  "window_trace": {
+    "motion": "T002_027_gao01_15p59_17p59",
+    "trace_file": "eval_outputs/strike_stabilizer_a/time_scale_scan/T002_027_speed090_execution_trace.npz",
+    "configured_hit_motion_step": 33,
+    "best_position_error_motion_step": 34,
+    "configured_hit_position_error_m": 0.0883,
+    "best_window_position_error_m": 0.0836,
+    "joint_total_error_at_configured_hit_deg": {
+      "waist_yaw_joint": -0.97,
+      "waist_roll_joint": 1.97,
+      "waist_pitch_joint": 3.95,
+      "right_shoulder_pitch_joint": 2.21,
+      "right_shoulder_roll_joint": -0.08,
+      "right_shoulder_yaw_joint": 0.50,
+      "right_elbow_joint": 1.44,
+      "right_wrist_roll_joint": -0.04,
+      "right_wrist_pitch_joint": 1.17,
+      "right_wrist_yaw_joint": -0.01
+    },
+    "interpretation": "best_window_is_one_control_step_after_configured_hit; dominant_reference_tracking_error_is_waist_pitch_then_waist_roll_and_shoulder_pitch; no_large_target_clip_seen_in_trace"
+  },
+  "hit_frame_shift_diagnostic": {
+    "base_speed_scale": 0.90,
+    "results": [
+      {"delta_frames": -1, "position_error_m": 0.0878, "velocity_error_mps": 0.4048, "normal_error_deg": 3.81, "hit_composite_pass": false},
+      {"delta_frames": 1, "position_error_m": 0.0896, "velocity_error_mps": 0.2671, "normal_error_deg": 4.97, "hit_composite_pass": false}
+    ],
+    "interpretation": "hit_frame_shift_alone_does_not_remove_the_spatial_error; keep_original_target_contract_and_fix_local_joint_tracking_before_relabeling_hit"
+  },
+  "jacobian_contribution_scan": {
+    "motion": "T002_027_gao01_15p59_17p59",
+    "trace": "eval_outputs/strike_stabilizer_a/time_scale_scan/T002_027_speed090_execution_trace_v2.npz",
+    "evaluation_motion_step": 34,
+    "predicted_total_correction_norm_m": 0.0804,
+    "target_minus_actual_error_norm_m": 0.0836,
+    "ranked_by_projection_along_target_error": [
+      {"joint": "waist_pitch_joint", "angle_error_deg": -4.241, "predicted_contribution_norm_m": 0.0414, "useful_projection_m": 0.0371},
+      {"joint": "right_shoulder_pitch_joint", "angle_error_deg": -1.997, "predicted_contribution_norm_m": 0.0211, "useful_projection_m": 0.0165},
+      {"joint": "waist_roll_joint", "angle_error_deg": -2.497, "predicted_contribution_norm_m": 0.0108, "useful_projection_m": 0.0073},
+      {"joint": "right_elbow_joint", "angle_error_deg": -1.238, "predicted_contribution_norm_m": 0.0076, "useful_projection_m": 0.0068},
+      {"joint": "waist_yaw_joint", "angle_error_deg": 1.009, "predicted_contribution_norm_m": 0.0101, "useful_projection_m": 0.0034}
+    ],
+    "interpretation": "waist_pitch_is_current_top_candidate_but_shoulder_pitch_is_second_and_must_not_be_ignored; linear_jacobian_result_requires_single_joint_counterfactual_validation"
+  },
+  "do_not_use": [
+    "tracking_motion_manifest_backhand_native_zero_contract_v1.json",
+    "any_target_relabelled_from_failed_zero_residual_execution"
+  ],
+  "recommended_order": [
+    "keep_per_motion_fk_recalibrated_manifest_as_candidate",
+    "retarget_or_time-resample_dynamic_references_under_current_A3_soft_limits",
+    "preserve_original_intended_strike_targets",
+    "repeat_reset_fk_and_zero_residual_execution_audit",
+    "only_after_zero_residual_gate_passes_start_reference_preservation_smoke",
+    "then_train_local_target_conditioned_residual"
+  ]
+}

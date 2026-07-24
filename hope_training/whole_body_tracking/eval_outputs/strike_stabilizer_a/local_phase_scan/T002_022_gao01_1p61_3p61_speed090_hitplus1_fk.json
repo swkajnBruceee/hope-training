@@ -1,0 +1,181 @@
+{
+  "source_manifests": [
+    "sample_motions/p2_fixed_balanced_k8_torso_control_v2_nativecal_20260716/manifest.json",
+    "sample_motions/p2_strike_stabilizer_expansion_k9_candidate_v1/tracking_motion_manifest.json"
+  ],
+  "excluded_episode_ids": [],
+  "replay_ready_count": 17,
+  "stroke_counts": {
+    "backhand": 9,
+    "forehand": 8
+  },
+  "smoke_picks": {
+    "backhand": "T002_022_gao01_1p61_3p61",
+    "forehand": "T001_003_gao01_2p92_4p92"
+  },
+  "motions": [
+    {
+      "episode_id": "T002_022_gao01_1p61_3p61",
+      "stroke_type": "backhand",
+      "stroke_confidence": 1.0,
+      "stroke_label_status": "authoritative_project_label",
+      "selection_note": "manual_or_probe_manifest",
+      "motion_npz": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/strike_stabilizer_a/local_phase_scan/T002_022_gao01_1p61_3p61_speed090_motion/T002_022_gao01_1p61_3p61.npz",
+      "fps": 50,
+      "joint_pos_shape": [
+        89,
+        31
+      ],
+      "body_pos_w_shape": [
+        89,
+        32,
+        3
+      ],
+      "optimized_csv": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_backhand_supplement12b_stabilizer_v1/optimized_csv/T002_022_gao01_1p61_3p61.csv",
+      "target_npz": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_backhand_supplement12b_stabilizer_v1/target_npz/T002_022_gao01_1p61_3p61_target.npz",
+      "target_spec_json": "data/analysis/mocap_cleaning_outputs/DATA260708_post1p0/retarget_p2_fixed_a3_backhand_supplement12b_stabilizer_v1/target_specs/T002_022_gao01_1p61_3p61_target_spec.json",
+      "hit_event": {
+        "source_hit_index": 120,
+        "source_fps": 200.0,
+        "hit_time_from_start_s": 0.68,
+        "motion_fps": 50,
+        "motion_hit_frame": 34,
+        "motion_hit_subframe_alpha": 0.0,
+        "time_rescaled_from_speed_scale": 0.9,
+        "diagnostic_hit_frame_shift": 1
+      },
+      "strike_target": {
+        "racket_position_m": [
+          2.6741826114110876,
+          -0.36223212031908236,
+          0.2564498635305201
+        ],
+        "racket_quat_xyzw": [
+          -0.09939746558666229,
+          -0.23951253294944763,
+          0.8210087418556213,
+          -0.5086241960525513
+        ],
+        "racket_normal_w": [
+          0.8827836558417895,
+          -0.3678704023104775,
+          -0.292171839988956
+        ],
+        "racket_tangent_w": [
+          -0.46284321528642103,
+          -0.7875559450540299,
+          -0.40685611536173205
+        ],
+        "racket_velocity_mps": [
+          -1.0861155805836398,
+          0.26361951429505515,
+          0.8137540085576519
+        ],
+        "racket_velocity_direction_w": [
+          -0.816708891346739,
+          0.2576218675053244,
+          0.516350230152219
+        ],
+        "ball_position_m": [
+          2.670637750480777,
+          -0.35441534752562487,
+          0.2585942303150857
+        ],
+        "ball_in_velocity_mps": [
+          2.664267263534925,
+          0.22192286715430457,
+          0.8710047749229547
+        ],
+        "ball_out_velocity_mps": [
+          -4.349061462756537,
+          0.39781817296696736,
+          1.5493384848053766
+        ],
+        "ball_to_racket_center_distance_m": 0.0319991098323639
+      },
+      "strike_target_original": {
+        "racket_position_m": [
+          2.698074229061939,
+          -0.369072946508021,
+          0.23972490062454987
+        ],
+        "racket_quat_xyzw": [
+          -0.11248927563428879,
+          -0.23274697363376617,
+          0.80824875831604,
+          -0.5290641188621521
+        ],
+        "racket_normal_w": [
+          0.9075940465355774,
+          -0.33183983437913744,
+          -0.2572068642404455
+        ],
+        "racket_tangent_w": [
+          -0.4148744181101951,
+          -0.802867757339538,
+          -0.4281147797573315
+        ],
+        "racket_velocity_mps": [
+          -1.7790995956901745,
+          0.5349298792750269,
+          1.0194423463919293
+        ],
+        "racket_velocity_direction_w": [
+          -0.816708891346739,
+          0.2576218675053244,
+          0.516350230152219
+        ],
+        "ball_position_m": [
+          2.670637750480777,
+          -0.35441534752562487,
+          0.2585942303150857
+        ],
+        "ball_in_velocity_mps": [
+          2.664267263534925,
+          0.22192286715430457,
+          0.8710047749229547
+        ],
+        "ball_out_velocity_mps": [
+          -4.349061462756537,
+          0.39781817296696736,
+          1.5493384848053766
+        ],
+        "ball_to_racket_center_distance_m": 0.0319991098323639
+      },
+      "strike_target_recalibration": {
+        "source": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/strike_stabilizer_a/local_phase_scan/T002_022_gao01_1p61_3p61_speed090_motion/T002_022_gao01_1p61_3p61.npz",
+        "hit_frame": 34,
+        "method": "body_state_wrist_plus_mount_offset",
+        "old_position_error_m": 0.02995547831579083
+      }
+    }
+  ],
+  "stroke": "backhand",
+  "dataset_status": "candidate_motion_fk_recalibrated_not_yet_training_approved",
+  "strike_target_recalibration": {
+    "method": "current_motion_npz_body_fk_wrist_mount",
+    "wrist_body_index": 31,
+    "mount_offset_m": [
+      0.210211399202899,
+      0.0320784994676765,
+      0.0320358706296689
+    ],
+    "normal_axis": 1,
+    "normal_sign": 1.0,
+    "source_manifest": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/strike_stabilizer_a/local_phase_scan/T002_022_gao01_1p61_3p61_speed090_hitplus1_source.json",
+    "ball_fields_preserved": true,
+    "note": "Candidate for kinematic reference-contract validation; not a ball/planner target approval."
+  },
+  "subset_source_manifest": "sample_motions/p2_strike_stabilizer_library_k17_v1/tracking_motion_manifest_backhand_fk_recalibrated_v1.json",
+  "subset_episode_ids": [
+    "T002_022_gao01_1p61_3p61"
+  ],
+  "time_rescale": {
+    "speed_scale": 0.9,
+    "duration_scale": 1.1111111111111112,
+    "spatial_targets_preserved": true,
+    "strike_targets_recomputed_after_generation": false,
+    "source_manifest": "eval_outputs/strike_stabilizer_a/local_phase_scan/T002_022_gao01_1p61_3p61_source.json"
+  },
+  "diagnostic_hit_frame_shift": 1
+}

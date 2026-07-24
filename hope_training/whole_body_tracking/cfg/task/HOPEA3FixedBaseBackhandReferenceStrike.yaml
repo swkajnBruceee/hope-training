@@ -1,0 +1,111 @@
+# Backhand-only fixed-base reference-residual PPO.
+#
+# This is the reviewed plan's Stage 1 fixed-base branch: nine calibrated
+# backhand references, zero-mean 10-DOF waist+right-arm residuals, and
+# explicit backhand semantic conditioning.  This default is Stage 1B
+# (nominal manifest targets); Stage 1C enables local target perturbations via
+# racket_target.target_mode=manifest_perturbed.
+# It intentionally does not modify the existing mixed K17 task or the
+# floating-base model_3396 contract.
+
+name: HOPEA3FixedBaseBackhandReferenceStrike
+gym_task: HOPE-FixedBaseBackhandReferenceStrike-AgibotA3-v0
+experiment_name: agibot_a3_fixed_base_backhand_reference_v1
+registry_name: local:sample_motions/p2_strike_stabilizer_library_k17_v1/tracking_motion_manifest_backhand.json
+
+motion_manifest: sample_motions/p2_strike_stabilizer_library_k17_v1/tracking_motion_manifest_backhand.json
+manifest_subset_size: null
+manifest_frame_z_offset: 0.76
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  # 80 reference frames + 20 final-pose hold + 20 minimum-jerk return +
+  # ready hold.  The extra tail prevents the episode from ending at release.
+  episode_length_s: 2.60
+
+actions:
+  # Waist is already scaled below the arm in the exact joint scale map; the
+  # latent trust band is narrower than the old mixed K17 contract.
+  raw_clip: 0.25
+  native_residual_scale: 1.0
+  reference_lookahead_steps: 0
+  interpolate_reference: true
+  native_joint_scale_multipliers:
+    waist_yaw_joint: 0.35
+    waist_roll_joint: 0.35
+    waist_pitch_joint: 0.35
+    right_shoulder_pitch_joint: 0.65
+    right_shoulder_roll_joint: 0.65
+    right_shoulder_yaw_joint: 0.65
+    right_elbow_joint: 0.65
+    right_wrist_roll_joint: 0.60
+    right_wrist_pitch_joint: 0.60
+    right_wrist_yaw_joint: 0.60
+
+rewards:
+  racket_position_weight: 8.0
+  racket_position_std: 0.06
+  racket_position_y_weight: 3.0
+  racket_position_y_std: 0.08
+  racket_velocity_weight: 3.0
+  racket_velocity_std: 0.80
+  racket_normal_weight: 2.5
+  racket_normal_std: 0.30
+  racket_hit_coupled_weight: 2.0
+  motion_scale: 1.0
+  motion_body_pos_weight: 0.60
+  motion_body_pos_std: 0.25
+  motion_body_ori_weight: 0.60
+  motion_body_ori_std: 0.35
+  motion_torso_ori_weight: 0.80
+  motion_torso_ori_std: 0.22
+  motion_native_joint_pos_weight: 0.70
+  motion_native_joint_pos_std: 0.35
+  motion_body_lin_vel_weight: 0.25
+  motion_body_ang_vel_weight: 0.25
+  joint_torques_weight: -0.000001
+  action_rate_weight: -0.03
+  action_residual_weight: -0.04
+  joint_limit_weight: -15.0
+
+racket:
+  # Each motion supplies its own calibrated hit frame and manifest strike
+  # state.  Stage 1B starts with the nominal target before widening locally.
+  target_mode: manifest
+  manifest_base_aligned: false
+  manifest_perturb_pos: [0.0, 0.02, 0.015]
+  manifest_perturb_vel: [0.0, 0.0, 0.0]
+  manifest_perturb_normal: 0.0
+  manifest_nominal_probability: 1.0
+  ref_perturb_curriculum_start: 0.25
+  ref_perturb_success_gated: true
+  ref_perturb_advance_threshold: 0.30
+  ref_perturb_advance_rate: 0.00005
+  # The global phase remains a legacy fallback only; manifest timing is used
+  # for this task and is audited from hit_event.motion_hit_frame.
+  strike_phase: 0.46
+  strike_window_s: 0.10
+  strike_time_std_s: 0.04
+  strike_success_pos_thresh: 0.075
+  strike_success_vel_thresh: 0.50
+  strike_success_normal_thresh_deg: 15.0
+  forehand_on_negative_y: false
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0
+
+motion:
+  sample_random_start_phase: false
+  hold_last_frame_steps: 20
+  return_to_default_steps: 20
+  reset_to_default_pose: false
+  pose_range: {}
+  velocity_range: {}
+  joint_position_range: [0.0, 0.0]
+
+domain_rand:
+  pd_gain_range: null

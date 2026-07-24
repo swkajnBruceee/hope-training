@@ -624,6 +624,19 @@ def _apply_task_overrides(env_cfg, task):
                 "actions.joint_pos.reference_lookahead_steps="
                 f"{reference_lookahead_steps}"
             )
+        joint_reference_lookahead_steps = _get(actions, "joint_reference_lookahead_steps")
+        if joint_reference_lookahead_steps is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "joint_reference_lookahead_steps"),
+                "actions.joint_pos.joint_reference_lookahead_steps",
+            )
+            env_cfg.actions.joint_pos.joint_reference_lookahead_steps = {
+                str(name): float(value) for name, value in dict(joint_reference_lookahead_steps).items()
+            }
+            applied.append(
+                "actions.joint_pos.joint_reference_lookahead_steps="
+                f"{env_cfg.actions.joint_pos.joint_reference_lookahead_steps!r}"
+            )
         scale_multipliers = _get(actions, "native_joint_scale_multipliers")
         if scale_multipliers is not None:
             scale = getattr(env_cfg.actions.joint_pos, "scale", None)
@@ -1023,6 +1036,8 @@ def _run(cfg):
         "A3BaseStandRecoveryAV2WaistMask-v0",
         "A3BaseStandRecoveryAV21WaistMask-v0",
         "HOPE-StrikeStabilizerA-AgibotA3-v0",
+        "HOPE-FixedBaseReferenceStrike-AgibotA3-v0",
+        "HOPE-FixedBaseBackhandReferenceStrike-AgibotA3-v0",
     }
     if task_id in zero_residual_tasks and not agent_cfg.resume:
         # This task controls a non-integrating residual around a passively
@@ -1030,7 +1045,10 @@ def _run(cfg):
         # deterministic residual before PPO sees one transition (observed as
         # 52% raw-action clipping in the v2 model_0 audit).  Keep exploration
         # in the Gaussian std, but make the initial mean policy exactly zero.
-        initialize_zero_residual_actor_mean(runner, action_dim=14)
+        initialize_zero_residual_actor_mean(
+            runner,
+            action_dim=10 if task_id.startswith("HOPE-FixedBase") else 14,
+        )
         print(
             "[train.py] initialized A3 Base/Recovery actor mean to exact zero residual; "
             f"exploration remains init_noise_std={agent_cfg.policy.init_noise_std}",

@@ -62,6 +62,11 @@ class ReferenceResidualJointPositionAction(ClampedJointPositionAction):
             self._joint_index_tensor = torch.arange(self._asset.num_joints, device=self.device)[self._joint_ids]
         else:
             self._joint_index_tensor = torch.as_tensor(self._joint_ids, dtype=torch.long, device=self.device)
+        joint_lead = torch.zeros(len(self._joint_index_tensor), dtype=torch.float32, device=self.device)
+        configured = getattr(cfg, "joint_reference_lookahead_steps", {}) or {}
+        for i, name in enumerate(self._joint_names):
+            joint_lead[i] = float(getattr(cfg, "reference_lookahead_steps", 0)) + float(configured.get(name, 0.0))
+        self._joint_reference_lookahead_steps = joint_lead
 
     def _reference_joint_pos(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
         """Gather the full-motion reference in the action term's joint order."""
@@ -73,6 +78,33 @@ class ReferenceResidualJointPositionAction(ClampedJointPositionAction):
             time_steps = torch.clamp(time_steps, max=motion_cmd.motion.time_step_total - 1)
             reference_joint_pos_full = motion_cmd.motion.joint_pos[time_steps]
         return reference_joint_pos_full[:, self._joint_index_tensor]
+
+    def _reference_joint_pos_with_joint_lead(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
+        """Gather reference positions with an independent fractional lead per action joint."""
+        lead = self._joint_reference_lookahead_steps.unsqueeze(0)
+        query = time_steps.to(dtype=torch.float32).unsqueeze(-1) + lead
+        if motion_cmd._use_motion_library:
+            lengths = motion_cmd.motion.motion_lengths[motion_cmd.motion_ids].unsqueeze(-1).to(torch.float32)
+            query = torch.maximum(query, torch.zeros_like(query))
+            query = torch.minimum(query, lengths - 1.0)
+            t0 = query.floor().to(torch.long)
+            max_t = (lengths - 1.0).to(torch.long).expand_as(t0)
+            t1 = torch.minimum(t0 + 1, max_t)
+            alpha = (query - t0.to(torch.float32)).unsqueeze(-1)
+            full = motion_cmd.motion.joint_pos[motion_cmd.motion_ids]
+        else:
+            max_step = int(motion_cmd.motion.time_step_total) - 1
+            query = query.clamp(min=0.0, max=float(max_step))
+            t0 = query.floor().to(torch.long)
+            t1 = (t0 + 1).clamp(max=max_step)
+            alpha = (query - t0.to(torch.float32)).unsqueeze(-1)
+            full = motion_cmd.motion.joint_pos.unsqueeze(0).expand(query.shape[0], -1, -1)
+        gather_shape = (*t0.shape, full.shape[-1])
+        ref0 = torch.gather(full, 1, t0.unsqueeze(-1).expand(gather_shape))
+        ref1 = torch.gather(full, 1, t1.unsqueeze(-1).expand(gather_shape))
+        ref = ref0 + alpha * (ref1 - ref0)
+        joint_idx = self._joint_index_tensor.view(1, -1).expand(query.shape[0], -1)
+        return ref.gather(2, joint_idx.unsqueeze(-1)).squeeze(-1)
 
     def _apply_target_limits(self, target: torch.Tensor) -> torch.Tensor:
         if self.cfg.clip is not None:
@@ -95,11 +127,7 @@ class ReferenceResidualJointPositionAction(ClampedJointPositionAction):
     def process_actions(self, actions: torch.Tensor):
         self._raw_actions[:] = torch.clamp(actions, -self.cfg.raw_clip, self.cfg.raw_clip)
         motion_cmd = self._env.command_manager.get_term(self.cfg.reference_command_name)
-        if self.cfg.reference_lookahead_steps:
-            time_steps = motion_cmd.time_steps + int(self.cfg.reference_lookahead_steps)
-            reference_joint_pos = self._reference_joint_pos(motion_cmd, time_steps)
-        else:
-            reference_joint_pos = self._reference_joint_pos(motion_cmd, motion_cmd.time_steps)
+        reference_joint_pos = self._reference_joint_pos_with_joint_lead(motion_cmd, motion_cmd.time_steps)
         self._processed_actions = reference_joint_pos + self._raw_actions * self._scale
         self._processed_actions = self._apply_target_limits(self._processed_actions)
 
@@ -124,8 +152,7 @@ class ReferenceResidualJointPositionAction(ClampedJointPositionAction):
         # lookahead would interpolate from frame t+k back toward frame t+1
         # inside one control period, which is neither a lead-compensated
         # command nor a continuous reference trajectory.
-        next_steps = motion_cmd.time_steps + int(self.cfg.reference_lookahead_steps) + 1
-        next_reference = self._reference_joint_pos(motion_cmd, next_steps)
+        next_reference = self._reference_joint_pos_with_joint_lead(motion_cmd, motion_cmd.time_steps + 1)
         residual = self._raw_actions * self._scale
         next_target = next_reference + residual
         target = (1.0 - alpha) * self._processed_actions + alpha * next_target
@@ -145,4 +172,5 @@ class ReferenceResidualJointPositionActionCfg(ClampedJointPositionActionCfg):
     class_type: type[ActionTerm] = ReferenceResidualJointPositionAction
     reference_command_name: str = "motion"
     reference_lookahead_steps: int = 0
+    joint_reference_lookahead_steps: dict[str, float] = {}
     interpolate_reference: bool = False
