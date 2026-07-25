@@ -20,6 +20,8 @@ from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 import training.tasks.tracking.mdp as mdp
 from training.tasks.base_locomotion.mdp import (
     A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+    A3F1FrozenUpperBaseCompositePositionActionCfg,
+    A3F0UpperBaseCompositePositionActionCfg,
     A3StrikeConditionedBaseCompositePositionActionCfg,
     RootHeightBelowMinimum,
 )
@@ -75,6 +77,53 @@ class A3StrikeConditionedBaseActionsCfg(ActionsCfg):
         clip_to_soft_joint_limits=True,
         reference_command_name="motion",
         base_reference_mode="motion",
+    )
+
+
+@configclass
+class A3F0ActionsCfg(ActionsCfg):
+    """F0 composite action: external frozen upper actor + Base14 actor."""
+
+    joint_pos = A3F0UpperBaseCompositePositionActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        action_mask=(1.0,) * len(A3_BASE_ACTION_JOINTS),
+        raw_clip=0.25,
+        upper_raw_clip=0.50,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+    )
+
+
+@configclass
+class A3F1ActionsCfg(ActionsCfg):
+    """F1 composite action with model_900 frozen inside the environment."""
+
+    joint_pos = A3F1FrozenUpperBaseCompositePositionActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        action_mask=(1.0,) * len(A3_BASE_ACTION_JOINTS),
+        raw_clip=0.25,
+        upper_raw_clip=0.50,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+        upper_observation_group="upper",
     )
 
 
@@ -265,6 +314,50 @@ class A3StrikeConditionedBaseObservationsCfg(A3NativeStrikeObservationsCfg):
 
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
+
+
+@configclass
+class A3F0ObservationsCfg(A3NativeStrikeObservationsCfg):
+    """Two explicit policy contracts used by the paired F0 evaluator."""
+
+    @configclass
+    class PolicyCfg(A3NativeStrikeObservationsCfg.PolicyCfg):
+        # The composite action manager is Base14, but model_900 was trained
+        # with a 10-D native upper action history.
+        actions = ObsTerm(func=mdp.f0_upper_last_action)
+        # model_900 is frozen but now runs after the validated 50-step ready
+        # prelude; expose wall-clock strike timing so it does not swing early.
+        time_to_strike = ObsTerm(
+            func=mdp.time_to_strike_with_prelude,
+            params={"command_name": "racket_target"},
+        )
+
+    @configclass
+    class StageACfg(A3StrikeConditionedBaseObservationsCfg.PolicyCfg):
+        # The warm-start checkpoint was trained with the explicit manifest
+        # stroke label.  Keep F0 paired evaluation on the same lower-policy
+        # observation contract instead of inferring it from target geometry.
+        swing_type = ObsTerm(func=mdp.manifest_swing_type, params={"command_name": "racket_target"})
+
+    policy: PolicyCfg = PolicyCfg()
+    stage_a: StageACfg = StageACfg()
+
+
+@configclass
+class A3F1ObservationsCfg(A3StrikeConditionedBaseObservationsCfg):
+    """Stage-A leg observation contract plus a private model_900 group."""
+
+    @configclass
+    class UpperCfg(A3NativeStrikeObservationsCfg.PolicyCfg):
+        actions = ObsTerm(func=mdp.f0_upper_last_action)
+        time_to_strike = ObsTerm(
+            func=mdp.time_to_strike_with_prelude,
+            params={"command_name": "racket_target"},
+        )
+
+    policy: A3StrikeConditionedBaseObservationsCfg.PolicyCfg = A3StrikeConditionedBaseObservationsCfg.PolicyCfg()
+    critic: A3StrikeConditionedBaseObservationsCfg.CriticCfg = A3StrikeConditionedBaseObservationsCfg.CriticCfg()
+    upper: UpperCfg = UpperCfg()
 
 
 @configclass
@@ -499,6 +592,62 @@ class A3StrikeStabilizerARewardsCfg(A3NativeStrikeRewardsCfg):
             "action_name": "joint_pos",
             "action_indices": tuple(range(12)),
             "deadband": 0.02,
+        },
+    )
+
+
+@configclass
+class A3F1StrikeAwareRewardsCfg(A3StrikeStabilizerARewardsCfg):
+    """Stage-A stability rewards augmented with frozen-upper strike preservation."""
+
+    racket_position = RewTerm(
+        func=mdp.racket_position_tracking_exp,
+        weight=2.0,
+        params={"command_name": "racket_target", "std": 0.08},
+    )
+    racket_position_y = RewTerm(
+        func=mdp.racket_position_axis_tracking_exp,
+        weight=1.0,
+        params={"command_name": "racket_target", "axis": 1, "std": 0.10},
+    )
+    racket_velocity = RewTerm(
+        func=mdp.racket_velocity_tracking_exp,
+        weight=0.75,
+        params={"command_name": "racket_target", "std": 0.75},
+    )
+    racket_normal = RewTerm(
+        func=mdp.racket_normal_tracking_exp,
+        weight=0.75,
+        params={"command_name": "racket_target", "std": 0.35},
+    )
+    racket_hit_coupled = RewTerm(
+        func=mdp.racket_hit_coupled_tracking_exp,
+        weight=0.25,
+        params={
+            "command_name": "racket_target",
+            "pos_std": 0.10,
+            "vel_std": 2.0,
+            "normal_std": 0.7,
+            "base": 0.35,
+            "vel_coeff": 0.30,
+            "normal_coeff": 0.35,
+        },
+    )
+    upper_execution_gap = RewTerm(
+        func=mdp.upper_execution_gap_l2,
+        weight=-0.20,
+        params={"action_name": "joint_pos", "deadband": 0.02},
+    )
+    root_position_drift = RewTerm(
+        func=mdp.root_position_drift_l2,
+        weight=-1.0,
+    )
+    feet_slip = RewTerm(
+        func=mdp.feet_slip_l2,
+        weight=-0.20,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=A3_FEET_BODIES),
+            "threshold": 10.0,
         },
     )
 
@@ -803,6 +952,62 @@ class A3StrikeConditionedBaseEnvCfg(A3NativeStrikeEnvCfg):
 
 
 @configclass
+class A3FloatingF0EnvCfg(A3StrikeConditionedBaseEnvCfg):
+    """Unified fixed/floating migration plant used by the F0 paired audit."""
+
+    actions: A3F0ActionsCfg = A3F0ActionsCfg()
+    observations: A3F0ObservationsCfg = A3F0ObservationsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Shared strike-ready stance: slight hip/knee flexion keeps the
+        # floating-base comparison physically meaningful and matches the
+        # established Stage-A support posture.
+        # The current six-motion manifest is authored in this world-frame
+        # support location.  Keep x/y aligned with motion frame zero while
+        # replacing only the nominal upright height with the validated flexed
+        # height; otherwise default-pose reset creates a metre-scale fake
+        # strike error before the swing starts.
+        self.scene.robot.init_state.pos = (3.1500, -0.3500, 1.0400)
+        # The strike-only motion library was recorded with this root frame
+        # orientation. The A3 asset default is the opposite yaw frame
+        # ([1, 0, 0, 0]); using it here rotates the otherwise-correct upper
+        # pose by 180 degrees and creates a metre-scale racket error.
+        self.scene.robot.init_state.rot = (0.0, 0.0, 0.0, 1.0)
+        self.scene.robot.init_state.joint_pos = {
+            **self.scene.robot.init_state.joint_pos,
+            ".*_hip_pitch_joint": -0.1600,
+            ".*_knee_joint": 0.3200,
+            ".*_ankle_pitch_joint": -0.1550,
+            "left_hip_roll_joint": 0.0800,
+            "right_hip_roll_joint": -0.0800,
+        }
+        # F0 compares fixed and floating variants of this same config. The
+        # evaluator changes only this flag after construction for the fixed
+        # branch; all observation, target and actuator settings stay shared.
+        self.scene.robot.spawn.fix_base = False
+        self.commands.motion.sample_random_start_phase = False
+        # Use the validated floating-base contract: reset into the slightly
+        # flexed support stance, then blend into strike frame zero.
+        self.commands.motion.prelude_steps = 50
+        self.commands.motion.hold_last_frame_steps = 0
+        self.commands.motion.return_to_default_steps = 0
+        self.commands.motion.reset_to_default_pose = True
+        self.actions.joint_pos.action_mask = (1.0,) * 12 + (0.0, 0.0)
+        self.actions.joint_pos.smooth_raw_bound = True
+        self.actions.joint_pos.base_reference_mode = "default"
+        self.actions.joint_pos.phase_gate_joint_names = (
+            "left_hip_yaw_joint",
+            "right_hip_yaw_joint",
+        )
+        self.actions.joint_pos.phase_gate_min_scale = 0.15
+        self.actions.joint_pos.phase_gate_start = 0.12
+        self.actions.joint_pos.phase_gate_end = 0.45
+        self.actions.joint_pos.phase_gate_tail_release_steps = 0
+        self.actions.joint_pos.ready_hold_residual_release_steps = 0
+
+
+@configclass
 class A3StrikeStabilizerAEnvCfg(A3StrikeConditionedBaseEnvCfg):
     """Stage-A plant: replay upper body/waist; learn only 12 leg residuals.
 
@@ -831,6 +1036,10 @@ class A3StrikeStabilizerAEnvCfg(A3StrikeConditionedBaseEnvCfg):
         # straight nominal stand.  This is a reference pose only; it does not
         # prescribe the learned leg residual sequence.
         self.scene.robot.init_state.pos = (0.0, 0.0, 1.0400)
+        # Keep the stabilizer's reset frame identical to the strike motion
+        # root. Older Stage-A checkpoints trained with the asset default yaw
+        # are not compatible with this corrected observation/action contract.
+        self.scene.robot.init_state.rot = (0.0, 0.0, 0.0, 1.0)
         self.scene.robot.init_state.joint_pos = {
             **self.scene.robot.init_state.joint_pos,
             ".*_hip_pitch_joint": -0.1600,
@@ -888,6 +1097,47 @@ class A3StrikeStabilizerAUnifiedEnvCfg(A3StrikeStabilizerAEnvCfg):
         super().__post_init__()
         self.observations.policy.swing_type.func = mdp.manifest_swing_type
         self.observations.policy.swing_type.params = {"command_name": "racket_target"}
+
+
+@configclass
+class A3FloatingF1EnvCfg(A3FloatingF0EnvCfg):
+    """F1 in-place migration: frozen model_900 upper body, trainable legs only."""
+
+    actions: A3F1ActionsCfg = A3F1ActionsCfg()
+    observations: A3F1ObservationsCfg = A3F1ObservationsCfg()
+    rewards: A3F1StrikeAwareRewardsCfg = A3F1StrikeAwareRewardsCfg()
+    terminations: A3StrikeStabilizerATerminationsCfg = A3StrikeStabilizerATerminationsCfg()
+    events: A3StrikeStabilizerAEventsCfg = A3StrikeStabilizerAEventsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        # F1 remains an in-place migration experiment.  The leg policy may
+        # brace and shift the COM, but it has no target-driven base command.
+        self.scene.robot.spawn.fix_base = False
+        self.commands.motion.sample_random_start_phase = False
+        # Match the validated Stage-A start contract without inheriting its
+        # post-strike hold/return tail.  Stage-A is only a warm start; the
+        # upper strike still begins from the same flexed support stance.
+        self.commands.motion.prelude_steps = 50
+        self.commands.motion.hold_last_frame_steps = 0
+        self.commands.motion.return_to_default_steps = 0
+        self.commands.motion.reset_to_default_pose = True
+        # Keep the warm-start actor's explicit semantic stroke label without
+        # inheriting Stage-A's separate ready-pose initialization.
+        self.observations.policy.swing_type.func = mdp.manifest_swing_type
+        self.observations.policy.swing_type.params = {"command_name": "racket_target"}
+        self.actions.joint_pos.action_mask = (1.0,) * 12 + (0.0, 0.0)
+        self.actions.joint_pos.smooth_raw_bound = True
+        self.actions.joint_pos.base_reference_mode = "default"
+        self.actions.joint_pos.phase_gate_joint_names = (
+            "left_hip_yaw_joint",
+            "right_hip_yaw_joint",
+        )
+        self.actions.joint_pos.phase_gate_min_scale = 0.15
+        self.actions.joint_pos.phase_gate_start = 0.12
+        self.actions.joint_pos.phase_gate_end = 0.45
+        self.actions.joint_pos.phase_gate_tail_release_steps = 0
+        self.actions.joint_pos.ready_hold_residual_release_steps = 0
 
 
 @configclass

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import MISSING
+from pathlib import Path
 
 import torch
 
@@ -302,3 +303,202 @@ class A3StrikeConditionedBaseCompositePositionActionCfg(A3BaseCompositePositionA
     # ready pose, fade all learned leg residuals to zero over this many policy
     # steps.  Zero preserves legacy persistent-residual behavior.
     ready_hold_residual_release_steps: int = 0
+
+
+class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePositionAction):
+    """F0 evaluator action: frozen upper policy plus optional Base14 residual.
+
+    The upper policy is supplied externally because F0 loads two independent
+    checkpoints. The public action remains Base14, preserving Stage-A's 14-D
+    previous-action observation while only the twelve leg channels affect the
+    floating base.
+    """
+
+    cfg: "A3F0UpperBaseCompositePositionActionCfg"
+
+    def __init__(self, cfg: "A3F0UpperBaseCompositePositionActionCfg", env):
+        super().__init__(cfg, env)
+        self._upper_joint_ids, resolved_upper_names = self._asset.find_joints(
+            list(cfg.upper_joint_names), preserve_order=True
+        )
+        if resolved_upper_names != list(cfg.upper_joint_names):
+            raise ValueError(
+                "F0 upper joint order mismatch: "
+                f"expected={list(cfg.upper_joint_names)}, resolved={resolved_upper_names}"
+            )
+        overlap = sorted(set(cfg.upper_joint_names) & set(cfg.base_joint_names))
+        if overlap != ["waist_pitch_joint", "waist_roll_joint"]:
+            raise ValueError(f"Unexpected F0 upper/base overlap: {overlap}")
+        self._upper_joint_ids_tensor = torch.tensor(
+            self._upper_joint_ids, dtype=torch.long, device=self.device
+        )
+        self._upper_scale = torch.tensor(
+            [float(cfg.scale[name]) for name in cfg.upper_joint_names],
+            dtype=torch.float,
+            device=self.device,
+        ).unsqueeze(0)
+        self._upper_lead = torch.zeros(
+            len(self._upper_joint_ids), dtype=torch.float32, device=self.device
+        )
+        configured = getattr(cfg, "joint_reference_lookahead_steps", {}) or {}
+        for i, name in enumerate(cfg.upper_joint_names):
+            self._upper_lead[i] = float(getattr(cfg, "reference_lookahead_steps", 0))
+            self._upper_lead[i] += float(configured.get(name, 0.0))
+        self._upper_raw_actions = torch.zeros(
+            (self.num_envs, len(self._upper_joint_ids)), device=self.device
+        )
+        self._upper_processed_actions = torch.zeros_like(self._upper_raw_actions)
+        env.f0_upper_last_action = self._upper_raw_actions.clone()
+
+    @property
+    def upper_raw_actions(self) -> torch.Tensor:
+        return self._upper_raw_actions
+
+    @property
+    def upper_processed_actions(self) -> torch.Tensor:
+        return self._upper_processed_actions
+
+    def _upper_reference(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
+        """Gather the same lead-compensated raw motion reference as model_900."""
+        query = time_steps.float().unsqueeze(-1) + self._upper_lead.unsqueeze(0)
+        if motion_cmd._use_motion_library:
+            lengths = motion_cmd.motion.motion_lengths[motion_cmd.motion_ids]
+            full = motion_cmd.motion.joint_pos[motion_cmd.motion_ids]
+            max_t = (lengths - 1).long().unsqueeze(-1).expand_as(query)
+        else:
+            full = motion_cmd.motion.joint_pos.unsqueeze(0).expand(query.shape[0], -1, -1)
+            max_t = torch.full_like(query, full.shape[1] - 1, dtype=torch.long)
+        query = query.clamp(min=0.0)
+        query = torch.minimum(query, max_t.float())
+        t0 = query.floor().long()
+        t1 = torch.minimum(t0 + 1, max_t)
+        alpha = (query - t0.float()).unsqueeze(-1)
+        gather_shape = (*t0.shape, full.shape[-1])
+        ref0 = torch.gather(full, 1, t0.unsqueeze(-1).expand(gather_shape))
+        ref1 = torch.gather(full, 1, t1.unsqueeze(-1).expand(gather_shape))
+        ref = ref0 + alpha * (ref1 - ref0)
+        joint_ids = self._upper_joint_ids_tensor.view(1, -1).expand(query.shape[0], -1)
+        return ref.gather(2, joint_ids.unsqueeze(-1)).squeeze(-1)
+
+    def process_actions(self, actions: torch.Tensor):
+        # Reuse the reviewed Stage-A/Base14 leg mask, gate, nominal reference,
+        # and soft-limit handling without duplicating that contract here.
+        super().process_actions(actions)
+        upper = getattr(self._env, "f0_upper_raw_action", None)
+        if upper is None:
+            upper = torch.zeros_like(self._upper_raw_actions)
+        if upper.shape != self._upper_raw_actions.shape:
+            raise ValueError(
+                f"Expected F0 upper action shape {self._upper_raw_actions.shape}, got {upper.shape}"
+            )
+        self._upper_raw_actions[:] = torch.clamp(upper, -self.cfg.upper_raw_clip, self.cfg.upper_raw_clip)
+        motion_cmd = self._env.command_manager.get_term(self.cfg.reference_command_name)
+        reference = self._upper_reference(motion_cmd, motion_cmd.time_steps)
+        self._upper_processed_actions[:] = reference + self._upper_raw_actions * self._upper_scale
+        self._full_joint_targets[:, self._upper_joint_ids_tensor] = self._upper_processed_actions
+        if self.cfg.clip_to_soft_joint_limits:
+            limits = self._asset.data.soft_joint_pos_limits
+            self._full_joint_targets[:] = torch.clamp(
+                self._full_joint_targets, min=limits[..., 0], max=limits[..., 1]
+            )
+            self._upper_processed_actions[:] = self._full_joint_targets[:, self._upper_joint_ids_tensor]
+        self._env.f0_upper_last_action[:] = self._upper_raw_actions
+
+
+@configclass
+class A3F0UpperBaseCompositePositionActionCfg(A3StrikeConditionedBaseCompositePositionActionCfg):
+    class_type: type[ActionTerm] = A3F0UpperBaseCompositePositionAction
+    upper_joint_names: tuple[str, ...] = MISSING
+    upper_raw_clip: float = 0.50
+    # These fields let the common native-strike task override path configure
+    # the frozen upper contract without knowing about the F0 composite term.
+    joint_names: tuple[str, ...] = ()
+    scale: dict[str, float] = MISSING
+    preserve_order: bool = True
+    reference_lookahead_steps: int = 0
+    joint_reference_lookahead_steps: dict[str, float] = {}
+
+
+class _FrozenCheckpointActor:
+    """Small inference-only actor loader for a frozen cross-task policy."""
+
+    def __init__(self, path: str, device: torch.device):
+        checkpoint = Path(path).expanduser()
+        if not checkpoint.is_file():
+            raise FileNotFoundError(f"Frozen upper checkpoint does not exist: {checkpoint}")
+        state = torch.load(checkpoint, map_location="cpu", weights_only=False)
+        model = state.get("model_state_dict", {})
+        layer_ids = sorted(
+            int(key.split(".")[1])
+            for key in model
+            if key.startswith("actor.") and key.endswith(".weight")
+        )
+        if not layer_ids:
+            raise RuntimeError(f"Frozen upper checkpoint has no actor layers: {checkpoint}")
+        layers: list[torch.nn.Module] = []
+        for index, layer_id in enumerate(layer_ids):
+            weight = model[f"actor.{layer_id}.weight"]
+            bias = model[f"actor.{layer_id}.bias"]
+            layer = torch.nn.Linear(weight.shape[1], weight.shape[0])
+            layer.weight.data.copy_(weight)
+            layer.bias.data.copy_(bias)
+            layers.append(layer)
+            if index + 1 < len(layer_ids):
+                layers.append(torch.nn.ELU())
+        self.actor = torch.nn.Sequential(*layers).to(device).eval()
+        normalizer = state.get("obs_norm_state_dict")
+        if normalizer is None:
+            raise RuntimeError(f"Frozen upper checkpoint has no observation normalizer: {checkpoint}")
+        self.mean = normalizer["_mean"].to(device)
+        self.std = normalizer["_std"].to(device).clamp_min(1.0e-6)
+        self.obs_dim = int(self.mean.shape[-1])
+        self.action_dim = int(model["std"].shape[-1])
+        self.path = str(checkpoint)
+
+    @torch.inference_mode()
+    def __call__(self, obs: torch.Tensor) -> torch.Tensor:
+        if obs.shape[-1] != self.obs_dim:
+            raise RuntimeError(
+                f"Frozen upper observation width mismatch: checkpoint={self.obs_dim}, runtime={obs.shape[-1]}"
+            )
+        return self.actor(torch.clamp((obs - self.mean) / self.std, -100.0, 100.0))
+
+
+class A3F1FrozenUpperBaseCompositePositionAction(A3F0UpperBaseCompositePositionAction):
+    """F1 action: frozen model_900 upper actor plus trainable Stage-A Base14."""
+
+    cfg: "A3F1FrozenUpperBaseCompositePositionActionCfg"
+
+    def __init__(self, cfg: "A3F1FrozenUpperBaseCompositePositionActionCfg", env):
+        super().__init__(cfg, env)
+        self._upper_policy = _FrozenCheckpointActor(cfg.upper_checkpoint, self.device)
+        if self._upper_policy.obs_dim != 56 or self._upper_policy.action_dim != len(self._upper_joint_ids):
+            raise RuntimeError(
+                "F1 frozen upper contract mismatch: "
+                f"obs={self._upper_policy.obs_dim}, action={self._upper_policy.action_dim}, "
+                f"expected=(56, {len(self._upper_joint_ids)})"
+            )
+        self._upper_observation_group = str(cfg.upper_observation_group)
+
+    def _compute_observation_group(self, name: str) -> torch.Tensor:
+        value = self._env.observation_manager.compute_group(name)
+        if isinstance(value, tuple):
+            value = value[0]
+        if isinstance(value, dict):
+            value = value.get(name, next(iter(value.values())))
+        if not isinstance(value, torch.Tensor):
+            raise TypeError(f"Observation group {name!r} did not return a tensor")
+        return value
+
+    def process_actions(self, actions: torch.Tensor):
+        upper_obs = self._compute_observation_group(self._upper_observation_group)
+        upper_action = self._upper_policy(upper_obs)
+        self._env.f0_upper_raw_action = upper_action
+        super().process_actions(actions)
+
+
+@configclass
+class A3F1FrozenUpperBaseCompositePositionActionCfg(A3F0UpperBaseCompositePositionActionCfg):
+    class_type: type[ActionTerm] = A3F1FrozenUpperBaseCompositePositionAction
+    upper_checkpoint: str = ""
+    upper_observation_group: str = "upper"

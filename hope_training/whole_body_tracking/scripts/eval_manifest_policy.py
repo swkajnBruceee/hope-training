@@ -91,6 +91,29 @@ def _angle_between_deg(a, b):
     return torch.rad2deg(torch.acos(cos.clamp(-1.0, 1.0)))
 
 
+def _reference_racket_pos_w(env, motion_cmd, racket_cmd, n, device):
+    """Compute the racket position from the reference body pose at the current phase."""
+    import torch
+    from isaaclab.utils.math import quat_apply
+
+    motion_ids = motion_cmd.motion_ids[:n]
+    time_steps = motion_cmd.time_steps[:n]
+    if motion_cmd._use_motion_library:
+        body_pos = motion_cmd.motion._body_pos_w[motion_ids, time_steps]
+        body_quat = motion_cmd.motion._body_quat_w[motion_ids, time_steps]
+    else:
+        body_pos = motion_cmd.motion._body_pos_w[time_steps]
+        body_quat = motion_cmd.motion._body_quat_w[time_steps]
+    body_pos = body_pos + env.scene.env_origins[:n].unsqueeze(1)
+
+    if racket_cmd._racket_mode == "body":
+        return body_pos[:, racket_cmd._racket_body_index]
+
+    wrist_pos = body_pos[:, racket_cmd._wrist_body_index]
+    wrist_quat = body_quat[:, racket_cmd._wrist_body_index]
+    return wrist_pos + quat_apply(wrist_quat, racket_cmd._mount_offset[:n])
+
+
 def _sync_motion_state(env, motion_cmd, n, device, start_steps=None):
     import torch
 
@@ -288,6 +311,7 @@ def _run(cfg, simulation_app):
     right_elbow_body_id = body_name_to_id.get("right_elbow_Link", torso_body_id)
     right_wrist_body_id = body_name_to_id.get("right_wrist_yaw_Link", right_elbow_body_id)
     action_term = env.unwrapped.action_manager.get_term("joint_pos")
+    diagnostic = _as_bool(cfg.get("diagnostic", False))
     native_joint_ids = getattr(action_term, "_joint_index_tensor", None)
     action_scale = getattr(action_term, "_scale", None)
     if action_scale is not None:
@@ -356,6 +380,21 @@ def _run(cfg, simulation_app):
         "forearm_racket_angle_deg": torch.full((n,), float("nan"), device=device),
         "captured": torch.zeros(n, dtype=torch.bool, device=device),
     }
+    if diagnostic:
+        captured.update(
+            {
+                "target_pos": torch.full((n, 3), float("nan"), device=device),
+                "reference_pos": torch.full((n, 3), float("nan"), device=device),
+                "actual_pos": torch.full((n, 3), float("nan"), device=device),
+                "target_reference_error": torch.full((n,), float("nan"), device=device),
+                "reference_actual_error": torch.full((n,), float("nan"), device=device),
+                "raw_action_max": torch.full((n,), float("nan"), device=device),
+                "raw_action_mean": torch.full((n,), float("nan"), device=device),
+                "residual_max": torch.full((n,), float("nan"), device=device),
+                "residual_mean": torch.full((n,), float("nan"), device=device),
+                "residual_clip_fraction": torch.full((n,), float("nan"), device=device),
+            }
+        )
 
     obs = _obs_to_device(env.get_observations(), agent_cfg.device)
     max_steps = int(cfg.get("max_steps") or 60)
@@ -368,6 +407,35 @@ def _run(cfg, simulation_app):
             exact = torch.abs(racket_cmd.time_to_strike[:n]) <= (0.5 * env.unwrapped.step_dt + 1.0e-6)
             take = exact & (~captured["captured"])
             if bool(take.any()):
+                if diagnostic:
+                    target_pos = racket_cmd.racket_target_pos_w[:n]
+                    actual_pos = racket_cmd.racket_pos_w[:n]
+                    reference_pos = _reference_racket_pos_w(
+                        env.unwrapped, motion_cmd, racket_cmd, n, device
+                    )
+                    raw_actions = action_term.raw_actions[:n]
+                    processed_actions = action_term.processed_actions[:n]
+                    reference_joint_pos = action_term._reference_joint_pos_with_joint_lead(
+                        motion_cmd, motion_cmd.time_steps
+                    )
+                    residual = processed_actions - reference_joint_pos
+                    raw_clip = float(getattr(action_term.cfg, "raw_clip", 1.0))
+                    captured["target_pos"][take] = target_pos[take]
+                    captured["reference_pos"][take] = reference_pos[take]
+                    captured["actual_pos"][take] = actual_pos[take]
+                    captured["target_reference_error"][take] = torch.linalg.norm(
+                        target_pos[take] - reference_pos[take], dim=-1
+                    )
+                    captured["reference_actual_error"][take] = torch.linalg.norm(
+                        reference_pos[take] - actual_pos[take], dim=-1
+                    )
+                    captured["raw_action_max"][take] = raw_actions[take].abs().max(dim=-1).values
+                    captured["raw_action_mean"][take] = raw_actions[take].abs().mean(dim=-1)
+                    captured["residual_max"][take] = residual[take].abs().max(dim=-1).values
+                    captured["residual_mean"][take] = residual[take].abs().mean(dim=-1)
+                    captured["residual_clip_fraction"][take] = (
+                        raw_actions[take].abs() >= raw_clip - 1.0e-6
+                    ).float().mean(dim=-1)
                 normal_dot = torch.sum(
                     racket_cmd.racket_normal_w[:n][take] * racket_cmd.racket_target_normal_w[:n][take], dim=-1
                 ).clamp(-1.0, 1.0)
@@ -666,6 +734,44 @@ def _run(cfg, simulation_app):
             f"{int(wrist_naturalness_pass)},{int(whole_cycle_pass)}",
             flush=True,
         )
+
+    if diagnostic:
+        print("[INFO] exact-hit alignment diagnostics:", flush=True)
+        print(
+            "rank,episode_id,target_xyz,reference_xyz,actual_xyz,target_minus_reference_m,"
+            "reference_minus_actual_m,raw_action_max,raw_action_mean,residual_max_rad,"
+            "residual_mean_rad,residual_clip_fraction",
+            flush=True,
+        )
+        for rank, i in enumerate(sorted(range(n), key=lambda j: float(captured["target_reference_error"][j])), start=1):
+            target = captured["target_pos"][i].detach().cpu().tolist()
+            reference = captured["reference_pos"][i].detach().cpu().tolist()
+            actual = captured["actual_pos"][i].detach().cpu().tolist()
+            print(
+                f"{rank},{names[i]},"
+                f"{target[0]:.4f}/{target[1]:.4f}/{target[2]:.4f},"
+                f"{reference[0]:.4f}/{reference[1]:.4f}/{reference[2]:.4f},"
+                f"{actual[0]:.4f}/{actual[1]:.4f}/{actual[2]:.4f},"
+                f"{float(captured['target_reference_error'][i]):.4f},"
+                f"{float(captured['reference_actual_error'][i]):.4f},"
+                f"{float(captured['raw_action_max'][i]):.4f},"
+                f"{float(captured['raw_action_mean'][i]):.4f},"
+                f"{float(captured['residual_max'][i]):.6f},"
+                f"{float(captured['residual_mean'][i]):.6f},"
+                f"{float(captured['residual_clip_fraction'][i]):.4f}",
+                flush=True,
+            )
+        finite_diag = captured["captured"] & torch.isfinite(captured["target_reference_error"])
+        if bool(finite_diag.any()):
+            print(
+                "[INFO] alignment means: "
+                f"target-reference={float(captured['target_reference_error'][finite_diag].mean()):.4f}m "
+                f"reference-actual={float(captured['reference_actual_error'][finite_diag].mean()):.4f}m "
+                f"raw_max={float(captured['raw_action_max'][finite_diag].mean()):.4f} "
+                f"residual_max={float(captured['residual_max'][finite_diag].mean()):.6f}rad "
+                f"clip_fraction={float(captured['residual_clip_fraction'][finite_diag].mean()):.4f}",
+                flush=True,
+            )
 
     finite_rows = [r for r in rows if r[0] != float("inf")]
     if finite_rows:

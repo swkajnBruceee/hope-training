@@ -11,6 +11,14 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv
 
 
+def f0_upper_last_action(env: ManagerBasedEnv) -> torch.Tensor:
+    """Return the frozen upper actor's 10-D action history for F0."""
+    value = getattr(env, "f0_upper_last_action", None)
+    if value is None:
+        return torch.zeros((env.num_envs, 10), device=env.device)
+    return value
+
+
 def robot_anchor_ori_w(env: ManagerBasedEnv, command_name: str) -> torch.Tensor:
     command: MotionCommand = env.command_manager.get_term(command_name)
     mat = matrix_from_quat(command.robot_anchor_quat_w)

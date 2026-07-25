@@ -80,6 +80,18 @@ gym.register(
     },
 )
 
+# F0 paired migration audit: the evaluator toggles only root fixation and the
+# external leg-action source while keeping model_900's upper contract shared.
+gym.register(
+    id="HOPE-FloatingF0-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingF0EnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
 # Stage-A: fixed upper-body/waist replay with a learned 12-DOF leg stabilizer.
 gym.register(
     id="HOPE-StrikeStabilizerA-AgibotA3-v0",
@@ -101,6 +113,18 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": native_strike_env_cfg.A3StrikeStabilizerAUnifiedEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# F1 in-place migration: freeze model_900 upper strike control and adapt only
+# the Stage-A leg stabilizer on the current backhand manifest.
+gym.register(
+    id="HOPE-FloatingF1-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingF1EnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
     },
 )

@@ -37,6 +37,11 @@ actions:
   raw_clip: 0.5
   soft_limit_margin_frac: 0.0
   native_residual_scale: 0.0
+  # The fixed-base replay audit showed a reproducible shoulder servo lag.
+  # Keep the hit target unchanged and lead only the two shoulder references.
+  joint_reference_lookahead_steps:
+    right_shoulder_pitch_joint: 12.0
+    right_shoulder_yaw_joint: 12.0
   native_joint_scale_multipliers:
     waist_roll_joint: 0.35
     waist_pitch_joint: 0.45

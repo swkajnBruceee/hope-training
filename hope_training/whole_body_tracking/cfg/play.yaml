@@ -21,6 +21,12 @@ num_envs: 2
 
 wandb_path: null      # optional <entity>/<project>/<run_id> trained run to load
 checkpoint: null      # explicit local model_*.pt path (takes precedence over wandb_path / latest-local)
+upper_checkpoint: null
+stage_a_checkpoint: null
+cases: 6
+seed: 20260725
+output: eval_outputs/f0_migration/f0_report.json
+mode: null
 registry_name: null   # motion override for the local-checkpoint path (falls back to task.registry_name)
 motion_file: null     # explicit motion .npz override
 motion_manifest: null

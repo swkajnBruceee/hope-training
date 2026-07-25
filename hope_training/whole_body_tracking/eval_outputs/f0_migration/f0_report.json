@@ -1,0 +1,1971 @@
+{
+  "upper_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-24_22-00-32_backhand_strike_only_v1_shoulders_lead12_res025_clip050_3000it/model_900.pt",
+  "stage_a_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it/model_3396.pt",
+  "seed": 20260725,
+  "modes": {
+    "fixed_model900": {
+      "upper_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-24_22-00-32_backhand_strike_only_v1_shoulders_lead12_res025_clip050_3000it/model_900.pt",
+      "stage_a_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it/model_3396.pt",
+      "seed": 20260725,
+      "mode": "fixed_model900",
+      "results": [
+        {
+          "step_offset": 0,
+          "position_error_m": 0.07450348138809204,
+          "position_error_x_m": -0.02989482879638672,
+          "position_error_y_m": -0.005247354507446289,
+          "position_error_z_m": 0.06804066896438599,
+          "velocity_error_m_s": 1.3790446519851685,
+          "normal_error_deg": 0.754073441028595,
+          "motion_id": 0,
+          "max_root_displacement_m": 0.0,
+          "max_foot_displacement_m": 0.0023027868010103703,
+          "upper_tracking_rmse_rad": 0.3671763241291046,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.259112149477005,
+              "position_error_x_m": -0.2181859016418457,
+              "position_error_y_m": 0.13589954376220703,
+              "position_error_z_m": -0.03263944387435913,
+              "velocity_error_m_s": 1.3572437763214111,
+              "normal_error_deg": 23.883508682250977
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.24201597273349762,
+              "position_error_x_m": -0.20244693756103516,
+              "position_error_y_m": 0.12983107566833496,
+              "position_error_z_m": -0.027034461498260498,
+              "velocity_error_m_s": 1.5278900861740112,
+              "normal_error_deg": 22.095598220825195
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.2218477874994278,
+              "position_error_x_m": -0.1844930648803711,
+              "position_error_y_m": 0.12189888954162598,
+              "position_error_z_m": -0.017872154712677002,
+              "velocity_error_m_s": 1.7033120393753052,
+              "normal_error_deg": 19.95812225341797
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.19903019070625305,
+              "position_error_x_m": -0.16439199447631836,
+              "position_error_y_m": 0.11206269264221191,
+              "position_error_z_m": -0.005499601364135742,
+              "velocity_error_m_s": 1.8907976150512695,
+              "normal_error_deg": 17.47179412841797
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.17458033561706543,
+              "position_error_x_m": -0.14271211624145508,
+              "position_error_y_m": 0.10010504722595215,
+              "position_error_z_m": 0.009514331817626953,
+              "velocity_error_m_s": 2.055821418762207,
+              "normal_error_deg": 14.737771034240723
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.08747979998588562,
+              "position_error_x_m": -0.04907989501953125,
+              "position_error_y_m": -0.0061490535736083984,
+              "position_error_z_m": 0.07215309143066406,
+              "velocity_error_m_s": 1.1284680366516113,
+              "normal_error_deg": 2.7673227787017822
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.07953687012195587,
+              "position_error_x_m": -0.03895378112792969,
+              "position_error_y_m": -0.005417227745056152,
+              "position_error_z_m": 0.0691329836845398,
+              "velocity_error_m_s": 1.2569295167922974,
+              "normal_error_deg": 1.7034130096435547
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.07450348138809204,
+              "position_error_x_m": -0.02989482879638672,
+              "position_error_y_m": -0.005247354507446289,
+              "position_error_z_m": 0.06804066896438599,
+              "velocity_error_m_s": 1.3790446519851685,
+              "normal_error_deg": 0.754073441028595
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.07252752780914307,
+              "position_error_x_m": -0.021709918975830078,
+              "position_error_y_m": -0.005612373352050781,
+              "position_error_z_m": 0.0689740777015686,
+              "velocity_error_m_s": 1.499324917793274,
+              "normal_error_deg": 0.6339647769927979
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.07346819341182709,
+              "position_error_x_m": -0.014748573303222656,
+              "position_error_y_m": -0.006500244140625,
+              "position_error_z_m": 0.07167845964431763,
+              "velocity_error_m_s": 1.6304631233215332,
+              "normal_error_deg": 1.4256012439727783
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.08369262516498566,
+          "position_error_x_m": -0.05260658264160156,
+          "position_error_y_m": -0.011234700679779053,
+          "position_error_z_m": 0.06411540508270264,
+          "velocity_error_m_s": 1.296929955482483,
+          "normal_error_deg": 6.330941200256348,
+          "motion_id": 1,
+          "max_root_displacement_m": 0.0,
+          "max_foot_displacement_m": 0.0023385758977383375,
+          "upper_tracking_rmse_rad": 0.37167856097221375,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.16353106498718262,
+              "position_error_x_m": -0.12452173233032227,
+              "position_error_y_m": 0.09806305170059204,
+              "position_error_z_m": 0.04025399684906006,
+              "velocity_error_m_s": 1.5918465852737427,
+              "normal_error_deg": 8.719315528869629
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.15629011392593384,
+              "position_error_x_m": -0.11587333679199219,
+              "position_error_y_m": 0.09462541341781616,
+              "position_error_z_m": 0.04523277282714844,
+              "velocity_error_m_s": 1.6665884256362915,
+              "normal_error_deg": 7.757091999053955
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.14861804246902466,
+              "position_error_x_m": -0.10592412948608398,
+              "position_error_y_m": 0.08990651369094849,
+              "position_error_z_m": 0.052765727043151855,
+              "velocity_error_m_s": 1.7450093030929565,
+              "normal_error_deg": 6.570771217346191
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.14105767011642456,
+              "position_error_x_m": -0.09455680847167969,
+              "position_error_y_m": 0.08384174108505249,
+              "position_error_z_m": 0.06266450881958008,
+              "velocity_error_m_s": 1.8315128087997437,
+              "normal_error_deg": 5.1725592613220215
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.13498744368553162,
+              "position_error_x_m": -0.08274650573730469,
+              "position_error_y_m": 0.0764879584312439,
+              "position_error_z_m": 0.0743250846862793,
+              "velocity_error_m_s": 1.926599144935608,
+              "normal_error_deg": 3.8472564220428467
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.10337653011083603,
+              "position_error_x_m": -0.07676553726196289,
+              "position_error_y_m": -0.006131410598754883,
+              "position_error_z_m": 0.06896495819091797,
+              "velocity_error_m_s": 1.0444271564483643,
+              "normal_error_deg": 4.359411239624023
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.0920872613787651,
+              "position_error_x_m": -0.06447172164916992,
+              "position_error_y_m": -0.008692741394042969,
+              "position_error_z_m": 0.06517589092254639,
+              "velocity_error_m_s": 1.168465495109558,
+              "normal_error_deg": 5.293686389923096
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.08369262516498566,
+              "position_error_x_m": -0.05260658264160156,
+              "position_error_y_m": -0.011234700679779053,
+              "position_error_z_m": 0.06411540508270264,
+              "velocity_error_m_s": 1.296929955482483,
+              "normal_error_deg": 6.330941200256348
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.07874984294176102,
+              "position_error_x_m": -0.04085826873779297,
+              "position_error_y_m": -0.01382535696029663,
+              "position_error_z_m": 0.06588625907897949,
+              "velocity_error_m_s": 1.423107624053955,
+              "normal_error_deg": 7.474094867706299
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.07799834758043289,
+              "position_error_x_m": -0.02985095977783203,
+              "position_error_y_m": -0.0162622332572937,
+              "position_error_z_m": 0.07020115852355957,
+              "velocity_error_m_s": 1.5790514945983887,
+              "normal_error_deg": 8.634016990661621
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.0804496556520462,
+          "position_error_x_m": -0.036203861236572266,
+          "position_error_y_m": 0.030144214630126953,
+          "position_error_z_m": 0.065213143825531,
+          "velocity_error_m_s": 1.4859304428100586,
+          "normal_error_deg": 1.5302066802978516,
+          "motion_id": 2,
+          "max_root_displacement_m": 0.0,
+          "max_foot_displacement_m": 0.0025299806147813797,
+          "upper_tracking_rmse_rad": 0.3640693724155426,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.11130786687135696,
+              "position_error_x_m": -0.06375718116760254,
+              "position_error_y_m": 0.08224105834960938,
+              "position_error_z_m": 0.03950786590576172,
+              "velocity_error_m_s": 1.4377708435058594,
+              "normal_error_deg": 9.981346130371094
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.10365556180477142,
+              "position_error_x_m": -0.059862613677978516,
+              "position_error_y_m": 0.07442998886108398,
+              "position_error_z_m": 0.04026311635971069,
+              "velocity_error_m_s": 1.466996669769287,
+              "normal_error_deg": 9.15102767944336
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.09590662270784378,
+              "position_error_x_m": -0.05522632598876953,
+              "position_error_y_m": 0.06538546085357666,
+              "position_error_z_m": 0.04327672719955444,
+              "velocity_error_m_s": 1.494408130645752,
+              "normal_error_deg": 8.16748332977295
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.08867967128753662,
+              "position_error_x_m": -0.04958486557006836,
+              "position_error_y_m": 0.05526542663574219,
+              "position_error_z_m": 0.048488736152648926,
+              "velocity_error_m_s": 1.5244884490966797,
+              "normal_error_deg": 7.0207390785217285
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.08319228142499924,
+              "position_error_x_m": -0.04311370849609375,
+              "position_error_y_m": 0.04414951801300049,
+              "position_error_z_m": 0.0557941198348999,
+              "velocity_error_m_s": 1.5843201875686646,
+              "normal_error_deg": 5.802180767059326
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.0895020142197609,
+              "position_error_x_m": -0.05042457580566406,
+              "position_error_y_m": 0.0383380651473999,
+              "position_error_z_m": 0.06323105096817017,
+              "velocity_error_m_s": 1.2521252632141113,
+              "normal_error_deg": 3.3391199111938477
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.08380652219057083,
+              "position_error_x_m": -0.04286670684814453,
+              "position_error_y_m": 0.034291863441467285,
+              "position_error_z_m": 0.0633249282836914,
+              "velocity_error_m_s": 1.374257206916809,
+              "normal_error_deg": 2.4015109539031982
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.0804496556520462,
+              "position_error_x_m": -0.036203861236572266,
+              "position_error_y_m": 0.030144214630126953,
+              "position_error_z_m": 0.065213143825531,
+              "velocity_error_m_s": 1.4859304428100586,
+              "normal_error_deg": 1.5302066802978516
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.07954713702201843,
+              "position_error_x_m": -0.030138015747070312,
+              "position_error_y_m": 0.02586078643798828,
+              "position_error_z_m": 0.06892508268356323,
+              "velocity_error_m_s": 1.5878394842147827,
+              "normal_error_deg": 0.6809878945350647
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.08122988045215607,
+              "position_error_x_m": -0.0250091552734375,
+              "position_error_y_m": 0.021559476852416992,
+              "position_error_z_m": 0.07421606779098511,
+              "velocity_error_m_s": 1.6988834142684937,
+              "normal_error_deg": 0.301964670419693
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.08422435075044632,
+          "position_error_x_m": -0.018694400787353516,
+          "position_error_y_m": 0.024214982986450195,
+          "position_error_z_m": 0.07847225666046143,
+          "velocity_error_m_s": 1.392362356185913,
+          "normal_error_deg": 2.693481206893921,
+          "motion_id": 3,
+          "max_root_displacement_m": 0.0,
+          "max_foot_displacement_m": 0.0015657645417377353,
+          "upper_tracking_rmse_rad": 0.3629392087459564,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.22308483719825745,
+              "position_error_x_m": -0.0599064826965332,
+              "position_error_y_m": -0.17394894361495972,
+              "position_error_z_m": 0.12617379426956177,
+              "velocity_error_m_s": 1.838414192199707,
+              "normal_error_deg": 15.98527717590332
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.2167808562517166,
+              "position_error_x_m": -0.05781412124633789,
+              "position_error_y_m": -0.16533416509628296,
+              "position_error_z_m": 0.12773442268371582,
+              "velocity_error_m_s": 1.8890249729156494,
+              "normal_error_deg": 15.150556564331055
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.20954227447509766,
+              "position_error_x_m": -0.05509042739868164,
+              "position_error_y_m": -0.15491217374801636,
+              "position_error_z_m": 0.12990468740463257,
+              "velocity_error_m_s": 1.931409478187561,
+              "normal_error_deg": 14.210702896118164
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.2017471045255661,
+              "position_error_x_m": -0.05158376693725586,
+              "position_error_y_m": -0.1430414319038391,
+              "position_error_z_m": 0.1325901746749878,
+              "velocity_error_m_s": 1.9491862058639526,
+              "normal_error_deg": 13.218644142150879
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.1935582309961319,
+              "position_error_x_m": -0.04759931564331055,
+              "position_error_y_m": -0.12976449728012085,
+              "position_error_z_m": 0.13550007343292236,
+              "velocity_error_m_s": 1.9848476648330688,
+              "normal_error_deg": 12.102859497070312
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.09279729425907135,
+              "position_error_x_m": -0.030364036560058594,
+              "position_error_y_m": 0.02944481372833252,
+              "position_error_z_m": 0.08259761333465576,
+              "velocity_error_m_s": 1.2736061811447144,
+              "normal_error_deg": 3.735020160675049
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.08770006895065308,
+              "position_error_x_m": -0.024193286895751953,
+              "position_error_y_m": 0.02716672420501709,
+              "position_error_z_m": 0.07979947328567505,
+              "velocity_error_m_s": 1.3362810611724854,
+              "normal_error_deg": 3.130378484725952
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.08422435075044632,
+              "position_error_x_m": -0.018694400787353516,
+              "position_error_y_m": 0.024214982986450195,
+              "position_error_z_m": 0.07847225666046143,
+              "velocity_error_m_s": 1.392362356185913,
+              "normal_error_deg": 2.693481206893921
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.08242829889059067,
+              "position_error_x_m": -0.01366281509399414,
+              "position_error_y_m": 0.020600855350494385,
+              "position_error_z_m": 0.07863432168960571,
+              "velocity_error_m_s": 1.4419697523117065,
+              "normal_error_deg": 2.5263872146606445
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.0824320837855339,
+              "position_error_x_m": -0.009224414825439453,
+              "position_error_y_m": 0.01633816957473755,
+              "position_error_z_m": 0.08026844263076782,
+              "velocity_error_m_s": 1.5135337114334106,
+              "normal_error_deg": 2.6447129249572754
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.08374745398759842,
+          "position_error_x_m": -0.05206485465168953,
+          "position_error_y_m": -0.011495471000671387,
+          "position_error_z_m": 0.06458127498626709,
+          "velocity_error_m_s": 1.2955461740493774,
+          "normal_error_deg": 6.374398708343506,
+          "motion_id": 4,
+          "max_root_displacement_m": 0.0,
+          "max_foot_displacement_m": 0.0023356142919510603,
+          "upper_tracking_rmse_rad": 0.3589896261692047,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.08839866518974304,
+              "position_error_x_m": -0.042034029960632324,
+              "position_error_y_m": 0.049169063568115234,
+              "position_error_z_m": 0.060248374938964844,
+              "velocity_error_m_s": 2.632439613342285,
+              "normal_error_deg": 3.7155725955963135
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.0828724354505539,
+              "position_error_x_m": -0.0352252721786499,
+              "position_error_y_m": 0.04746699333190918,
+              "position_error_z_m": 0.05808532238006592,
+              "velocity_error_m_s": 2.7321510314941406,
+              "normal_error_deg": 2.980780601501465
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.07898751646280289,
+              "position_error_x_m": -0.029152989387512207,
+              "position_error_y_m": 0.04536783695220947,
+              "position_error_z_m": 0.057713866233825684,
+              "velocity_error_m_s": 2.7967774868011475,
+              "normal_error_deg": 2.1224634647369385
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.07676760852336884,
+              "position_error_x_m": -0.02314665913581848,
+              "position_error_y_m": 0.04293537139892578,
+              "position_error_z_m": 0.059279441833496094,
+              "velocity_error_m_s": 2.8351874351501465,
+              "normal_error_deg": 1.0873254537582397
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.07637239247560501,
+              "position_error_x_m": -0.01764965057373047,
+              "position_error_y_m": 0.039937496185302734,
+              "position_error_z_m": 0.0626596212387085,
+              "velocity_error_m_s": 2.9218225479125977,
+              "normal_error_deg": 0.8851442337036133
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.10329633206129074,
+              "position_error_x_m": -0.07635873556137085,
+              "position_error_y_m": -0.006261587142944336,
+              "position_error_z_m": 0.06928396224975586,
+              "velocity_error_m_s": 1.0448905229568481,
+              "normal_error_deg": 4.363901615142822
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.09206756949424744,
+              "position_error_x_m": -0.06400217860937119,
+              "position_error_y_m": -0.008882880210876465,
+              "position_error_z_m": 0.06558394432067871,
+              "velocity_error_m_s": 1.1691994667053223,
+              "normal_error_deg": 5.3138957023620605
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.08374745398759842,
+              "position_error_x_m": -0.05206485465168953,
+              "position_error_y_m": -0.011495471000671387,
+              "position_error_z_m": 0.06458127498626709,
+              "velocity_error_m_s": 1.2955461740493774,
+              "normal_error_deg": 6.374398708343506
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.07893320173025131,
+              "position_error_x_m": -0.04035002738237381,
+              "position_error_y_m": -0.014124393463134766,
+              "position_error_z_m": 0.06635379791259766,
+              "velocity_error_m_s": 1.4263591766357422,
+              "normal_error_deg": 7.53254508972168
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.07830493152141571,
+              "position_error_x_m": -0.029424399137496948,
+              "position_error_y_m": -0.016579151153564453,
+              "position_error_z_m": 0.07064700126647949,
+              "velocity_error_m_s": 1.580103874206543,
+              "normal_error_deg": 8.683558464050293
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.07942648977041245,
+          "position_error_x_m": -0.0285511314868927,
+          "position_error_y_m": 0.045446157455444336,
+          "position_error_z_m": 0.05854952335357666,
+          "velocity_error_m_s": 2.7963945865631104,
+          "normal_error_deg": 2.0341317653656006,
+          "motion_id": 5,
+          "max_root_displacement_m": 0.0,
+          "max_foot_displacement_m": 0.003104003146290779,
+          "upper_tracking_rmse_rad": 0.3441008925437927,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.0999741405248642,
+              "position_error_x_m": -0.0895380973815918,
+              "position_error_y_m": -0.00590670108795166,
+              "position_error_z_m": 0.04407799243927002,
+              "velocity_error_m_s": 2.613774061203003,
+              "normal_error_deg": 4.883188724517822
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.0944746658205986,
+              "position_error_x_m": -0.08074000477790833,
+              "position_error_y_m": -0.003906846046447754,
+              "position_error_z_m": 0.04890042543411255,
+              "velocity_error_m_s": 2.697460174560547,
+              "normal_error_deg": 4.350461959838867
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.09116095304489136,
+              "position_error_x_m": -0.0717637687921524,
+              "position_error_y_m": -0.002101719379425049,
+              "position_error_z_m": 0.05617707967758179,
+              "velocity_error_m_s": 2.7584307193756104,
+              "normal_error_deg": 3.949328899383545
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.0905819684267044,
+              "position_error_x_m": -0.06220749020576477,
+              "position_error_y_m": -0.0005932450294494629,
+              "position_error_z_m": 0.06584048271179199,
+              "velocity_error_m_s": 2.808587074279785,
+              "normal_error_deg": 3.7410964965820312
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.09376765787601471,
+              "position_error_x_m": -0.05282743275165558,
+              "position_error_y_m": 0.0003148317337036133,
+              "position_error_z_m": 0.0774695873260498,
+              "velocity_error_m_s": 2.904174566268921,
+              "normal_error_deg": 3.785996913909912
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.08871130645275116,
+              "position_error_x_m": -0.041557908058166504,
+              "position_error_y_m": 0.0492711067199707,
+              "position_error_z_m": 0.06095075607299805,
+              "velocity_error_m_s": 2.630582809448242,
+              "normal_error_deg": 3.63749623298645
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.08323891460895538,
+              "position_error_x_m": -0.0346808135509491,
+              "position_error_y_m": 0.04755884408950806,
+              "position_error_z_m": 0.05885672569274902,
+              "velocity_error_m_s": 2.730379343032837,
+              "normal_error_deg": 2.8955671787261963
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.07942648977041245,
+              "position_error_x_m": -0.0285511314868927,
+              "position_error_y_m": 0.045446157455444336,
+              "position_error_z_m": 0.05854952335357666,
+              "velocity_error_m_s": 2.7963945865631104,
+              "normal_error_deg": 2.0341317653656006
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.07724103331565857,
+              "position_error_x_m": -0.022544831037521362,
+              "position_error_y_m": 0.0429721474647522,
+              "position_error_z_m": 0.06009411811828613,
+              "velocity_error_m_s": 2.834444522857666,
+              "normal_error_deg": 1.024502158164978
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.07682088017463684,
+              "position_error_x_m": -0.01713275909423828,
+              "position_error_y_m": 0.03991514444351196,
+              "position_error_z_m": 0.06336164474487305,
+              "velocity_error_m_s": 2.923156499862671,
+              "normal_error_deg": 0.9402442574501038
+            }
+          ]
+        }
+      ]
+    },
+    "floating_model900_zero_leg": {
+      "upper_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-24_22-00-32_backhand_strike_only_v1_shoulders_lead12_res025_clip050_3000it/model_900.pt",
+      "stage_a_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it/model_3396.pt",
+      "seed": 20260725,
+      "mode": "floating_model900_zero_leg",
+      "results": [
+        {
+          "step_offset": 0,
+          "position_error_m": 0.14027854800224304,
+          "position_error_x_m": 0.07115936279296875,
+          "position_error_y_m": 0.010893464088439941,
+          "position_error_z_m": 0.12039828300476074,
+          "velocity_error_m_s": 1.3117461204528809,
+          "normal_error_deg": 7.475643157958984,
+          "motion_id": 0,
+          "max_root_displacement_m": 0.20511916279792786,
+          "max_foot_displacement_m": 0.024756642058491707,
+          "upper_tracking_rmse_rad": 0.35452136397361755,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.15971438586711884,
+              "position_error_x_m": -0.05989885330200195,
+              "position_error_y_m": 0.13605165481567383,
+              "position_error_z_m": 0.05840170383453369,
+              "velocity_error_m_s": 1.3554128408432007,
+              "normal_error_deg": 19.536766052246094
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.1555285006761551,
+              "position_error_x_m": -0.03625822067260742,
+              "position_error_y_m": 0.13554692268371582,
+              "position_error_z_m": 0.0670931339263916,
+              "velocity_error_m_s": 1.5508332252502441,
+              "normal_error_deg": 17.612892150878906
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.15517553687095642,
+              "position_error_x_m": -0.011943817138671875,
+              "position_error_y_m": 0.13306331634521484,
+              "position_error_z_m": 0.07893633842468262,
+              "velocity_error_m_s": 1.750281810760498,
+              "normal_error_deg": 15.600894927978516
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1597292125225067,
+              "position_error_x_m": 0.012806892395019531,
+              "position_error_y_m": 0.1286606788635254,
+              "position_error_z_m": 0.09378612041473389,
+              "velocity_error_m_s": 1.9478050470352173,
+              "normal_error_deg": 13.578105926513672
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.16934478282928467,
+              "position_error_x_m": 0.037415504455566406,
+              "position_error_y_m": 0.12229084968566895,
+              "position_error_z_m": 0.11100757122039795,
+              "velocity_error_m_s": 2.0908970832824707,
+              "normal_error_deg": 11.698141098022461
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.12392354756593704,
+              "position_error_x_m": 0.03789043426513672,
+              "position_error_y_m": 0.012139320373535156,
+              "position_error_z_m": 0.11736267805099487,
+              "velocity_error_m_s": 0.997292697429657,
+              "normal_error_deg": 8.199296951293945
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.13058651983737946,
+              "position_error_x_m": 0.05509805679321289,
+              "position_error_y_m": 0.011964082717895508,
+              "position_error_z_m": 0.11778753995895386,
+              "velocity_error_m_s": 1.1637951135635376,
+              "normal_error_deg": 7.730860710144043
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.14027854800224304,
+              "position_error_x_m": 0.07115936279296875,
+              "position_error_y_m": 0.010893464088439941,
+              "position_error_z_m": 0.12039828300476074,
+              "velocity_error_m_s": 1.3117461204528809,
+              "normal_error_deg": 7.475643157958984
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1523461639881134,
+              "position_error_x_m": 0.0863947868347168,
+              "position_error_y_m": 0.008972883224487305,
+              "position_error_z_m": 0.12515902519226074,
+              "velocity_error_m_s": 1.4518444538116455,
+              "normal_error_deg": 7.452404022216797
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.16604074835777283,
+              "position_error_x_m": 0.1005849838256836,
+              "position_error_y_m": 0.00628972053527832,
+              "position_error_z_m": 0.13195693492889404,
+              "velocity_error_m_s": 1.5919238328933716,
+              "normal_error_deg": 7.624188423156738
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.18121469020843506,
+          "position_error_x_m": 0.07645177841186523,
+          "position_error_y_m": -0.006601274013519287,
+          "position_error_z_m": 0.16416549682617188,
+          "velocity_error_m_s": 1.4032492637634277,
+          "normal_error_deg": 5.812609672546387,
+          "motion_id": 1,
+          "max_root_displacement_m": 0.21376976370811462,
+          "max_foot_displacement_m": 0.02085256576538086,
+          "upper_tracking_rmse_rad": 0.36667704582214355,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.1600697636604309,
+              "position_error_x_m": 0.008179664611816406,
+              "position_error_y_m": 0.08661144971847534,
+              "position_error_z_m": 0.13436472415924072,
+              "velocity_error_m_s": 1.610757827758789,
+              "normal_error_deg": 5.818003177642822
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.16978563368320465,
+              "position_error_x_m": 0.02293539047241211,
+              "position_error_y_m": 0.08577781915664673,
+              "position_error_z_m": 0.1447179913520813,
+              "velocity_error_m_s": 1.7419319152832031,
+              "normal_error_deg": 5.507407188415527
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.18266548216342926,
+              "position_error_x_m": 0.03835153579711914,
+              "position_error_y_m": 0.08382964134216309,
+              "position_error_z_m": 0.15769726037979126,
+              "velocity_error_m_s": 1.8709626197814941,
+              "normal_error_deg": 5.292428016662598
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1987873613834381,
+              "position_error_x_m": 0.05463218688964844,
+              "position_error_y_m": 0.08073621988296509,
+              "position_error_z_m": 0.17324376106262207,
+              "velocity_error_m_s": 2.0031042098999023,
+              "normal_error_deg": 5.23319149017334
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.21740686893463135,
+              "position_error_x_m": 0.07095623016357422,
+              "position_error_y_m": 0.07663220167160034,
+              "position_error_z_m": 0.19067895412445068,
+              "velocity_error_m_s": 2.1022608280181885,
+              "normal_error_deg": 5.4077653884887695
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.16100150346755981,
+              "position_error_x_m": 0.038455963134765625,
+              "position_error_y_m": -0.002255558967590332,
+              "position_error_z_m": 0.156325101852417,
+              "velocity_error_m_s": 1.024178385734558,
+              "normal_error_deg": 3.680946111679077
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.16896933317184448,
+              "position_error_x_m": 0.057781219482421875,
+              "position_error_y_m": -0.004392802715301514,
+              "position_error_z_m": 0.15872198343276978,
+              "velocity_error_m_s": 1.2191139459609985,
+              "normal_error_deg": 4.6823248863220215
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.18121469020843506,
+              "position_error_x_m": 0.07645177841186523,
+              "position_error_y_m": -0.006601274013519287,
+              "position_error_z_m": 0.16416549682617188,
+              "velocity_error_m_s": 1.4032492637634277,
+              "normal_error_deg": 5.812609672546387
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1971491426229477,
+              "position_error_x_m": 0.0948333740234375,
+              "position_error_y_m": -0.008947968482971191,
+              "position_error_z_m": 0.17261040210723877,
+              "velocity_error_m_s": 1.5743194818496704,
+              "normal_error_deg": 7.035643577575684
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.2154718041419983,
+              "position_error_x_m": 0.1124110221862793,
+              "position_error_y_m": -0.011250436305999756,
+              "position_error_z_m": 0.18348103761672974,
+              "velocity_error_m_s": 1.7115099430084229,
+              "normal_error_deg": 8.205903053283691
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.16680863499641418,
+          "position_error_x_m": 0.08404421806335449,
+          "position_error_y_m": 0.039569854736328125,
+          "position_error_z_m": 0.1385493278503418,
+          "velocity_error_m_s": 1.4690275192260742,
+          "normal_error_deg": 7.506893634796143,
+          "motion_id": 2,
+          "max_root_displacement_m": 0.20250312983989716,
+          "max_foot_displacement_m": 0.017592737451195717,
+          "upper_tracking_rmse_rad": 0.3606722950935364,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.13724517822265625,
+              "position_error_x_m": 0.032857418060302734,
+              "position_error_y_m": 0.09585726261138916,
+              "position_error_z_m": 0.09256356954574585,
+              "velocity_error_m_s": 1.1935139894485474,
+              "normal_error_deg": 11.527792930603027
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.13977354764938354,
+              "position_error_x_m": 0.04374241828918457,
+              "position_error_y_m": 0.0928046703338623,
+              "position_error_z_m": 0.09492385387420654,
+              "velocity_error_m_s": 1.2706743478775024,
+              "normal_error_deg": 11.369434356689453
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.1439262330532074,
+              "position_error_x_m": 0.05471301078796387,
+              "position_error_y_m": 0.08851265907287598,
+              "position_error_z_m": 0.09943217039108276,
+              "velocity_error_m_s": 1.341871738433838,
+              "normal_error_deg": 11.262168884277344
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.14991113543510437,
+              "position_error_x_m": 0.06622648239135742,
+              "position_error_y_m": 0.0830082893371582,
+              "position_error_z_m": 0.10581600666046143,
+              "velocity_error_m_s": 1.378271460533142,
+              "normal_error_deg": 11.17584228515625
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.1579393595457077,
+              "position_error_x_m": 0.07844352722167969,
+              "position_error_y_m": 0.07632660865783691,
+              "position_error_z_m": 0.11386704444885254,
+              "velocity_error_m_s": 1.4286123514175415,
+              "normal_error_deg": 11.150018692016602
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.14951935410499573,
+              "position_error_x_m": 0.05732917785644531,
+              "position_error_y_m": 0.04512143135070801,
+              "position_error_z_m": 0.1305122971534729,
+              "velocity_error_m_s": 1.187519907951355,
+              "normal_error_deg": 7.636508464813232
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.15728196501731873,
+              "position_error_x_m": 0.07135677337646484,
+              "position_error_y_m": 0.04248404502868652,
+              "position_error_z_m": 0.13356995582580566,
+              "velocity_error_m_s": 1.3286906480789185,
+              "normal_error_deg": 7.4510602951049805
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.16680863499641418,
+              "position_error_x_m": 0.08404421806335449,
+              "position_error_y_m": 0.039569854736328125,
+              "position_error_z_m": 0.1385493278503418,
+              "velocity_error_m_s": 1.4690275192260742,
+              "normal_error_deg": 7.506893634796143
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.17808948457241058,
+              "position_error_x_m": 0.09591150283813477,
+              "position_error_y_m": 0.036375999450683594,
+              "position_error_z_m": 0.14558035135269165,
+              "velocity_error_m_s": 1.5953037738800049,
+              "normal_error_deg": 7.743468284606934
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.19067293405532837,
+              "position_error_x_m": 0.10688400268554688,
+              "position_error_y_m": 0.033026933670043945,
+              "position_error_z_m": 0.15440595149993896,
+              "velocity_error_m_s": 1.7062978744506836,
+              "normal_error_deg": 8.088836669921875
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.1535186618566513,
+          "position_error_x_m": 0.08734297752380371,
+          "position_error_y_m": 0.03977465629577637,
+          "position_error_z_m": 0.11982136964797974,
+          "velocity_error_m_s": 1.1646418571472168,
+          "normal_error_deg": 8.96900463104248,
+          "motion_id": 3,
+          "max_root_displacement_m": 0.21379971504211426,
+          "max_foot_displacement_m": 0.023961426690220833,
+          "upper_tracking_rmse_rad": 0.3481956124305725,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.21013757586479187,
+              "position_error_x_m": 0.03805971145629883,
+              "position_error_y_m": -0.11562007665634155,
+              "position_error_z_m": 0.17129290103912354,
+              "velocity_error_m_s": 1.4236170053482056,
+              "normal_error_deg": 11.814347267150879
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.21504053473472595,
+              "position_error_x_m": 0.048212528228759766,
+              "position_error_y_m": -0.11534303426742554,
+              "position_error_z_m": 0.17496848106384277,
+              "velocity_error_m_s": 1.4761476516723633,
+              "normal_error_deg": 12.040383338928223
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.22062687575817108,
+              "position_error_x_m": 0.0583341121673584,
+              "position_error_y_m": -0.1143539547920227,
+              "position_error_z_m": 0.1794338822364807,
+              "velocity_error_m_s": 1.5326638221740723,
+              "normal_error_deg": 12.29944896697998
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.22710663080215454,
+              "position_error_x_m": 0.06850337982177734,
+              "position_error_y_m": -0.1128721833229065,
+              "position_error_z_m": 0.1847825050354004,
+              "velocity_error_m_s": 1.5844961404800415,
+              "normal_error_deg": 12.543411254882812
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.2343330979347229,
+              "position_error_x_m": 0.07871556282043457,
+              "position_error_y_m": -0.11082154512405396,
+              "position_error_z_m": 0.19087809324264526,
+              "velocity_error_m_s": 1.6129697561264038,
+              "normal_error_deg": 12.595041275024414
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.14127017557621002,
+              "position_error_x_m": 0.06170392036437988,
+              "position_error_y_m": 0.04453897476196289,
+              "position_error_z_m": 0.1190217137336731,
+              "velocity_error_m_s": 1.0116586685180664,
+              "normal_error_deg": 9.098806381225586
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.14674390852451324,
+              "position_error_x_m": 0.07496356964111328,
+              "position_error_y_m": 0.04268002510070801,
+              "position_error_z_m": 0.11871248483657837,
+              "velocity_error_m_s": 1.0992077589035034,
+              "normal_error_deg": 8.955567359924316
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.1535186618566513,
+              "position_error_x_m": 0.08734297752380371,
+              "position_error_y_m": 0.03977465629577637,
+              "position_error_z_m": 0.11982136964797974,
+              "velocity_error_m_s": 1.1646418571472168,
+              "normal_error_deg": 8.96900463104248
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.16147038340568542,
+              "position_error_x_m": 0.09918379783630371,
+              "position_error_y_m": 0.03580117225646973,
+              "position_error_z_m": 0.1222846508026123,
+              "velocity_error_m_s": 1.2246464490890503,
+              "normal_error_deg": 9.18005657196045
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.1704702526330948,
+              "position_error_x_m": 0.11040306091308594,
+              "position_error_y_m": 0.030835986137390137,
+              "position_error_z_m": 0.126176118850708,
+              "velocity_error_m_s": 1.3074753284454346,
+              "normal_error_deg": 9.537906646728516
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.1817004680633545,
+          "position_error_x_m": 0.07678499817848206,
+          "position_error_y_m": -0.00675809383392334,
+          "position_error_z_m": 0.1645401120185852,
+          "velocity_error_m_s": 1.4018051624298096,
+          "normal_error_deg": 5.859529495239258,
+          "motion_id": 4,
+          "max_root_displacement_m": 0.21341077983379364,
+          "max_foot_displacement_m": 0.01794137805700302,
+          "upper_tracking_rmse_rad": 0.3583037853240967,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.1246035024523735,
+              "position_error_x_m": 0.05274313688278198,
+              "position_error_y_m": 0.05321383476257324,
+              "position_error_z_m": 0.09956145286560059,
+              "velocity_error_m_s": 2.369835615158081,
+              "normal_error_deg": 6.402880668640137
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.13218683004379272,
+              "position_error_x_m": 0.06788437068462372,
+              "position_error_y_m": 0.05302262306213379,
+              "position_error_z_m": 0.10026800632476807,
+              "velocity_error_m_s": 2.4508745670318604,
+              "normal_error_deg": 6.019983291625977
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.1418221890926361,
+              "position_error_x_m": 0.0825650691986084,
+              "position_error_y_m": 0.052384376525878906,
+              "position_error_z_m": 0.10272496938705444,
+              "velocity_error_m_s": 2.520162582397461,
+              "normal_error_deg": 5.973433494567871
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.15334025025367737,
+              "position_error_x_m": 0.09701274335384369,
+              "position_error_y_m": 0.05120968818664551,
+              "position_error_z_m": 0.10714161396026611,
+              "velocity_error_m_s": 2.5951857566833496,
+              "normal_error_deg": 6.349928855895996
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.16605865955352783,
+              "position_error_x_m": 0.11067706346511841,
+              "position_error_y_m": 0.04932737350463867,
+              "position_error_z_m": 0.11354678869247437,
+              "velocity_error_m_s": 2.711965799331665,
+              "normal_error_deg": 7.013359069824219
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.1613275706768036,
+              "position_error_x_m": 0.03870880603790283,
+              "position_error_y_m": -0.0023277997970581055,
+              "position_error_z_m": 0.1565975546836853,
+              "velocity_error_m_s": 1.0285251140594482,
+              "normal_error_deg": 3.720785617828369
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.16939307749271393,
+              "position_error_x_m": 0.05806535482406616,
+              "position_error_y_m": -0.0045032501220703125,
+              "position_error_z_m": 0.15906649827957153,
+              "velocity_error_m_s": 1.2220337390899658,
+              "normal_error_deg": 4.7267537117004395
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.1817004680633545,
+              "position_error_x_m": 0.07678499817848206,
+              "position_error_y_m": -0.00675809383392334,
+              "position_error_z_m": 0.1645401120185852,
+              "velocity_error_m_s": 1.4018051624298096,
+              "normal_error_deg": 5.859529495239258
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1976291835308075,
+              "position_error_x_m": 0.09515762329101562,
+              "position_error_y_m": -0.009131669998168945,
+              "position_error_z_m": 0.17297089099884033,
+              "velocity_error_m_s": 1.5728503465652466,
+              "normal_error_deg": 7.085376262664795
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.21587933599948883,
+              "position_error_x_m": 0.112648606300354,
+              "position_error_y_m": -0.011432051658630371,
+              "position_error_z_m": 0.18380284309387207,
+              "velocity_error_m_s": 1.7120766639709473,
+              "normal_error_deg": 8.246049880981445
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.1427907794713974,
+          "position_error_x_m": 0.08304369449615479,
+          "position_error_y_m": 0.052455365657806396,
+          "position_error_z_m": 0.10364067554473877,
+          "velocity_error_m_s": 2.520203113555908,
+          "normal_error_deg": 5.958319187164307,
+          "motion_id": 5,
+          "max_root_displacement_m": 0.1918637603521347,
+          "max_foot_displacement_m": 0.016161911189556122,
+          "upper_tracking_rmse_rad": 0.34366947412490845,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.07996577769517899,
+              "position_error_x_m": 0.006121575832366943,
+              "position_error_y_m": 0.006308197975158691,
+              "position_error_z_m": 0.07948118448257446,
+              "velocity_error_m_s": 2.381964683532715,
+              "normal_error_deg": 9.381125450134277
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.0906621515750885,
+              "position_error_x_m": 0.021988272666931152,
+              "position_error_y_m": 0.007032036781311035,
+              "position_error_z_m": 0.08767378330230713,
+              "velocity_error_m_s": 2.5200581550598145,
+              "normal_error_deg": 9.230097770690918
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.10584397614002228,
+              "position_error_x_m": 0.03762318193912506,
+              "position_error_y_m": 0.007093667984008789,
+              "position_error_z_m": 0.09867686033248901,
+              "velocity_error_m_s": 2.634859323501587,
+              "normal_error_deg": 9.384058952331543
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.12463375180959702,
+              "position_error_x_m": 0.053545042872428894,
+              "position_error_y_m": 0.006468236446380615,
+              "position_error_z_m": 0.11235952377319336,
+              "velocity_error_m_s": 2.7288928031921387,
+              "normal_error_deg": 9.796050071716309
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.1458120048046112,
+              "position_error_x_m": 0.06928153336048126,
+              "position_error_y_m": 0.005005598068237305,
+              "position_error_z_m": 0.12820357084274292,
+              "velocity_error_m_s": 2.8322877883911133,
+              "normal_error_deg": 10.335119247436523
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.12549333274364471,
+              "position_error_x_m": 0.05315570533275604,
+              "position_error_y_m": 0.053311049938201904,
+              "position_error_z_m": 0.10040408372879028,
+              "velocity_error_m_s": 2.3701376914978027,
+              "normal_error_deg": 6.369505882263184
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.13312393426895142,
+              "position_error_x_m": 0.06833501160144806,
+              "position_error_y_m": 0.05310755968093872,
+              "position_error_z_m": 0.10115283727645874,
+              "velocity_error_m_s": 2.4504313468933105,
+              "normal_error_deg": 5.99155330657959
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.1427907794713974,
+              "position_error_x_m": 0.08304369449615479,
+              "position_error_y_m": 0.052455365657806396,
+              "position_error_z_m": 0.10364067554473877,
+              "velocity_error_m_s": 2.520203113555908,
+              "normal_error_deg": 5.958319187164307
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.15423300862312317,
+              "position_error_x_m": 0.09746953845024109,
+              "position_error_y_m": 0.051243484020233154,
+              "position_error_z_m": 0.10798895359039307,
+              "velocity_error_m_s": 2.5919411182403564,
+              "normal_error_deg": 6.3502068519592285
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.16674958169460297,
+              "position_error_x_m": 0.11103473603725433,
+              "position_error_y_m": 0.04930669069290161,
+              "position_error_z_m": 0.11421716213226318,
+              "velocity_error_m_s": 2.7091705799102783,
+              "normal_error_deg": 7.028781414031982
+            }
+          ]
+        }
+      ]
+    },
+    "floating_model900_stageA": {
+      "upper_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-24_22-00-32_backhand_strike_only_v1_shoulders_lead12_res025_clip050_3000it/model_900.pt",
+      "stage_a_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it/model_3396.pt",
+      "seed": 20260725,
+      "mode": "floating_model900_stageA",
+      "results": [
+        {
+          "step_offset": 0,
+          "position_error_m": 0.12763316929340363,
+          "position_error_x_m": 0.043993473052978516,
+          "position_error_y_m": 0.052634239196777344,
+          "position_error_z_m": 0.10763102769851685,
+          "velocity_error_m_s": 1.4564803838729858,
+          "normal_error_deg": 4.770153045654297,
+          "motion_id": 0,
+          "max_root_displacement_m": 0.18184170126914978,
+          "max_foot_displacement_m": 0.023642240092158318,
+          "upper_tracking_rmse_rad": 0.37050509452819824,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.17055831849575043,
+              "position_error_x_m": -0.06548881530761719,
+              "position_error_y_m": 0.15121054649353027,
+              "position_error_z_m": 0.04400825500488281,
+              "velocity_error_m_s": 1.1079003810882568,
+              "normal_error_deg": 16.6374454498291
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.16476765275001526,
+              "position_error_x_m": -0.043851375579833984,
+              "position_error_y_m": 0.1512291431427002,
+              "position_error_z_m": 0.0485302209854126,
+              "velocity_error_m_s": 1.3124053478240967,
+              "normal_error_deg": 14.771600723266602
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.16088555753231049,
+              "position_error_x_m": -0.02177286148071289,
+              "position_error_y_m": 0.14908194541931152,
+              "position_error_z_m": 0.05643296241760254,
+              "velocity_error_m_s": 1.5309560298919678,
+              "normal_error_deg": 12.813409805297852
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.15974345803260803,
+              "position_error_x_m": 0.0006031990051269531,
+              "position_error_y_m": 0.14477324485778809,
+              "position_error_z_m": 0.0675153136253357,
+              "velocity_error_m_s": 1.7409478425979614,
+              "normal_error_deg": 10.831727027893066
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.1619114726781845,
+              "position_error_x_m": 0.02271127700805664,
+              "position_error_y_m": 0.13824915885925293,
+              "position_error_z_m": 0.08115845918655396,
+              "velocity_error_m_s": 1.909208059310913,
+              "normal_error_deg": 9.00416088104248
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.11845232546329498,
+              "position_error_x_m": 0.020318031311035156,
+              "position_error_y_m": 0.057798147201538086,
+              "position_error_z_m": 0.10137802362442017,
+              "velocity_error_m_s": 1.1854442358016968,
+              "normal_error_deg": 5.198970317840576
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.12168525904417038,
+              "position_error_x_m": 0.032532691955566406,
+              "position_error_y_m": 0.055297255516052246,
+              "position_error_z_m": 0.10339796543121338,
+              "velocity_error_m_s": 1.325775146484375,
+              "normal_error_deg": 4.862322807312012
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.12763316929340363,
+              "position_error_x_m": 0.043993473052978516,
+              "position_error_y_m": 0.052634239196777344,
+              "position_error_z_m": 0.10763102769851685,
+              "velocity_error_m_s": 1.4564803838729858,
+              "normal_error_deg": 4.770153045654297
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1358931064605713,
+              "position_error_x_m": 0.05484437942504883,
+              "position_error_y_m": 0.049750566482543945,
+              "position_error_z_m": 0.11394697427749634,
+              "velocity_error_m_s": 1.5735840797424316,
+              "normal_error_deg": 4.918805122375488
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.14582018554210663,
+              "position_error_x_m": 0.06474637985229492,
+              "position_error_y_m": 0.04673302173614502,
+              "position_error_z_m": 0.12201416492462158,
+              "velocity_error_m_s": 1.6889331340789795,
+              "normal_error_deg": 5.2334160804748535
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.1324913203716278,
+          "position_error_x_m": 0.04063701629638672,
+          "position_error_y_m": 0.005078613758087158,
+          "position_error_z_m": 0.12600314617156982,
+          "velocity_error_m_s": 1.3195569515228271,
+          "normal_error_deg": 5.911385536193848,
+          "motion_id": 1,
+          "max_root_displacement_m": 0.15449216961860657,
+          "max_foot_displacement_m": 0.014517528936266899,
+          "upper_tracking_rmse_rad": 0.37933382391929626,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.13937954604625702,
+              "position_error_x_m": -0.020673274993896484,
+              "position_error_y_m": 0.09277623891830444,
+              "position_error_z_m": 0.10194039344787598,
+              "velocity_error_m_s": 1.508235216140747,
+              "normal_error_deg": 3.7157304286956787
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.1436111181974411,
+              "position_error_x_m": -0.007745265960693359,
+              "position_error_y_m": 0.09260904788970947,
+              "position_error_z_m": 0.10948848724365234,
+              "velocity_error_m_s": 1.6450825929641724,
+              "normal_error_deg": 3.1167778968811035
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.15096040070056915,
+              "position_error_x_m": 0.005980491638183594,
+              "position_error_y_m": 0.09125882387161255,
+              "position_error_z_m": 0.12010455131530762,
+              "velocity_error_m_s": 1.7834728956222534,
+              "normal_error_deg": 2.630910634994507
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1616147756576538,
+              "position_error_x_m": 0.020582199096679688,
+              "position_error_y_m": 0.08859914541244507,
+              "position_error_z_m": 0.13358855247497559,
+              "velocity_error_m_s": 1.9267150163650513,
+              "normal_error_deg": 2.535281181335449
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.17521966993808746,
+              "position_error_x_m": 0.035096168518066406,
+              "position_error_y_m": 0.08468526601791382,
+              "position_error_z_m": 0.14932715892791748,
+              "velocity_error_m_s": 2.065697431564331,
+              "normal_error_deg": 3.039055109024048
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.12394855916500092,
+              "position_error_x_m": 0.007067203521728516,
+              "position_error_y_m": 0.006820499897003174,
+              "position_error_z_m": 0.12355881929397583,
+              "velocity_error_m_s": 0.9542862176895142,
+              "normal_error_deg": 3.5179731845855713
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.12554927170276642,
+              "position_error_x_m": 0.02404642105102539,
+              "position_error_y_m": 0.00602489709854126,
+              "position_error_z_m": 0.12307757139205933,
+              "velocity_error_m_s": 1.1280553340911865,
+              "normal_error_deg": 4.694024085998535
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.1324913203716278,
+              "position_error_x_m": 0.04063701629638672,
+              "position_error_y_m": 0.005078613758087158,
+              "position_error_z_m": 0.12600314617156982,
+              "velocity_error_m_s": 1.3195569515228271,
+              "normal_error_deg": 5.911385536193848
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.14411859214305878,
+              "position_error_x_m": 0.057004451751708984,
+              "position_error_y_m": 0.0039334893226623535,
+              "position_error_z_m": 0.13230717182159424,
+              "velocity_error_m_s": 1.50106942653656,
+              "normal_error_deg": 7.1965837478637695
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.1588897705078125,
+              "position_error_x_m": 0.07234334945678711,
+              "position_error_y_m": 0.002754509449005127,
+              "position_error_z_m": 0.14143836498260498,
+              "velocity_error_m_s": 1.6898789405822754,
+              "normal_error_deg": 8.402421951293945
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.11124038696289062,
+          "position_error_x_m": 0.046790122985839844,
+          "position_error_y_m": 0.03407025337219238,
+          "position_error_z_m": 0.09499645233154297,
+          "velocity_error_m_s": 1.253307819366455,
+          "normal_error_deg": 4.93752908706665,
+          "motion_id": 2,
+          "max_root_displacement_m": 0.14679740369319916,
+          "max_foot_displacement_m": 0.013736642897129059,
+          "upper_tracking_rmse_rad": 0.362542986869812,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.14162606000900269,
+              "position_error_x_m": 0.007139921188354492,
+              "position_error_y_m": 0.11870932579040527,
+              "position_error_z_m": 0.07690942287445068,
+              "velocity_error_m_s": 1.2963236570358276,
+              "normal_error_deg": 9.312237739562988
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.14073055982589722,
+              "position_error_x_m": 0.01554250717163086,
+              "position_error_y_m": 0.11655008792877197,
+              "position_error_z_m": 0.07732784748077393,
+              "velocity_error_m_s": 1.2915796041488647,
+              "normal_error_deg": 9.031243324279785
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.1408953070640564,
+              "position_error_x_m": 0.02495121955871582,
+              "position_error_y_m": 0.11335182189941406,
+              "position_error_z_m": 0.07987672090530396,
+              "velocity_error_m_s": 1.2993965148925781,
+              "normal_error_deg": 8.678942680358887
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.14249011874198914,
+              "position_error_x_m": 0.03543233871459961,
+              "position_error_y_m": 0.10911881923675537,
+              "position_error_z_m": 0.08450484275817871,
+              "velocity_error_m_s": 1.3202348947525024,
+              "normal_error_deg": 8.341485023498535
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.14567328989505768,
+              "position_error_x_m": 0.046486616134643555,
+              "position_error_y_m": 0.10376358032226562,
+              "position_error_z_m": 0.0910649299621582,
+              "velocity_error_m_s": 1.3870899677276611,
+              "normal_error_deg": 8.153119087219238
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.10377813875675201,
+              "position_error_x_m": 0.01881575584411621,
+              "position_error_y_m": 0.03162550926208496,
+              "position_error_z_m": 0.0970345139503479,
+              "velocity_error_m_s": 0.9748072028160095,
+              "normal_error_deg": 5.476434230804443
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.1059095561504364,
+              "position_error_x_m": 0.03325939178466797,
+              "position_error_y_m": 0.03337883949279785,
+              "position_error_z_m": 0.09484988451004028,
+              "velocity_error_m_s": 1.1015431880950928,
+              "normal_error_deg": 5.063453197479248
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.11124038696289062,
+              "position_error_x_m": 0.046790122985839844,
+              "position_error_y_m": 0.03407025337219238,
+              "position_error_z_m": 0.09499645233154297,
+              "velocity_error_m_s": 1.253307819366455,
+              "normal_error_deg": 4.93752908706665
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.11927527189254761,
+              "position_error_x_m": 0.059366464614868164,
+              "position_error_y_m": 0.033772945404052734,
+              "position_error_z_m": 0.09778344631195068,
+              "velocity_error_m_s": 1.4263890981674194,
+              "normal_error_deg": 5.111362934112549
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.1291690170764923,
+              "position_error_x_m": 0.0706484317779541,
+              "position_error_y_m": 0.03251194953918457,
+              "position_error_z_m": 0.10313296318054199,
+              "velocity_error_m_s": 1.6110875606536865,
+              "normal_error_deg": 5.486016273498535
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.12009114027023315,
+          "position_error_x_m": 0.0469517707824707,
+          "position_error_y_m": 0.0748605728149414,
+          "position_error_z_m": 0.08132225275039673,
+          "velocity_error_m_s": 2.508087158203125,
+          "normal_error_deg": 3.314520835876465,
+          "motion_id": 3,
+          "max_root_displacement_m": 0.120148204267025,
+          "max_foot_displacement_m": 0.014451364055275917,
+          "upper_tracking_rmse_rad": 0.3539017140865326,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.16375665366649628,
+              "position_error_x_m": -0.0004334449768066406,
+              "position_error_y_m": -0.08144688606262207,
+              "position_error_z_m": 0.14206498861312866,
+              "velocity_error_m_s": 1.527037262916565,
+              "normal_error_deg": 11.521605491638184
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.16474680602550507,
+              "position_error_x_m": 0.0064754486083984375,
+              "position_error_y_m": -0.07877963781356812,
+              "position_error_z_m": 0.144545316696167,
+              "velocity_error_m_s": 1.6112018823623657,
+              "normal_error_deg": 11.235347747802734
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.1670415699481964,
+              "position_error_x_m": 0.013601541519165039,
+              "position_error_y_m": -0.07540285587310791,
+              "position_error_z_m": 0.14843279123306274,
+              "velocity_error_m_s": 1.6764832735061646,
+              "normal_error_deg": 10.959949493408203
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1705678403377533,
+              "position_error_x_m": 0.02107524871826172,
+              "position_error_y_m": -0.07145917415618896,
+              "position_error_z_m": 0.15343666076660156,
+              "velocity_error_m_s": 1.7106605768203735,
+              "normal_error_deg": 10.679179191589355
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.17499949038028717,
+              "position_error_x_m": 0.028794050216674805,
+              "position_error_y_m": -0.06690442562103271,
+              "position_error_z_m": 0.1591210961341858,
+              "velocity_error_m_s": 1.7366468906402588,
+              "normal_error_deg": 10.319631576538086
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.11438433080911636,
+              "position_error_x_m": 0.020770788192749023,
+              "position_error_y_m": 0.07652246952056885,
+              "position_error_z_m": 0.08244186639785767,
+              "velocity_error_m_s": 2.3946712017059326,
+              "normal_error_deg": 4.31243371963501
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.11605367809534073,
+              "position_error_x_m": 0.0339508056640625,
+              "position_error_y_m": 0.07595056295394897,
+              "position_error_z_m": 0.08091545104980469,
+              "velocity_error_m_s": 2.4553675651550293,
+              "normal_error_deg": 3.7084507942199707
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.12009114027023315,
+              "position_error_x_m": 0.0469517707824707,
+              "position_error_y_m": 0.0748605728149414,
+              "position_error_z_m": 0.08132225275039673,
+              "velocity_error_m_s": 2.508087158203125,
+              "normal_error_deg": 3.314520835876465
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1266406625509262,
+              "position_error_x_m": 0.06009697914123535,
+              "position_error_y_m": 0.0732772946357727,
+              "position_error_z_m": 0.08400386571884155,
+              "velocity_error_m_s": 2.564761161804199,
+              "normal_error_deg": 3.4124279022216797
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.13521678745746613,
+              "position_error_x_m": 0.07277989387512207,
+              "position_error_y_m": 0.0710720419883728,
+              "position_error_z_m": 0.0890810489654541,
+              "velocity_error_m_s": 2.6788523197174072,
+              "normal_error_deg": 4.039730072021484
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.12797708809375763,
+          "position_error_x_m": 0.043992768973112106,
+          "position_error_y_m": 0.05310404300689697,
+          "position_error_z_m": 0.10780876874923706,
+          "velocity_error_m_s": 1.4525238275527954,
+          "normal_error_deg": 4.718166828155518,
+          "motion_id": 4,
+          "max_root_displacement_m": 0.1281181275844574,
+          "max_foot_displacement_m": 0.009589959867298603,
+          "upper_tracking_rmse_rad": 0.3445596694946289,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.11267156898975372,
+              "position_error_x_m": 0.02236074209213257,
+              "position_error_y_m": 0.07399892807006836,
+              "position_error_z_m": 0.0819697380065918,
+              "velocity_error_m_s": 2.3769426345825195,
+              "normal_error_deg": 4.2441325187683105
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.11428587883710861,
+              "position_error_x_m": 0.035693228244781494,
+              "position_error_y_m": 0.07306241989135742,
+              "position_error_z_m": 0.0803065299987793,
+              "velocity_error_m_s": 2.440535068511963,
+              "normal_error_deg": 3.6174705028533936
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.11828666925430298,
+              "position_error_x_m": 0.048742786049842834,
+              "position_error_y_m": 0.07157588005065918,
+              "position_error_z_m": 0.08057773113250732,
+              "velocity_error_m_s": 2.5006206035614014,
+              "normal_error_deg": 3.2474515438079834
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1248461976647377,
+              "position_error_x_m": 0.06186462938785553,
+              "position_error_y_m": 0.0695946216583252,
+              "position_error_z_m": 0.08316206932067871,
+              "velocity_error_m_s": 2.5618386268615723,
+              "normal_error_deg": 3.4158685207366943
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.1335219442844391,
+              "position_error_x_m": 0.07448403537273407,
+              "position_error_y_m": 0.06704068183898926,
+              "position_error_z_m": 0.08823710680007935,
+              "velocity_error_m_s": 2.683684825897217,
+              "normal_error_deg": 4.119701862335205
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.11897698044776917,
+              "position_error_x_m": 0.020119786262512207,
+              "position_error_y_m": 0.05815327167510986,
+              "position_error_z_m": 0.10182785987854004,
+              "velocity_error_m_s": 1.1651315689086914,
+              "normal_error_deg": 5.134807109832764
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.12215452641248703,
+              "position_error_x_m": 0.03254514932632446,
+              "position_error_y_m": 0.0557326078414917,
+              "position_error_z_m": 0.10371315479278564,
+              "velocity_error_m_s": 1.3114581108093262,
+              "normal_error_deg": 4.787656784057617
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.12797708809375763,
+              "position_error_x_m": 0.043992768973112106,
+              "position_error_y_m": 0.05310404300689697,
+              "position_error_z_m": 0.10780876874923706,
+              "velocity_error_m_s": 1.4525238275527954,
+              "normal_error_deg": 4.718166828155518
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.1360234022140503,
+              "position_error_x_m": 0.05464191734790802,
+              "position_error_y_m": 0.05023837089538574,
+              "position_error_z_m": 0.11398565769195557,
+              "velocity_error_m_s": 1.5758565664291382,
+              "normal_error_deg": 4.889644145965576
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.14565524458885193,
+              "position_error_x_m": 0.06420861184597015,
+              "position_error_y_m": 0.047237277030944824,
+              "position_error_z_m": 0.12190711498260498,
+              "velocity_error_m_s": 1.6944999694824219,
+              "normal_error_deg": 5.209775447845459
+            }
+          ]
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 0.1108405590057373,
+          "position_error_x_m": 0.046102382242679596,
+          "position_error_y_m": 0.034734904766082764,
+          "position_error_z_m": 0.09462392330169678,
+          "velocity_error_m_s": 1.2576892375946045,
+          "normal_error_deg": 4.91780948638916,
+          "motion_id": 5,
+          "max_root_displacement_m": 0.1263035088777542,
+          "max_foot_displacement_m": 0.009189126081764698,
+          "upper_tracking_rmse_rad": 0.36297714710235596,
+          "window_pm2": [
+            {
+              "step_offset": -2,
+              "position_error_m": 0.07215281575918198,
+              "position_error_x_m": -0.027292191982269287,
+              "position_error_y_m": 0.02576422691345215,
+              "position_error_z_m": 0.061622798442840576,
+              "velocity_error_m_s": 2.4576427936553955,
+              "normal_error_deg": 7.129179954528809
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.07471700757741928,
+              "position_error_x_m": -0.014010190963745117,
+              "position_error_y_m": 0.02680528163909912,
+              "position_error_z_m": 0.06832146644592285,
+              "velocity_error_m_s": 2.5772287845611572,
+              "normal_error_deg": 6.922119617462158
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.08269713819026947,
+              "position_error_x_m": -0.0006898343563079834,
+              "position_error_y_m": 0.027358710765838623,
+              "position_error_z_m": 0.07803744077682495,
+              "velocity_error_m_s": 2.6807034015655518,
+              "normal_error_deg": 6.965227127075195
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.0955779030919075,
+              "position_error_x_m": 0.01318293809890747,
+              "position_error_y_m": 0.027393460273742676,
+              "position_error_z_m": 0.09061425924301147,
+              "velocity_error_m_s": 2.753417491912842,
+              "normal_error_deg": 7.219963550567627
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.11207197606563568,
+              "position_error_x_m": 0.027061253786087036,
+              "position_error_y_m": 0.02671635150909424,
+              "position_error_z_m": 0.1054232120513916,
+              "velocity_error_m_s": 2.848985195159912,
+              "normal_error_deg": 7.598508834838867
+            },
+            {
+              "step_offset": -2,
+              "position_error_m": 0.10357103496789932,
+              "position_error_x_m": 0.018342837691307068,
+              "position_error_y_m": 0.03213924169540405,
+              "position_error_z_m": 0.09673452377319336,
+              "velocity_error_m_s": 0.9789876341819763,
+              "normal_error_deg": 5.453664302825928
+            },
+            {
+              "step_offset": -1,
+              "position_error_m": 0.10559172928333282,
+              "position_error_x_m": 0.032663993537425995,
+              "position_error_y_m": 0.03397923707962036,
+              "position_error_z_m": 0.09448856115341187,
+              "velocity_error_m_s": 1.1030869483947754,
+              "normal_error_deg": 5.041116714477539
+            },
+            {
+              "step_offset": 0,
+              "position_error_m": 0.1108405590057373,
+              "position_error_x_m": 0.046102382242679596,
+              "position_error_y_m": 0.034734904766082764,
+              "position_error_z_m": 0.09462392330169678,
+              "velocity_error_m_s": 1.2576892375946045,
+              "normal_error_deg": 4.91780948638916
+            },
+            {
+              "step_offset": 1,
+              "position_error_m": 0.11879100650548935,
+              "position_error_x_m": 0.05861566960811615,
+              "position_error_y_m": 0.03447580337524414,
+              "position_error_z_m": 0.09740084409713745,
+              "velocity_error_m_s": 1.4283490180969238,
+              "normal_error_deg": 5.086501121520996
+            },
+            {
+              "step_offset": 2,
+              "position_error_m": 0.12857507169246674,
+              "position_error_x_m": 0.06982091069221497,
+              "position_error_y_m": 0.03324967622756958,
+              "position_error_z_m": 0.1027182936668396,
+              "velocity_error_m_s": 1.611404299736023,
+              "normal_error_deg": 5.448199272155762
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "summary": [
+    {
+      "motion_id": 0,
+      "fixed_pos_error_m": 0.07450348138809204,
+      "floating_zero_pos_error_m": 0.14027854800224304,
+      "floating_stageA_pos_error_m": 0.12763316929340363,
+      "floating_added_error_m": 0.065775066614151,
+      "stageA_recovery_m": 0.012645378708839417
+    },
+    {
+      "motion_id": 1,
+      "fixed_pos_error_m": 0.08369262516498566,
+      "floating_zero_pos_error_m": 0.18121469020843506,
+      "floating_stageA_pos_error_m": 0.1324913203716278,
+      "floating_added_error_m": 0.0975220650434494,
+      "stageA_recovery_m": 0.04872336983680725
+    },
+    {
+      "motion_id": 2,
+      "fixed_pos_error_m": 0.0804496556520462,
+      "floating_zero_pos_error_m": 0.16680863499641418,
+      "floating_stageA_pos_error_m": 0.11124038696289062,
+      "floating_added_error_m": 0.08635897934436798,
+      "stageA_recovery_m": 0.05556824803352356
+    },
+    {
+      "motion_id": 3,
+      "fixed_pos_error_m": 0.08422435075044632,
+      "floating_zero_pos_error_m": 0.1535186618566513,
+      "floating_stageA_pos_error_m": 0.12009114027023315,
+      "floating_added_error_m": 0.06929431110620499,
+      "stageA_recovery_m": 0.03342752158641815
+    },
+    {
+      "motion_id": 4,
+      "fixed_pos_error_m": 0.08374745398759842,
+      "floating_zero_pos_error_m": 0.1817004680633545,
+      "floating_stageA_pos_error_m": 0.12797708809375763,
+      "floating_added_error_m": 0.09795301407575607,
+      "stageA_recovery_m": 0.05372337996959686
+    },
+    {
+      "motion_id": 5,
+      "fixed_pos_error_m": 0.07942648977041245,
+      "floating_zero_pos_error_m": 0.1427907794713974,
+      "floating_stageA_pos_error_m": 0.1108405590057373,
+      "floating_added_error_m": 0.06336428970098495,
+      "stageA_recovery_m": 0.031950220465660095
+    }
+  ]
+}

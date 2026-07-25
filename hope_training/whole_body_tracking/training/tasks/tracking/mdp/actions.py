@@ -81,7 +81,12 @@ class ReferenceResidualJointPositionAction(ClampedJointPositionAction):
 
     def _reference_joint_pos_with_joint_lead(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
         """Gather reference positions with an independent fractional lead per action joint."""
-        lead = self._joint_reference_lookahead_steps.unsqueeze(0)
+        # A 1-D lead is the normal training configuration.  Diagnostics may
+        # supply one lead vector per parallel environment to scan timing without
+        # launching a separate simulator for every candidate.
+        lead = self._joint_reference_lookahead_steps
+        if lead.ndim == 1:
+            lead = lead.unsqueeze(0)
         query = time_steps.to(dtype=torch.float32).unsqueeze(-1) + lead
         if motion_cmd._use_motion_library:
             lengths = motion_cmd.motion.motion_lengths[motion_cmd.motion_ids].unsqueeze(-1).to(torch.float32)

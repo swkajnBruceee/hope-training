@@ -80,6 +80,23 @@ def time_to_strike(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
     return _cmd(env, command_name).time_to_strike.unsqueeze(-1)
 
 
+def time_to_strike_with_prelude(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Time-to-strike in wall-clock time for actors that run through a prelude."""
+    cmd = _cmd(env, command_name)
+    motion_name = getattr(getattr(cmd, "cfg", None), "motion_command_name", None)
+    if motion_name is None:
+        return cmd.time_to_strike.unsqueeze(-1)
+    motion_cmd = env.command_manager.get_term(motion_name)
+    prelude_steps = getattr(motion_cmd, "prelude_steps", None)
+    prelude_elapsed_steps = getattr(motion_cmd, "prelude_elapsed_steps", None)
+    if prelude_steps is None or prelude_elapsed_steps is None:
+        return cmd.time_to_strike.unsqueeze(-1)
+    remaining_prelude = (
+        int(prelude_steps) - prelude_elapsed_steps
+    ).clamp_min(0).to(dtype=cmd.time_to_strike.dtype)
+    return (cmd.time_to_strike + remaining_prelude * env.step_dt).unsqueeze(-1)
+
+
 def base_target_pos_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
     return _cmd(env, command_name).base_target_pos_b()
 

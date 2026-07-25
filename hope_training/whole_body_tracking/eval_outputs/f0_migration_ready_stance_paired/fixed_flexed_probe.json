@@ -1,0 +1,114 @@
+{
+  "upper_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-24_22-00-32_backhand_strike_only_v1_shoulders_lead12_res025_clip050_3000it/model_900.pt",
+  "stage_a_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it/model_3396.pt",
+  "seed": 20260725,
+  "mode": "fixed_model900",
+  "shared_initial_stance": {
+    "root_z_m": 1.04,
+    "hip_pitch_rad": -0.16,
+    "knee_rad": 0.32,
+    "ankle_pitch_rad": -0.155,
+    "left_hip_roll_rad": 0.08,
+    "right_hip_roll_rad": -0.08
+  },
+  "shared_initial_stance_joints": {
+    "left_hip_pitch_joint": -0.16,
+    "right_hip_pitch_joint": -0.16,
+    "left_knee_joint": 0.32,
+    "right_knee_joint": 0.32,
+    "left_ankle_pitch_joint": -0.155,
+    "right_ankle_pitch_joint": -0.155,
+    "left_hip_roll_joint": 0.08,
+    "right_hip_roll_joint": -0.08
+  },
+  "results": [
+    {
+      "step_offset": 0,
+      "position_error_m": 2.4991166591644287,
+      "position_error_x_m": 2.205289602279663,
+      "position_error_y_m": -1.1738133430480957,
+      "position_error_z_m": 0.0666651725769043,
+      "velocity_error_m_s": 2.6944479942321777,
+      "normal_error_deg": 161.9428253173828,
+      "target_position_x_m": 2.622915506362915,
+      "target_position_y_m": -0.7281591892242432,
+      "target_position_z_m": 0.9749282002449036,
+      "actual_racket_position_x_m": 0.41762596368789673,
+      "actual_racket_position_y_m": 0.4456542134284973,
+      "actual_racket_position_z_m": 0.9082630276679993,
+      "initial_root_position_x_m": 0.0,
+      "initial_root_position_y_m": 0.0,
+      "initial_root_position_z_m": 1.0399999618530273,
+      "motion_id": 0,
+      "max_root_displacement_m": 1.4551915228366852e-10,
+      "max_foot_displacement_m": 0.08178863674402237,
+      "upper_tracking_rmse_rad": 0.6294685006141663,
+      "initial_stance_joint_pos_rad": {
+        "left_hip_pitch_joint": -0.1599999964237213,
+        "right_hip_pitch_joint": -0.1599999964237213,
+        "left_knee_joint": 0.3199999928474426,
+        "right_knee_joint": 0.3199999928474426,
+        "left_ankle_pitch_joint": -0.1550000011920929,
+        "right_ankle_pitch_joint": -0.1550000011920929,
+        "left_hip_roll_joint": 0.07999999821186066,
+        "right_hip_roll_joint": -0.07999999821186066
+      },
+      "window_pm2": [
+        {
+          "step_offset": -2,
+          "position_error_m": 2.527562141418457,
+          "position_error_x_m": 2.2323436737060547,
+          "position_error_y_m": -1.1837825775146484,
+          "position_error_z_m": 0.06220883131027222,
+          "velocity_error_m_s": 2.527669906616211,
+          "normal_error_deg": 159.55718994140625
+        },
+        {
+          "step_offset": -1,
+          "position_error_m": 2.5138232707977295,
+          "position_error_x_m": 2.2189908027648926,
+          "position_error_y_m": -1.179565191268921,
+          "position_error_z_m": 0.0633460283279419,
+          "velocity_error_m_s": 2.604504108428955,
+          "normal_error_deg": 160.76065063476562
+        },
+        {
+          "step_offset": 0,
+          "position_error_m": 2.4991166591644287,
+          "position_error_x_m": 2.205289602279663,
+          "position_error_y_m": -1.1738133430480957,
+          "position_error_z_m": 0.0666651725769043,
+          "velocity_error_m_s": 2.6944479942321777,
+          "normal_error_deg": 161.9428253173828,
+          "target_position_x_m": 2.622915506362915,
+          "target_position_y_m": -0.7281591892242432,
+          "target_position_z_m": 0.9749282002449036,
+          "actual_racket_position_x_m": 0.41762596368789673,
+          "actual_racket_position_y_m": 0.4456542134284973,
+          "actual_racket_position_z_m": 0.9082630276679993,
+          "initial_root_position_x_m": 0.0,
+          "initial_root_position_y_m": 0.0,
+          "initial_root_position_z_m": 1.0399999618530273
+        },
+        {
+          "step_offset": 1,
+          "position_error_m": 2.4834446907043457,
+          "position_error_x_m": 2.191178560256958,
+          "position_error_y_m": -1.1666302680969238,
+          "position_error_z_m": 0.07216650247573853,
+          "velocity_error_m_s": 2.793959856033325,
+          "normal_error_deg": 163.07879638671875
+        },
+        {
+          "step_offset": 2,
+          "position_error_m": 2.467202663421631,
+          "position_error_x_m": 2.1770882606506348,
+          "position_error_y_m": -1.158033847808838,
+          "position_error_z_m": 0.07958626747131348,
+          "velocity_error_m_s": 2.8425652980804443,
+          "normal_error_deg": 164.11268615722656
+        }
+      ]
+    }
+  ]
+}

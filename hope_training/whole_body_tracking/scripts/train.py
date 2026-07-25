@@ -637,6 +637,11 @@ def _apply_task_overrides(env_cfg, task):
                 "actions.joint_pos.joint_reference_lookahead_steps="
                 f"{env_cfg.actions.joint_pos.joint_reference_lookahead_steps!r}"
             )
+        upper_checkpoint = _get(actions, "upper_checkpoint")
+        if upper_checkpoint is not None:
+            _require(hasattr(env_cfg.actions.joint_pos, "upper_checkpoint"), "actions.joint_pos.upper_checkpoint")
+            env_cfg.actions.joint_pos.upper_checkpoint = str(upper_checkpoint)
+            applied.append(f"actions.joint_pos.upper_checkpoint={str(upper_checkpoint)!r}")
         scale_multipliers = _get(actions, "native_joint_scale_multipliers")
         if scale_multipliers is not None:
             scale = getattr(env_cfg.actions.joint_pos, "scale", None)
@@ -1036,6 +1041,7 @@ def _run(cfg):
         "A3BaseStandRecoveryAV2WaistMask-v0",
         "A3BaseStandRecoveryAV21WaistMask-v0",
         "HOPE-StrikeStabilizerA-AgibotA3-v0",
+        "HOPE-FloatingF1-AgibotA3-v0",
         "HOPE-FixedBaseReferenceStrike-AgibotA3-v0",
         "HOPE-FixedBaseBackhandReferenceStrike-AgibotA3-v0",
     }

@@ -1,0 +1,49 @@
+{
+  "manifest": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/sample_motions/p2_data260708_backhand_strike_only_v1/manifest.json",
+  "checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-24_17-52-50_data260708_backhand_strike_only_v1_res025_clip050_300it/model_2999.pt",
+  "motion_ids": [
+    2,
+    4
+  ],
+  "episode_ids": [
+    "T002_023_gao01_26p64_28p64",
+    "T03_038_gao01_5p27_7p27"
+  ],
+  "hit_frames": [
+    30,
+    30
+  ],
+  "max_steps": 40,
+  "rollout_mode": "policy",
+  "static_fk_enabled": false,
+  "static_fk": {
+    "policy:T002_023_gao01_26p64_28p64": {
+      "mode": "policy",
+      "episode_id": "T002_023_gao01_26p64_28p64",
+      "status": "disabled"
+    },
+    "policy:T03_038_gao01_5p27_7p27": {
+      "mode": "policy",
+      "episode_id": "T03_038_gao01_5p27_7p27",
+      "status": "disabled"
+    }
+  },
+  "rollouts": {
+    "policy": {
+      "rows": 38,
+      "static": [],
+      "lag_by_motion": {
+        "T002_023_gao01_26p64_28p64": {
+          "lag_steps": -5,
+          "mean_error_m": 0.1084786771322487,
+          "samples": 14
+        },
+        "T03_038_gao01_5p27_7p27": {
+          "lag_steps": -5,
+          "mean_error_m": 0.11120799440654394,
+          "samples": 14
+        }
+      }
+    }
+  }
+}

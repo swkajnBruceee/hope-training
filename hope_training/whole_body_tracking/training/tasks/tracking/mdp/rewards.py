@@ -391,6 +391,44 @@ def action_execution_gap_l2(
     return torch.mean(torch.square(excess), dim=-1)
 
 
+def upper_execution_gap_l2(
+    env: ManagerBasedRLEnv,
+    action_name: str = "joint_pos",
+    deadband: float = 0.02,
+) -> torch.Tensor:
+    """Penalize floating-base dynamics that pull the frozen upper chain off target."""
+    action_term = env.action_manager.get_term(action_name)
+    target = getattr(action_term, "upper_processed_actions", None)
+    joint_ids = getattr(action_term, "_upper_joint_ids_tensor", None)
+    if target is None or joint_ids is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    actual = env.scene["robot"].data.joint_pos[:, joint_ids]
+    excess = torch.relu(torch.abs(actual - target) - float(deadband))
+    return torch.mean(torch.square(excess), dim=-1)
+
+
+def root_position_drift_l2(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Softly discourage whole-body translation away from the in-place stance."""
+    robot = env.scene["robot"]
+    root_origin = robot.data.default_root_state[:, :3] + env.scene.env_origins
+    drift = robot.data.root_pos_w - root_origin
+    return torch.sum(torch.square(drift), dim=-1)
+
+
+def feet_slip_l2(
+    env: ManagerBasedRLEnv,
+    sensor_cfg: SceneEntityCfg,
+    threshold: float,
+) -> torch.Tensor:
+    """Penalize tangential foot motion only while the foot is load-bearing."""
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    force = torch.linalg.vector_norm(contact_sensor.data.net_forces_w[:, sensor_cfg.body_ids], dim=-1)
+    in_contact = (force > threshold).to(dtype=torch.float32)
+    foot_velocity = env.scene["robot"].data.body_lin_vel_w[:, sensor_cfg.body_ids]
+    tangential_speed_sq = torch.sum(torch.square(foot_velocity[..., :2]), dim=-1)
+    return (tangential_speed_sq * in_contact).sum(dim=-1) / in_contact.sum(dim=-1).clamp_min(1.0)
+
+
 def feet_contact_time(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, threshold: float) -> torch.Tensor:
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     first_air = contact_sensor.compute_first_air(env.step_dt, env.physics_dt)[:, sensor_cfg.body_ids]
