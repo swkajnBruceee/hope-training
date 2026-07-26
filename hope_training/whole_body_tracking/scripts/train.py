@@ -637,6 +637,64 @@ def _apply_task_overrides(env_cfg, task):
                 "actions.joint_pos.joint_reference_lookahead_steps="
                 f"{env_cfg.actions.joint_pos.joint_reference_lookahead_steps!r}"
             )
+        velocity_ff_mode = _get(actions, "joint_velocity_feedforward_mode")
+        if velocity_ff_mode is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "joint_velocity_feedforward_mode"),
+                "actions.joint_pos.joint_velocity_feedforward_mode",
+            )
+            velocity_ff_mode = str(velocity_ff_mode)
+            _require(
+                velocity_ff_mode in {"none", "position_lead", "task_phase"},
+                "actions.joint_velocity_feedforward_mode",
+            )
+            env_cfg.actions.joint_pos.joint_velocity_feedforward_mode = velocity_ff_mode
+            applied.append(
+                "actions.joint_pos.joint_velocity_feedforward_mode="
+                f"{velocity_ff_mode!r}"
+            )
+        velocity_ff_beta = _get(actions, "joint_velocity_feedforward_beta")
+        if velocity_ff_beta is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "joint_velocity_feedforward_beta"),
+                "actions.joint_pos.joint_velocity_feedforward_beta",
+            )
+            velocity_ff_beta = float(velocity_ff_beta)
+            _require(0.0 <= velocity_ff_beta <= 1.0, "0 <= actions.joint_velocity_feedforward_beta <= 1")
+            env_cfg.actions.joint_pos.joint_velocity_feedforward_beta = velocity_ff_beta
+            applied.append(
+                "actions.joint_pos.joint_velocity_feedforward_beta="
+                f"{velocity_ff_beta}"
+            )
+        velocity_ff_joints = _get(actions, "joint_velocity_feedforward_joint_names")
+        if velocity_ff_joints is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "joint_velocity_feedforward_joint_names"),
+                "actions.joint_pos.joint_velocity_feedforward_joint_names",
+            )
+            env_cfg.actions.joint_pos.joint_velocity_feedforward_joint_names = tuple(
+                str(name) for name in velocity_ff_joints
+            )
+            applied.append(
+                "actions.joint_pos.joint_velocity_feedforward_joint_names="
+                f"{env_cfg.actions.joint_pos.joint_velocity_feedforward_joint_names!r}"
+            )
+        velocity_ff_decay_steps = _get(actions, "joint_velocity_feedforward_post_hit_decay_steps")
+        if velocity_ff_decay_steps is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "joint_velocity_feedforward_post_hit_decay_steps"),
+                "actions.joint_pos.joint_velocity_feedforward_post_hit_decay_steps",
+            )
+            velocity_ff_decay_steps = int(velocity_ff_decay_steps)
+            _require(
+                velocity_ff_decay_steps >= 1,
+                "actions.joint_velocity_feedforward_post_hit_decay_steps >= 1",
+            )
+            env_cfg.actions.joint_pos.joint_velocity_feedforward_post_hit_decay_steps = velocity_ff_decay_steps
+            applied.append(
+                "actions.joint_pos.joint_velocity_feedforward_post_hit_decay_steps="
+                f"{velocity_ff_decay_steps}"
+            )
         upper_prelude_release_steps = _get(actions, "upper_prelude_release_steps")
         if upper_prelude_release_steps is not None:
             _require(
@@ -986,6 +1044,11 @@ def _run(cfg):
         agent_cfg.wandb_project = str(cfg.log_project_name)
         agent_cfg.neptune_project = str(cfg.log_project_name)
     agent_cfg.resume = bool(cfg.get("resume", False))
+    warm_start_actor_only = bool(cfg.get("warm_start_actor_only", False))
+    if agent_cfg.resume and warm_start_actor_only:
+        raise ValueError("resume=true and warm_start_actor_only=true are mutually exclusive")
+    if warm_start_actor_only and cfg.get("checkpoint", None) is None:
+        raise ValueError("warm_start_actor_only=true requires an explicit checkpoint=<model_*.pt>")
     if cfg.get("load_run", None) is not None:
         agent_cfg.load_run = str(cfg.load_run)
     if cfg.get("checkpoint", None) is not None:
@@ -1118,7 +1181,7 @@ def _run(cfg):
         "HOPE-FixedBaseReferenceStrike-AgibotA3-v0",
         "HOPE-FixedBaseBackhandReferenceStrike-AgibotA3-v0",
     }
-    if task_id in zero_residual_tasks and not agent_cfg.resume:
+    if task_id in zero_residual_tasks and not agent_cfg.resume and not warm_start_actor_only:
         # This task controls a non-integrating residual around a passively
         # stable nominal posture.  A random output layer can create a large
         # deterministic residual before PPO sees one transition (observed as
@@ -1143,7 +1206,77 @@ def _run(cfg):
             flush=True,
         )
     runner.add_git_repo_to_log(__file__)
-    if agent_cfg.resume:
+    if warm_start_actor_only:
+        # A changed episode horizon/recovery objective invalidates the old
+        # critic, optimizer moments, iteration count and critic normalizer.
+        # Preserve only the compatible coordinator actor and its 204-D input
+        # normalization so the new task starts with V2's hit behavior.
+        warm_path = Path(str(agent_cfg.load_checkpoint)).expanduser()
+        if not warm_path.is_file():
+            raise FileNotFoundError(f"actor-only warm-start checkpoint does not exist: {warm_path}")
+        warm_state = torch.load(warm_path, map_location="cpu", weights_only=False)
+        model_state = warm_state.get("model_state_dict")
+        if not isinstance(model_state, dict):
+            raise RuntimeError(f"checkpoint has no model_state_dict: {warm_path}")
+        actor_state = {
+            name: value
+            for name, value in model_state.items()
+            if name == "std" or name.startswith("actor.")
+        }
+        if not actor_state or "std" not in actor_state:
+            raise RuntimeError(f"checkpoint has no compatible actor/std tensors: {warm_path}")
+        runtime_state_keys = set(runner.alg.policy.state_dict())
+        expected_missing = {
+            name
+            for name in runtime_state_keys
+            if name.startswith("critic.")
+        }
+        missing_keys = runtime_state_keys - set(actor_state)
+        unexpected_keys = set(actor_state) - runtime_state_keys
+        if missing_keys != expected_missing or unexpected_keys:
+            raise RuntimeError(
+                "actor-only warm-start state mismatch: "
+                f"missing={sorted(missing_keys)}, unexpected={sorted(unexpected_keys)}"
+            )
+        # rsl_rl's ActorCritic intentionally returns a boolean here rather
+        # than PyTorch's IncompatibleKeys object, so validate keys above.
+        runner.alg.policy.load_state_dict(actor_state, strict=False)
+        if not getattr(runner, "empirical_normalization", False):
+            raise RuntimeError("actor-only warm-start requires empirical observation normalization")
+        actor_norm_state = warm_state.get("obs_norm_state_dict")
+        if not isinstance(actor_norm_state, dict):
+            raise RuntimeError(f"checkpoint has no actor observation normalizer: {warm_path}")
+        runtime_norm_state = runner.obs_normalizer.state_dict()
+        for key in ("_mean", "_var", "_std"):
+            if key not in actor_norm_state or key not in runtime_norm_state:
+                raise RuntimeError(f"actor-only warm-start normalizer missing {key!r}")
+            if actor_norm_state[key].shape != runtime_norm_state[key].shape:
+                raise RuntimeError(
+                    "actor-only warm-start observation width mismatch: "
+                    f"checkpoint {key}={tuple(actor_norm_state[key].shape)}, "
+                    f"runtime={tuple(runtime_norm_state[key].shape)}"
+                )
+        runner.obs_normalizer.load_state_dict(actor_norm_state)
+        # The optimizer and critic normalizer are intentionally untouched.
+        # Explicitly reset the visible iteration counter as a guard against
+        # accidentally treating this new contract as a continuation.
+        runner.current_learning_iteration = 0
+        warm_start_record = {
+            "mode": "actor_only",
+            "checkpoint": str(warm_path.resolve()),
+            "loaded": ["actor", "std", "actor_observation_normalizer"],
+            "reset": ["critic", "critic_observation_normalizer", "optimizer", "iteration"],
+        }
+        Path(log_dir, "params", "warm_start.json").parent.mkdir(parents=True, exist_ok=True)
+        Path(log_dir, "params", "warm_start.json").write_text(
+            json.dumps(warm_start_record, indent=2) + "\n", encoding="utf-8"
+        )
+        print(
+            "[train.py] actor-only warm start: loaded V2 actor/std/actor normalizer; "
+            "critic, critic normalizer, optimizer, and iteration reset",
+            flush=True,
+        )
+    elif agent_cfg.resume:
         # A new task contract may intentionally reuse a compatible checkpoint
         # from another experiment directory (for example final-pose hold ->
         # return-to-ready).  Accept an explicit file path before falling back
@@ -1343,6 +1476,9 @@ def _run(cfg):
         audit_trace_value = cfg.get("audit_trace_output", None)
         audit_trace_path = Path(str(audit_trace_value)) if audit_trace_value else None
         audit_trace: list[dict[str, Any]] = []
+        audit_trace_after_hit_steps = int(cfg.get("audit_trace_after_hit_steps", 2))
+        if audit_trace_after_hit_steps < 0:
+            raise ValueError("audit_trace_after_hit_steps must be non-negative")
         trace_joint_names = (
             "right_shoulder_pitch_joint",
             "right_shoulder_yaw_joint",
@@ -1359,8 +1495,16 @@ def _run(cfg):
         post_hit_required = int(cfg.get("audit_post_hit_steps", 20))
         if post_hit_required < 0:
             raise ValueError("audit_post_hit_steps must be non-negative")
-        hit_deadline = int(motion.prelude_steps) + int(hit.max().item()) + post_hit_required + 2
-        max_audit_steps = min(int(raw.max_episode_length), hit_deadline)
+        # A short post-hit window is sufficient for strike-only diagnostics,
+        # but it can hide a fall that develops during an explicit hold/return
+        # cycle.  Full-cycle qualification must run until the task's natural
+        # timeout and treats every other termination as a failure.
+        audit_full_episode = bool(cfg.get("audit_full_episode", False))
+        if audit_full_episode:
+            max_audit_steps = int(raw.max_episode_length)
+        else:
+            hit_deadline = int(motion.prelude_steps) + int(hit.max().item()) + post_hit_required + 2
+            max_audit_steps = min(int(raw.max_episode_length), hit_deadline)
         exact = [None] * cases
         policy = None
         observation = None
@@ -1371,6 +1515,7 @@ def _run(cfg):
             policy = runner.get_inference_policy(device=raw.device)
             observation, _ = env.get_observations()
         zero = torch.zeros((cases, raw.action_manager.total_action_dim), device=raw.device)
+        clean_timeout = torch.zeros(cases, dtype=torch.bool, device=raw.device)
         for step in range(max_audit_steps):
             racket.racket_target_pos_w[:] = target_pos
             racket.racket_target_vel_w[:] = target_vel
@@ -1491,14 +1636,20 @@ def _run(cfg):
                 for name in raw.termination_manager.active_terms
             }
             done = torch.zeros(cases, dtype=torch.bool, device=raw.device)
+            failed = torch.zeros(cases, dtype=torch.bool, device=raw.device)
             for name, mask in termination_masks.items():
                 mask = mask.to(torch.bool) & active_before_step
                 termination_counts[name] += mask.to(torch.long)
                 done |= mask
                 for env_id in torch.nonzero(mask, as_tuple=False).flatten().tolist():
                     termination_labels[env_id].append(name)
+                if name == "time_out" and audit_full_episode:
+                    clean_timeout |= mask
+                else:
+                    failed |= mask
+            failed |= ~finite & active_before_step
             done |= ~finite & active_before_step
-            for env_id in torch.nonzero(done & (first_failure_step < 0), as_tuple=False).flatten().tolist():
+            for env_id in torch.nonzero(failed & (first_failure_step < 0), as_tuple=False).flatten().tolist():
                 first_failure_step[env_id] = step + 1
                 if not finite[env_id]:
                     termination_labels[env_id].append("non_finite_state")
@@ -1522,7 +1673,7 @@ def _run(cfg):
                     active_before_step
                     & (motion.prelude_elapsed_steps >= int(motion.prelude_steps))
                     & (current_steps >= hit - 15)
-                    & (current_steps <= hit + 2)
+                    & (current_steps <= hit + audit_trace_after_hit_steps)
                 )
                 for env_id in torch.nonzero(trace_window, as_tuple=False).flatten().tolist():
                     motion_id = int(ids[env_id].item())
@@ -1536,6 +1687,9 @@ def _run(cfg):
                             ),
                             "target_pos_rad": float(
                                 action_term.full_joint_targets[env_id, sim_joint_index].item()
+                            ),
+                            "target_vel_radps": float(
+                                action_term._full_joint_velocity_targets[env_id, sim_joint_index].item()
                             ),
                             "actual_pos_rad": float(robot.data.joint_pos[env_id, sim_joint_index].item()),
                             "actual_vel_radps": float(robot.data.joint_vel[env_id, sim_joint_index].item()),
@@ -1636,7 +1790,10 @@ def _run(cfg):
                 [row is not None for row in exact], dtype=torch.bool, device=raw.device
             )
             active &= ~done
-            completed = (exact_row & (post_hit_steps >= post_hit_required)) | (~active & (first_failure_step >= 0))
+            if audit_full_episode:
+                completed = ~active
+            else:
+                completed = (exact_row & (post_hit_steps >= post_hit_required)) | (~active & (first_failure_step >= 0))
             if bool(completed.all()):
                 break
         rows = []
@@ -1645,7 +1802,11 @@ def _run(cfg):
             hard_safety_pass = bool(
                 exact[env_id] is not None
                 and first_failure_step[env_id].item() < 0
-                and post_hit_steps[env_id].item() >= post_hit_required
+                and (
+                    clean_timeout[env_id].item()
+                    if audit_full_episode
+                    else post_hit_steps[env_id].item() >= post_hit_required
+                )
                 and min_root_height[env_id].item() >= 0.65
                 and finite[env_id].item()
             )
@@ -1666,6 +1827,8 @@ def _run(cfg):
                 "termination_count_by_reason": {
                     name: int(count[env_id].item()) for name, count in termination_counts.items()
                 },
+                "clean_timeout": bool(clean_timeout[env_id].item()),
+                "observed_steps": int(observed_steps[env_id].item()),
                 "post_hit_steps_observed": int(post_hit_steps[env_id].item()),
                 "minimum_root_height_m": float(min_root_height[env_id].item()),
                 "max_root_displacement_m": float(root_max[env_id].item()),
@@ -1705,8 +1868,13 @@ def _run(cfg):
             "action": "all_zero" if policy is None else "deterministic_checkpoint_actor",
             "audit_scope": {
                 "motions": int(cases),
+                "full_episode": audit_full_episode,
                 "post_hit_steps_required": post_hit_required,
-                "hard_safety_rule": "no termination, finite state, root height >= 0.65 m through exact hit plus post-hit window",
+                "hard_safety_rule": (
+                    "natural timeout only, finite state, root height >= 0.65 m through the full episode"
+                    if audit_full_episode
+                    else "no termination, finite state, root height >= 0.65 m through exact hit plus post-hit window"
+                ),
                 "stability_screen": "hard safety plus root tilt <= 30 deg and loaded-foot contact fraction >= 0.50",
             },
             "results": rows,
@@ -1730,7 +1898,7 @@ def _run(cfg):
                 "checkpoint": str(agent_cfg.load_checkpoint),
                 "task": task_id,
                 "joint_names": trace_joint_names,
-                "window": "hit-15 through hit+2 control steps",
+                "window": f"hit-15 through hit+{audit_trace_after_hit_steps} control steps",
                 "rows": audit_trace,
             }
             audit_trace_path.write_text(json.dumps(audit_trace_report, indent=2), encoding="utf-8")

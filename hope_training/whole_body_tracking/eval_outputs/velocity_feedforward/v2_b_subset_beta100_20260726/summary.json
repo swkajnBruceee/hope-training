@@ -1,0 +1,401 @@
+{
+  "purpose": "frozen V2 A/B joint velocity feedforward scan",
+  "contract": {
+    "task": "HOPEA3JointCoordinatorV2",
+    "checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_joint_coordinator_v2_20260726/2026-07-26_18-10-06_joint_coordinator_v2_256x1000/model_900.pt",
+    "position_lead": {
+      "right_shoulder_pitch_joint": 12,
+      "right_shoulder_yaw_joint": 12,
+      "right_elbow_joint": 0
+    },
+    "available_velocity_joint_sets": {
+      "all": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_joint"
+      ],
+      "shoulders": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_yaw_joint"
+      ],
+      "pitch": [
+        "right_shoulder_pitch_joint"
+      ],
+      "yaw": [
+        "right_shoulder_yaw_joint"
+      ],
+      "elbow": [
+        "right_elbow_joint"
+      ]
+    },
+    "post_hit_decay_steps": 6,
+    "post_hit_safety_window_steps": 20,
+    "no_training": true
+  },
+  "candidates": [
+    {
+      "report": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/velocity_feedforward/v2_b_subset_beta100_20260726/task_phase_beta_1.00_shoulders.json",
+      "safety_pass_all": true,
+      "stability_pass_all": true,
+      "mean_position_error_m": 0.0559251888965567,
+      "mean_velocity_error_mps": 1.4484453002611797,
+      "mean_normal_error_deg": 8.912837743759155,
+      "mean_root_displacement_m": 0.13216821725169817,
+      "hard_motions": {
+        "4": {
+          "position_error_m": 0.02927512116730213,
+          "velocity_error_mps": 2.0364267826080322,
+          "velocity_error_xyz_mps": [
+            -1.8032459020614624,
+            0.06291789561510086,
+            0.9441288709640503
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.9577833414077759,
+            0.08196165412664413,
+            0.4724961519241333
+          ]
+        },
+        "5": {
+          "position_error_m": 0.042049698531627655,
+          "velocity_error_mps": 2.1100432872772217,
+          "velocity_error_xyz_mps": [
+            -1.7226383686065674,
+            -0.007286369800567627,
+            1.2185018062591553
+          ],
+          "actual_velocity_xyz_mps": [
+            -1.053938865661621,
+            -0.09245987236499786,
+            -0.1372859925031662
+          ]
+        }
+      },
+      "joint_set": "shoulders",
+      "joint_names": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_yaw_joint"
+      ],
+      "mode": "task_phase",
+      "beta": 1.0
+    },
+    {
+      "report": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/velocity_feedforward/v2_b_subset_beta100_20260726/task_phase_beta_1.00_pitch.json",
+      "safety_pass_all": true,
+      "stability_pass_all": true,
+      "mean_position_error_m": 0.06302271783351898,
+      "mean_velocity_error_mps": 1.64581302801768,
+      "mean_normal_error_deg": 6.665247797966003,
+      "mean_root_displacement_m": 0.13211424772938093,
+      "hard_motions": {
+        "4": {
+          "position_error_m": 0.032501865178346634,
+          "velocity_error_mps": 2.3472657203674316,
+          "velocity_error_xyz_mps": [
+            -1.9875993728637695,
+            0.11053626239299774,
+            1.2437392473220825
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.773429811000824,
+            0.03434329107403755,
+            0.17288580536842346
+          ]
+        },
+        "5": {
+          "position_error_m": 0.05225134268403053,
+          "velocity_error_mps": 2.350794553756714,
+          "velocity_error_xyz_mps": [
+            -1.8613260984420776,
+            -0.045387014746665955,
+            1.4351449012756348
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.9152511358261108,
+            -0.054359227418899536,
+            -0.35392898321151733
+          ]
+        }
+      },
+      "joint_set": "pitch",
+      "joint_names": [
+        "right_shoulder_pitch_joint"
+      ],
+      "mode": "task_phase",
+      "beta": 1.0
+    },
+    {
+      "report": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/velocity_feedforward/v2_b_subset_beta100_20260726/task_phase_beta_1.00_yaw.json",
+      "safety_pass_all": true,
+      "stability_pass_all": true,
+      "mean_position_error_m": 0.06442286353558302,
+      "mean_velocity_error_mps": 1.639754096666972,
+      "mean_normal_error_deg": 7.13823668162028,
+      "mean_root_displacement_m": 0.13173234835267067,
+      "hard_motions": {
+        "4": {
+          "position_error_m": 0.026988783851265907,
+          "velocity_error_mps": 2.2152602672576904,
+          "velocity_error_xyz_mps": [
+            -1.8846827745437622,
+            0.08616125583648682,
+            1.1610015630722046
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.8763464689254761,
+            0.05871829763054848,
+            0.2556234896183014
+          ]
+        },
+        "5": {
+          "position_error_m": 0.05541292577981949,
+          "velocity_error_mps": 2.339050054550171,
+          "velocity_error_xyz_mps": [
+            -1.8494024276733398,
+            -0.01899769902229309,
+            1.4319584369659424
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.9271747469902039,
+            -0.0807485431432724,
+            -0.35074251890182495
+          ]
+        }
+      },
+      "joint_set": "yaw",
+      "joint_names": [
+        "right_shoulder_yaw_joint"
+      ],
+      "mode": "task_phase",
+      "beta": 1.0
+    },
+    {
+      "report": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/velocity_feedforward/v2_b_subset_beta100_20260726/task_phase_beta_1.00_elbow.json",
+      "safety_pass_all": true,
+      "stability_pass_all": true,
+      "mean_position_error_m": 0.08193185552954674,
+      "mean_velocity_error_mps": 1.8458760976791382,
+      "mean_normal_error_deg": 6.252062916755676,
+      "mean_root_displacement_m": 0.1316592978934447,
+      "hard_motions": {
+        "4": {
+          "position_error_m": 0.06272943317890167,
+          "velocity_error_mps": 2.494333505630493,
+          "velocity_error_xyz_mps": [
+            -1.9408273696899414,
+            0.1028154119849205,
+            1.5634315013885498
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.8202018737792969,
+            0.04206413775682449,
+            -0.14680643379688263
+          ]
+        },
+        "5": {
+          "position_error_m": 0.06936996430158615,
+          "velocity_error_mps": 2.5458426475524902,
+          "velocity_error_xyz_mps": [
+            -1.8018951416015625,
+            -0.1509804129600525,
+            1.7921197414398193
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.9746821522712708,
+            0.0512341633439064,
+            -0.7109038829803467
+          ]
+        }
+      },
+      "joint_set": "elbow",
+      "joint_names": [
+        "right_elbow_joint"
+      ],
+      "mode": "task_phase",
+      "beta": 1.0
+    }
+  ],
+  "safe_ranking": [
+    {
+      "report": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/velocity_feedforward/v2_b_subset_beta100_20260726/task_phase_beta_1.00_shoulders.json",
+      "safety_pass_all": true,
+      "stability_pass_all": true,
+      "mean_position_error_m": 0.0559251888965567,
+      "mean_velocity_error_mps": 1.4484453002611797,
+      "mean_normal_error_deg": 8.912837743759155,
+      "mean_root_displacement_m": 0.13216821725169817,
+      "hard_motions": {
+        "4": {
+          "position_error_m": 0.02927512116730213,
+          "velocity_error_mps": 2.0364267826080322,
+          "velocity_error_xyz_mps": [
+            -1.8032459020614624,
+            0.06291789561510086,
+            0.9441288709640503
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.9577833414077759,
+            0.08196165412664413,
+            0.4724961519241333
+          ]
+        },
+        "5": {
+          "position_error_m": 0.042049698531627655,
+          "velocity_error_mps": 2.1100432872772217,
+          "velocity_error_xyz_mps": [
+            -1.7226383686065674,
+            -0.007286369800567627,
+            1.2185018062591553
+          ],
+          "actual_velocity_xyz_mps": [
+            -1.053938865661621,
+            -0.09245987236499786,
+            -0.1372859925031662
+          ]
+        }
+      },
+      "joint_set": "shoulders",
+      "joint_names": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_yaw_joint"
+      ],
+      "mode": "task_phase",
+      "beta": 1.0
+    },
+    {
+      "report": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/velocity_feedforward/v2_b_subset_beta100_20260726/task_phase_beta_1.00_yaw.json",
+      "safety_pass_all": true,
+      "stability_pass_all": true,
+      "mean_position_error_m": 0.06442286353558302,
+      "mean_velocity_error_mps": 1.639754096666972,
+      "mean_normal_error_deg": 7.13823668162028,
+      "mean_root_displacement_m": 0.13173234835267067,
+      "hard_motions": {
+        "4": {
+          "position_error_m": 0.026988783851265907,
+          "velocity_error_mps": 2.2152602672576904,
+          "velocity_error_xyz_mps": [
+            -1.8846827745437622,
+            0.08616125583648682,
+            1.1610015630722046
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.8763464689254761,
+            0.05871829763054848,
+            0.2556234896183014
+          ]
+        },
+        "5": {
+          "position_error_m": 0.05541292577981949,
+          "velocity_error_mps": 2.339050054550171,
+          "velocity_error_xyz_mps": [
+            -1.8494024276733398,
+            -0.01899769902229309,
+            1.4319584369659424
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.9271747469902039,
+            -0.0807485431432724,
+            -0.35074251890182495
+          ]
+        }
+      },
+      "joint_set": "yaw",
+      "joint_names": [
+        "right_shoulder_yaw_joint"
+      ],
+      "mode": "task_phase",
+      "beta": 1.0
+    },
+    {
+      "report": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/velocity_feedforward/v2_b_subset_beta100_20260726/task_phase_beta_1.00_pitch.json",
+      "safety_pass_all": true,
+      "stability_pass_all": true,
+      "mean_position_error_m": 0.06302271783351898,
+      "mean_velocity_error_mps": 1.64581302801768,
+      "mean_normal_error_deg": 6.665247797966003,
+      "mean_root_displacement_m": 0.13211424772938093,
+      "hard_motions": {
+        "4": {
+          "position_error_m": 0.032501865178346634,
+          "velocity_error_mps": 2.3472657203674316,
+          "velocity_error_xyz_mps": [
+            -1.9875993728637695,
+            0.11053626239299774,
+            1.2437392473220825
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.773429811000824,
+            0.03434329107403755,
+            0.17288580536842346
+          ]
+        },
+        "5": {
+          "position_error_m": 0.05225134268403053,
+          "velocity_error_mps": 2.350794553756714,
+          "velocity_error_xyz_mps": [
+            -1.8613260984420776,
+            -0.045387014746665955,
+            1.4351449012756348
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.9152511358261108,
+            -0.054359227418899536,
+            -0.35392898321151733
+          ]
+        }
+      },
+      "joint_set": "pitch",
+      "joint_names": [
+        "right_shoulder_pitch_joint"
+      ],
+      "mode": "task_phase",
+      "beta": 1.0
+    },
+    {
+      "report": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/velocity_feedforward/v2_b_subset_beta100_20260726/task_phase_beta_1.00_elbow.json",
+      "safety_pass_all": true,
+      "stability_pass_all": true,
+      "mean_position_error_m": 0.08193185552954674,
+      "mean_velocity_error_mps": 1.8458760976791382,
+      "mean_normal_error_deg": 6.252062916755676,
+      "mean_root_displacement_m": 0.1316592978934447,
+      "hard_motions": {
+        "4": {
+          "position_error_m": 0.06272943317890167,
+          "velocity_error_mps": 2.494333505630493,
+          "velocity_error_xyz_mps": [
+            -1.9408273696899414,
+            0.1028154119849205,
+            1.5634315013885498
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.8202018737792969,
+            0.04206413775682449,
+            -0.14680643379688263
+          ]
+        },
+        "5": {
+          "position_error_m": 0.06936996430158615,
+          "velocity_error_mps": 2.5458426475524902,
+          "velocity_error_xyz_mps": [
+            -1.8018951416015625,
+            -0.1509804129600525,
+            1.7921197414398193
+          ],
+          "actual_velocity_xyz_mps": [
+            -0.9746821522712708,
+            0.0512341633439064,
+            -0.7109038829803467
+          ]
+        }
+      },
+      "joint_set": "elbow",
+      "joint_names": [
+        "right_elbow_joint"
+      ],
+      "mode": "task_phase",
+      "beta": 1.0
+    }
+  ]
+}

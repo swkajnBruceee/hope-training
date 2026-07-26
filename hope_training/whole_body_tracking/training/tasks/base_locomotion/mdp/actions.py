@@ -91,6 +91,10 @@ class A3BaseCompositePositionAction(ActionTerm):
         self._unbounded_actions = torch.zeros_like(self._raw_actions)
         self._processed_actions = torch.zeros_like(self._raw_actions)
         self._full_joint_targets = self._asset.data.default_joint_pos.clone()
+        # Implicit actuators accept a position and a velocity target.  The
+        # legacy contract intentionally leaves this at zero; strike-specific
+        # terms may opt in for a small set of joints.
+        self._full_joint_velocity_targets = torch.zeros_like(self._full_joint_targets)
 
     @property
     def action_dim(self) -> int:
@@ -152,6 +156,7 @@ class A3BaseCompositePositionAction(ActionTerm):
         # apply_actions is called once per physics substep.  Reusing the exact
         # target implements the approved causal 50 Hz -> 200 Hz ZOH transport.
         self._asset.set_joint_position_target(self._full_joint_targets)
+        self._asset.set_joint_velocity_target(self._full_joint_velocity_targets)
 
 
 @configclass
@@ -253,6 +258,7 @@ class A3StrikeConditionedBaseCompositePositionAction(A3BaseCompositePositionActi
         reference_full = motion_cmd.joint_pos
 
         self._full_joint_targets[:] = self._asset.data.default_joint_pos
+        self._full_joint_velocity_targets.zero_()
         self._full_joint_targets[:, self._strike_joint_ids_tensor] = reference_full[
             :, self._strike_joint_ids_tensor
         ]
@@ -350,6 +356,8 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
             (self.num_envs, len(self._upper_joint_ids)), device=self.device
         )
         self._upper_processed_actions = torch.zeros_like(self._upper_raw_actions)
+        self._upper_velocity_joint_indices = self._resolve_upper_velocity_indices()
+        self._upper_velocity_targets = torch.zeros_like(self._upper_raw_actions)
         env.f0_upper_last_action = self._upper_raw_actions.clone()
 
     @property
@@ -360,9 +368,24 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
     def upper_processed_actions(self) -> torch.Tensor:
         return self._upper_processed_actions
 
-    def _upper_reference(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
-        """Gather the same lead-compensated raw motion reference as model_900."""
-        query = time_steps.float().unsqueeze(-1) + self._upper_lead.unsqueeze(0)
+    def _resolve_upper_velocity_indices(self) -> torch.Tensor:
+        """Resolve the explicitly opt-in velocity-feedforward joints once."""
+        configured = tuple(getattr(self.cfg, "joint_velocity_feedforward_joint_names", ()) or ())
+        if not configured:
+            return torch.empty(0, dtype=torch.long, device=self.device)
+        unknown = sorted(set(configured) - set(self.cfg.upper_joint_names))
+        if unknown:
+            raise ValueError(f"Velocity-feedforward joints are not upper joints: {unknown}")
+        return torch.tensor(
+            [self.cfg.upper_joint_names.index(name) for name in configured],
+            dtype=torch.long,
+            device=self.device,
+        )
+
+    def _sample_upper_motion(
+        self, motion_cmd, query: torch.Tensor
+    ) -> torch.Tensor:
+        """Sample raw upper joint positions without prelude or residual logic."""
         if motion_cmd._use_motion_library:
             lengths = motion_cmd.motion.motion_lengths[motion_cmd.motion_ids]
             full = motion_cmd.motion.joint_pos[motion_cmd.motion_ids]
@@ -381,6 +404,12 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
         lead_reference = ref0 + alpha * (ref1 - ref0)
         joint_ids = self._upper_joint_ids_tensor.view(1, -1).expand(query.shape[0], -1)
         lead_reference = lead_reference.gather(2, joint_ids.unsqueeze(-1)).squeeze(-1)
+        return lead_reference
+
+    def _upper_reference(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
+        """Gather the same lead-compensated raw motion reference as model_900."""
+        query = time_steps.float().unsqueeze(-1) + self._upper_lead.unsqueeze(0)
+        lead_reference = self._sample_upper_motion(motion_cmd, query)
 
         release_steps = int(getattr(self.cfg, "upper_prelude_release_steps", 0))
         if release_steps <= 0:
@@ -394,6 +423,58 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
         release = (time_steps.float() / float(release_steps)).clamp(0.0, 1.0).unsqueeze(-1)
         blended = no_lead + release * (lead_reference - no_lead)
         return torch.where(in_prelude.unsqueeze(-1), no_lead, blended)
+
+    def _upper_velocity_reference(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
+        """Return an optional, finite-difference upper joint velocity target.
+
+        ``position_lead`` is contract A: sample velocity at the same phase as
+        the lead-compensated position target.  ``task_phase`` is contract B:
+        retain the task-phase velocity while position remains lead compensated.
+        Both modes use the raw runtime joint trajectory, never the inconsistent
+        NPZ velocity fields.  The finite tail is clamped, so this path cannot
+        wrap a strike into its next repetition.
+        """
+        self._upper_velocity_targets.zero_()
+        mode = str(getattr(self.cfg, "joint_velocity_feedforward_mode", "none"))
+        beta = float(getattr(self.cfg, "joint_velocity_feedforward_beta", 0.0))
+        if mode == "none" or beta == 0.0 or self._upper_velocity_joint_indices.numel() == 0:
+            return self._upper_velocity_targets
+        if mode not in {"position_lead", "task_phase"}:
+            raise ValueError(
+                "joint_velocity_feedforward_mode must be one of "
+                "'none', 'position_lead', or 'task_phase'"
+            )
+
+        if mode == "position_lead":
+            phase = time_steps.float().unsqueeze(-1) + self._upper_lead.unsqueeze(0)
+        else:
+            phase = time_steps.float().unsqueeze(-1).expand(-1, len(self._upper_joint_ids))
+        control_dt = float(self._env.cfg.decimation * self._env.cfg.sim.dt)
+        if control_dt <= 0.0:
+            raise RuntimeError(f"Invalid control dt for velocity feedforward: {control_dt}")
+        before = self._sample_upper_motion(motion_cmd, phase - 1.0)
+        after = self._sample_upper_motion(motion_cmd, phase + 1.0)
+        velocity = (after - before) / (2.0 * control_dt)
+
+        # Suppress the prelude, then smoothly remove the target velocity after
+        # impact.  A hard hit->hit+1 zero would create a torque impulse.
+        in_prelude = motion_cmd.prelude_elapsed_steps < int(motion_cmd.prelude_steps)
+        if motion_cmd._use_motion_library:
+            hit = motion_cmd.motion.hit_frame[motion_cmd.motion_ids]
+        else:
+            hit = torch.full_like(time_steps, int(motion_cmd.motion.hit_frame[0]))
+        decay_steps = int(getattr(self.cfg, "joint_velocity_feedforward_post_hit_decay_steps", 6))
+        if decay_steps < 1:
+            raise ValueError("joint_velocity_feedforward_post_hit_decay_steps must be >= 1")
+        post_hit = (time_steps - hit).clamp(min=0).to(dtype=velocity.dtype)
+        u = (post_hit / float(decay_steps)).clamp(0.0, 1.0)
+        smooth = u * u * (3.0 - 2.0 * u)
+        phase_gate = (1.0 - smooth).unsqueeze(-1)
+        velocity = torch.where(in_prelude.unsqueeze(-1), torch.zeros_like(velocity), velocity * phase_gate)
+        self._upper_velocity_targets[:, self._upper_velocity_joint_indices] = (
+            beta * velocity[:, self._upper_velocity_joint_indices]
+        )
+        return self._upper_velocity_targets
 
     def process_actions(self, actions: torch.Tensor):
         # Reuse the reviewed Stage-A/Base14 leg mask, gate, nominal reference,
@@ -417,6 +498,9 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
             raw_gate = torch.where(in_prelude.unsqueeze(-1), torch.zeros_like(release), release)
         self._upper_processed_actions[:] = reference + raw_gate * self._upper_raw_actions * self._upper_scale
         self._full_joint_targets[:, self._upper_joint_ids_tensor] = self._upper_processed_actions
+        self._full_joint_velocity_targets[:, self._upper_joint_ids_tensor] = self._upper_velocity_reference(
+            motion_cmd, motion_cmd.time_steps
+        )
         if self.cfg.clip_to_soft_joint_limits:
             limits = self._asset.data.soft_joint_pos_limits
             self._full_joint_targets[:] = torch.clamp(
@@ -439,6 +523,12 @@ class A3F0UpperBaseCompositePositionActionCfg(A3StrikeConditionedBaseCompositePo
     preserve_order: bool = True
     reference_lookahead_steps: int = 0
     joint_reference_lookahead_steps: dict[str, float] = {}
+    # Optional target-velocity feedforward for the implicit PD actuator.  The
+    # default retains the historical position-only V2 execution contract.
+    joint_velocity_feedforward_mode: str = "none"
+    joint_velocity_feedforward_beta: float = 0.0
+    joint_velocity_feedforward_joint_names: tuple[str, ...] = ()
+    joint_velocity_feedforward_post_hit_decay_steps: int = 6
 
 
 class _FrozenCheckpointActor:
@@ -578,6 +668,7 @@ class A3FrozenStageAUpperCorrectionAction(A3F1FrozenUpperBaseCompositePositionAc
                 lower[:, index] *= gate
         self._legacy_bounded[:] = self._bound_actions(lower)
         self._full_joint_targets[:] = self._asset.data.default_joint_pos
+        self._full_joint_velocity_targets.zero_()
         base_default = self._asset.data.default_joint_pos[:, self._base_joint_ids_tensor]
         self._full_joint_targets[:, self._base_joint_ids_tensor] = base_default + self._legacy_bounded * self._scale
 
@@ -594,6 +685,9 @@ class A3FrozenStageAUpperCorrectionAction(A3F1FrozenUpperBaseCompositePositionAc
             primary * self._upper_scale + self._raw_actions * self._correction_scale
         )
         self._full_joint_targets[:, self._upper_joint_ids_tensor] = self._upper_processed_actions
+        self._full_joint_velocity_targets[:, self._upper_joint_ids_tensor] = self._upper_velocity_reference(
+            motion, motion.time_steps
+        )
         limits = self._asset.data.soft_joint_pos_limits
         self._full_joint_targets[:] = torch.clamp(self._full_joint_targets, min=limits[..., 0], max=limits[..., 1])
         self._upper_processed_actions[:] = self._full_joint_targets[:, self._upper_joint_ids_tensor]
@@ -692,6 +786,7 @@ class A3FrozenStageAJointCoordinatorAction(A3F1FrozenUpperBaseCompositePositionA
         # Reproduce the validated legacy support target first, then let only
         # the new 12-D leg correction perturb its physical target.
         self._full_joint_targets[:] = self._asset.data.default_joint_pos
+        self._full_joint_velocity_targets.zero_()
         base_default = self._asset.data.default_joint_pos[:, self._base_joint_ids_tensor]
         self._full_joint_targets[:, self._base_joint_ids_tensor] = base_default + legacy_leg * self._scale
         leg_delta = self._raw_actions[:, :12] * self._leg_correction_scale
@@ -709,6 +804,9 @@ class A3FrozenStageAJointCoordinatorAction(A3F1FrozenUpperBaseCompositePositionA
             primary * self._upper_scale + upper_delta * self._upper_correction_scale
         )
         self._full_joint_targets[:, self._upper_joint_ids_tensor] = self._upper_processed_actions
+        self._full_joint_velocity_targets[:, self._upper_joint_ids_tensor] = self._upper_velocity_reference(
+            motion, motion.time_steps
+        )
 
         limits = self._asset.data.soft_joint_pos_limits
         self._full_joint_targets[:] = torch.clamp(self._full_joint_targets, min=limits[..., 0], max=limits[..., 1])

@@ -61,6 +61,8 @@ def _run_play(cfg, simulation_app):
     env_cfg = parse_env_cfg(task_id, device=str(cfg.device), num_envs=num_envs)
     _apply_task_overrides(env_cfg, cfg.task)
     env_cfg.sim.device = str(cfg.device)
+    # Keep visual replay aligned with train.py's deterministic paired audits.
+    env_cfg.seed = int(cfg.seed)
 
     # Optional diagnostic table: extend the *original training scene* with a
     # static tabletop.  Do not replace the training scene with the match scene,
