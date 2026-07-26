@@ -66,6 +66,40 @@ def racket_velocity_tracking_exp(env: ManagerBasedRLEnv, command_name: str, std:
     return torch.exp(-error / std**2) * cmd.strike_temporal_weight()
 
 
+def racket_velocity_tracking_position_gated_exp(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    velocity_std: float,
+    position_threshold: float,
+    position_excess_std: float,
+) -> torch.Tensor:
+    """Improve impact speed only while the racket remains in the hit corridor.
+
+    Velocity-only shaping let the V3 coordinator trade exact placement for a
+    small speed improvement.  This term is fully active inside the accepted
+    placement radius, then rapidly fades as placement moves outside it.
+    """
+    cmd = _cmd(env, command_name)
+    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed"):
+        target_pos_now = cmd.racket_target_pos_w
+    else:
+        target_pos_now = cmd.racket_target_pos_w - cmd.racket_target_vel_w * cmd.time_to_strike.unsqueeze(-1)
+
+    position_error = torch.linalg.vector_norm(cmd.racket_pos_w - target_pos_now, dim=-1)
+    velocity_error_sq = torch.sum(torch.square(cmd.racket_lin_vel_w - cmd.racket_target_vel_w), dim=-1)
+    velocity_reward = torch.exp(-velocity_error_sq / velocity_std**2)
+    position_excess = torch.relu(position_error - position_threshold)
+    position_gate = torch.exp(-torch.square(position_excess) / position_excess_std**2)
+    raw_reward = velocity_reward * position_gate
+    reward = raw_reward * cmd.strike_temporal_weight()
+
+    if "racket_velocity_position_gated_reward_raw" in cmd.metrics:
+        cmd.metrics["racket_velocity_position_gated_reward_raw"] = raw_reward
+        cmd.metrics["racket_velocity_position_gated_velocity_raw"] = velocity_reward
+        cmd.metrics["racket_velocity_position_gated_position_gate"] = position_gate
+    return reward
+
+
 def racket_normal_tracking_exp(env: ManagerBasedRLEnv, command_name: str, std: float) -> torch.Tensor:
     """Track racket face-normal orientation near the strike time. ``std`` is in radians."""
     cmd = _cmd(env, command_name)

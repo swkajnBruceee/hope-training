@@ -1,0 +1,4873 @@
+{
+  "purpose": "deterministic V2 pre-hit actuator trace",
+  "checkpoint": "logs/rsl_rl/agibot_a3_joint_coordinator_v2_20260726/2026-07-26_18-10-06_joint_coordinator_v2_256x1000/model_900.pt",
+  "task": "HOPE-FloatingJointCoordinatorV2-AgibotA3-v0",
+  "joint_names": [
+    "right_shoulder_pitch_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint"
+  ],
+  "window": "hit-15 through hit+2 control steps",
+  "rows": [
+    {
+      "motion_id": 0,
+      "control_step": 65,
+      "motion_step": 15,
+      "relative_to_hit_steps": -15,
+      "racket_actual_velocity_mps": [
+        -0.6227976083755493,
+        -0.50870680809021,
+        0.36357080936431885
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7797780632972717,
+          "target_pos_rad": -0.9297099113464355,
+          "actual_pos_rad": -0.7621380090713501,
+          "actual_vel_radps": -0.611503005027771,
+          "applied_torque_nm": -4.997294902801514,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.0605605840682983,
+          "target_pos_rad": 0.9387474656105042,
+          "actual_pos_rad": 1.030444622039795,
+          "actual_vel_radps": -0.5565615892410278,
+          "applied_torque_nm": -1.6985583305358887,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5194356441497803,
+          "target_pos_rad": 0.5467056632041931,
+          "actual_pos_rad": 0.6309383511543274,
+          "actual_vel_radps": 0.06380880624055862,
+          "applied_torque_nm": -2.661628484725952,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 65,
+      "motion_step": 15,
+      "relative_to_hit_steps": -15,
+      "racket_actual_velocity_mps": [
+        -0.5258565545082092,
+        -0.3013865351676941,
+        0.5841474533081055
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.2852030992507935,
+          "target_pos_rad": -1.4365915060043335,
+          "actual_pos_rad": -1.2073092460632324,
+          "actual_vel_radps": -0.650691032409668,
+          "applied_torque_nm": -7.316497325897217,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3551164865493774,
+          "target_pos_rad": 1.2330788373947144,
+          "actual_pos_rad": 1.3744431734085083,
+          "actual_vel_radps": -0.5461028814315796,
+          "applied_torque_nm": -3.2095947265625,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.3202427625656128,
+          "target_pos_rad": 0.345811665058136,
+          "actual_pos_rad": 0.39932742714881897,
+          "actual_vel_radps": -0.045099467039108276,
+          "applied_torque_nm": -1.5606621503829956,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 65,
+      "motion_step": 15,
+      "relative_to_hit_steps": -15,
+      "racket_actual_velocity_mps": [
+        -0.6150001287460327,
+        -0.35772839188575745,
+        0.11065743863582611
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.6995661854743958,
+          "target_pos_rad": -0.8086385726928711,
+          "actual_pos_rad": -0.6689602136611938,
+          "actual_vel_radps": -0.47540968656539917,
+          "applied_torque_nm": -4.271580696105957,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3476309776306152,
+          "target_pos_rad": 1.2421753406524658,
+          "actual_pos_rad": 1.3288328647613525,
+          "actual_vel_radps": -0.48736509680747986,
+          "applied_torque_nm": -1.6865220069885254,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.266063928604126,
+          "target_pos_rad": 0.29703155159950256,
+          "actual_pos_rad": 0.40654486417770386,
+          "actual_vel_radps": 0.11458548158407211,
+          "applied_torque_nm": -3.5286905765533447,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 65,
+      "motion_step": 15,
+      "relative_to_hit_steps": -15,
+      "racket_actual_velocity_mps": [
+        -0.5919504165649414,
+        -0.20536492764949799,
+        0.3437538743019104
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9676359295845032,
+          "target_pos_rad": -1.1055786609649658,
+          "actual_pos_rad": -0.9280239939689636,
+          "actual_vel_radps": -0.6008392572402954,
+          "applied_torque_nm": -5.432316780090332,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.4216105937957764,
+          "target_pos_rad": 1.3030953407287598,
+          "actual_pos_rad": 1.4267356395721436,
+          "actual_vel_radps": -0.4563266336917877,
+          "applied_torque_nm": -2.8749916553497314,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.07698478549718857,
+          "target_pos_rad": 0.10870510339736938,
+          "actual_pos_rad": 0.19083231687545776,
+          "actual_vel_radps": -0.047955844551324844,
+          "applied_torque_nm": -2.3522136211395264,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 65,
+      "motion_step": 15,
+      "relative_to_hit_steps": -15,
+      "racket_actual_velocity_mps": [
+        -0.9900425672531128,
+        -0.5364149212837219,
+        0.16740834712982178
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7122164964675903,
+          "target_pos_rad": -0.9221945405006409,
+          "actual_pos_rad": -0.7300887703895569,
+          "actual_vel_radps": -0.8511217832565308,
+          "applied_torque_nm": -5.329095840454102,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.9098986387252808,
+          "target_pos_rad": 1.6977983713150024,
+          "actual_pos_rad": 1.860789179801941,
+          "actual_vel_radps": -1.1015647649765015,
+          "applied_torque_nm": -2.8754003047943115,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.2203027755022049,
+          "target_pos_rad": -0.19046711921691895,
+          "actual_pos_rad": -0.07402301579713821,
+          "actual_vel_radps": -0.007743812166154385,
+          "applied_torque_nm": -3.466108798980713,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 65,
+      "motion_step": 15,
+      "relative_to_hit_steps": -15,
+      "racket_actual_velocity_mps": [
+        -0.8608112335205078,
+        -0.6189683675765991,
+        0.33012789487838745
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0430430173873901,
+          "target_pos_rad": -1.2401244640350342,
+          "actual_pos_rad": -1.0399231910705566,
+          "actual_vel_radps": -0.9937230348587036,
+          "applied_torque_nm": -5.2338080406188965,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.924831509590149,
+          "target_pos_rad": 1.758689522743225,
+          "actual_pos_rad": 1.9064940214157104,
+          "actual_vel_radps": -0.872295081615448,
+          "applied_torque_nm": -2.857320547103882,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.20712512731552124,
+          "target_pos_rad": -0.1819179654121399,
+          "actual_pos_rad": -0.08604954183101654,
+          "actual_vel_radps": 0.09871967881917953,
+          "applied_torque_nm": -3.031240940093994,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 66,
+      "motion_step": 16,
+      "relative_to_hit_steps": -14,
+      "racket_actual_velocity_mps": [
+        -0.6908305287361145,
+        -0.482280969619751,
+        0.3903360366821289
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7832231521606445,
+          "target_pos_rad": -0.9503390192985535,
+          "actual_pos_rad": -0.7747825980186462,
+          "actual_vel_radps": -0.6321662664413452,
+          "applied_torque_nm": -5.236443042755127,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.0574371814727783,
+          "target_pos_rad": 0.9185709953308105,
+          "actual_pos_rad": 1.0183736085891724,
+          "actual_vel_radps": -0.6264783143997192,
+          "applied_torque_nm": -1.8390281200408936,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5210277438163757,
+          "target_pos_rad": 0.5502734780311584,
+          "actual_pos_rad": 0.6328492164611816,
+          "actual_vel_radps": 0.08955220878124237,
+          "applied_torque_nm": -2.68729305267334,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 66,
+      "motion_step": 16,
+      "relative_to_hit_steps": -14,
+      "racket_actual_velocity_mps": [
+        -0.5084774494171143,
+        -0.23260042071342468,
+        0.5729695558547974
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.288801670074463,
+          "target_pos_rad": -1.4632562398910522,
+          "actual_pos_rad": -1.2194043397903442,
+          "actual_vel_radps": -0.6076804995536804,
+          "applied_torque_nm": -8.056524276733398,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3523045778274536,
+          "target_pos_rad": 1.2135164737701416,
+          "actual_pos_rad": 1.3629058599472046,
+          "actual_vel_radps": -0.5322551727294922,
+          "applied_torque_nm": -3.4628219604492188,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.32439741492271423,
+          "target_pos_rad": 0.3496144115924835,
+          "actual_pos_rad": 0.3982183635234833,
+          "actual_vel_radps": -0.11427769064903259,
+          "applied_torque_nm": -1.3086788654327393,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 66,
+      "motion_step": 16,
+      "relative_to_hit_steps": -14,
+      "racket_actual_velocity_mps": [
+        -0.6739380359649658,
+        -0.3759469985961914,
+        0.1726987659931183
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.701496422290802,
+          "target_pos_rad": -0.8191214799880981,
+          "actual_pos_rad": -0.6791737675666809,
+          "actual_vel_radps": -0.5147168040275574,
+          "applied_torque_nm": -4.149593830108643,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3452636003494263,
+          "target_pos_rad": 1.2249993085861206,
+          "actual_pos_rad": 1.3179397583007812,
+          "actual_vel_radps": -0.5826841592788696,
+          "applied_torque_nm": -1.73844313621521,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.2661404311656952,
+          "target_pos_rad": 0.2960728704929352,
+          "actual_pos_rad": 0.4083060324192047,
+          "actual_vel_radps": 0.05100499093532562,
+          "applied_torque_nm": -3.468071937561035,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 66,
+      "motion_step": 16,
+      "relative_to_hit_steps": -14,
+      "racket_actual_velocity_mps": [
+        -0.6185603737831116,
+        -0.18798547983169556,
+        0.3602333664894104
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9706408977508545,
+          "target_pos_rad": -1.1264104843139648,
+          "actual_pos_rad": -0.9391074180603027,
+          "actual_vel_radps": -0.5707837343215942,
+          "applied_torque_nm": -5.851930141448975,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.4190398454666138,
+          "target_pos_rad": 1.2834858894348145,
+          "actual_pos_rad": 1.4158189296722412,
+          "actual_vel_radps": -0.5218579769134521,
+          "applied_torque_nm": -3.0185232162475586,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.07898774743080139,
+          "target_pos_rad": 0.11036495864391327,
+          "actual_pos_rad": 0.19062452018260956,
+          "actual_vel_radps": -0.021184563636779785,
+          "applied_torque_nm": -2.3749611377716064,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 66,
+      "motion_step": 16,
+      "relative_to_hit_steps": -14,
+      "racket_actual_velocity_mps": [
+        -1.1135971546173096,
+        -0.5640820860862732,
+        0.2028055638074875
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7178364396095276,
+          "target_pos_rad": -0.9501940011978149,
+          "actual_pos_rad": -0.7477294206619263,
+          "actual_vel_radps": -0.8974064588546753,
+          "applied_torque_nm": -5.6599884033203125,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.9041138887405396,
+          "target_pos_rad": 1.6609728336334229,
+          "actual_pos_rad": 1.8363113403320312,
+          "actual_vel_radps": -1.2577265501022339,
+          "applied_torque_nm": -2.9592418670654297,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.21762824058532715,
+          "target_pos_rad": -0.19052469730377197,
+          "actual_pos_rad": -0.07258647680282593,
+          "actual_vel_radps": 0.04740094393491745,
+          "applied_torque_nm": -3.6014513969421387,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 66,
+      "motion_step": 16,
+      "relative_to_hit_steps": -14,
+      "racket_actual_velocity_mps": [
+        -0.9540712833404541,
+        -0.6237542033195496,
+        0.3805796205997467
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0481833219528198,
+          "target_pos_rad": -1.2716490030288696,
+          "actual_pos_rad": -1.059462308883667,
+          "actual_vel_radps": -0.9791889190673828,
+          "applied_torque_nm": -5.708776473999023,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.9205482006072998,
+          "target_pos_rad": 1.7275722026824951,
+          "actual_pos_rad": 1.8857890367507935,
+          "actual_vel_radps": -1.0805840492248535,
+          "applied_torque_nm": -2.7978360652923584,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.20244914293289185,
+          "target_pos_rad": -0.17613548040390015,
+          "actual_pos_rad": -0.08210398256778717,
+          "actual_vel_radps": 0.15082038938999176,
+          "applied_torque_nm": -3.1106204986572266,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 67,
+      "motion_step": 17,
+      "relative_to_hit_steps": -13,
+      "racket_actual_velocity_mps": [
+        -0.7416637539863586,
+        -0.44495466351509094,
+        0.4209381639957428
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7876142263412476,
+          "target_pos_rad": -0.9729474782943726,
+          "actual_pos_rad": -0.7878299951553345,
+          "actual_vel_radps": -0.6482179760932922,
+          "applied_torque_nm": -5.570070743560791,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.053497552871704,
+          "target_pos_rad": 0.8991217017173767,
+          "actual_pos_rad": 1.0050610303878784,
+          "actual_vel_radps": -0.6693277359008789,
+          "applied_torque_nm": -1.9279956817626953,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5230772495269775,
+          "target_pos_rad": 0.5497591495513916,
+          "actual_pos_rad": 0.6344584226608276,
+          "actual_vel_radps": 0.0232863649725914,
+          "applied_torque_nm": -2.616867780685425,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 67,
+      "motion_step": 17,
+      "relative_to_hit_steps": -13,
+      "racket_actual_velocity_mps": [
+        -0.5297638773918152,
+        -0.1766911894083023,
+        0.5663982033729553
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.293358325958252,
+          "target_pos_rad": -1.4852564334869385,
+          "actual_pos_rad": -1.2324299812316895,
+          "actual_vel_radps": -0.6804103255271912,
+          "applied_torque_nm": -8.187127113342285,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3487154245376587,
+          "target_pos_rad": 1.1967557668685913,
+          "actual_pos_rad": 1.3519495725631714,
+          "actual_vel_radps": -0.5267626047134399,
+          "applied_torque_nm": -3.685788631439209,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.3297363221645355,
+          "target_pos_rad": 0.3517872989177704,
+          "actual_pos_rad": 0.3947596848011017,
+          "actual_vel_radps": -0.22901006042957306,
+          "applied_torque_nm": -0.892389714717865,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 67,
+      "motion_step": 17,
+      "relative_to_hit_steps": -13,
+      "racket_actual_velocity_mps": [
+        -0.7461127638816833,
+        -0.3781559467315674,
+        0.2160125970840454
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7040086388587952,
+          "target_pos_rad": -0.8338965177536011,
+          "actual_pos_rad": -0.6896949410438538,
+          "actual_vel_radps": -0.5153030753135681,
+          "applied_torque_nm": -4.304302215576172,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.342200517654419,
+          "target_pos_rad": 1.207738995552063,
+          "actual_pos_rad": 1.3054264783859253,
+          "actual_vel_radps": -0.6468863487243652,
+          "applied_torque_nm": -1.7373930215835571,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.266322523355484,
+          "target_pos_rad": 0.2976769506931305,
+          "actual_pos_rad": 0.41052836179733276,
+          "actual_vel_radps": 0.09200238436460495,
+          "applied_torque_nm": -3.5754663944244385,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 67,
+      "motion_step": 17,
+      "relative_to_hit_steps": -13,
+      "racket_actual_velocity_mps": [
+        -0.6261134147644043,
+        -0.17390716075897217,
+        0.38455191254615784
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9744810461997986,
+          "target_pos_rad": -1.1451339721679688,
+          "actual_pos_rad": -0.9501324892044067,
+          "actual_vel_radps": -0.5715790390968323,
+          "applied_torque_nm": -6.2129316329956055,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.415668249130249,
+          "target_pos_rad": 1.2663689851760864,
+          "actual_pos_rad": 1.404007911682129,
+          "actual_vel_radps": -0.5757477879524231,
+          "applied_torque_nm": -3.0545597076416016,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.08165498077869415,
+          "target_pos_rad": 0.10900364816188812,
+          "actual_pos_rad": 0.18976356089115143,
+          "actual_vel_radps": -0.09235282987356186,
+          "applied_torque_nm": -2.277038812637329,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 67,
+      "motion_step": 17,
+      "relative_to_hit_steps": -13,
+      "racket_actual_velocity_mps": [
+        -1.262524127960205,
+        -0.5872762203216553,
+        0.2536255717277527
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7250056266784668,
+          "target_pos_rad": -0.9907190799713135,
+          "actual_pos_rad": -0.7684524059295654,
+          "actual_vel_radps": -1.073913812637329,
+          "applied_torque_nm": -5.982997417449951,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8966349363327026,
+          "target_pos_rad": 1.6202876567840576,
+          "actual_pos_rad": 1.809444785118103,
+          "actual_vel_radps": -1.3901101350784302,
+          "applied_torque_nm": -3.1118531227111816,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.21407078206539154,
+          "target_pos_rad": -0.18746966123580933,
+          "actual_pos_rad": -0.06928505003452301,
+          "actual_vel_radps": 0.1645898073911667,
+          "applied_torque_nm": -3.6542611122131348,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 67,
+      "motion_step": 17,
+      "relative_to_hit_steps": -13,
+      "racket_actual_velocity_mps": [
+        -0.998253345489502,
+        -0.583083987236023,
+        0.4560903012752533
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.054675817489624,
+          "target_pos_rad": -1.3044887781143188,
+          "actual_pos_rad": -1.0794893503189087,
+          "actual_vel_radps": -1.0455739498138428,
+          "applied_torque_nm": -6.109877109527588,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.915007472038269,
+          "target_pos_rad": 1.698069453239441,
+          "actual_pos_rad": 1.8624670505523682,
+          "actual_vel_radps": -1.152814507484436,
+          "applied_torque_nm": -2.7817609310150146,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.19641807675361633,
+          "target_pos_rad": -0.17149552702903748,
+          "actual_pos_rad": -0.08016049861907959,
+          "actual_vel_radps": -0.012220993638038635,
+          "applied_torque_nm": -2.7940561771392822,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 68,
+      "motion_step": 18,
+      "relative_to_hit_steps": -12,
+      "racket_actual_velocity_mps": [
+        -0.7964903712272644,
+        -0.40751075744628906,
+        0.430012047290802
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7930102944374084,
+          "target_pos_rad": -0.9993183016777039,
+          "actual_pos_rad": -0.8002527952194214,
+          "actual_vel_radps": -0.5960506200790405,
+          "applied_torque_nm": -6.266645908355713,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.0486905574798584,
+          "target_pos_rad": 0.87629234790802,
+          "actual_pos_rad": 0.9905402660369873,
+          "actual_vel_radps": -0.7300666570663452,
+          "applied_torque_nm": -2.059002161026001,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5256128311157227,
+          "target_pos_rad": 0.5510410070419312,
+          "actual_pos_rad": 0.6352265477180481,
+          "actual_vel_radps": 0.011341452598571777,
+          "applied_torque_nm": -2.5497968196868896,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 68,
+      "motion_step": 18,
+      "relative_to_hit_steps": -12,
+      "racket_actual_velocity_mps": [
+        -0.6216092705726624,
+        -0.12806329131126404,
+        0.5775609612464905
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.298932671546936,
+          "target_pos_rad": -1.5156217813491821,
+          "actual_pos_rad": -1.2469249963760376,
+          "actual_vel_radps": -0.7612051963806152,
+          "applied_torque_nm": -8.655747413635254,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3443005084991455,
+          "target_pos_rad": 1.172813892364502,
+          "actual_pos_rad": 1.3406518697738647,
+          "actual_vel_radps": -0.5691526532173157,
+          "applied_torque_nm": -3.9938786029815674,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.33633342385292053,
+          "target_pos_rad": 0.3558599352836609,
+          "actual_pos_rad": 0.39108410477638245,
+          "actual_vel_radps": -0.15546758472919464,
+          "applied_torque_nm": -0.7300982475280762,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 68,
+      "motion_step": 18,
+      "relative_to_hit_steps": -12,
+      "racket_actual_velocity_mps": [
+        -0.7944580912590027,
+        -0.36337658762931824,
+        0.2777751684188843
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.707139253616333,
+          "target_pos_rad": -0.8522369265556335,
+          "actual_pos_rad": -0.6994936466217041,
+          "actual_vel_radps": -0.45973294973373413,
+          "applied_torque_nm": -4.784475326538086,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3383985757827759,
+          "target_pos_rad": 1.1845251321792603,
+          "actual_pos_rad": 1.290921926498413,
+          "actual_vel_radps": -0.7543918490409851,
+          "applied_torque_nm": -1.8039629459381104,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.2666168212890625,
+          "target_pos_rad": 0.29694831371307373,
+          "actual_pos_rad": 0.41204965114593506,
+          "actual_vel_radps": 0.00861625000834465,
+          "applied_torque_nm": -3.5195555686950684,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 68,
+      "motion_step": 18,
+      "relative_to_hit_steps": -12,
+      "racket_actual_velocity_mps": [
+        -0.6718430519104004,
+        -0.16386465728282928,
+        0.4148804545402527
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9792085289955139,
+          "target_pos_rad": -1.1696131229400635,
+          "actual_pos_rad": -0.9625827670097351,
+          "actual_vel_radps": -0.6665568351745605,
+          "applied_torque_nm": -6.468314170837402,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.4114454984664917,
+          "target_pos_rad": 1.2431492805480957,
+          "actual_pos_rad": 1.3917651176452637,
+          "actual_vel_radps": -0.6170073747634888,
+          "applied_torque_nm": -3.327143669128418,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.08502800017595291,
+          "target_pos_rad": 0.11156503856182098,
+          "actual_pos_rad": 0.18780654668807983,
+          "actual_vel_radps": -0.12287422269582748,
+          "applied_torque_nm": -2.0602269172668457,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 68,
+      "motion_step": 18,
+      "relative_to_hit_steps": -12,
+      "racket_actual_velocity_mps": [
+        -1.4048397541046143,
+        -0.5820724964141846,
+        0.35014307498931885
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.733820915222168,
+          "target_pos_rad": -1.0357840061187744,
+          "actual_pos_rad": -0.7913665771484375,
+          "actual_vel_radps": -1.1867133378982544,
+          "applied_torque_nm": -6.533153533935547,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.887355923652649,
+          "target_pos_rad": 1.5715086460113525,
+          "actual_pos_rad": 1.7791190147399902,
+          "actual_vel_radps": -1.5440348386764526,
+          "applied_torque_nm": -3.3898978233337402,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.20957519114017487,
+          "target_pos_rad": -0.18518659472465515,
+          "actual_pos_rad": -0.0661853551864624,
+          "actual_vel_radps": 0.08402761071920395,
+          "applied_torque_nm": -3.7670204639434814,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 68,
+      "motion_step": 18,
+      "relative_to_hit_steps": -12,
+      "racket_actual_velocity_mps": [
+        -1.0610322952270508,
+        -0.5550073981285095,
+        0.5161639451980591
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0626046657562256,
+          "target_pos_rad": -1.3419429063796997,
+          "actual_pos_rad": -1.1013509035110474,
+          "actual_vel_radps": -1.1479450464248657,
+          "applied_torque_nm": -6.479704856872559,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.9081310033798218,
+          "target_pos_rad": 1.6618175506591797,
+          "actual_pos_rad": 1.8386900424957275,
+          "actual_vel_radps": -1.1807106733322144,
+          "applied_torque_nm": -3.109328031539917,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.18894721567630768,
+          "target_pos_rad": -0.16689486801624298,
+          "actual_pos_rad": -0.08078368753194809,
+          "actual_vel_radps": -0.07660733163356781,
+          "applied_torque_nm": -2.460231304168701,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 69,
+      "motion_step": 19,
+      "relative_to_hit_steps": -11,
+      "racket_actual_velocity_mps": [
+        -0.8629111647605896,
+        -0.38131183385849,
+        0.43738722801208496
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7994705438613892,
+          "target_pos_rad": -1.0295052528381348,
+          "actual_pos_rad": -0.8125006556510925,
+          "actual_vel_radps": -0.6208016276359558,
+          "applied_torque_nm": -6.964041709899902,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.0429651737213135,
+          "target_pos_rad": 0.8509131073951721,
+          "actual_pos_rad": 0.9751750826835632,
+          "actual_vel_radps": -0.7656221389770508,
+          "applied_torque_nm": -2.2886617183685303,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5286630988121033,
+          "target_pos_rad": 0.551896333694458,
+          "actual_pos_rad": 0.6360588669776917,
+          "actual_vel_radps": 0.03502509370446205,
+          "applied_torque_nm": -2.5744802951812744,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 69,
+      "motion_step": 19,
+      "relative_to_hit_steps": -11,
+      "racket_actual_velocity_mps": [
+        -0.7365635633468628,
+        -0.08216960728168488,
+        0.6066077351570129
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.3055847883224487,
+          "target_pos_rad": -1.5463021993637085,
+          "actual_pos_rad": -1.2631700038909912,
+          "actual_vel_radps": -0.8710048794746399,
+          "applied_torque_nm": -8.96647834777832,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3390111923217773,
+          "target_pos_rad": 1.148393988609314,
+          "actual_pos_rad": 1.3281291723251343,
+          "actual_vel_radps": -0.6361801028251648,
+          "applied_torque_nm": -4.231021404266357,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.3442627489566803,
+          "target_pos_rad": 0.3570270240306854,
+          "actual_pos_rad": 0.3891865313053131,
+          "actual_vel_radps": -0.05845928564667702,
+          "applied_torque_nm": -0.8133918046951294,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 69,
+      "motion_step": 19,
+      "relative_to_hit_steps": -11,
+      "racket_actual_velocity_mps": [
+        -0.8405613899230957,
+        -0.3445752263069153,
+        0.32393285632133484
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7109246253967285,
+          "target_pos_rad": -0.8790847063064575,
+          "actual_pos_rad": -0.7085369229316711,
+          "actual_vel_radps": -0.4616314768791199,
+          "applied_torque_nm": -5.574428558349609,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3338141441345215,
+          "target_pos_rad": 1.1586246490478516,
+          "actual_pos_rad": 1.2750946283340454,
+          "actual_vel_radps": -0.7881051898002625,
+          "applied_torque_nm": -2.0069284439086914,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.26702988147735596,
+          "target_pos_rad": 0.2987211346626282,
+          "actual_pos_rad": 0.41287294030189514,
+          "actual_vel_radps": 0.01222759485244751,
+          "applied_torque_nm": -3.4758520126342773,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 69,
+      "motion_step": 19,
+      "relative_to_hit_steps": -11,
+      "racket_actual_velocity_mps": [
+        -0.7591536641120911,
+        -0.15155315399169922,
+        0.45189082622528076
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9848755598068237,
+          "target_pos_rad": -1.196986198425293,
+          "actual_pos_rad": -0.976780891418457,
+          "actual_vel_radps": -0.7535631060600281,
+          "applied_torque_nm": -6.7529401779174805,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.4063215255737305,
+          "target_pos_rad": 1.2172249555587769,
+          "actual_pos_rad": 1.378345251083374,
+          "actual_vel_radps": -0.6888265013694763,
+          "applied_torque_nm": -3.5803756713867188,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.08914832770824432,
+          "target_pos_rad": 0.11626947671175003,
+          "actual_pos_rad": 0.18656106293201447,
+          "actual_vel_radps": -0.0423995703458786,
+          "applied_torque_nm": -1.9945249557495117,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 69,
+      "motion_step": 19,
+      "relative_to_hit_steps": -11,
+      "racket_actual_velocity_mps": [
+        -1.5542675256729126,
+        -0.5629071593284607,
+        0.4649081826210022
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7443791031837463,
+          "target_pos_rad": -1.088453769683838,
+          "actual_pos_rad": -0.8168045878410339,
+          "actual_vel_radps": -1.334437370300293,
+          "applied_torque_nm": -7.2462615966796875,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8761708736419678,
+          "target_pos_rad": 1.515089988708496,
+          "actual_pos_rad": 1.7454923391342163,
+          "actual_vel_radps": -1.7202509641647339,
+          "applied_torque_nm": -3.7589621543884277,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.2040863037109375,
+          "target_pos_rad": -0.18320126831531525,
+          "actual_pos_rad": -0.06469572335481644,
+          "actual_vel_radps": 0.012901936657726765,
+          "applied_torque_nm": -3.6002397537231445,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 69,
+      "motion_step": 19,
+      "relative_to_hit_steps": -11,
+      "racket_actual_velocity_mps": [
+        -1.1515823602676392,
+        -0.5415865778923035,
+        0.557493269443512
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0720545053482056,
+          "target_pos_rad": -1.385453224182129,
+          "actual_pos_rad": -1.1256815195083618,
+          "actual_vel_radps": -1.2899285554885864,
+          "applied_torque_nm": -6.88135290145874,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.899839997291565,
+          "target_pos_rad": 1.6209681034088135,
+          "actual_pos_rad": 1.8138420581817627,
+          "actual_vel_radps": -1.2425376176834106,
+          "applied_torque_nm": -3.4766643047332764,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.17995189130306244,
+          "target_pos_rad": -0.16092033684253693,
+          "actual_pos_rad": -0.08207277208566666,
+          "actual_vel_radps": -0.08199462294578552,
+          "applied_torque_nm": -2.20611834526062,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 70,
+      "motion_step": 20,
+      "relative_to_hit_steps": -10,
+      "racket_actual_velocity_mps": [
+        -0.9198715686798096,
+        -0.3465867042541504,
+        0.4323025345802307
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8070540428161621,
+          "target_pos_rad": -1.0308834314346313,
+          "actual_pos_rad": -0.8253029584884644,
+          "actual_vel_radps": -0.6725947856903076,
+          "applied_torque_nm": -6.385167121887207,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.0362704992294312,
+          "target_pos_rad": 0.8488466143608093,
+          "actual_pos_rad": 0.9608036875724792,
+          "actual_vel_radps": -0.6781252026557922,
+          "applied_torque_nm": -2.0648698806762695,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5322566032409668,
+          "target_pos_rad": 0.5563186407089233,
+          "actual_pos_rad": 0.6375387907028198,
+          "actual_vel_radps": 0.0777570903301239,
+          "applied_torque_nm": -2.568878173828125,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 70,
+      "motion_step": 20,
+      "relative_to_hit_steps": -10,
+      "racket_actual_velocity_mps": [
+        -0.8308703303337097,
+        -0.03584490716457367,
+        0.6307880282402039
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.3133745193481445,
+          "target_pos_rad": -1.5449419021606445,
+          "actual_pos_rad": -1.2811157703399658,
+          "actual_vel_radps": -0.903299868106842,
+          "applied_torque_nm": -7.9672040939331055,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.332798957824707,
+          "target_pos_rad": 1.1474734544754028,
+          "actual_pos_rad": 1.3144854307174683,
+          "actual_vel_radps": -0.7143217325210571,
+          "applied_torque_nm": -3.7499184608459473,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.35359829664230347,
+          "target_pos_rad": 0.355823278427124,
+          "actual_pos_rad": 0.38886192440986633,
+          "actual_vel_radps": 0.032654423266649246,
+          "applied_torque_nm": -0.9492618441581726,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 70,
+      "motion_step": 20,
+      "relative_to_hit_steps": -10,
+      "racket_actual_velocity_mps": [
+        -0.850151777267456,
+        -0.3115224242210388,
+        0.36582911014556885
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7154010534286499,
+          "target_pos_rad": -0.8767063021659851,
+          "actual_pos_rad": -0.7189909219741821,
+          "actual_vel_radps": -0.551436185836792,
+          "applied_torque_nm": -4.814037322998047,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3284037113189697,
+          "target_pos_rad": 1.1602272987365723,
+          "actual_pos_rad": 1.2605018615722656,
+          "actual_vel_radps": -0.7027066946029663,
+          "applied_torque_nm": -1.6718289852142334,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.26756832003593445,
+          "target_pos_rad": 0.295810341835022,
+          "actual_pos_rad": 0.4120565354824066,
+          "actual_vel_radps": -0.11173678934574127,
+          "applied_torque_nm": -3.337717294692993,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 70,
+      "motion_step": 20,
+      "relative_to_hit_steps": -10,
+      "racket_actual_velocity_mps": [
+        -0.823969304561615,
+        -0.12869444489479065,
+        0.4675595164299011
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9915343523025513,
+          "target_pos_rad": -1.1989527940750122,
+          "actual_pos_rad": -0.9922429323196411,
+          "actual_vel_radps": -0.7815173864364624,
+          "applied_torque_nm": -6.074225425720215,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.400246500968933,
+          "target_pos_rad": 1.216617226600647,
+          "actual_pos_rad": 1.364295482635498,
+          "actual_vel_radps": -0.7037521600723267,
+          "applied_torque_nm": -3.1363470554351807,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.09405746310949326,
+          "target_pos_rad": 0.12166452407836914,
+          "actual_pos_rad": 0.1872202754020691,
+          "actual_vel_radps": 0.05486459657549858,
+          "applied_torque_nm": -2.036508321762085,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 70,
+      "motion_step": 20,
+      "relative_to_hit_steps": -10,
+      "racket_actual_velocity_mps": [
+        -1.6319646835327148,
+        -0.5158822536468506,
+        0.5483294129371643
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7567769289016724,
+          "target_pos_rad": -1.090543270111084,
+          "actual_pos_rad": -0.844971776008606,
+          "actual_vel_radps": -1.4326977729797363,
+          "applied_torque_nm": -5.861723899841309,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8629740476608276,
+          "target_pos_rad": 1.5149141550064087,
+          "actual_pos_rad": 1.7110728025436401,
+          "actual_vel_radps": -1.7030469179153442,
+          "applied_torque_nm": -2.7149393558502197,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.19754894077777863,
+          "target_pos_rad": -0.17759856581687927,
+          "actual_pos_rad": -0.06349945068359375,
+          "actual_vel_radps": 0.04720338433980942,
+          "applied_torque_nm": -3.497025966644287,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 70,
+      "motion_step": 20,
+      "relative_to_hit_steps": -10,
+      "racket_actual_velocity_mps": [
+        -1.2225910425186157,
+        -0.5314846038818359,
+        0.5792298316955566
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0831098556518555,
+          "target_pos_rad": -1.3872294425964355,
+          "actual_pos_rad": -1.1522561311721802,
+          "actual_vel_radps": -1.3609691858291626,
+          "applied_torque_nm": -5.62037992477417,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8900560140609741,
+          "target_pos_rad": 1.6206309795379639,
+          "actual_pos_rad": 1.7892476320266724,
+          "actual_vel_radps": -1.2184988260269165,
+          "applied_torque_nm": -2.7937591075897217,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.16934742033481598,
+          "target_pos_rad": -0.15656766295433044,
+          "actual_pos_rad": -0.08248478174209595,
+          "actual_vel_radps": -0.006082246080040932,
+          "applied_torque_nm": -2.17289400100708,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 71,
+      "motion_step": 21,
+      "relative_to_hit_steps": -9,
+      "racket_actual_velocity_mps": [
+        -0.9595552682876587,
+        -0.2974224388599396,
+        0.4200054407119751
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8158199787139893,
+          "target_pos_rad": -1.0323631763458252,
+          "actual_pos_rad": -0.8392433524131775,
+          "actual_vel_radps": -0.7353224754333496,
+          "applied_torque_nm": -5.686006546020508,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.0285553932189941,
+          "target_pos_rad": 0.8484128713607788,
+          "actual_pos_rad": 0.9479466676712036,
+          "actual_vel_radps": -0.6063318252563477,
+          "applied_torque_nm": -1.848656415939331,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5364218950271606,
+          "target_pos_rad": 0.5602632164955139,
+          "actual_pos_rad": 0.6393865942955017,
+          "actual_vel_radps": 0.07969368994235992,
+          "applied_torque_nm": -2.5317323207855225,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 71,
+      "motion_step": 21,
+      "relative_to_hit_steps": -9,
+      "racket_actual_velocity_mps": [
+        -0.8898930549621582,
+        0.02236388623714447,
+        0.5989227294921875
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.3223615884780884,
+          "target_pos_rad": -1.5490449666976929,
+          "actual_pos_rad": -1.2989070415496826,
+          "actual_vel_radps": -0.8746641874313354,
+          "applied_torque_nm": -7.522832870483398,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3256150484085083,
+          "target_pos_rad": 1.145491600036621,
+          "actual_pos_rad": 1.300049066543579,
+          "actual_vel_radps": -0.7106989622116089,
+          "applied_torque_nm": -3.315263509750366,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.36441415548324585,
+          "target_pos_rad": 0.3664877712726593,
+          "actual_pos_rad": 0.391538143157959,
+          "actual_vel_radps": 0.1848939210176468,
+          "applied_torque_nm": -1.044567346572876,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 71,
+      "motion_step": 21,
+      "relative_to_hit_steps": -9,
+      "racket_actual_velocity_mps": [
+        -0.859310507774353,
+        -0.27776360511779785,
+        0.38649940490722656
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7206051349639893,
+          "target_pos_rad": -0.8805484175682068,
+          "actual_pos_rad": -0.7305009961128235,
+          "actual_vel_radps": -0.5866285562515259,
+          "applied_torque_nm": -4.374557018280029,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3221238851547241,
+          "target_pos_rad": 1.1578562259674072,
+          "actual_pos_rad": 1.247593879699707,
+          "actual_vel_radps": -0.6092115044593811,
+          "applied_torque_nm": -1.5306562185287476,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.26823875308036804,
+          "target_pos_rad": 0.2970365881919861,
+          "actual_pos_rad": 0.4096830189228058,
+          "actual_vel_radps": -0.1579495668411255,
+          "applied_torque_nm": -3.105083703994751,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 71,
+      "motion_step": 21,
+      "relative_to_hit_steps": -9,
+      "racket_actual_velocity_mps": [
+        -0.8309900164604187,
+        -0.10371214896440506,
+        0.4799898862838745
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.999237060546875,
+          "target_pos_rad": -1.1987404823303223,
+          "actual_pos_rad": -1.0075958967208862,
+          "actual_vel_radps": -0.7619888782501221,
+          "applied_torque_nm": -5.496401786804199,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3931701183319092,
+          "target_pos_rad": 1.2164828777313232,
+          "actual_pos_rad": 1.3502048254013062,
+          "actual_vel_radps": -0.6886985301971436,
+          "applied_torque_nm": -2.7273035049438477,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.09979694336652756,
+          "target_pos_rad": 0.11476258933544159,
+          "actual_pos_rad": 0.18810877203941345,
+          "actual_vel_radps": 0.01804179884493351,
+          "applied_torque_nm": -2.2420525550842285,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 71,
+      "motion_step": 21,
+      "relative_to_hit_steps": -9,
+      "racket_actual_velocity_mps": [
+        -1.6231964826583862,
+        -0.44352108240127563,
+        0.6047492623329163
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7711114287376404,
+          "target_pos_rad": -1.092340350151062,
+          "actual_pos_rad": -0.8738780617713928,
+          "actual_vel_radps": -1.4246677160263062,
+          "applied_torque_nm": -4.743203639984131,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8476593494415283,
+          "target_pos_rad": 1.5146269798278809,
+          "actual_pos_rad": 1.6780693531036377,
+          "actual_vel_radps": -1.5759505033493042,
+          "applied_torque_nm": -1.9185099601745605,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.18990787863731384,
+          "target_pos_rad": -0.17917358875274658,
+          "actual_pos_rad": -0.06181066855788231,
+          "actual_vel_radps": 0.056642793118953705,
+          "applied_torque_nm": -3.62335467338562,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 71,
+      "motion_step": 21,
+      "relative_to_hit_steps": -9,
+      "racket_actual_velocity_mps": [
+        -1.2652201652526855,
+        -0.5107479691505432,
+        0.5650599598884583
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0958551168441772,
+          "target_pos_rad": -1.3894904851913452,
+          "actual_pos_rad": -1.1798772811889648,
+          "actual_vel_radps": -1.355944037437439,
+          "applied_torque_nm": -4.4574875831604,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8787003755569458,
+          "target_pos_rad": 1.6186871528625488,
+          "actual_pos_rad": 1.7650017738342285,
+          "actual_vel_radps": -1.2297439575195312,
+          "applied_torque_nm": -2.167543411254883,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.1570490449666977,
+          "target_pos_rad": -0.14822518825531006,
+          "actual_pos_rad": -0.08095622807741165,
+          "actual_vel_radps": 0.16489528119564056,
+          "applied_torque_nm": -2.130894660949707,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 72,
+      "motion_step": 22,
+      "relative_to_hit_steps": -8,
+      "racket_actual_velocity_mps": [
+        -0.9766009449958801,
+        -0.23923411965370178,
+        0.3949125111103058
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.825827419757843,
+          "target_pos_rad": -1.0343843698501587,
+          "actual_pos_rad": -0.853469967842102,
+          "actual_vel_radps": -0.7146098017692566,
+          "applied_torque_nm": -5.21408748626709,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.0197689533233643,
+          "target_pos_rad": 0.8473360538482666,
+          "actual_pos_rad": 0.9361730813980103,
+          "actual_vel_radps": -0.5564538836479187,
+          "applied_torque_nm": -1.618944525718689,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5411876440048218,
+          "target_pos_rad": 0.5633813142776489,
+          "actual_pos_rad": 0.6409022808074951,
+          "actual_vel_radps": 0.05287594348192215,
+          "applied_torque_nm": -2.441992998123169,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 72,
+      "motion_step": 22,
+      "relative_to_hit_steps": -8,
+      "racket_actual_velocity_mps": [
+        -0.9102064967155457,
+        0.07529331743717194,
+        0.5396572947502136
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.3326060771942139,
+          "target_pos_rad": -1.547698974609375,
+          "actual_pos_rad": -1.3158026933670044,
+          "actual_vel_radps": -0.8276681900024414,
+          "applied_torque_nm": -6.929569721221924,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.317411184310913,
+          "target_pos_rad": 1.1452723741531372,
+          "actual_pos_rad": 1.2861218452453613,
+          "actual_vel_radps": -0.6654679775238037,
+          "applied_torque_nm": -2.968825101852417,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.37678423523902893,
+          "target_pos_rad": 0.3724256455898285,
+          "actual_pos_rad": 0.3961116075515747,
+          "actual_vel_radps": 0.24882574379444122,
+          "applied_torque_nm": -1.1459720134735107,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 72,
+      "motion_step": 22,
+      "relative_to_hit_steps": -8,
+      "racket_actual_velocity_mps": [
+        -0.8631032705307007,
+        -0.24276886880397797,
+        0.382771760225296
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7265730500221252,
+          "target_pos_rad": -0.8820285797119141,
+          "actual_pos_rad": -0.7426987290382385,
+          "actual_vel_radps": -0.628411054611206,
+          "applied_torque_nm": -3.822026252746582,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3149311542510986,
+          "target_pos_rad": 1.1573615074157715,
+          "actual_pos_rad": 1.2359620332717896,
+          "actual_vel_radps": -0.5570563673973083,
+          "applied_torque_nm": -1.3131543397903442,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.2690477669239044,
+          "target_pos_rad": 0.295281320810318,
+          "actual_pos_rad": 0.40632086992263794,
+          "actual_vel_radps": -0.1879349648952484,
+          "applied_torque_nm": -2.9822933673858643,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 72,
+      "motion_step": 22,
+      "relative_to_hit_steps": -8,
+      "racket_actual_velocity_mps": [
+        -0.8129704594612122,
+        -0.0704832375049591,
+        0.4537440538406372
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0080358982086182,
+          "target_pos_rad": -1.1997783184051514,
+          "actual_pos_rad": -1.0223500728607178,
+          "actual_vel_radps": -0.7185618281364441,
+          "applied_torque_nm": -5.047239303588867,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.385042428970337,
+          "target_pos_rad": 1.2155206203460693,
+          "actual_pos_rad": 1.3366074562072754,
+          "actual_vel_radps": -0.6544342041015625,
+          "applied_torque_nm": -2.4009313583374023,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.10640827566385269,
+          "target_pos_rad": 0.12122329324483871,
+          "actual_pos_rad": 0.1891525536775589,
+          "actual_vel_radps": 0.04181641712784767,
+          "applied_torque_nm": -2.1143181324005127,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 72,
+      "motion_step": 22,
+      "relative_to_hit_steps": -8,
+      "racket_actual_velocity_mps": [
+        -1.5629520416259766,
+        -0.368022084236145,
+        0.6331361532211304
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7874792814254761,
+          "target_pos_rad": -1.0928198099136353,
+          "actual_pos_rad": -0.9020898938179016,
+          "actual_vel_radps": -1.368969440460205,
+          "applied_torque_nm": -3.748732566833496,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8301209211349487,
+          "target_pos_rad": 1.5138299465179443,
+          "actual_pos_rad": 1.6481937170028687,
+          "actual_vel_radps": -1.412986159324646,
+          "applied_torque_nm": -1.3598270416259766,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.18110798299312592,
+          "target_pos_rad": -0.1798970103263855,
+          "actual_pos_rad": -0.05977686122059822,
+          "actual_vel_radps": 0.10643482208251953,
+          "applied_torque_nm": -3.7204127311706543,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 72,
+      "motion_step": 22,
+      "relative_to_hit_steps": -8,
+      "racket_actual_velocity_mps": [
+        -1.249082088470459,
+        -0.4579623341560364,
+        0.5178238153457642
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.110374927520752,
+          "target_pos_rad": -1.3912218809127808,
+          "actual_pos_rad": -1.205775260925293,
+          "actual_vel_radps": -1.2431776523590088,
+          "applied_torque_nm": -3.8436954021453857,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.865694522857666,
+          "target_pos_rad": 1.618528127670288,
+          "actual_pos_rad": 1.7413612604141235,
+          "actual_vel_radps": -1.1300246715545654,
+          "applied_torque_nm": -1.5408086776733398,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.14297212660312653,
+          "target_pos_rad": -0.13893359899520874,
+          "actual_pos_rad": -0.07623722404241562,
+          "actual_vel_radps": 0.26092466711997986,
+          "applied_torque_nm": -2.318965435028076,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 73,
+      "motion_step": 23,
+      "relative_to_hit_steps": -7,
+      "racket_actual_velocity_mps": [
+        -0.9609619975090027,
+        -0.18356573581695557,
+        0.34935101866722107
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8371354937553406,
+          "target_pos_rad": -1.0341603755950928,
+          "actual_pos_rad": -0.8662095665931702,
+          "actual_vel_radps": -0.6380078792572021,
+          "applied_torque_nm": -4.889025688171387,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.0098600387573242,
+          "target_pos_rad": 0.8475965857505798,
+          "actual_pos_rad": 0.9252585768699646,
+          "actual_vel_radps": -0.4821023941040039,
+          "applied_torque_nm": -1.4116967916488647,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5465824007987976,
+          "target_pos_rad": 0.5613217949867249,
+          "actual_pos_rad": 0.6415557861328125,
+          "actual_vel_radps": -0.003921165596693754,
+          "applied_torque_nm": -2.442333936691284,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 73,
+      "motion_step": 23,
+      "relative_to_hit_steps": -7,
+      "racket_actual_velocity_mps": [
+        -0.9155634641647339,
+        0.12393468618392944,
+        0.45960068702697754
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.344167709350586,
+          "target_pos_rad": -1.548887014389038,
+          "actual_pos_rad": -1.3318935632705688,
+          "actual_vel_radps": -0.778106153011322,
+          "applied_torque_nm": -6.436622142791748,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3081384897232056,
+          "target_pos_rad": 1.1453741788864136,
+          "actual_pos_rad": 1.2733383178710938,
+          "actual_vel_radps": -0.597990870475769,
+          "applied_torque_nm": -2.7002668380737305,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.3907826244831085,
+          "target_pos_rad": 0.3827429711818695,
+          "actual_pos_rad": 0.40237200260162354,
+          "actual_vel_radps": 0.3327890634536743,
+          "applied_torque_nm": -1.1895272731781006,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 73,
+      "motion_step": 23,
+      "relative_to_hit_steps": -7,
+      "racket_actual_velocity_mps": [
+        -0.8544998168945312,
+        -0.20110882818698883,
+        0.3621554970741272
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7333412170410156,
+          "target_pos_rad": -0.880966067314148,
+          "actual_pos_rad": -0.7549762725830078,
+          "actual_vel_radps": -0.6065018177032471,
+          "applied_torque_nm": -3.317617893218994,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3067821264266968,
+          "target_pos_rad": 1.1580891609191895,
+          "actual_pos_rad": 1.2253597974777222,
+          "actual_vel_radps": -0.4974389374256134,
+          "applied_torque_nm": -1.0769950151443481,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.27000194787979126,
+          "target_pos_rad": 0.2945278286933899,
+          "actual_pos_rad": 0.4030420780181885,
+          "actual_vel_radps": -0.17164652049541473,
+          "applied_torque_nm": -2.9325976371765137,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 73,
+      "motion_step": 23,
+      "relative_to_hit_steps": -7,
+      "racket_actual_velocity_mps": [
+        -0.7674742937088013,
+        -0.042131807655096054,
+        0.41607561707496643
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0179831981658936,
+          "target_pos_rad": -1.1992862224578857,
+          "actual_pos_rad": -1.03615140914917,
+          "actual_vel_radps": -0.6665676832199097,
+          "applied_torque_nm": -4.610108852386475,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3758132457733154,
+          "target_pos_rad": 1.215744972229004,
+          "actual_pos_rad": 1.324139952659607,
+          "actual_vel_radps": -0.5876308679580688,
+          "applied_torque_nm": -2.1365160942077637,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.11393298208713531,
+          "target_pos_rad": 0.12113839387893677,
+          "actual_pos_rad": 0.18981780111789703,
+          "actual_vel_radps": 0.00894315168261528,
+          "applied_torque_nm": -2.0811872482299805,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 73,
+      "motion_step": 23,
+      "relative_to_hit_steps": -7,
+      "racket_actual_velocity_mps": [
+        -1.468866229057312,
+        -0.29076775908470154,
+        0.6405206322669983
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8059773445129395,
+          "target_pos_rad": -1.0947538614273071,
+          "actual_pos_rad": -0.9289222955703735,
+          "actual_vel_radps": -1.2917249202728271,
+          "applied_torque_nm": -2.967888355255127,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8102530241012573,
+          "target_pos_rad": 1.5130996704101562,
+          "actual_pos_rad": 1.621752142906189,
+          "actual_vel_radps": -1.2345508337020874,
+          "applied_torque_nm": -0.9032940864562988,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.17109403014183044,
+          "target_pos_rad": -0.1710718274116516,
+          "actual_pos_rad": -0.056458402425050735,
+          "actual_vel_radps": 0.14134640991687775,
+          "applied_torque_nm": -3.69942045211792,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 73,
+      "motion_step": 23,
+      "relative_to_hit_steps": -7,
+      "racket_actual_velocity_mps": [
+        -1.191969871520996,
+        -0.393004834651947,
+        0.44661810994148254
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.1267536878585815,
+          "target_pos_rad": -1.3924009799957275,
+          "actual_pos_rad": -1.2291550636291504,
+          "actual_vel_radps": -1.11669921875,
+          "applied_torque_nm": -3.312291145324707,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8509598970413208,
+          "target_pos_rad": 1.6181029081344604,
+          "actual_pos_rad": 1.7202733755111694,
+          "actual_vel_radps": -0.9810375571250916,
+          "applied_torque_nm": -1.1798264980316162,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.12703198194503784,
+          "target_pos_rad": -0.12871015071868896,
+          "actual_pos_rad": -0.06966566294431686,
+          "actual_vel_radps": 0.3367302715778351,
+          "applied_torque_nm": -2.3744168281555176,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 74,
+      "motion_step": 24,
+      "relative_to_hit_steps": -6,
+      "racket_actual_velocity_mps": [
+        -0.9497235417366028,
+        -0.12461410462856293,
+        0.28179436922073364
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8498032093048096,
+          "target_pos_rad": -1.0298699140548706,
+          "actual_pos_rad": -0.8781067728996277,
+          "actual_vel_radps": -0.5803543925285339,
+          "applied_torque_nm": -4.37408971786499,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 0.9987777471542358,
+          "target_pos_rad": 0.8466259241104126,
+          "actual_pos_rad": 0.9154287576675415,
+          "actual_vel_radps": -0.45194098353385925,
+          "applied_torque_nm": -1.225386619567871,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5526347756385803,
+          "target_pos_rad": 0.5676553249359131,
+          "actual_pos_rad": 0.6420112252235413,
+          "actual_vel_radps": 0.010953997261822224,
+          "applied_torque_nm": -2.2602176666259766,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 74,
+      "motion_step": 24,
+      "relative_to_hit_steps": -6,
+      "racket_actual_velocity_mps": [
+        -0.8964258432388306,
+        0.15962383151054382,
+        0.3624480366706848
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.3571064472198486,
+          "target_pos_rad": -1.5458903312683105,
+          "actual_pos_rad": -1.3462387323379517,
+          "actual_vel_radps": -0.6853731870651245,
+          "applied_torque_nm": -6.025614261627197,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2977485656738281,
+          "target_pos_rad": 1.1451448202133179,
+          "actual_pos_rad": 1.2613933086395264,
+          "actual_vel_radps": -0.5441036224365234,
+          "applied_torque_nm": -2.444035053253174,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.4064832329750061,
+          "target_pos_rad": 0.388830304145813,
+          "actual_pos_rad": 0.4094959795475006,
+          "actual_vel_radps": 0.35614487528800964,
+          "applied_torque_nm": -1.2683169841766357,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 74,
+      "motion_step": 24,
+      "relative_to_hit_steps": -6,
+      "racket_actual_velocity_mps": [
+        -0.8300758600234985,
+        -0.15511056780815125,
+        0.3346765637397766
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7409460544586182,
+          "target_pos_rad": -0.8772472143173218,
+          "actual_pos_rad": -0.7662853598594666,
+          "actual_vel_radps": -0.5446181297302246,
+          "applied_torque_nm": -2.876854181289673,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.297633171081543,
+          "target_pos_rad": 1.1577811241149902,
+          "actual_pos_rad": 1.2155786752700806,
+          "actual_vel_radps": -0.4669341444969177,
+          "applied_torque_nm": -0.8528790473937988,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.27110791206359863,
+          "target_pos_rad": 0.2904759347438812,
+          "actual_pos_rad": 0.39933836460113525,
+          "actual_vel_radps": -0.2020055204629898,
+          "applied_torque_nm": -2.8891236782073975,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 74,
+      "motion_step": 24,
+      "relative_to_hit_steps": -6,
+      "racket_actual_velocity_mps": [
+        -0.7232611775398254,
+        -0.012625095434486866,
+        0.33878087997436523
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0291309356689453,
+          "target_pos_rad": -1.1967747211456299,
+          "actual_pos_rad": -1.0482367277145386,
+          "actual_vel_radps": -0.5671145915985107,
+          "applied_torque_nm": -4.300106048583984,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.365432858467102,
+          "target_pos_rad": 1.2166262865066528,
+          "actual_pos_rad": 1.3129451274871826,
+          "actual_vel_radps": -0.5173490643501282,
+          "applied_torque_nm": -1.8940798044204712,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.1224125549197197,
+          "target_pos_rad": 0.12893445789813995,
+          "actual_pos_rad": 0.19112783670425415,
+          "actual_vel_radps": 0.07211078703403473,
+          "applied_torque_nm": -1.9885467290878296,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 74,
+      "motion_step": 24,
+      "relative_to_hit_steps": -6,
+      "racket_actual_velocity_mps": [
+        -1.3475204706192017,
+        -0.21749915182590485,
+        0.6069418787956238
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8267024159431458,
+          "target_pos_rad": -1.0884990692138672,
+          "actual_pos_rad": -0.9531428217887878,
+          "actual_vel_radps": -1.130407452583313,
+          "applied_torque_nm": -2.1676201820373535,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.7879499197006226,
+          "target_pos_rad": 1.5144602060317993,
+          "actual_pos_rad": 1.5979747772216797,
+          "actual_vel_radps": -1.1197739839553833,
+          "applied_torque_nm": -0.37062573432922363,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.1598108857870102,
+          "target_pos_rad": -0.1633901447057724,
+          "actual_pos_rad": -0.05234939977526665,
+          "actual_vel_radps": 0.16240441799163818,
+          "applied_torque_nm": -3.666734457015991,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 74,
+      "motion_step": 24,
+      "relative_to_hit_steps": -6,
+      "racket_actual_velocity_mps": [
+        -1.1138348579406738,
+        -0.32673853635787964,
+        0.3532499670982361
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.145075798034668,
+          "target_pos_rad": -1.383185863494873,
+          "actual_pos_rad": -1.2494087219238281,
+          "actual_vel_radps": -0.9438661932945251,
+          "applied_torque_nm": -2.5996594429016113,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8344179391860962,
+          "target_pos_rad": 1.6196247339248657,
+          "actual_pos_rad": 1.7013813257217407,
+          "actual_vel_radps": -0.8824210166931152,
+          "applied_torque_nm": -0.7501899003982544,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.10914392024278641,
+          "target_pos_rad": -0.11492247134447098,
+          "actual_pos_rad": -0.06170749291777611,
+          "actual_vel_radps": 0.3849506378173828,
+          "applied_torque_nm": -2.3170647621154785,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 75,
+      "motion_step": 25,
+      "relative_to_hit_steps": -5,
+      "racket_actual_velocity_mps": [
+        -0.913397490978241,
+        -0.07225129008293152,
+        0.19161385297775269
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8638899922370911,
+          "target_pos_rad": -1.0292186737060547,
+          "actual_pos_rad": -0.8885220885276794,
+          "actual_vel_radps": -0.48198291659355164,
+          "applied_torque_nm": -4.190003395080566,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 0.9864709377288818,
+          "target_pos_rad": 0.847086489200592,
+          "actual_pos_rad": 0.9065166115760803,
+          "actual_vel_radps": -0.40220266580581665,
+          "applied_torque_nm": -1.0244790315628052,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5593733787536621,
+          "target_pos_rad": 0.5716269016265869,
+          "actual_pos_rad": 0.6426514387130737,
+          "actual_vel_radps": 0.0191620085388422,
+          "applied_torque_nm": -2.1740055084228516,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 75,
+      "motion_step": 25,
+      "relative_to_hit_steps": -5,
+      "racket_actual_velocity_mps": [
+        -0.8902332782745361,
+        0.19352282583713531,
+        0.24112913012504578
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.371482014656067,
+          "target_pos_rad": -1.5414866209030151,
+          "actual_pos_rad": -1.3594590425491333,
+          "actual_vel_radps": -0.6366841793060303,
+          "applied_torque_nm": -5.437173366546631,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2861928939819336,
+          "target_pos_rad": 1.1465438604354858,
+          "actual_pos_rad": 1.2506388425827026,
+          "actual_vel_radps": -0.49340343475341797,
+          "applied_torque_nm": -2.189542770385742,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.42396023869514465,
+          "target_pos_rad": 0.40821373462677,
+          "actual_pos_rad": 0.41820454597473145,
+          "actual_vel_radps": 0.48474839329719543,
+          "applied_torque_nm": -1.1587142944335938,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 75,
+      "motion_step": 25,
+      "relative_to_hit_steps": -5,
+      "racket_actual_velocity_mps": [
+        -0.7919983267784119,
+        -0.1071038767695427,
+        0.29407382011413574
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7494238615036011,
+          "target_pos_rad": -0.8760870695114136,
+          "actual_pos_rad": -0.776570200920105,
+          "actual_vel_radps": -0.48639148473739624,
+          "applied_torque_nm": -2.573890209197998,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2874410152435303,
+          "target_pos_rad": 1.1586616039276123,
+          "actual_pos_rad": 1.2067935466766357,
+          "actual_vel_radps": -0.4129463732242584,
+          "applied_torque_nm": -0.6584944128990173,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.2723722755908966,
+          "target_pos_rad": 0.2874583303928375,
+          "actual_pos_rad": 0.3955591320991516,
+          "actual_vel_radps": -0.1996975690126419,
+          "applied_torque_nm": -2.860867738723755,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 75,
+      "motion_step": 25,
+      "relative_to_hit_steps": -5,
+      "racket_actual_velocity_mps": [
+        -0.678577721118927,
+        0.015008900314569473,
+        0.248567134141922
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0415313243865967,
+          "target_pos_rad": -1.19838285446167,
+          "actual_pos_rad": -1.0592447519302368,
+          "actual_vel_radps": -0.5317049026489258,
+          "applied_torque_nm": -4.034172534942627,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3538507223129272,
+          "target_pos_rad": 1.2164502143859863,
+          "actual_pos_rad": 1.3036407232284546,
+          "actual_vel_radps": -0.42143526673316956,
+          "applied_torque_nm": -1.8040146827697754,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.13188856840133667,
+          "target_pos_rad": 0.13956080377101898,
+          "actual_pos_rad": 0.19341225922107697,
+          "actual_vel_radps": 0.11843983829021454,
+          "applied_torque_nm": -1.8211374282836914,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 75,
+      "motion_step": 25,
+      "relative_to_hit_steps": -5,
+      "racket_actual_velocity_mps": [
+        -1.187337040901184,
+        -0.1452629715204239,
+        0.5645188093185425
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8497514128684998,
+          "target_pos_rad": -1.0894279479980469,
+          "actual_pos_rad": -0.9746866822242737,
+          "actual_vel_radps": -1.0036160945892334,
+          "applied_torque_nm": -1.6964941024780273,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.7631051540374756,
+          "target_pos_rad": 1.516365647315979,
+          "actual_pos_rad": 1.5779329538345337,
+          "actual_vel_radps": -0.9034825563430786,
+          "applied_torque_nm": -0.09735333919525146,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.14720329642295837,
+          "target_pos_rad": -0.15291601419448853,
+          "actual_pos_rad": -0.04897379130125046,
+          "actual_vel_radps": 0.11773017793893814,
+          "applied_torque_nm": -3.363757848739624,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 75,
+      "motion_step": 25,
+      "relative_to_hit_steps": -5,
+      "racket_actual_velocity_mps": [
+        -1.0177605152130127,
+        -0.2622610926628113,
+        0.23766914010047913
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.1654260158538818,
+          "target_pos_rad": -1.3822215795516968,
+          "actual_pos_rad": -1.2667773962020874,
+          "actual_vel_radps": -0.7998266220092773,
+          "applied_torque_nm": -2.259338855743408,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.8159898519515991,
+          "target_pos_rad": 1.6212444305419922,
+          "actual_pos_rad": 1.6857320070266724,
+          "actual_vel_radps": -0.6989387273788452,
+          "applied_torque_nm": -0.5627002716064453,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.08922315388917923,
+          "target_pos_rad": -0.09824692457914352,
+          "actual_pos_rad": -0.053147271275520325,
+          "actual_vel_radps": 0.4230698049068451,
+          "applied_torque_nm": -2.1307592391967773,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 76,
+      "motion_step": 26,
+      "relative_to_hit_steps": -4,
+      "racket_actual_velocity_mps": [
+        -0.8616952896118164,
+        -0.02945597656071186,
+        0.08312730491161346
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8796449303627014,
+          "target_pos_rad": -1.0285007953643799,
+          "actual_pos_rad": -0.8965232968330383,
+          "actual_vel_radps": -0.3489890992641449,
+          "applied_torque_nm": -4.2125444412231445,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 0.9727511405944824,
+          "target_pos_rad": 0.8488264679908752,
+          "actual_pos_rad": 0.8990039825439453,
+          "actual_vel_radps": -0.3252658545970917,
+          "applied_torque_nm": -0.8841994404792786,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5669009685516357,
+          "target_pos_rad": 0.5735485553741455,
+          "actual_pos_rad": 0.6438257098197937,
+          "actual_vel_radps": 0.060309428721666336,
+          "applied_torque_nm": -2.1913998126983643,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 76,
+      "motion_step": 26,
+      "relative_to_hit_steps": -4,
+      "racket_actual_velocity_mps": [
+        -0.8780398964881897,
+        0.2245008647441864,
+        0.09429780393838882
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.3875387907028198,
+          "target_pos_rad": -1.5412249565124512,
+          "actual_pos_rad": -1.3708202838897705,
+          "actual_vel_radps": -0.5061475038528442,
+          "applied_torque_nm": -5.277331829071045,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2732757329940796,
+          "target_pos_rad": 1.1464192867279053,
+          "actual_pos_rad": 1.2410650253295898,
+          "actual_vel_radps": -0.4187104105949402,
+          "applied_torque_nm": -2.027076244354248,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.4434971809387207,
+          "target_pos_rad": 0.42662379145622253,
+          "actual_pos_rad": 0.4297795593738556,
+          "actual_vel_radps": 0.6365607976913452,
+          "applied_torque_nm": -1.2334568500518799,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 76,
+      "motion_step": 26,
+      "relative_to_hit_steps": -4,
+      "racket_actual_velocity_mps": [
+        -0.7417598962783813,
+        -0.054312482476234436,
+        0.21262705326080322
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7589862942695618,
+          "target_pos_rad": -0.878878653049469,
+          "actual_pos_rad": -0.785312294960022,
+          "actual_vel_radps": -0.3834913969039917,
+          "applied_torque_nm": -2.5444531440734863,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2759814262390137,
+          "target_pos_rad": 1.1587721109390259,
+          "actual_pos_rad": 1.1990983486175537,
+          "actual_vel_radps": -0.3501862585544586,
+          "applied_torque_nm": -0.5467943549156189,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.27387842535972595,
+          "target_pos_rad": 0.2928798794746399,
+          "actual_pos_rad": 0.39330559968948364,
+          "actual_vel_radps": -0.09204574674367905,
+          "applied_torque_nm": -2.879502296447754,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 76,
+      "motion_step": 26,
+      "relative_to_hit_steps": -4,
+      "racket_actual_velocity_mps": [
+        -0.6223838329315186,
+        0.03457193821668625,
+        0.1541236788034439
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.055391550064087,
+          "target_pos_rad": -1.1976104974746704,
+          "actual_pos_rad": -1.0687317848205566,
+          "actual_vel_radps": -0.4434956908226013,
+          "applied_torque_nm": -3.8546690940856934,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3408712148666382,
+          "target_pos_rad": 1.2174304723739624,
+          "actual_pos_rad": 1.295976996421814,
+          "actual_vel_radps": -0.3300309479236603,
+          "applied_torque_nm": -1.6991478204727173,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.14253029227256775,
+          "target_pos_rad": 0.14227689802646637,
+          "actual_pos_rad": 0.1960347294807434,
+          "actual_vel_radps": 0.13540118932724,
+          "applied_torque_nm": -1.8377628326416016,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 76,
+      "motion_step": 26,
+      "relative_to_hit_steps": -4,
+      "racket_actual_velocity_mps": [
+        -1.0323370695114136,
+        -0.08842146396636963,
+        0.49147871136665344
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8755176663398743,
+          "target_pos_rad": -1.0905660390853882,
+          "actual_pos_rad": -0.9932201504707336,
+          "actual_vel_radps": -0.8431941866874695,
+          "applied_torque_nm": -1.4444591999053955,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.7352783679962158,
+          "target_pos_rad": 1.5158251523971558,
+          "actual_pos_rad": 1.5619053840637207,
+          "actual_vel_radps": -0.708305835723877,
+          "applied_torque_nm": 0.0015652179718017578,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.13301074504852295,
+          "target_pos_rad": -0.1444844901561737,
+          "actual_pos_rad": -0.04635918512940407,
+          "actual_vel_radps": 0.08945523202419281,
+          "applied_torque_nm": -3.1343443393707275,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 76,
+      "motion_step": 26,
+      "relative_to_hit_steps": -4,
+      "racket_actual_velocity_mps": [
+        -0.9235926270484924,
+        -0.2064221203327179,
+        0.09860480576753616
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.1881409883499146,
+          "target_pos_rad": -1.3856571912765503,
+          "actual_pos_rad": -1.2807079553604126,
+          "actual_vel_radps": -0.5980709195137024,
+          "applied_torque_nm": -2.3591468334198,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.7953500747680664,
+          "target_pos_rad": 1.6195787191390991,
+          "actual_pos_rad": 1.6738511323928833,
+          "actual_vel_radps": -0.5091275572776794,
+          "applied_torque_nm": -0.6085147857666016,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.06692815572023392,
+          "target_pos_rad": -0.08340320736169815,
+          "actual_pos_rad": -0.04380020126700401,
+          "actual_vel_radps": 0.48243510723114014,
+          "applied_torque_nm": -2.047816514968872,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 77,
+      "motion_step": 27,
+      "relative_to_hit_steps": -3,
+      "racket_actual_velocity_mps": [
+        -0.8079326152801514,
+        0.004082268103957176,
+        -0.03342568129301071
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8980785012245178,
+          "target_pos_rad": -1.027510404586792,
+          "actual_pos_rad": -0.9022746086120605,
+          "actual_vel_radps": -0.26344677805900574,
+          "applied_torque_nm": -4.219547748565674,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 0.9568794369697571,
+          "target_pos_rad": 0.8487865328788757,
+          "actual_pos_rad": 0.8932963609695435,
+          "actual_vel_radps": -0.22663196921348572,
+          "applied_torque_nm": -0.8880542516708374,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5756173729896545,
+          "target_pos_rad": 0.5803812742233276,
+          "actual_pos_rad": 0.6462173461914062,
+          "actual_vel_radps": 0.1342625617980957,
+          "applied_torque_nm": -2.1885242462158203,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 77,
+      "motion_step": 27,
+      "relative_to_hit_steps": -3,
+      "racket_actual_velocity_mps": [
+        -0.8440889120101929,
+        0.24243885278701782,
+        -0.055839359760284424
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.4062579870224,
+          "target_pos_rad": -1.543642520904541,
+          "actual_pos_rad": -1.3791613578796387,
+          "actual_vel_radps": -0.36449000239372253,
+          "applied_torque_nm": -5.47307825088501,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2582141160964966,
+          "target_pos_rad": 1.145611047744751,
+          "actual_pos_rad": 1.2337883710861206,
+          "actual_vel_radps": -0.27666911482810974,
+          "applied_torque_nm": -2.076523542404175,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.46621641516685486,
+          "target_pos_rad": 0.43899646401405334,
+          "actual_pos_rad": 0.44350507855415344,
+          "actual_vel_radps": 0.715923011302948,
+          "applied_torque_nm": -1.446596384048462,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 77,
+      "motion_step": 27,
+      "relative_to_hit_steps": -3,
+      "racket_actual_velocity_mps": [
+        -0.6689242124557495,
+        -0.0019401833415031433,
+        0.13767394423484802
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7705457210540771,
+          "target_pos_rad": -0.8788483142852783,
+          "actual_pos_rad": -0.7919288277626038,
+          "actual_vel_radps": -0.29484686255455017,
+          "applied_torque_nm": -2.5829086303710938,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2623075246810913,
+          "target_pos_rad": 1.1592645645141602,
+          "actual_pos_rad": 1.193194031715393,
+          "actual_vel_radps": -0.2328197956085205,
+          "applied_torque_nm": -0.5479634404182434,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.2760169506072998,
+          "target_pos_rad": 0.2960568070411682,
+          "actual_pos_rad": 0.39201298356056213,
+          "actual_vel_radps": -0.0902729257941246,
+          "applied_torque_nm": -2.727252721786499,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 77,
+      "motion_step": 27,
+      "relative_to_hit_steps": -3,
+      "racket_actual_velocity_mps": [
+        -0.5893778800964355,
+        0.056721560657024384,
+        0.040604352951049805
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0715373754501343,
+          "target_pos_rad": -1.1981934309005737,
+          "actual_pos_rad": -1.0764977931976318,
+          "actual_vel_radps": -0.3555791676044464,
+          "applied_torque_nm": -3.797118663787842,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.325715184211731,
+          "target_pos_rad": 1.2166825532913208,
+          "actual_pos_rad": 1.290037989616394,
+          "actual_vel_radps": -0.25008219480514526,
+          "applied_torque_nm": -1.707101821899414,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.15501832962036133,
+          "target_pos_rad": 0.1556902527809143,
+          "actual_pos_rad": 0.20042139291763306,
+          "actual_vel_radps": 0.2749476432800293,
+          "applied_torque_nm": -1.8027265071868896,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 77,
+      "motion_step": 27,
+      "relative_to_hit_steps": -3,
+      "racket_actual_velocity_mps": [
+        -0.8920935392379761,
+        -0.04527328535914421,
+        0.39109230041503906
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9055808186531067,
+          "target_pos_rad": -1.0899978876113892,
+          "actual_pos_rad": -1.0084205865859985,
+          "actual_vel_radps": -0.668491005897522,
+          "applied_torque_nm": -1.2873265743255615,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.7026891708374023,
+          "target_pos_rad": 1.5161632299423218,
+          "actual_pos_rad": 1.549626350402832,
+          "actual_vel_radps": -0.5246355533599854,
+          "applied_torque_nm": 0.03598284721374512,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.11615102738142014,
+          "target_pos_rad": -0.13283346593379974,
+          "actual_pos_rad": -0.04388400539755821,
+          "actual_vel_radps": 0.10040389746427536,
+          "applied_torque_nm": -2.865705966949463,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 77,
+      "motion_step": 27,
+      "relative_to_hit_steps": -3,
+      "racket_actual_velocity_mps": [
+        -0.8483752012252808,
+        -0.15812794864177704,
+        -0.06749553978443146
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.2145663499832153,
+          "target_pos_rad": -1.3844571113586426,
+          "actual_pos_rad": -1.2900688648223877,
+          "actual_vel_radps": -0.38058358430862427,
+          "applied_torque_nm": -2.5816047191619873,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.7711831331253052,
+          "target_pos_rad": 1.6196109056472778,
+          "actual_pos_rad": 1.6656606197357178,
+          "actual_vel_radps": -0.3031054139137268,
+          "applied_torque_nm": -0.7313070893287659,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.040889542549848557,
+          "target_pos_rad": -0.05485260859131813,
+          "actual_pos_rad": -0.03178008273243904,
+          "actual_vel_radps": 0.6345558762550354,
+          "applied_torque_nm": -1.8342719078063965,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 78,
+      "motion_step": 28,
+      "relative_to_hit_steps": -2,
+      "racket_actual_velocity_mps": [
+        -0.7871224880218506,
+        0.030069781467318535,
+        -0.15033631026744843
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9203916788101196,
+          "target_pos_rad": -1.027753233909607,
+          "actual_pos_rad": -0.9070878624916077,
+          "actual_vel_radps": -0.23460924625396729,
+          "applied_torque_nm": -4.136404991149902,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 0.9379794001579285,
+          "target_pos_rad": 0.8473963737487793,
+          "actual_pos_rad": 0.8893799185752869,
+          "actual_vel_radps": -0.15243306756019592,
+          "applied_torque_nm": -0.966468095779419,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.585996687412262,
+          "target_pos_rad": 0.5946052670478821,
+          "actual_pos_rad": 0.6508663892745972,
+          "actual_vel_radps": 0.2678851783275604,
+          "applied_torque_nm": -2.1332035064697266,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 78,
+      "motion_step": 28,
+      "relative_to_hit_steps": -2,
+      "racket_actual_velocity_mps": [
+        -0.8345257639884949,
+        0.26426881551742554,
+        -0.19596415758132935
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.4288052320480347,
+          "target_pos_rad": -1.542621374130249,
+          "actual_pos_rad": -1.3854485750198364,
+          "actual_vel_radps": -0.35758721828460693,
+          "applied_torque_nm": -5.412352085113525,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2400776147842407,
+          "target_pos_rad": 1.14516019821167,
+          "actual_pos_rad": 1.2289996147155762,
+          "actual_vel_radps": -0.17663322389125824,
+          "applied_torque_nm": -2.1591358184814453,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.49345001578330994,
+          "target_pos_rad": 0.46754831075668335,
+          "actual_pos_rad": 0.4597114622592926,
+          "actual_vel_radps": 0.838675320148468,
+          "applied_torque_nm": -1.3250572681427002,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 78,
+      "motion_step": 28,
+      "relative_to_hit_steps": -2,
+      "racket_actual_velocity_mps": [
+        -0.6046385765075684,
+        0.046659402549266815,
+        0.06373538076877594
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.7851899266242981,
+          "target_pos_rad": -0.8793310523033142,
+          "actual_pos_rad": -0.7968963980674744,
+          "actual_vel_radps": -0.22010277211666107,
+          "applied_torque_nm": -2.6166467666625977,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.245291829109192,
+          "target_pos_rad": 1.158764123916626,
+          "actual_pos_rad": 1.189379334449768,
+          "actual_vel_radps": -0.13430242240428925,
+          "applied_torque_nm": -0.6397102475166321,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.27925530076026917,
+          "target_pos_rad": 0.296112596988678,
+          "actual_pos_rad": 0.3908085525035858,
+          "actual_vel_radps": -0.08968355506658554,
+          "applied_torque_nm": -2.6762261390686035,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 78,
+      "motion_step": 28,
+      "relative_to_hit_steps": -2,
+      "racket_actual_velocity_mps": [
+        -0.5591345429420471,
+        0.08163083344697952,
+        -0.06719560921192169
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0909501314163208,
+          "target_pos_rad": -1.1960320472717285,
+          "actual_pos_rad": -1.0824004411697388,
+          "actual_vel_radps": -0.2536559998989105,
+          "applied_torque_nm": -3.746462821960449,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.3074578046798706,
+          "target_pos_rad": 1.2169816493988037,
+          "actual_pos_rad": 1.2856736183166504,
+          "actual_vel_radps": -0.1754990518093109,
+          "applied_torque_nm": -1.7091087102890015,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.17016109824180603,
+          "target_pos_rad": 0.167558953166008,
+          "actual_pos_rad": 0.20725864171981812,
+          "actual_vel_radps": 0.3863425850868225,
+          "applied_torque_nm": -1.8722760677337646,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 78,
+      "motion_step": 28,
+      "relative_to_hit_steps": -2,
+      "racket_actual_velocity_mps": [
+        -0.7734705209732056,
+        -0.013177795335650444,
+        0.27063220739364624
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9418172836303711,
+          "target_pos_rad": -1.087990403175354,
+          "actual_pos_rad": -1.0191478729248047,
+          "actual_vel_radps": -0.4291612505912781,
+          "applied_torque_nm": -1.4448914527893066,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.663221836090088,
+          "target_pos_rad": 1.5155209302902222,
+          "actual_pos_rad": 1.5408581495285034,
+          "actual_vel_radps": -0.34229838848114014,
+          "applied_torque_nm": -0.04809701442718506,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.09533645212650299,
+          "target_pos_rad": -0.11856759339570999,
+          "actual_pos_rad": -0.04057295620441437,
+          "actual_vel_radps": 0.15659447014331818,
+          "applied_torque_nm": -2.636101722717285,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 78,
+      "motion_step": 28,
+      "relative_to_hit_steps": -2,
+      "racket_actual_velocity_mps": [
+        -0.7923521995544434,
+        -0.11451274156570435,
+        -0.23701927065849304
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.2463005781173706,
+          "target_pos_rad": -1.3825149536132812,
+          "actual_pos_rad": -1.295952320098877,
+          "actual_vel_radps": -0.2429821789264679,
+          "applied_torque_nm": -2.6145997047424316,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.741925835609436,
+          "target_pos_rad": 1.6202638149261475,
+          "actual_pos_rad": 1.661097526550293,
+          "actual_vel_radps": -0.13710594177246094,
+          "applied_torque_nm": -0.9354466795921326,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.009480813518166542,
+          "target_pos_rad": -0.028975605964660645,
+          "actual_pos_rad": -0.017116770148277283,
+          "actual_vel_radps": 0.7855085730552673,
+          "applied_torque_nm": -1.7153582572937012,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 79,
+      "motion_step": 29,
+      "relative_to_hit_steps": -1,
+      "racket_actual_velocity_mps": [
+        -0.7814125418663025,
+        0.05472307279706001,
+        -0.25417429208755493
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9476738572120667,
+          "target_pos_rad": -1.0279006958007812,
+          "actual_pos_rad": -0.9114592671394348,
+          "actual_vel_radps": -0.21907512843608856,
+          "applied_torque_nm": -4.018881797790527,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 0.915267825126648,
+          "target_pos_rad": 0.8474603295326233,
+          "actual_pos_rad": 0.8866154551506042,
+          "actual_vel_radps": -0.10762819647789001,
+          "applied_torque_nm": -0.9889980554580688,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5984657406806946,
+          "target_pos_rad": 0.6090484857559204,
+          "actual_pos_rad": 0.6581094861030579,
+          "actual_vel_radps": 0.3915878236293793,
+          "applied_torque_nm": -2.1520438194274902,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 79,
+      "motion_step": 29,
+      "relative_to_hit_steps": -1,
+      "racket_actual_velocity_mps": [
+        -0.8237602710723877,
+        0.28301987051963806,
+        -0.3365103006362915
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.4562290906906128,
+          "target_pos_rad": -1.5423150062561035,
+          "actual_pos_rad": -1.3904731273651123,
+          "actual_vel_radps": -0.21128502488136292,
+          "applied_torque_nm": -5.512814998626709,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2180298566818237,
+          "target_pos_rad": 1.145793080329895,
+          "actual_pos_rad": 1.2253117561340332,
+          "actual_vel_radps": -0.17420145869255066,
+          "applied_torque_nm": -2.0206336975097656,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5264016389846802,
+          "target_pos_rad": 0.49330028891563416,
+          "actual_pos_rad": 0.478046715259552,
+          "actual_vel_radps": 0.9053690433502197,
+          "applied_torque_nm": -1.2379560470581055,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 79,
+      "motion_step": 29,
+      "relative_to_hit_steps": -1,
+      "racket_actual_velocity_mps": [
+        -0.5539963245391846,
+        0.08807677775621414,
+        -0.014346468262374401
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.803939700126648,
+          "target_pos_rad": -0.8792768120765686,
+          "actual_pos_rad": -0.8001012206077576,
+          "actual_vel_radps": -0.13501189649105072,
+          "applied_torque_nm": -2.736184597015381,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2238861322402954,
+          "target_pos_rad": 1.1585326194763184,
+          "actual_pos_rad": 1.1871756315231323,
+          "actual_vel_radps": -0.062062811106443405,
+          "applied_torque_nm": -0.7190179228782654,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.28404390811920166,
+          "target_pos_rad": 0.2978379726409912,
+          "actual_pos_rad": 0.3895425498485565,
+          "actual_vel_radps": -0.0780722051858902,
+          "applied_torque_nm": -2.5936334133148193,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 79,
+      "motion_step": 29,
+      "relative_to_hit_steps": -1,
+      "racket_actual_velocity_mps": [
+        -0.5237153172492981,
+        0.10902675986289978,
+        -0.1766122579574585
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.1145130395889282,
+          "target_pos_rad": -1.1954020261764526,
+          "actual_pos_rad": -1.0860354900360107,
+          "actual_vel_radps": -0.13750800490379333,
+          "applied_torque_nm": -3.905956745147705,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.2852686643600464,
+          "target_pos_rad": 1.2168238162994385,
+          "actual_pos_rad": 1.282820701599121,
+          "actual_vel_radps": -0.09864500910043716,
+          "applied_torque_nm": -1.7678022384643555,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.18868575990200043,
+          "target_pos_rad": 0.1827525645494461,
+          "actual_pos_rad": 0.2159913331270218,
+          "actual_vel_radps": 0.46552205085754395,
+          "applied_torque_nm": -1.8412959575653076,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 79,
+      "motion_step": 29,
+      "relative_to_hit_steps": -1,
+      "racket_actual_velocity_mps": [
+        -0.6928253173828125,
+        0.008753638714551926,
+        0.13390791416168213
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9859266877174377,
+          "target_pos_rad": -1.0903822183609009,
+          "actual_pos_rad": -1.0260186195373535,
+          "actual_vel_radps": -0.25958383083343506,
+          "applied_torque_nm": -1.7674188613891602,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.6149550676345825,
+          "target_pos_rad": 1.5145353078842163,
+          "actual_pos_rad": 1.536590337753296,
+          "actual_vel_radps": -0.13680900633335114,
+          "applied_torque_nm": -0.3567879796028137,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.06938371807336807,
+          "target_pos_rad": -0.09744596481323242,
+          "actual_pos_rad": -0.03632565215229988,
+          "actual_vel_radps": 0.2253730297088623,
+          "applied_torque_nm": -2.235046863555908,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 79,
+      "motion_step": 29,
+      "relative_to_hit_steps": -1,
+      "racket_actual_velocity_mps": [
+        -0.7621226906776428,
+        -0.07321006059646606,
+        -0.3922194242477417
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.2847884893417358,
+          "target_pos_rad": -1.382736086845398,
+          "actual_pos_rad": -1.2987746000289917,
+          "actual_vel_radps": -0.08796460181474686,
+          "applied_torque_nm": -2.953176975250244,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.7061585187911987,
+          "target_pos_rad": 1.6200281381607056,
+          "actual_pos_rad": 1.6595776081085205,
+          "actual_vel_radps": 0.005356005858629942,
+          "applied_torque_nm": -1.162563443183899,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.028767654672265053,
+          "target_pos_rad": -0.0006583444774150848,
+          "actual_pos_rad": 0.00033153712865896523,
+          "actual_vel_radps": 0.9170224070549011,
+          "applied_torque_nm": -1.656097173690796,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 80,
+      "motion_step": 30,
+      "relative_to_hit_steps": 0,
+      "racket_actual_velocity_mps": [
+        -0.7738629579544067,
+        0.08283130079507828,
+        -0.3458094894886017
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9784625768661499,
+          "target_pos_rad": -1.0284827947616577,
+          "actual_pos_rad": -0.9151772260665894,
+          "actual_vel_radps": -0.17034517228603363,
+          "applied_torque_nm": -4.010849952697754,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 0.8901023268699646,
+          "target_pos_rad": 0.8474878072738647,
+          "actual_pos_rad": 0.8844594359397888,
+          "actual_vel_radps": -0.08421717584133148,
+          "applied_torque_nm": -0.9731842875480652,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.6123707890510559,
+          "target_pos_rad": 0.6181714534759521,
+          "actual_pos_rad": 0.6671665906906128,
+          "actual_vel_radps": 0.46695780754089355,
+          "applied_torque_nm": -2.304715394973755,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 80,
+      "motion_step": 30,
+      "relative_to_hit_steps": 0,
+      "racket_actual_velocity_mps": [
+        -0.8585577607154846,
+        0.3056182265281677,
+        -0.49487608671188354
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.4868841171264648,
+          "target_pos_rad": -1.5419124364852905,
+          "actual_pos_rad": -1.3938509225845337,
+          "actual_vel_radps": -0.11658190190792084,
+          "applied_torque_nm": -5.529702186584473,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.1933892965316772,
+          "target_pos_rad": 1.1459885835647583,
+          "actual_pos_rad": 1.2227565050125122,
+          "actual_vel_radps": -0.1029338464140892,
+          "applied_torque_nm": -2.0869250297546387,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5633267164230347,
+          "target_pos_rad": 0.5286745429039001,
+          "actual_pos_rad": 0.49823081493377686,
+          "actual_vel_radps": 1.0730522871017456,
+          "applied_torque_nm": -1.0126171112060547,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 80,
+      "motion_step": 30,
+      "relative_to_hit_steps": 0,
+      "racket_actual_velocity_mps": [
+        -0.5250511765480042,
+        0.12619194388389587,
+        -0.09038974344730377
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8262819647789001,
+          "target_pos_rad": -0.8781722187995911,
+          "actual_pos_rad": -0.8022085428237915,
+          "actual_vel_radps": -0.0988505631685257,
+          "applied_torque_nm": -2.726710796356201,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.1988661289215088,
+          "target_pos_rad": 1.1600029468536377,
+          "actual_pos_rad": 1.1867986917495728,
+          "actual_vel_radps": 0.010159097611904144,
+          "applied_torque_nm": -0.8257398009300232,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.29044413566589355,
+          "target_pos_rad": 0.3016595244407654,
+          "actual_pos_rad": 0.3888872265815735,
+          "actual_vel_radps": -0.03347618505358696,
+          "applied_torque_nm": -2.540597915649414,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 80,
+      "motion_step": 30,
+      "relative_to_hit_steps": 0,
+      "racket_actual_velocity_mps": [
+        -0.5053662657737732,
+        0.14163783192634583,
+        -0.2942527234554291
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.140870451927185,
+          "target_pos_rad": -1.1957106590270996,
+          "actual_pos_rad": -1.0875014066696167,
+          "actual_vel_radps": -0.0349559485912323,
+          "applied_torque_nm": -4.154970645904541,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.260486125946045,
+          "target_pos_rad": 1.2159626483917236,
+          "actual_pos_rad": 1.2817349433898926,
+          "actual_vel_radps": -0.009016372263431549,
+          "applied_torque_nm": -1.9294317960739136,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.20945310592651367,
+          "target_pos_rad": 0.20615442097187042,
+          "actual_pos_rad": 0.22672702372074127,
+          "actual_vel_radps": 0.5796939730644226,
+          "applied_torque_nm": -1.6590111255645752,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 80,
+      "motion_step": 30,
+      "relative_to_hit_steps": 0,
+      "racket_actual_velocity_mps": [
+        -0.6724501848220825,
+        0.02080405503511429,
+        -0.009387634694576263
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0355503559112549,
+          "target_pos_rad": -1.0896074771881104,
+          "actual_pos_rad": -1.0294526815414429,
+          "actual_vel_radps": -0.1074671670794487,
+          "applied_torque_nm": -2.0602684020996094,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.5604192018508911,
+          "target_pos_rad": 1.5153042078018188,
+          "actual_pos_rad": 1.5358328819274902,
+          "actual_vel_radps": -0.00983872264623642,
+          "applied_torque_nm": -0.5847505927085876,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.0395045168697834,
+          "target_pos_rad": -0.07443103194236755,
+          "actual_pos_rad": -0.02974211797118187,
+          "actual_vel_radps": 0.3877878189086914,
+          "applied_torque_nm": -2.010507822036743,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 80,
+      "motion_step": 30,
+      "relative_to_hit_steps": 0,
+      "racket_actual_velocity_mps": [
+        -0.765956699848175,
+        -0.028107909485697746,
+        -0.5476390719413757
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.3279575109481812,
+          "target_pos_rad": -1.3815083503723145,
+          "actual_pos_rad": -1.2979570627212524,
+          "actual_vel_radps": 0.14946326613426208,
+          "applied_torque_nm": -3.6410200595855713,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.6657376289367676,
+          "target_pos_rad": 1.6196924448013306,
+          "actual_pos_rad": 1.6605799198150635,
+          "actual_vel_radps": 0.11694544553756714,
+          "applied_torque_nm": -1.3991140127182007,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.0717267170548439,
+          "target_pos_rad": 0.03642762079834938,
+          "actual_pos_rad": 0.021230211481451988,
+          "actual_vel_radps": 1.112391471862793,
+          "applied_torque_nm": -1.5540578365325928,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 81,
+      "motion_step": 31,
+      "relative_to_hit_steps": 1,
+      "racket_actual_velocity_mps": [
+        -0.7578408718109131,
+        0.11984065175056458,
+        -0.43954360485076904
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9784625768661499,
+          "target_pos_rad": -1.029120683670044,
+          "actual_pos_rad": -0.9177258014678955,
+          "actual_vel_radps": -0.090370774269104,
+          "applied_torque_nm": -4.125840187072754,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 0.8901023268699646,
+          "target_pos_rad": 0.8463871479034424,
+          "actual_pos_rad": 0.8825398683547974,
+          "actual_vel_radps": -0.07645487785339355,
+          "applied_torque_nm": -0.9686715006828308,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.6123707890510559,
+          "target_pos_rad": 0.6323086619377136,
+          "actual_pos_rad": 0.6778942942619324,
+          "actual_vel_radps": 0.5566772818565369,
+          "applied_torque_nm": -2.34492826461792,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 81,
+      "motion_step": 31,
+      "relative_to_hit_steps": 1,
+      "racket_actual_velocity_mps": [
+        -0.9391221404075623,
+        0.33933839201927185,
+        -0.6452100276947021
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.4868841171264648,
+          "target_pos_rad": -1.5419480800628662,
+          "actual_pos_rad": -1.394084095954895,
+          "actual_vel_radps": -0.12383312731981277,
+          "applied_torque_nm": -5.6211838722229,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.1933892965316772,
+          "target_pos_rad": 1.1450891494750977,
+          "actual_pos_rad": 1.2228671312332153,
+          "actual_vel_radps": 0.049022410064935684,
+          "applied_torque_nm": -2.46779465675354,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5633267164230347,
+          "target_pos_rad": 0.5705909132957458,
+          "actual_pos_rad": 0.5242054462432861,
+          "actual_vel_radps": 1.3900671005249023,
+          "applied_torque_nm": -1.0945475101470947,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 81,
+      "motion_step": 31,
+      "relative_to_hit_steps": 1,
+      "racket_actual_velocity_mps": [
+        -0.5385504961013794,
+        0.1605229377746582,
+        -0.1602291464805603
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8262819647789001,
+          "target_pos_rad": -0.8801976442337036,
+          "actual_pos_rad": -0.8043903708457947,
+          "actual_vel_radps": -0.08146507292985916,
+          "applied_torque_nm": -2.766965866088867,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.1988661289215088,
+          "target_pos_rad": 1.1577688455581665,
+          "actual_pos_rad": 1.1874876022338867,
+          "actual_vel_radps": -0.001179846003651619,
+          "applied_torque_nm": -0.925062358379364,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.29044413566589355,
+          "target_pos_rad": 0.3073326349258423,
+          "actual_pos_rad": 0.38862144947052,
+          "actual_vel_radps": 0.00602332828566432,
+          "applied_torque_nm": -2.427288770675659,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 81,
+      "motion_step": 31,
+      "relative_to_hit_steps": 1,
+      "racket_actual_velocity_mps": [
+        -0.5014699101448059,
+        0.17629455029964447,
+        -0.4021415710449219
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.140870451927185,
+          "target_pos_rad": -1.1933848857879639,
+          "actual_pos_rad": -1.0870033502578735,
+          "actual_vel_radps": 0.030345557257533073,
+          "applied_torque_nm": -4.353903293609619,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.260486125946045,
+          "target_pos_rad": 1.2161991596221924,
+          "actual_pos_rad": 1.2821943759918213,
+          "actual_vel_radps": 0.07500683516263962,
+          "applied_torque_nm": -2.070687770843506,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.20945310592651367,
+          "target_pos_rad": 0.2252047061920166,
+          "actual_pos_rad": 0.23944289982318878,
+          "actual_vel_radps": 0.6343321204185486,
+          "applied_torque_nm": -1.6563870906829834,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 81,
+      "motion_step": 31,
+      "relative_to_hit_steps": 1,
+      "racket_actual_velocity_mps": [
+        -0.6629927158355713,
+        0.03190704435110092,
+        -0.17682892084121704
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0355503559112549,
+          "target_pos_rad": -1.0896233320236206,
+          "actual_pos_rad": -1.0289027690887451,
+          "actual_vel_radps": 0.13463017344474792,
+          "applied_torque_nm": -2.6290974617004395,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.5604192018508911,
+          "target_pos_rad": 1.5148940086364746,
+          "actual_pos_rad": 1.5365880727767944,
+          "actual_vel_radps": 0.1707458794116974,
+          "applied_torque_nm": -0.9609371423721313,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.0395045168697834,
+          "target_pos_rad": -0.04396490007638931,
+          "actual_pos_rad": -0.017705213278532028,
+          "actual_vel_radps": 0.6169416308403015,
+          "applied_torque_nm": -1.8456461429595947,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 81,
+      "motion_step": 31,
+      "relative_to_hit_steps": 1,
+      "racket_actual_velocity_mps": [
+        -0.7973059415817261,
+        0.03256300464272499,
+        -0.7179527282714844
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.3279575109481812,
+          "target_pos_rad": -1.382545828819275,
+          "actual_pos_rad": -1.2932085990905762,
+          "actual_vel_radps": 0.32901227474212646,
+          "applied_torque_nm": -4.429703235626221,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.6657376289367676,
+          "target_pos_rad": 1.6194770336151123,
+          "actual_pos_rad": 1.6644458770751953,
+          "actual_vel_radps": 0.26032623648643494,
+          "applied_torque_nm": -1.7893569469451904,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.0717267170548439,
+          "target_pos_rad": 0.0833759680390358,
+          "actual_pos_rad": 0.046432431787252426,
+          "actual_vel_radps": 1.3476860523223877,
+          "applied_torque_nm": -1.332789659500122,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 0,
+      "control_step": 82,
+      "motion_step": 32,
+      "relative_to_hit_steps": 2,
+      "racket_actual_velocity_mps": [
+        -0.6772503852844238,
+        0.15352755784988403,
+        -0.5235239267349243
+      ],
+      "racket_target_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.9784625768661499,
+          "target_pos_rad": -1.0273127555847168,
+          "actual_pos_rad": -0.9188458919525146,
+          "actual_vel_radps": -0.014954475685954094,
+          "applied_torque_nm": -4.216738700866699,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 0.8901023268699646,
+          "target_pos_rad": 0.8493861556053162,
+          "actual_pos_rad": 0.8808003664016724,
+          "actual_vel_radps": -0.050104085355997086,
+          "applied_torque_nm": -0.8496014475822449,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.6123707890510559,
+          "target_pos_rad": 0.6374738812446594,
+          "actual_pos_rad": 0.6896770596504211,
+          "actual_vel_radps": 0.5954339504241943,
+          "applied_torque_nm": -2.6493165493011475,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 1,
+      "control_step": 82,
+      "motion_step": 32,
+      "relative_to_hit_steps": 2,
+      "racket_actual_velocity_mps": [
+        -0.9245857000350952,
+        0.3270384669303894,
+        -0.7006953954696655
+      ],
+      "racket_target_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.4868841171264648,
+          "target_pos_rad": -1.5351643562316895,
+          "actual_pos_rad": -1.3956689834594727,
+          "actual_vel_radps": -0.0853026732802391,
+          "applied_torque_nm": -5.373490810394287,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.1933892965316772,
+          "target_pos_rad": 1.1490163803100586,
+          "actual_pos_rad": 1.2233262062072754,
+          "actual_vel_radps": 0.0019694266375154257,
+          "applied_torque_nm": -2.2455761432647705,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.5633267164230347,
+          "target_pos_rad": 0.5737394690513611,
+          "actual_pos_rad": 0.5530920624732971,
+          "actual_vel_radps": 1.4440333843231201,
+          "applied_torque_nm": -2.06549072265625,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 2,
+      "control_step": 82,
+      "motion_step": 32,
+      "relative_to_hit_steps": 2,
+      "racket_actual_velocity_mps": [
+        -0.4864085912704468,
+        0.18857137858867645,
+        -0.25306686758995056
+      ],
+      "racket_target_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -0.8262819647789001,
+          "target_pos_rad": -0.8768612742424011,
+          "actual_pos_rad": -0.8033305406570435,
+          "actual_vel_radps": 0.08145613968372345,
+          "applied_torque_nm": -3.070905923843384,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.1988661289215088,
+          "target_pos_rad": 1.1576237678527832,
+          "actual_pos_rad": 1.1862131357192993,
+          "actual_vel_radps": -0.004144471138715744,
+          "applied_torque_nm": -0.8572958707809448,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.29044413566589355,
+          "target_pos_rad": 0.3049352169036865,
+          "actual_pos_rad": 0.39039182662963867,
+          "actual_vel_radps": 0.06716331094503403,
+          "applied_torque_nm": -2.650679588317871,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 3,
+      "control_step": 82,
+      "motion_step": 32,
+      "relative_to_hit_steps": 2,
+      "racket_actual_velocity_mps": [
+        -0.45386332273483276,
+        0.1959020495414734,
+        -0.49134016036987305
+      ],
+      "racket_target_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.140870451927185,
+          "target_pos_rad": -1.1901459693908691,
+          "actual_pos_rad": -1.0852018594741821,
+          "actual_vel_radps": 0.07893288880586624,
+          "applied_torque_nm": -4.437602996826172,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.260486125946045,
+          "target_pos_rad": 1.2190343141555786,
+          "actual_pos_rad": 1.2835383415222168,
+          "actual_vel_radps": 0.1206396296620369,
+          "applied_torque_nm": -2.122849225997925,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.20945310592651367,
+          "target_pos_rad": 0.2288680076599121,
+          "actual_pos_rad": 0.25315481424331665,
+          "actual_vel_radps": 0.6603991985321045,
+          "applied_torque_nm": -2.016477584838867,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 4,
+      "control_step": 82,
+      "motion_step": 32,
+      "relative_to_hit_steps": 2,
+      "racket_actual_velocity_mps": [
+        -0.6061413884162903,
+        0.049911897629499435,
+        -0.3299904763698578
+      ],
+      "racket_target_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.0355503559112549,
+          "target_pos_rad": -1.0849813222885132,
+          "actual_pos_rad": -1.0246905088424683,
+          "actual_vel_radps": 0.2658635973930359,
+          "applied_torque_nm": -3.106820583343506,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.5604192018508911,
+          "target_pos_rad": 1.5153757333755493,
+          "actual_pos_rad": 1.5403434038162231,
+          "actual_vel_radps": 0.19457323849201202,
+          "applied_torque_nm": -1.1127145290374756,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": -0.0395045168697834,
+          "target_pos_rad": -0.03498698025941849,
+          "actual_pos_rad": -0.0038711437955498695,
+          "actual_vel_radps": 0.7292777299880981,
+          "applied_torque_nm": -2.2594597339630127,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    },
+    {
+      "motion_id": 5,
+      "control_step": 82,
+      "motion_step": 32,
+      "relative_to_hit_steps": 2,
+      "racket_actual_velocity_mps": [
+        -0.7466009855270386,
+        0.10658510774374008,
+        -0.8394765257835388
+      ],
+      "racket_target_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "joints": {
+        "right_shoulder_pitch_joint": {
+          "reference_pos_rad": -1.3279575109481812,
+          "target_pos_rad": -1.375072717666626,
+          "actual_pos_rad": -1.2865763902664185,
+          "actual_vel_radps": 0.3897554874420166,
+          "applied_torque_nm": -4.596775054931641,
+          "torque_limit_nm": 60.0,
+          "velocity_limit_radps": 13.600000381469727
+        },
+        "right_shoulder_yaw_joint": {
+          "reference_pos_rad": 1.6657376289367676,
+          "target_pos_rad": 1.6238778829574585,
+          "actual_pos_rad": 1.6701922416687012,
+          "actual_vel_radps": 0.3134062886238098,
+          "applied_torque_nm": -1.9700498580932617,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        },
+        "right_elbow_joint": {
+          "reference_pos_rad": 0.0717267170548439,
+          "target_pos_rad": 0.09154762327671051,
+          "actual_pos_rad": 0.07420192658901215,
+          "actual_vel_radps": 1.3800545930862427,
+          "applied_torque_nm": -2.0707225799560547,
+          "torque_limit_nm": 24.0,
+          "velocity_limit_radps": 15.699999809265137
+        }
+      }
+    }
+  ]
+}

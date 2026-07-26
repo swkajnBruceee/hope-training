@@ -21,11 +21,13 @@ import sys
 from typing import Any
 
 import hydra
+import numpy as np
 import torch
 from omegaconf import OmegaConf
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "scripts"))
 from train import _apply_task_overrides  # noqa: E402
+from stage_a_compat import adapt_stage_a_observation_legacy_yaw_pi, validate_stage_a_legacy_layout  # noqa: E402
 
 
 UPPER_DEFAULT = (
@@ -101,6 +103,89 @@ class CheckpointPolicy:
         return self.actor(normalized)
 
 
+class LegacySupportReferenceProxy:
+    """Feed model_3396 its historical upper-reference preview, read-only.
+
+    The physical upper body remains driven by model_900.  Only the 9-DOF
+    reference/velocity preview terms supplied to the frozen leg actor are
+    replaced, per current motion, with the closest archived K17 motion.  This
+    directly tests whether upper-reference timing is the missing contract.
+    """
+
+    _REFERENCE_START = 84
+    _REFERENCE_END = 120
+
+    def __init__(self, raw, mapping_report: pathlib.Path):
+        from training.robots.agibot_a3 import AGIBOT_A3_JOINT_NAMES, A3_STRIKE_V2_REFERENCE_JOINTS
+
+        report = json.loads(mapping_report.read_text())
+        print(f"[F0] loading legacy support mapping {mapping_report}", flush=True)
+        legacy_manifest = pathlib.Path(report["legacy_manifest"])
+        # Isaac's process locale is ASCII on this workstation while the
+        # archived manifest has Chinese absolute paths; never rely on locale.
+        legacy_data = json.loads(legacy_manifest.read_text(encoding="utf-8"))
+        entries = {str(item["episode_id"]): item for item in legacy_data["motions"]}
+        print(f"[F0] loaded {len(entries)} archived manifest entries", flush=True)
+        nearest = {
+            str(item["current_episode_id"]): str(item["nearest_legacy"][0]["episode_id"])
+            for item in report["nearest_legacy_by_current"]
+        }
+        print(f"[F0] loaded {len(nearest)} current-to-legacy mappings", flush=True)
+        current_ids = list(raw.command_manager.get_term("motion").motion.episode_ids)
+        print(f"[F0] runtime current ids={current_ids}", flush=True)
+        selected = []
+        for current_id in current_ids:
+            legacy_id = nearest.get(str(current_id))
+            if legacy_id is None or legacy_id not in entries:
+                raise RuntimeError(f"No legacy support-proxy mapping for current motion {current_id!r}")
+            selected.append(entries[legacy_id])
+        print(f"[F0] selected legacy support motions={[item['episode_id'] for item in selected]}", flush=True)
+        joint_ids = [AGIBOT_A3_JOINT_NAMES.index(name) for name in A3_STRIKE_V2_REFERENCE_JOINTS]
+        q, qd, lengths, legacy_ids = [], [], [], []
+        for entry in selected:
+            print(f"[F0] loading support NPZ {entry['motion_npz']}", flush=True)
+            with np.load(entry["motion_npz"]) as data:
+                q.append(np.asarray(data["joint_pos"], dtype=np.float32)[:, joint_ids])
+                qd.append(np.asarray(data["joint_vel"], dtype=np.float32)[:, joint_ids])
+            lengths.append(q[-1].shape[0])
+            legacy_ids.append(str(entry["episode_id"]))
+        max_length = max(lengths)
+        def pad(rows):
+            result = np.empty((len(rows), max_length, len(joint_ids)), dtype=np.float32)
+            for index, row in enumerate(rows):
+                result[index, :len(row)] = row
+                result[index, len(row):] = row[-1]
+            return torch.as_tensor(result, device=raw.device)
+        self.q = pad(q)
+        self.qd = pad(qd)
+        self.lengths = torch.tensor(lengths, dtype=torch.long, device=raw.device)
+        self.legacy_ids = legacy_ids
+
+    def apply(self, observation: torch.Tensor, motion, robot) -> torch.Tensor:
+        result = observation.clone()
+        step = torch.minimum(motion.time_steps, self.lengths - 1)
+        env_ids = torch.arange(observation.shape[0], device=observation.device)
+        q = self.q[env_ids, step]
+        # Match MotionCommand.joint_pos: only position is prelude blended;
+        # velocity and lookahead are the original reference feed-forward.
+        prelude_steps = max(int(motion.prelude_steps), 1)
+        alpha = (motion.prelude_elapsed_steps.float() / prelude_steps).clamp(0.0, 1.0).unsqueeze(-1)
+        default_q = robot.data.default_joint_pos[:, [
+            robot.joint_names.index(name) for name in (
+                "waist_yaw_joint", "waist_pitch_joint", "right_shoulder_pitch_joint",
+                "right_shoulder_roll_joint", "right_shoulder_yaw_joint", "right_elbow_joint",
+                "right_wrist_roll_joint", "right_wrist_pitch_joint", "right_wrist_yaw_joint",
+            )
+        ]]
+        q = default_q + alpha * (q - default_q)
+        qd = self.qd[env_ids, step]
+        qd8 = self.qd[env_ids, torch.minimum(step + 8, self.lengths - 1)]
+        qd16 = self.qd[env_ids, torch.minimum(step + 16, self.lengths - 1)]
+        result[:, self._REFERENCE_START:self._REFERENCE_END] = torch.cat((q, qd, qd8, qd16), dim=-1)
+        result[:, 120] = (step.float() / (self.lengths - 1).clamp(min=1).float()).clamp(0.0, 1.0)
+        return result
+
+
 def _group_obs(env, name: str) -> torch.Tensor:
     value = env.observation_manager.compute_group(name)
     if isinstance(value, tuple):
@@ -117,38 +202,6 @@ def _vec(value: torch.Tensor) -> list[float]:
 def _path(value: str, base: pathlib.Path) -> pathlib.Path:
     path = pathlib.Path(value).expanduser()
     return path if path.is_absolute() else base / path
-
-
-def _rotate_stage_a_observation_180(observation: torch.Tensor) -> torch.Tensor:
-    """Map body/world direction vectors into the opposite yaw frame.
-
-    The Stage-A checkpoint's joint positions, joint velocities, previous
-    actions, phase, and semantic stroke label are local/scalar contracts and
-    must not be changed.  Only the XY components of vector observations are
-    rotated by pi.
-    """
-    if observation.shape[-1] != 126:
-        raise ValueError(f"Stage-A observation width must be 126, got {observation.shape[-1]}")
-    transformed = observation.clone()
-    # The runtime term order is:
-    # base_lin(3), base_ang(3), base_joint_pos(14), base_joint_vel(14),
-    # actions(14), projected_gravity(3), target_pos/vel/normal(9),
-    # racket_pos/vel/normal(9), time(1), swing(1), then strike-reference
-    # joint terms. Only the body/world-frame vector terms change under a pi
-    # yaw. Do not rotate joint values, phase, semantic labels, or actions.
-    for start, end in (
-        (0, 3),    # base linear velocity
-        (3, 6),    # base angular velocity
-        (48, 51),  # projected gravity
-        (51, 54),  # target position in base frame
-        (54, 57),  # target velocity in base frame
-        (57, 60),  # target normal in base frame
-        (60, 63),  # racket position in base frame
-        (63, 66),  # racket velocity in base frame
-        (66, 69),  # racket normal in base frame
-    ):
-        transformed[..., start : start + 2] *= -1.0
-    return transformed
 
 
 def _make_env(cfg, fixed: bool, cases: int, seed: int):
@@ -181,6 +234,10 @@ def _make_env(cfg, fixed: bool, cases: int, seed: int):
     frame_offset = cfg.task.get("manifest_frame_z_offset", None)
     if frame_offset is not None:
         env_cfg.commands.motion.manifest_frame_z_offset = float(frame_offset)
+    release_steps = int(cfg.get("upper_prelude_release_steps", 0))
+    if release_steps < 0:
+        raise ValueError("upper_prelude_release_steps must be non-negative")
+    env_cfg.actions.joint_pos.upper_prelude_release_steps = release_steps
     return gym.make(task_id, cfg=env_cfg)
 
 
@@ -273,6 +330,7 @@ def _run_mode(cfg, mode: str, upper: CheckpointPolicy, stage_a: CheckpointPolicy
             flush=True,
         )
         device = raw.device
+        robot = raw.scene["robot"]
         hit_frame = motion.motion.hit_frame[motion.motion_ids]
         prelude_steps = int(getattr(motion, "prelude_steps", 0))
         exact = [None] * cases
@@ -284,7 +342,26 @@ def _run_mode(cfg, mode: str, upper: CheckpointPolicy, stage_a: CheckpointPolicy
         action_term._env.f0_upper_last_action.zero_()
         layer_probe = bool(cfg.get("layer_probe", False))
         adapt_stage_a_obs_180 = bool(cfg.get("adapt_stage_a_obs_180", False))
+        use_legacy_support_proxy = bool(cfg.get("legacy_support_reference_proxy", False))
+        legacy_support_proxy = None
+        if mode.endswith("stageA") and use_legacy_support_proxy:
+            proxy_path = _path(
+                str(cfg.get("legacy_support_proxy_report", "eval_outputs/upper_contract/motion_envelope_report.json")),
+                pathlib.Path.cwd(),
+            )
+            if not proxy_path.is_file():
+                raise FileNotFoundError(f"Legacy support-proxy report not found: {proxy_path}")
+            print(f"[F0] initializing legacy support proxy from {proxy_path}", flush=True)
+            legacy_support_proxy = LegacySupportReferenceProxy(raw, proxy_path)
+            print(f"[F0] legacy support proxy={legacy_support_proxy.legacy_ids}", flush=True)
         capture_stage_a_obs = bool(cfg.get("capture_stage_a_obs", False))
+        record_trace = bool(cfg.get("record_trace", False))
+        traces: list[list[dict[str, Any]]] | None = ([[] for _ in range(cases)] if record_trace else None)
+        if mode.endswith("stageA") and adapt_stage_a_obs_180:
+            validate_stage_a_legacy_layout(
+                raw.observation_manager._group_obs_term_names["stage_a"],
+                [int(shape[0]) for shape in raw.observation_manager.group_obs_term_dim["stage_a"]],
+            )
         requested_steps = cfg.get("max_steps", None)
         steps = int(raw.max_episode_length) + 1
         if requested_steps is not None:
@@ -298,10 +375,12 @@ def _run_mode(cfg, mode: str, upper: CheckpointPolicy, stage_a: CheckpointPolicy
             if mode.endswith("stageA"):
                 stage_obs_raw = _group_obs(raw, "stage_a")
                 stage_obs = (
-                    _rotate_stage_a_observation_180(stage_obs_raw)
+                    adapt_stage_a_observation_legacy_yaw_pi(stage_obs_raw)
                     if adapt_stage_a_obs_180
                     else stage_obs_raw
                 )
+                if legacy_support_proxy is not None:
+                    stage_obs = legacy_support_proxy.apply(stage_obs, motion, robot)
                 base_action = stage_a(stage_obs)
             else:
                 base_action = torch.zeros((cases, 14), device=device)
@@ -311,7 +390,6 @@ def _run_mode(cfg, mode: str, upper: CheckpointPolicy, stage_a: CheckpointPolicy
             if not torch.isfinite(action_term.full_joint_targets).all():
                 raise RuntimeError(f"Non-finite composed joint target at step {step_index}")
 
-            robot = raw.scene["robot"]
             root_disp = torch.linalg.vector_norm(robot.data.root_pos_w - root0, dim=-1)
             foot_disp = torch.linalg.vector_norm(robot.data.body_pos_w[:, foot_ids] - foot0, dim=-1).amax(dim=-1)
             max_root_disp = torch.maximum(max_root_disp, root_disp)
@@ -319,6 +397,30 @@ def _run_mode(cfg, mode: str, upper: CheckpointPolicy, stage_a: CheckpointPolicy
             upper_gap = robot.data.joint_pos[:, action_term._upper_joint_ids_tensor] - action_term.upper_processed_actions
             upper_gap_sq += torch.sum(torch.square(upper_gap), dim=-1)
             gap_count += 1.0
+
+            if traces is not None:
+                upper_ids = action_term._upper_joint_ids_tensor
+                for env_id in range(cases):
+                    traces[env_id].append(
+                        {
+                            "step": step_index,
+                            "motion_frame": int(motion.time_steps[env_id].item()),
+                            "prelude_elapsed_steps": int(motion.prelude_elapsed_steps[env_id].item()),
+                            "root_pos_w": _vec(robot.data.root_pos_w[env_id]),
+                            "root_quat_wxyz": _vec(robot.data.root_quat_w[env_id]),
+                            "root_lin_vel_b": _vec(robot.data.root_lin_vel_b[env_id]),
+                            "root_ang_vel_b": _vec(robot.data.root_ang_vel_b[env_id]),
+                            "upper_reference_q": _vec(motion.joint_pos[env_id, upper_ids]),
+                            "upper_reference_qd": _vec(motion.joint_vel[env_id, upper_ids]),
+                            "upper_processed_target_q": _vec(action_term.upper_processed_actions[env_id]),
+                            "upper_q": _vec(robot.data.joint_pos[env_id, upper_ids]),
+                            "upper_qd": _vec(robot.data.joint_vel[env_id, upper_ids]),
+                            "upper_policy_action": _vec(upper_action[env_id]),
+                            "base_policy_action": _vec(base_action[env_id]),
+                            "racket_pos_w": _vec(racket.racket_pos_w[env_id]),
+                            "racket_vel_w": _vec(racket.racket_lin_vel_w[env_id]),
+                        }
+                    )
 
             current = motion.time_steps
             # ``time_steps`` is the motion-library frame, not wall-clock time.
@@ -482,6 +584,9 @@ def _run_mode(cfg, mode: str, upper: CheckpointPolicy, stage_a: CheckpointPolicy
                     "max_root_displacement_m": float(max_root_disp[env_id].item()),
                     "max_foot_displacement_m": float(max_foot_disp[env_id].item()),
                     "upper_tracking_rmse_rad": float(torch.sqrt(upper_gap_sq[env_id] / gap_count[env_id]).item()),
+                    "legacy_support_proxy_motion": (
+                        legacy_support_proxy.legacy_ids[env_id] if legacy_support_proxy is not None else None
+                    ),
                     "initial_stance_joint_pos_rad": {
                         name: float(initial_stance_joint_pos[env_id, index].item())
                         for index, name in enumerate(stance_joint_names)
@@ -489,6 +594,8 @@ def _run_mode(cfg, mode: str, upper: CheckpointPolicy, stage_a: CheckpointPolicy
                     "window_pm2": window[env_id],
                 }
             )
+            if traces is not None:
+                item["trace"] = traces[env_id]
             results.append(item)
         return results
     finally:
@@ -529,16 +636,7 @@ def _run_stage_a_observation_probe(cfg, stage_a: CheckpointPolicy, cases: int, s
 
         names = list(raw.observation_manager._group_obs_term_names["stage_a"])
         dims = [int(shape[0]) for shape in raw.observation_manager.group_obs_term_dim["stage_a"]]
-        expected = [
-            "base_lin_vel", "base_ang_vel", "joint_pos", "joint_vel", "actions",
-            "projected_gravity", "racket_target_pos_b", "racket_target_vel_b",
-            "racket_target_normal_b", "racket_pos_b", "racket_lin_vel_b",
-            "racket_normal_b", "time_to_strike", "swing_type", "strike_joint_pos",
-            "strike_joint_vel", "strike_reference_joint_pos", "strike_reference_joint_vel",
-            "strike_reference_joint_vel_8", "strike_reference_joint_vel_16", "strike_phase",
-        ]
-        if names != expected or sum(dims) != 126:
-            raise RuntimeError(f"Unexpected Stage-A observation contract: {names} / {dims}")
+        validate_stage_a_legacy_layout(names, dims)
 
         def set_state(quat):
             state = root_state.clone()
@@ -547,6 +645,10 @@ def _run_stage_a_observation_probe(cfg, stage_a: CheckpointPolicy, cases: int, s
             robot.write_joint_state_to_sim(joint_pos, torch.zeros_like(robot.data.joint_vel), env_ids=env_ids)
             robot.write_root_state_to_sim(state, env_ids=env_ids)
             raw.scene.write_data_to_sim()
+            # State writes update PhysX, not the cached body transforms read by
+            # racket FK. Forward once without stepping dynamics before sampling.
+            raw.sim.forward()
+            raw.scene.update(0.0)
             racket._compute_racket_state()
 
         term_cfgs = raw.observation_manager._group_obs_term_cfgs["stage_a"]
@@ -562,7 +664,7 @@ def _run_stage_a_observation_probe(cfg, stage_a: CheckpointPolicy, cases: int, s
             for term, noise in zip(term_cfgs, saved_noise):
                 term.noise = noise
 
-        adapted = _rotate_stage_a_observation_180(new_obs)
+        adapted = adapt_stage_a_observation_legacy_yaw_pi(new_obs)
         old_action = stage_a(old_obs)
         adapted_action = stage_a(adapted)
         obs_diff = torch.abs(old_obs - adapted)
@@ -668,6 +770,7 @@ def main(cfg: Any):
                 "mode": selected_mode,
                 "root_frame": str(cfg.get("root_frame", "motion")),
                 "adapt_stage_a_obs_180": bool(cfg.get("adapt_stage_a_obs_180", False)),
+                "legacy_support_reference_proxy": bool(cfg.get("legacy_support_reference_proxy", False)),
                 "shared_initial_stance": SHARED_STANCE,
                 "shared_initial_stance_joints": SHARED_STANCE_JOINTS,
                 "results": results,

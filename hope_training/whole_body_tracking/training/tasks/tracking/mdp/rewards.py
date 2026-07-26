@@ -340,6 +340,22 @@ def action_raw_l2(env: ManagerBasedRLEnv, action_name: str = "joint_pos") -> tor
     return torch.mean(torch.square(raw_actions), dim=-1)
 
 
+def action_subset_raw_l2(
+    env: ManagerBasedRLEnv,
+    action_name: str = "joint_pos",
+    action_indices: tuple[int, ...] = (),
+) -> torch.Tensor:
+    """Penalize a named coordinator action group without coupling its peers."""
+    action_term = env.action_manager.get_term(action_name)
+    raw_actions = getattr(action_term, "raw_actions", None)
+    if raw_actions is None:
+        raw_actions = env.action_manager.action
+    if not action_indices:
+        raise ValueError("action_subset_raw_l2 requires at least one action index")
+    indices = torch.tensor(action_indices, dtype=torch.long, device=raw_actions.device)
+    return torch.mean(torch.square(raw_actions.index_select(dim=-1, index=indices)), dim=-1)
+
+
 def action_unbounded_excess_l2(
     env: ManagerBasedRLEnv,
     action_name: str = "joint_pos",

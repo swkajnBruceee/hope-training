@@ -637,11 +637,53 @@ def _apply_task_overrides(env_cfg, task):
                 "actions.joint_pos.joint_reference_lookahead_steps="
                 f"{env_cfg.actions.joint_pos.joint_reference_lookahead_steps!r}"
             )
+        upper_prelude_release_steps = _get(actions, "upper_prelude_release_steps")
+        if upper_prelude_release_steps is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "upper_prelude_release_steps"),
+                "actions.joint_pos.upper_prelude_release_steps",
+            )
+            upper_prelude_release_steps = int(upper_prelude_release_steps)
+            _require(
+                upper_prelude_release_steps >= 0,
+                "actions.joint_pos.upper_prelude_release_steps >= 0",
+            )
+            env_cfg.actions.joint_pos.upper_prelude_release_steps = upper_prelude_release_steps
+            applied.append(
+                "actions.joint_pos.upper_prelude_release_steps="
+                f"{upper_prelude_release_steps}"
+            )
+        for key, expected_length in (
+            ("coordinator_leg_correction_scale_rad", 12),
+            ("coordinator_waist_correction_scale_rad", 3),
+            ("coordinator_arm_correction_scale_rad", 7),
+        ):
+            value = _get(actions, key)
+            if value is None:
+                continue
+            attr = key.removeprefix("coordinator_")
+            _require(hasattr(env_cfg.actions.joint_pos, attr), f"actions.joint_pos.{attr}")
+            values = tuple(float(item) for item in value)
+            _require(len(values) == expected_length, f"actions.{key} length == {expected_length}")
+            _require(all(item > 0.0 for item in values), f"actions.{key} values > 0")
+            setattr(env_cfg.actions.joint_pos, attr, values)
+            applied.append(f"actions.joint_pos.{attr}={values}")
         upper_checkpoint = _get(actions, "upper_checkpoint")
         if upper_checkpoint is not None:
             _require(hasattr(env_cfg.actions.joint_pos, "upper_checkpoint"), "actions.joint_pos.upper_checkpoint")
             env_cfg.actions.joint_pos.upper_checkpoint = str(upper_checkpoint)
             applied.append(f"actions.joint_pos.upper_checkpoint={str(upper_checkpoint)!r}")
+        legacy_stage_a_checkpoint = _get(actions, "legacy_stage_a_checkpoint")
+        if legacy_stage_a_checkpoint is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "legacy_stage_a_checkpoint"),
+                "actions.joint_pos.legacy_stage_a_checkpoint",
+            )
+            env_cfg.actions.joint_pos.legacy_stage_a_checkpoint = str(legacy_stage_a_checkpoint)
+            applied.append(
+                "actions.joint_pos.legacy_stage_a_checkpoint="
+                f"{str(legacy_stage_a_checkpoint)!r}"
+            )
         scale_multipliers = _get(actions, "native_joint_scale_multipliers")
         if scale_multipliers is not None:
             scale = getattr(env_cfg.actions.joint_pos, "scale", None)
@@ -659,6 +701,31 @@ def _apply_task_overrides(env_cfg, task):
         _set_reward(R, "racket_position_fine", _get(rw, "racket_position_fine_weight"), _get(rw, "racket_position_fine_std"), applied)
         _set_reward(R, "racket_position_y_fine", _get(rw, "racket_position_y_fine_weight"), _get(rw, "racket_position_y_fine_std"), applied)
         _set_reward(R, "racket_velocity", _get(rw, "racket_velocity_weight"), _get(rw, "racket_velocity_std"), applied)
+        gated_velocity_weight = _get(rw, "racket_velocity_position_gated_weight")
+        if gated_velocity_weight is not None:
+            _require(
+                hasattr(R, "racket_velocity_position_gated"),
+                "rewards.racket_velocity_position_gated",
+            )
+            R.racket_velocity_position_gated.weight = float(gated_velocity_weight)
+            applied.append(
+                "rewards.racket_velocity_position_gated.weight="
+                f"{float(gated_velocity_weight)}"
+            )
+        gated_velocity = _get(rw, "racket_velocity_position_gated")
+        if gated_velocity is not None:
+            _require(
+                hasattr(R, "racket_velocity_position_gated"),
+                "rewards.racket_velocity_position_gated",
+            )
+            for key in ("velocity_std", "position_threshold", "position_excess_std"):
+                val = _get(gated_velocity, key)
+                if val is not None:
+                    R.racket_velocity_position_gated.params[key] = float(val)
+                    applied.append(
+                        "rewards.racket_velocity_position_gated.params."
+                        f"{key}={float(val)}"
+                    )
         _set_reward(R, "racket_normal", _get(rw, "racket_normal_weight"), _get(rw, "racket_normal_std"), applied)
         _set_reward(R, "racket_hit_coupled", _get(rw, "racket_hit_coupled_weight"), None, applied)
         if hasattr(R, "racket_hit_coupled") and R.racket_hit_coupled is not None:
@@ -1041,7 +1108,13 @@ def _run(cfg):
         "A3BaseStandRecoveryAV2WaistMask-v0",
         "A3BaseStandRecoveryAV21WaistMask-v0",
         "HOPE-StrikeStabilizerA-AgibotA3-v0",
+        "HOPE-RetrainStrikeStabilizerA-AgibotA3-v0",
         "HOPE-FloatingF1-AgibotA3-v0",
+        "HOPE-FloatingUpperCorrection-AgibotA3-v0",
+        "HOPE-FloatingJointCoordinator-AgibotA3-v0",
+        "HOPE-FloatingJointCoordinatorV2-AgibotA3-v0",
+        "HOPE-FloatingJointCoordinatorV3-AgibotA3-v0",
+        "HOPE-FloatingJointCoordinatorV4-AgibotA3-v0",
         "HOPE-FixedBaseReferenceStrike-AgibotA3-v0",
         "HOPE-FixedBaseBackhandReferenceStrike-AgibotA3-v0",
     }
@@ -1053,7 +1126,16 @@ def _run(cfg):
         # in the Gaussian std, but make the initial mean policy exactly zero.
         initialize_zero_residual_actor_mean(
             runner,
-            action_dim=10 if task_id.startswith("HOPE-FixedBase") else 14,
+            action_dim=(
+                22 if task_id in {
+                    "HOPE-FloatingJointCoordinator-AgibotA3-v0",
+                    "HOPE-FloatingJointCoordinatorV2-AgibotA3-v0",
+                    "HOPE-FloatingJointCoordinatorV3-AgibotA3-v0",
+                    "HOPE-FloatingJointCoordinatorV4-AgibotA3-v0",
+                }
+                else 10 if task_id.startswith("HOPE-FixedBase") or task_id == "HOPE-FloatingUpperCorrection-AgibotA3-v0"
+                else 14
+            ),
         )
         print(
             "[train.py] initialized A3 Base/Recovery actor mean to exact zero residual; "
@@ -1178,6 +1260,484 @@ def _run(cfg):
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
     dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
+
+    audit_zero_action = bool(cfg.get("audit_zero_action", False))
+    audit_policy_action = bool(cfg.get("audit_policy_action", False))
+    if audit_zero_action and audit_policy_action:
+        raise ValueError("Choose exactly one audit action source: zero or deterministic policy")
+    if audit_zero_action or audit_policy_action:
+        # Deterministic integration audit: exercise the exact environment
+        # construction used for training without invoking PPO collection or an
+        # optimizer update.  This is used to qualify frozen composite policies
+        # and learned coordinator checkpoints.
+        #
+        # Do not infer safety from the final root pose.  Isaac can reset an
+        # environment immediately after a termination, which would otherwise
+        # make a fallen robot look like it recovered.  Record every active
+        # termination term and independent physical safety signals before the
+        # hit frame and through a short post-hit settling window.
+        raw = env.unwrapped
+        motion = raw.command_manager.get_term("motion")
+        racket = raw.command_manager.get_term("racket_target")
+        cases = raw.num_envs
+        env.reset()
+        ids = torch.arange(cases, device=raw.device) % motion.motion.num_motions
+        motion.motion_ids[:] = ids
+        motion.time_steps.zero_()
+        motion.tail_steps.zero_()
+        motion.prelude_elapsed_steps.zero_()
+        racket._resample_command(torch.arange(cases, device=raw.device))
+        if not getattr(racket.cfg, "manifest_base_aligned", False):
+            racket.racket_target_pos_w[:] = raw.scene.env_origins + motion.motion.strike_pos_w[ids]
+        racket.racket_target_vel_w[:] = motion.motion.strike_vel_w[ids]
+        racket.racket_target_normal_w[:] = motion.motion.strike_normal_w[ids]
+        target_pos = racket.racket_target_pos_w.clone()
+        target_vel = racket.racket_target_vel_w.clone()
+        target_normal = racket.racket_target_normal_w.clone()
+        hit = motion.motion.hit_frame[motion.motion_ids]
+        robot = raw.scene["robot"]
+        root0 = robot.data.root_pos_w.clone()
+        root_max = torch.zeros(cases, device=raw.device)
+        root_xy_max = torch.zeros(cases, device=raw.device)
+        min_root_height = torch.full((cases,), float("inf"), device=raw.device)
+        max_root_lin_vel = torch.zeros(cases, device=raw.device)
+        max_root_ang_vel = torch.zeros(cases, device=raw.device)
+        max_root_tilt_deg = torch.zeros(cases, device=raw.device)
+        max_torque = torch.zeros(cases, device=raw.device)
+        min_joint_margin = torch.full((cases,), float("inf"), device=raw.device)
+        min_joint_margin_index = torch.full((cases,), -1, dtype=torch.long, device=raw.device)
+        min_joint_margin_step = torch.full((cases,), -1, dtype=torch.long, device=raw.device)
+        min_joint_value = torch.zeros(cases, device=raw.device)
+        min_joint_lower_limit = torch.zeros(cases, device=raw.device)
+        min_joint_upper_limit = torch.zeros(cases, device=raw.device)
+        min_joint_target = torch.zeros(cases, device=raw.device)
+        torque_saturation_count = torch.zeros(cases, dtype=torch.long, device=raw.device)
+        velocity_saturation_count = torch.zeros(cases, dtype=torch.long, device=raw.device)
+        max_foot_slip = torch.zeros(cases, device=raw.device)
+        foot_contact_sum = torch.zeros(cases, device=raw.device)
+        observed_steps = torch.zeros(cases, dtype=torch.long, device=raw.device)
+        post_hit_steps = torch.zeros(cases, dtype=torch.long, device=raw.device)
+        active = torch.ones(cases, dtype=torch.bool, device=raw.device)
+        finite = torch.ones(cases, dtype=torch.bool, device=raw.device)
+        first_failure_step = torch.full((cases,), -1, dtype=torch.long, device=raw.device)
+        termination_labels: list[list[str]] = [[] for _ in range(cases)]
+        termination_counts = {
+            name: torch.zeros(cases, dtype=torch.long, device=raw.device)
+            for name in raw.termination_manager.active_terms
+        }
+        from training.robots.agibot_a3 import A3_FEET_BODIES
+
+        contact_sensor = raw.scene.sensors["contact_forces"]
+        foot_ids, resolved_feet = contact_sensor.find_bodies(A3_FEET_BODIES, preserve_order=True)
+        if resolved_feet != A3_FEET_BODIES:
+            raise RuntimeError(
+                f"zero-action audit foot sensor mismatch: expected={A3_FEET_BODIES}, got={resolved_feet}"
+            )
+        action_term = raw.action_manager.get_term("joint_pos")
+        backend_ids = torch.as_tensor(
+            action_term._backend_joint_ids,
+            dtype=torch.long,
+            device=raw.device,
+        )
+        backend_joint_names = list(action_term.cfg.backend_joint_names)
+        audit_trace_value = cfg.get("audit_trace_output", None)
+        audit_trace_path = Path(str(audit_trace_value)) if audit_trace_value else None
+        audit_trace: list[dict[str, Any]] = []
+        trace_joint_names = (
+            "right_shoulder_pitch_joint",
+            "right_shoulder_yaw_joint",
+            "right_elbow_joint",
+        )
+        trace_joint_backend_indices: dict[str, int] = {}
+        if audit_trace_path is not None:
+            missing_trace_joints = [name for name in trace_joint_names if name not in backend_joint_names]
+            if missing_trace_joints:
+                raise RuntimeError(f"audit trace joint mapping missing: {missing_trace_joints}")
+            trace_joint_backend_indices = {
+                name: backend_joint_names.index(name) for name in trace_joint_names
+            }
+        post_hit_required = int(cfg.get("audit_post_hit_steps", 20))
+        if post_hit_required < 0:
+            raise ValueError("audit_post_hit_steps must be non-negative")
+        hit_deadline = int(motion.prelude_steps) + int(hit.max().item()) + post_hit_required + 2
+        max_audit_steps = min(int(raw.max_episode_length), hit_deadline)
+        exact = [None] * cases
+        policy = None
+        observation = None
+        if audit_policy_action:
+            # The reset above is deliberately followed by fixed motion IDs and
+            # phase.  Build observations only after that synchronization so the
+            # actor sees the same state that is about to be audited.
+            policy = runner.get_inference_policy(device=raw.device)
+            observation, _ = env.get_observations()
+        zero = torch.zeros((cases, raw.action_manager.total_action_dim), device=raw.device)
+        for step in range(max_audit_steps):
+            racket.racket_target_pos_w[:] = target_pos
+            racket.racket_target_vel_w[:] = target_vel
+            racket.racket_target_normal_w[:] = target_normal
+            active_before_step = active.clone()
+            if policy is None:
+                action = zero
+            else:
+                with torch.inference_mode():
+                    action = policy(observation)
+            observation, _, _, _ = env.step(action)
+            root_delta = robot.data.root_pos_w - root0
+            root_max = torch.where(
+                active_before_step,
+                torch.maximum(root_max, torch.linalg.vector_norm(root_delta, dim=-1)),
+                root_max,
+            )
+            root_xy_max = torch.where(
+                active_before_step,
+                torch.maximum(root_xy_max, torch.linalg.vector_norm(root_delta[:, :2], dim=-1)),
+                root_xy_max,
+            )
+            min_root_height = torch.where(
+                active_before_step,
+                torch.minimum(min_root_height, robot.data.root_pos_w[:, 2]),
+                min_root_height,
+            )
+            max_root_lin_vel = torch.where(
+                active_before_step,
+                torch.maximum(max_root_lin_vel, torch.linalg.vector_norm(robot.data.root_lin_vel_b, dim=-1)),
+                max_root_lin_vel,
+            )
+            max_root_ang_vel = torch.where(
+                active_before_step,
+                torch.maximum(max_root_ang_vel, torch.linalg.vector_norm(robot.data.root_ang_vel_b, dim=-1)),
+                max_root_ang_vel,
+            )
+            root_tilt_deg = torch.rad2deg(torch.arccos(torch.clamp(-robot.data.projected_gravity_b[:, 2], -1.0, 1.0)))
+            max_root_tilt_deg = torch.where(
+                active_before_step,
+                torch.maximum(max_root_tilt_deg, root_tilt_deg),
+                max_root_tilt_deg,
+            )
+            max_torque = torch.where(
+                active_before_step,
+                torch.maximum(
+                    max_torque,
+                    torch.abs(robot.data.applied_torque[:, backend_ids]).max(dim=-1).values,
+                ),
+                max_torque,
+            )
+            soft_limits = robot.data.soft_joint_pos_limits[:, backend_ids]
+            joint_margin_by_joint = torch.minimum(
+                robot.data.joint_pos[:, backend_ids] - soft_limits[..., 0],
+                soft_limits[..., 1] - robot.data.joint_pos[:, backend_ids],
+            )
+            joint_margin, joint_margin_index = joint_margin_by_joint.min(dim=-1)
+            new_min_margin = active_before_step & (joint_margin < min_joint_margin)
+            min_joint_margin = torch.where(
+                active_before_step, torch.minimum(min_joint_margin, joint_margin), min_joint_margin
+            )
+            min_joint_margin_index = torch.where(new_min_margin, joint_margin_index, min_joint_margin_index)
+            min_joint_margin_step = torch.where(
+                new_min_margin, torch.full_like(min_joint_margin_step, step + 1), min_joint_margin_step
+            )
+            selected_index = joint_margin_index.unsqueeze(-1)
+            min_joint_value = torch.where(
+                new_min_margin,
+                robot.data.joint_pos[:, backend_ids].gather(1, selected_index).squeeze(-1),
+                min_joint_value,
+            )
+            min_joint_lower_limit = torch.where(
+                new_min_margin, soft_limits[..., 0].gather(1, selected_index).squeeze(-1), min_joint_lower_limit
+            )
+            min_joint_upper_limit = torch.where(
+                new_min_margin, soft_limits[..., 1].gather(1, selected_index).squeeze(-1), min_joint_upper_limit
+            )
+            min_joint_target = torch.where(
+                new_min_margin,
+                action_term.full_joint_targets[:, backend_ids].gather(1, selected_index).squeeze(-1),
+                min_joint_target,
+            )
+            torque_saturation_count += (
+                (torch.abs(robot.data.applied_torque[:, backend_ids]) >= 0.95 * robot.data.joint_effort_limits[:, backend_ids])
+                .sum(dim=-1)
+                * active_before_step
+            )
+            velocity_saturation_count += (
+                (torch.abs(robot.data.joint_vel[:, backend_ids]) >= 0.95 * robot.data.joint_vel_limits[:, backend_ids])
+                .sum(dim=-1)
+                * active_before_step
+            )
+            foot_force = torch.linalg.vector_norm(contact_sensor.data.net_forces_w[:, foot_ids], dim=-1)
+            foot_contact = foot_force > 10.0
+            foot_tangential_speed = torch.linalg.vector_norm(
+                robot.data.body_lin_vel_w[:, foot_ids, :2], dim=-1
+            )
+            max_foot_slip = torch.where(
+                active_before_step,
+                torch.maximum(
+                    max_foot_slip,
+                    torch.where(foot_contact, foot_tangential_speed, torch.zeros_like(foot_tangential_speed))
+                    .max(dim=-1)
+                    .values,
+                ),
+                max_foot_slip,
+            )
+            foot_contact_sum += foot_contact.float().mean(dim=-1) * active_before_step
+            observed_steps += active_before_step.to(torch.long)
+            finite &= (
+                torch.isfinite(robot.data.root_state_w).all(dim=-1)
+                & torch.isfinite(robot.data.joint_pos).all(dim=-1)
+                & torch.isfinite(robot.data.joint_vel).all(dim=-1)
+            )
+
+            termination_masks = {
+                name: raw.termination_manager.get_term(name).clone()
+                for name in raw.termination_manager.active_terms
+            }
+            done = torch.zeros(cases, dtype=torch.bool, device=raw.device)
+            for name, mask in termination_masks.items():
+                mask = mask.to(torch.bool) & active_before_step
+                termination_counts[name] += mask.to(torch.long)
+                done |= mask
+                for env_id in torch.nonzero(mask, as_tuple=False).flatten().tolist():
+                    termination_labels[env_id].append(name)
+            done |= ~finite & active_before_step
+            for env_id in torch.nonzero(done & (first_failure_step < 0), as_tuple=False).flatten().tolist():
+                first_failure_step[env_id] = step + 1
+                if not finite[env_id]:
+                    termination_labels[env_id].append("non_finite_state")
+
+            exact_before_step = torch.tensor(
+                [row is not None for row in exact], dtype=torch.bool, device=raw.device
+            )
+            at_hit = (
+                active_before_step
+                & ~done
+                & (motion.prelude_elapsed_steps >= int(motion.prelude_steps))
+                & (motion.time_steps == hit)
+            )
+            racket._compute_racket_state()
+            if audit_trace_path is not None:
+                # This trace is intentionally limited to the pre-hit dynamic
+                # window.  It exposes whether a key arm joint is late, weak,
+                # or saturating without mixing in the frozen post-hit tail.
+                current_steps = motion.time_steps.clone()
+                trace_window = (
+                    active_before_step
+                    & (motion.prelude_elapsed_steps >= int(motion.prelude_steps))
+                    & (current_steps >= hit - 15)
+                    & (current_steps <= hit + 2)
+                )
+                for env_id in torch.nonzero(trace_window, as_tuple=False).flatten().tolist():
+                    motion_id = int(ids[env_id].item())
+                    motion_step = int(current_steps[env_id].item())
+                    joints = {}
+                    for name, backend_index in trace_joint_backend_indices.items():
+                        sim_joint_index = int(backend_ids[backend_index].item())
+                        joints[name] = {
+                            "reference_pos_rad": float(
+                                motion.motion.joint_pos[motion_id, motion_step, sim_joint_index].item()
+                            ),
+                            "target_pos_rad": float(
+                                action_term.full_joint_targets[env_id, sim_joint_index].item()
+                            ),
+                            "actual_pos_rad": float(robot.data.joint_pos[env_id, sim_joint_index].item()),
+                            "actual_vel_radps": float(robot.data.joint_vel[env_id, sim_joint_index].item()),
+                            "applied_torque_nm": float(robot.data.applied_torque[env_id, sim_joint_index].item()),
+                            "torque_limit_nm": float(robot.data.joint_effort_limits[env_id, sim_joint_index].item()),
+                            "velocity_limit_radps": float(robot.data.joint_vel_limits[env_id, sim_joint_index].item()),
+                        }
+                    audit_trace.append(
+                        {
+                            "motion_id": motion_id,
+                            "control_step": step + 1,
+                            "motion_step": motion_step,
+                            "relative_to_hit_steps": motion_step - int(hit[env_id].item()),
+                            "racket_actual_velocity_mps": [
+                                float(value) for value in racket.racket_lin_vel_w[env_id].tolist()
+                            ],
+                            "racket_target_velocity_mps": [
+                                float(value) for value in racket.racket_target_vel_w[env_id].tolist()
+                            ],
+                            "joints": joints,
+                        }
+                    )
+            for env_id in torch.nonzero(at_hit, as_tuple=False).flatten().tolist():
+                if exact[env_id] is None:
+                    position_error = racket.racket_target_pos_w[env_id] - racket.racket_pos_w[env_id]
+                    velocity_error = racket.racket_target_vel_w[env_id] - racket.racket_lin_vel_w[env_id]
+                    dot = torch.clamp(
+                        torch.sum(racket.racket_target_normal_w[env_id] * racket.racket_normal_w[env_id]),
+                        -1.0,
+                        1.0,
+                    )
+                    exact[env_id] = {
+                        "motion_id": int(ids[env_id].item()),
+                        "position_error_m": float(torch.linalg.vector_norm(position_error).item()),
+                        "position_error_x_m": float(position_error[0].item()),
+                        "position_error_y_m": float(position_error[1].item()),
+                        "position_error_z_m": float(position_error[2].item()),
+                        "velocity_error_mps": float(torch.linalg.vector_norm(velocity_error).item()),
+                        "velocity_error_x_mps": float(velocity_error[0].item()),
+                        "velocity_error_y_mps": float(velocity_error[1].item()),
+                        "velocity_error_z_mps": float(velocity_error[2].item()),
+                        "racket_velocity_x_mps": float(racket.racket_lin_vel_w[env_id, 0].item()),
+                        "racket_velocity_y_mps": float(racket.racket_lin_vel_w[env_id, 1].item()),
+                        "racket_velocity_z_mps": float(racket.racket_lin_vel_w[env_id, 2].item()),
+                        "target_velocity_x_mps": float(racket.racket_target_vel_w[env_id, 0].item()),
+                        "target_velocity_y_mps": float(racket.racket_target_vel_w[env_id, 1].item()),
+                        "target_velocity_z_mps": float(racket.racket_target_vel_w[env_id, 2].item()),
+                        "normal_error_deg": float(torch.rad2deg(torch.arccos(dot)).item()),
+                        "root_displacement_m": float(root_max[env_id].item()),
+                        "hit_control_step": step + 1,
+                    }
+                    # For the joint coordinator, record what the learned actor
+                    # actually contributed in physical radians.  This separates
+                    # a reward/authority failure (no useful correction) from a
+                    # downstream PD tracking failure (correction issued but not
+                    # realized by the mechanism).
+                    raw_action = action_term.raw_actions[env_id]
+                    processed_action = action_term.processed_actions[env_id]
+                    if raw_action.numel() == 22 and processed_action.numel() == 22:
+                        for group, start, end in (("leg", 0, 12), ("waist", 12, 15), ("arm", 15, 22)):
+                            raw_group = raw_action[start:end]
+                            physical_group = processed_action[start:end]
+                            exact[env_id][f"coordinator_{group}_raw_l2"] = float(
+                                torch.linalg.vector_norm(raw_group).item()
+                            )
+                            exact[env_id][f"coordinator_{group}_raw_max_abs"] = float(
+                                raw_group.abs().max().item()
+                            )
+                            exact[env_id][f"coordinator_{group}_physical_l2_rad"] = float(
+                                torch.linalg.vector_norm(physical_group).item()
+                            )
+                            exact[env_id][f"coordinator_{group}_physical_max_abs_rad"] = float(
+                                physical_group.abs().max().item()
+                            )
+
+                    # The final target includes both frozen priors and the new
+                    # correction.  Rank the observed target-tracking errors at
+                    # hit so a stable whole-body rollout cannot hide a single
+                    # shoulder or waist joint that missed its command.
+                    tracking_error = (
+                        robot.data.joint_pos[env_id, backend_ids]
+                        - action_term.full_joint_targets[env_id, backend_ids]
+                    )
+                    top_count = min(5, len(backend_joint_names))
+                    top_values, top_indices = tracking_error.abs().topk(top_count)
+                    exact[env_id]["largest_joint_target_errors"] = [
+                        {
+                            "joint": backend_joint_names[int(index.item())],
+                            "actual_minus_target_rad": float(tracking_error[int(index.item())].item()),
+                            "abs_error_rad": float(value.item()),
+                        }
+                        for value, index in zip(top_values, top_indices)
+                    ]
+            # Count steps strictly *after* exact hit; the hit frame itself is
+            # a measurement event, not part of the settling window.
+            post_hit_steps += (exact_before_step & active_before_step & ~done).to(torch.long)
+            exact_row = torch.tensor(
+                [row is not None for row in exact], dtype=torch.bool, device=raw.device
+            )
+            active &= ~done
+            completed = (exact_row & (post_hit_steps >= post_hit_required)) | (~active & (first_failure_step >= 0))
+            if bool(completed.all()):
+                break
+        rows = []
+        for env_id in range(cases):
+            row = exact[env_id] or {"motion_id": int(ids[env_id].item())}
+            hard_safety_pass = bool(
+                exact[env_id] is not None
+                and first_failure_step[env_id].item() < 0
+                and post_hit_steps[env_id].item() >= post_hit_required
+                and min_root_height[env_id].item() >= 0.65
+                and finite[env_id].item()
+            )
+            # A simulator reset can hide a fall, while a task's termination
+            # thresholds can be more permissive than a reviewer expects.  Keep
+            # this independent physical screen separate from hard termination:
+            # it flags near-falls even if the episode never reset.
+            stability_pass = bool(
+                hard_safety_pass
+                and max_root_tilt_deg[env_id].item() <= 30.0
+                and foot_contact_sum[env_id].item() / max(observed_steps[env_id].item(), 1) >= 0.50
+            )
+            row.update({
+                "safety_pass": hard_safety_pass,
+                "stability_pass": stability_pass,
+                "first_failure_step": None if first_failure_step[env_id].item() < 0 else int(first_failure_step[env_id].item()),
+                "termination_reasons": termination_labels[env_id],
+                "termination_count_by_reason": {
+                    name: int(count[env_id].item()) for name, count in termination_counts.items()
+                },
+                "post_hit_steps_observed": int(post_hit_steps[env_id].item()),
+                "minimum_root_height_m": float(min_root_height[env_id].item()),
+                "max_root_displacement_m": float(root_max[env_id].item()),
+                "max_root_xy_displacement_m": float(root_xy_max[env_id].item()),
+                "max_root_linear_velocity_mps": float(max_root_lin_vel[env_id].item()),
+                "max_root_angular_velocity_radps": float(max_root_ang_vel[env_id].item()),
+                "max_root_tilt_deg": float(max_root_tilt_deg[env_id].item()),
+                "foot_contact_fraction": float(foot_contact_sum[env_id].item() / max(observed_steps[env_id].item(), 1)),
+                "max_loaded_foot_tangential_speed_mps": float(max_foot_slip[env_id].item()),
+                "max_applied_torque_nm": float(max_torque[env_id].item()),
+                "minimum_soft_joint_margin_rad": float(min_joint_margin[env_id].item()),
+                "minimum_soft_joint_margin_joint": (
+                    backend_joint_names[min_joint_margin_index[env_id].item()]
+                    if min_joint_margin_index[env_id].item() >= 0 else None
+                ),
+                "minimum_soft_joint_margin_step": int(min_joint_margin_step[env_id].item()),
+                "minimum_margin_joint_position_rad": float(min_joint_value[env_id].item()),
+                "minimum_margin_joint_lower_limit_rad": float(min_joint_lower_limit[env_id].item()),
+                "minimum_margin_joint_upper_limit_rad": float(min_joint_upper_limit[env_id].item()),
+                "minimum_margin_joint_target_rad": float(min_joint_target[env_id].item()),
+                "torque_saturation_fraction": float(
+                    torque_saturation_count[env_id].item() / max(observed_steps[env_id].item() * len(backend_joint_names), 1)
+                ),
+                "velocity_saturation_fraction": float(
+                    velocity_saturation_count[env_id].item() / max(observed_steps[env_id].item() * len(backend_joint_names), 1)
+                ),
+                "finite_state": bool(finite[env_id].item()),
+            })
+            rows.append(row)
+        if any(row["position_error_m"] is None for row in rows if "position_error_m" in row):
+            raise RuntimeError("zero-action audit produced an invalid exact-hit metric")
+        safety_pass_count = sum(row["safety_pass"] for row in rows)
+        stability_pass_count = sum(row["stability_pass"] for row in rows)
+        exact_rows = [row for row in rows if "position_error_m" in row]
+        report = {
+            "task": task_id,
+            "action": "all_zero" if policy is None else "deterministic_checkpoint_actor",
+            "audit_scope": {
+                "motions": int(cases),
+                "post_hit_steps_required": post_hit_required,
+                "hard_safety_rule": "no termination, finite state, root height >= 0.65 m through exact hit plus post-hit window",
+                "stability_screen": "hard safety plus root tilt <= 30 deg and loaded-foot contact fraction >= 0.50",
+            },
+            "results": rows,
+            "safety_pass_count": safety_pass_count,
+            "safety_pass_fraction": safety_pass_count / len(rows),
+            "stability_pass_count": stability_pass_count,
+            "stability_pass_fraction": stability_pass_count / len(rows),
+            "mean_position_error_m": (
+                sum(row["position_error_m"] for row in exact_rows) / len(exact_rows)
+                if exact_rows else None
+            ),
+            "mean_root_displacement_m": sum(row["max_root_displacement_m"] for row in rows) / len(rows),
+        }
+        audit_path = Path(str(cfg.get("audit_output", "eval_outputs/upper_contract/zero_action_audit.json")))
+        audit_path.parent.mkdir(parents=True, exist_ok=True)
+        audit_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        if audit_trace_path is not None:
+            audit_trace_path.parent.mkdir(parents=True, exist_ok=True)
+            audit_trace_report = {
+                "purpose": "deterministic V2 pre-hit actuator trace",
+                "checkpoint": str(agent_cfg.load_checkpoint),
+                "task": task_id,
+                "joint_names": trace_joint_names,
+                "window": "hit-15 through hit+2 control steps",
+                "rows": audit_trace,
+            }
+            audit_trace_path.write_text(json.dumps(audit_trace_report, indent=2), encoding="utf-8")
+            print(f"[train.py] deterministic actuator trace: {audit_trace_path}", flush=True)
+        print(f"[train.py] deterministic rollout audit: {json.dumps(report)}", flush=True)
+        env.close()
+        return
 
     runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
     env.close()

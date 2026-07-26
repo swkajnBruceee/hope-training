@@ -7,6 +7,8 @@ from pathlib import Path
 
 import torch
 
+from stage_a_compat import adapt_stage_a_observation_legacy_yaw_pi
+
 from isaaclab.assets import Articulation
 from isaaclab.managers import ActionTerm, ActionTermCfg
 from isaaclab.utils import configclass
@@ -376,9 +378,22 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
         gather_shape = (*t0.shape, full.shape[-1])
         ref0 = torch.gather(full, 1, t0.unsqueeze(-1).expand(gather_shape))
         ref1 = torch.gather(full, 1, t1.unsqueeze(-1).expand(gather_shape))
-        ref = ref0 + alpha * (ref1 - ref0)
+        lead_reference = ref0 + alpha * (ref1 - ref0)
         joint_ids = self._upper_joint_ids_tensor.view(1, -1).expand(query.shape[0], -1)
-        return ref.gather(2, joint_ids.unsqueeze(-1)).squeeze(-1)
+        lead_reference = lead_reference.gather(2, joint_ids.unsqueeze(-1)).squeeze(-1)
+
+        release_steps = int(getattr(self.cfg, "upper_prelude_release_steps", 0))
+        if release_steps <= 0:
+            return lead_reference
+        # F0/F1 must not let an upper-body lookahead jump the robot out of the
+        # validated flexed ready pose.  During the prelude MotionCommand owns
+        # the physical blend to frame zero; after that, introduce the frozen
+        # model_900 lead over a small number of swing frames.
+        no_lead = motion_cmd.joint_pos[:, self._upper_joint_ids_tensor]
+        in_prelude = motion_cmd.prelude_elapsed_steps < int(motion_cmd.prelude_steps)
+        release = (time_steps.float() / float(release_steps)).clamp(0.0, 1.0).unsqueeze(-1)
+        blended = no_lead + release * (lead_reference - no_lead)
+        return torch.where(in_prelude.unsqueeze(-1), no_lead, blended)
 
     def process_actions(self, actions: torch.Tensor):
         # Reuse the reviewed Stage-A/Base14 leg mask, gate, nominal reference,
@@ -394,7 +409,13 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
         self._upper_raw_actions[:] = torch.clamp(upper, -self.cfg.upper_raw_clip, self.cfg.upper_raw_clip)
         motion_cmd = self._env.command_manager.get_term(self.cfg.reference_command_name)
         reference = self._upper_reference(motion_cmd, motion_cmd.time_steps)
-        self._upper_processed_actions[:] = reference + self._upper_raw_actions * self._upper_scale
+        raw_gate = torch.ones((self.num_envs, 1), device=self.device)
+        release_steps = int(getattr(self.cfg, "upper_prelude_release_steps", 0))
+        if release_steps > 0:
+            in_prelude = motion_cmd.prelude_elapsed_steps < int(motion_cmd.prelude_steps)
+            release = (motion_cmd.time_steps.float() / float(release_steps)).clamp(0.0, 1.0).unsqueeze(-1)
+            raw_gate = torch.where(in_prelude.unsqueeze(-1), torch.zeros_like(release), release)
+        self._upper_processed_actions[:] = reference + raw_gate * self._upper_raw_actions * self._upper_scale
         self._full_joint_targets[:, self._upper_joint_ids_tensor] = self._upper_processed_actions
         if self.cfg.clip_to_soft_joint_limits:
             limits = self._asset.data.soft_joint_pos_limits
@@ -410,6 +431,7 @@ class A3F0UpperBaseCompositePositionActionCfg(A3StrikeConditionedBaseCompositePo
     class_type: type[ActionTerm] = A3F0UpperBaseCompositePositionAction
     upper_joint_names: tuple[str, ...] = MISSING
     upper_raw_clip: float = 0.50
+    upper_prelude_release_steps: int = 0
     # These fields let the common native-strike task override path configure
     # the frozen upper contract without knowing about the F0 composite term.
     joint_names: tuple[str, ...] = ()
@@ -502,3 +524,209 @@ class A3F1FrozenUpperBaseCompositePositionActionCfg(A3F0UpperBaseCompositePositi
     class_type: type[ActionTerm] = A3F1FrozenUpperBaseCompositePositionAction
     upper_checkpoint: str = ""
     upper_observation_group: str = "upper"
+
+
+class A3FrozenStageAUpperCorrectionAction(A3F1FrozenUpperBaseCompositePositionAction):
+    """Frozen model_3396 legs and model_900 swing, with PPO correction on upper joints only."""
+
+    cfg: "A3FrozenStageAUpperCorrectionActionCfg"
+
+    @property
+    def action_dim(self) -> int:
+        return len(self.cfg.upper_joint_names)
+
+    def __init__(self, cfg: "A3FrozenStageAUpperCorrectionActionCfg", env):
+        super().__init__(cfg, env)
+        self._legacy_stage_a = _FrozenCheckpointActor(cfg.legacy_stage_a_checkpoint, self.device)
+        if self._legacy_stage_a.obs_dim != 126 or self._legacy_stage_a.action_dim != 14:
+            raise RuntimeError(
+                "model_3396 contract mismatch: expected 126-D observation and 14-D action, "
+                f"got ({self._legacy_stage_a.obs_dim}, {self._legacy_stage_a.action_dim})"
+            )
+        self._legacy_stage_a_group = str(cfg.legacy_stage_a_observation_group)
+        self._correction_scale = torch.tensor(
+            cfg.upper_correction_scale_rad, dtype=torch.float, device=self.device
+        ).unsqueeze(0)
+        if self._correction_scale.shape[-1] != self.action_dim:
+            raise ValueError("upper_correction_scale_rad must contain one value per upper joint")
+        self._legacy_raw = torch.zeros((self.num_envs, 14), device=self.device)
+        self._legacy_bounded = torch.zeros_like(self._legacy_raw)
+        env.legacy_stage_a_last_action = self._legacy_raw.clone()
+
+    def process_actions(self, actions: torch.Tensor):
+        if actions.shape != self._raw_actions.shape or not torch.isfinite(actions).all():
+            raise ValueError(f"Expected finite upper correction shape {self._raw_actions.shape}")
+        motion = self._env.command_manager.get_term(self.cfg.reference_command_name)
+        stage_obs = self._compute_observation_group(self._legacy_stage_a_group)
+        if self.cfg.legacy_stage_a_yaw_adapter:
+            stage_obs = adapt_stage_a_observation_legacy_yaw_pi(stage_obs)
+        self._legacy_raw[:] = self._legacy_stage_a(stage_obs)
+        self._env.legacy_stage_a_last_action[:] = self._legacy_raw
+
+        # Reproduce the evaluated leg-only Stage-A target path.  The two waist
+        # channels are structurally masked, then the frozen upper owns all ten
+        # native strike joints below.
+        lower = self._legacy_raw * self._mask
+        if self._phase_gate_base_indices:
+            lengths = motion.motion.motion_lengths[motion.motion_ids].clamp(min=2)
+            phase = motion.time_steps.float() / (lengths - 1).float()
+            u = ((phase - self.cfg.phase_gate_start) / max(
+                self.cfg.phase_gate_end - self.cfg.phase_gate_start, 1.0e-6
+            )).clamp(0.0, 1.0)
+            gate = self.cfg.phase_gate_min_scale + (1.0 - self.cfg.phase_gate_min_scale) * (u * u * (3.0 - 2.0 * u))
+            for index in self._phase_gate_base_indices:
+                lower[:, index] *= gate
+        self._legacy_bounded[:] = self._bound_actions(lower)
+        self._full_joint_targets[:] = self._asset.data.default_joint_pos
+        base_default = self._asset.data.default_joint_pos[:, self._base_joint_ids_tensor]
+        self._full_joint_targets[:, self._base_joint_ids_tensor] = base_default + self._legacy_bounded * self._scale
+
+        upper_obs = self._compute_observation_group(self._upper_observation_group)
+        primary = self._upper_policy(upper_obs).clamp(-self.cfg.upper_raw_clip, self.cfg.upper_raw_clip)
+        self._unbounded_actions[:] = actions
+        self._raw_actions[:] = self._bound_actions(actions)
+        release = (motion.time_steps.float() / float(max(self.cfg.upper_prelude_release_steps, 1))).clamp(0.0, 1.0).unsqueeze(-1)
+        in_prelude = motion.prelude_elapsed_steps < int(motion.prelude_steps)
+        gate = torch.where(in_prelude.unsqueeze(-1), torch.zeros_like(release), release)
+        reference = self._upper_reference(motion, motion.time_steps)
+        self._upper_raw_actions[:] = primary
+        self._upper_processed_actions[:] = reference + gate * (
+            primary * self._upper_scale + self._raw_actions * self._correction_scale
+        )
+        self._full_joint_targets[:, self._upper_joint_ids_tensor] = self._upper_processed_actions
+        limits = self._asset.data.soft_joint_pos_limits
+        self._full_joint_targets[:] = torch.clamp(self._full_joint_targets, min=limits[..., 0], max=limits[..., 1])
+        self._upper_processed_actions[:] = self._full_joint_targets[:, self._upper_joint_ids_tensor]
+        self._processed_actions[:] = self._raw_actions * self._correction_scale
+        self._env.f0_upper_last_action[:] = primary
+
+
+@configclass
+class A3FrozenStageAUpperCorrectionActionCfg(A3F1FrozenUpperBaseCompositePositionActionCfg):
+    class_type: type[ActionTerm] = A3FrozenStageAUpperCorrectionAction
+    legacy_stage_a_checkpoint: str = ""
+    legacy_stage_a_observation_group: str = "stage_a"
+    legacy_stage_a_yaw_adapter: bool = True
+    upper_correction_scale_rad: tuple[float, ...] = (0.035,) * 10
+
+
+class A3FrozenStageAJointCoordinatorAction(A3F1FrozenUpperBaseCompositePositionAction):
+    """Freeze both parent actors and train one 12-leg/3-waist/7-arm coordinator.
+
+    The historical Stage-A checkpoint keeps ownership of its twelve leg
+    residuals only.  Its two legacy waist outputs are permanently masked.
+    model_900 keeps supplying the lead-compensated waist/right-arm strike
+    prior.  PPO publishes one small correction vector around those two
+    contracts, so every final joint target has exactly one execution path.
+    """
+
+    cfg: "A3FrozenStageAJointCoordinatorActionCfg"
+
+    @property
+    def action_dim(self) -> int:
+        return 22
+
+    def __init__(self, cfg: "A3FrozenStageAJointCoordinatorActionCfg", env):
+        super().__init__(cfg, env)
+        self._legacy_stage_a = _FrozenCheckpointActor(cfg.legacy_stage_a_checkpoint, self.device)
+        if self._legacy_stage_a.obs_dim != 126 or self._legacy_stage_a.action_dim != 14:
+            raise RuntimeError(
+                "model_3396 contract mismatch: expected 126-D observation and 14-D action, "
+                f"got ({self._legacy_stage_a.obs_dim}, {self._legacy_stage_a.action_dim})"
+            )
+        if len(self._base_joint_ids) != 14 or len(self._upper_joint_ids) != 10:
+            raise RuntimeError("Joint coordinator requires the reviewed Base14 and upper10 joint contracts")
+        if len(cfg.leg_correction_scale_rad) != 12:
+            raise ValueError("leg_correction_scale_rad must contain 12 values")
+        if len(cfg.waist_correction_scale_rad) != 3:
+            raise ValueError("waist_correction_scale_rad must contain 3 values")
+        if len(cfg.arm_correction_scale_rad) != 7:
+            raise ValueError("arm_correction_scale_rad must contain 7 values")
+
+        self._legacy_stage_a_group = str(cfg.legacy_stage_a_observation_group)
+        self._leg_correction_scale = torch.tensor(
+            cfg.leg_correction_scale_rad, dtype=torch.float, device=self.device
+        ).unsqueeze(0)
+        self._upper_correction_scale = torch.tensor(
+            (*cfg.waist_correction_scale_rad, *cfg.arm_correction_scale_rad),
+            dtype=torch.float,
+            device=self.device,
+        ).unsqueeze(0)
+        self._legacy_raw = torch.zeros((self.num_envs, 14), device=self.device)
+        self._legacy_bounded = torch.zeros_like(self._legacy_raw)
+        self._leg_joint_ids_tensor = self._base_joint_ids_tensor[:12]
+        self._processed_actions = torch.zeros((self.num_envs, self.action_dim), device=self.device)
+        env.legacy_stage_a_last_action = self._legacy_raw.clone()
+        env.joint_coordinator_last_action = torch.zeros((self.num_envs, self.action_dim), device=self.device)
+
+    def _legacy_leg_action(self, motion) -> torch.Tensor:
+        stage_obs = self._compute_observation_group(self._legacy_stage_a_group)
+        if self.cfg.legacy_stage_a_yaw_adapter:
+            stage_obs = adapt_stage_a_observation_legacy_yaw_pi(stage_obs)
+        self._legacy_raw[:] = self._legacy_stage_a(stage_obs)
+        self._env.legacy_stage_a_last_action[:] = self._legacy_raw
+
+        lower = self._legacy_raw * self._mask
+        if self._phase_gate_base_indices:
+            lengths = motion.motion.motion_lengths[motion.motion_ids].clamp(min=2)
+            phase = motion.time_steps.float() / (lengths - 1).float()
+            u = ((phase - self.cfg.phase_gate_start) / max(
+                self.cfg.phase_gate_end - self.cfg.phase_gate_start, 1.0e-6
+            )).clamp(0.0, 1.0)
+            smooth = u * u * (3.0 - 2.0 * u)
+            gate = self.cfg.phase_gate_min_scale + (1.0 - self.cfg.phase_gate_min_scale) * smooth
+            for index in self._phase_gate_base_indices:
+                lower[:, index] *= gate
+        self._legacy_bounded[:] = self._bound_actions(lower)
+        return self._legacy_bounded
+
+    def process_actions(self, actions: torch.Tensor):
+        if actions.shape != self._raw_actions.shape or not torch.isfinite(actions).all():
+            raise ValueError(f"Expected finite joint-coordinator action shape {self._raw_actions.shape}")
+
+        motion = self._env.command_manager.get_term(self.cfg.reference_command_name)
+        legacy_leg = self._legacy_leg_action(motion)
+        self._unbounded_actions[:] = actions
+        self._raw_actions[:] = self._bound_actions(actions)
+
+        # Reproduce the validated legacy support target first, then let only
+        # the new 12-D leg correction perturb its physical target.
+        self._full_joint_targets[:] = self._asset.data.default_joint_pos
+        base_default = self._asset.data.default_joint_pos[:, self._base_joint_ids_tensor]
+        self._full_joint_targets[:, self._base_joint_ids_tensor] = base_default + legacy_leg * self._scale
+        leg_delta = self._raw_actions[:, :12] * self._leg_correction_scale
+        self._full_joint_targets[:, self._leg_joint_ids_tensor] += leg_delta
+
+        upper_obs = self._compute_observation_group(self._upper_observation_group)
+        primary = self._upper_policy(upper_obs).clamp(-self.cfg.upper_raw_clip, self.cfg.upper_raw_clip)
+        in_prelude = motion.prelude_elapsed_steps < int(motion.prelude_steps)
+        release = (motion.time_steps.float() / float(max(self.cfg.upper_prelude_release_steps, 1))).clamp(0.0, 1.0)
+        upper_gate = torch.where(in_prelude, torch.zeros_like(release), release).unsqueeze(-1)
+        reference = self._upper_reference(motion, motion.time_steps)
+        upper_delta = torch.cat((self._raw_actions[:, 12:15], self._raw_actions[:, 15:22]), dim=-1)
+        self._upper_raw_actions[:] = primary
+        self._upper_processed_actions[:] = reference + upper_gate * (
+            primary * self._upper_scale + upper_delta * self._upper_correction_scale
+        )
+        self._full_joint_targets[:, self._upper_joint_ids_tensor] = self._upper_processed_actions
+
+        limits = self._asset.data.soft_joint_pos_limits
+        self._full_joint_targets[:] = torch.clamp(self._full_joint_targets, min=limits[..., 0], max=limits[..., 1])
+        self._upper_processed_actions[:] = self._full_joint_targets[:, self._upper_joint_ids_tensor]
+        self._processed_actions[:] = torch.cat((leg_delta, upper_delta * self._upper_correction_scale), dim=-1)
+        self._env.f0_upper_last_action[:] = primary
+        self._env.joint_coordinator_last_action[:] = self._raw_actions
+
+
+@configclass
+class A3FrozenStageAJointCoordinatorActionCfg(A3F1FrozenUpperBaseCompositePositionActionCfg):
+    class_type: type[ActionTerm] = A3FrozenStageAJointCoordinatorAction
+    legacy_stage_a_checkpoint: str = ""
+    legacy_stage_a_observation_group: str = "stage_a"
+    legacy_stage_a_yaw_adapter: bool = True
+    # Corrections are physical radians, applied after the corresponding frozen
+    # policy.  Waist starts deliberately smaller because it couples strike
+    # precision directly into whole-body angular momentum.
+    leg_correction_scale_rad: tuple[float, ...] = (0.012, 0.035, 0.046, 0.010, 0.015, 0.007) * 2
+    waist_correction_scale_rad: tuple[float, ...] = (0.010, 0.010, 0.010)
+    arm_correction_scale_rad: tuple[float, ...] = (0.025,) * 7

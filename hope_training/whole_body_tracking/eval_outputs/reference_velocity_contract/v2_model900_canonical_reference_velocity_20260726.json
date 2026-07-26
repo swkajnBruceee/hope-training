@@ -1,0 +1,622 @@
+{
+  "purpose": "Read-only canonical reference TCP velocity audit",
+  "task": "HOPE-FloatingJointCoordinatorV2-AgibotA3-v0",
+  "manifest": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/sample_motions/p2_data260708_backhand_strike_only_v1/manifest.json",
+  "actual_report": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/joint_coordinator_v2/v2_1000_model900_velocity_decomposition_20260726.json",
+  "reference_contract": {
+    "source": "current_simulator_fk_from_stored_joint_and_root_pose",
+    "control_dt_s": 0.02,
+    "derivative": "causal quadratic fit over pre-hit frames; backward difference retained as cross-check",
+    "does_not_sample_strike_only_tail": true,
+    "wrist_body_index": 31,
+    "wrist_body_name": "right_wrist_yaw_Link",
+    "tcp_mount_offset_m": [
+      0.2102113962173462,
+      0.03207850083708763,
+      0.03203587234020233
+    ]
+  },
+  "npz_velocity_interpretation": "provenance_only_not_reference_truth",
+  "results": [
+    {
+      "motion_id": 0,
+      "episode_id": "T002_022_gao01_20p68_22p68",
+      "motion_length_frames": 39,
+      "hit_frame": 30,
+      "control_dt_s": 0.02,
+      "fit_frames": [
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "tail_sampled": false,
+      "manifest_task_velocity_mps": [
+        -1.5473132133483887,
+        -0.09203200042247772,
+        0.9293889999389648
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_fit_mps": [
+        -1.5810911655426025,
+        -0.055424273014068604,
+        0.9032586812973022
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_backward_mps": [
+        -1.4609456062316895,
+        -0.054013729095458984,
+        0.8273184299468994
+      ],
+      "npz_declared_tcp_velocity_mps": [
+        -1.7605879306793213,
+        -0.07476465404033661,
+        0.9715878963470459
+      ],
+      "npz_declared_minus_canonical_mps": {
+        "xyz_mps": [
+          -0.17949676513671875,
+          -0.019340381026268005,
+          0.06832921504974365
+        ],
+        "norm_mps": 0.19303372502326965
+      },
+      "task_minus_reference_mps": {
+        "xyz_mps": [
+          0.03377795219421387,
+          -0.03660772740840912,
+          0.026130318641662598
+        ],
+        "norm_mps": 0.05624828115105629
+      },
+      "reference_tcp_positions_m": [
+        [
+          2.7215449810028076,
+          -0.7223680019378662,
+          0.9278161525726318
+        ],
+        [
+          2.7026631832122803,
+          -0.7240326404571533,
+          0.9351827502250671
+        ],
+        [
+          2.6801540851593018,
+          -0.7257024645805359,
+          0.9450995922088623
+        ],
+        [
+          2.653224229812622,
+          -0.7271870970726013,
+          0.958579421043396
+        ],
+        [
+          2.6240053176879883,
+          -0.7282673716545105,
+          0.975125789642334
+        ]
+      ],
+      "actual_velocity_mps": [
+        -0.7738629579544067,
+        0.08283130079507828,
+        -0.3458094894886017
+      ],
+      "reference_minus_actual_mps": {
+        "xyz_mps": [
+          -0.8072282075881958,
+          -0.13825556635856628,
+          1.2490681409835815
+        ],
+        "norm_mps": 1.4936208724975586
+      },
+      "task_minus_actual_mps": {
+        "xyz_mps": [
+          -0.7734502553939819,
+          -0.1748633086681366,
+          1.2751984596252441
+        ],
+        "norm_mps": 1.5016436576843262
+      },
+      "actual_source": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/joint_coordinator_v2/v2_1000_model900_velocity_decomposition_20260726.json"
+    },
+    {
+      "motion_id": 1,
+      "episode_id": "T_009_gao01_11p24_13p24",
+      "motion_length_frames": 39,
+      "hit_frame": 30,
+      "control_dt_s": 0.02,
+      "fit_frames": [
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "tail_sampled": false,
+      "manifest_task_velocity_mps": [
+        -1.6442748308181763,
+        -0.00016919837798923254,
+        0.8540171384811401
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_fit_mps": [
+        -1.3950562477111816,
+        0.023228419944643974,
+        0.7405999898910522
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_backward_mps": [
+        -1.2852072715759277,
+        0.024268031120300293,
+        0.6772935390472412
+      ],
+      "npz_declared_tcp_velocity_mps": [
+        -1.5816744565963745,
+        0.13653923571109772,
+        0.795007586479187
+      ],
+      "npz_declared_minus_canonical_mps": {
+        "xyz_mps": [
+          -0.18661820888519287,
+          0.1133108139038086,
+          0.054407596588134766
+        ],
+        "norm_mps": 0.2250019609928131
+      },
+      "task_minus_reference_mps": {
+        "xyz_mps": [
+          -0.24921858310699463,
+          -0.023397618904709816,
+          0.11341714859008789
+        ],
+        "norm_mps": 0.27481046319007874
+      },
+      "reference_tcp_positions_m": [
+        [
+          2.473771572113037,
+          -0.4909830093383789,
+          1.036852240562439
+        ],
+        [
+          2.457871198654175,
+          -0.4910198748111725,
+          1.043708086013794
+        ],
+        [
+          2.4386138916015625,
+          -0.4910566210746765,
+          1.0525727272033691
+        ],
+        [
+          2.4152185916900635,
+          -0.4909251928329468,
+          1.0641520023345947
+        ],
+        [
+          2.389514446258545,
+          -0.49043983221054077,
+          1.0776978731155396
+        ]
+      ],
+      "actual_velocity_mps": [
+        -0.8585577607154846,
+        0.3056182265281677,
+        -0.49487608671188354
+      ],
+      "reference_minus_actual_mps": {
+        "xyz_mps": [
+          -0.536498486995697,
+          -0.2823898196220398,
+          1.235476016998291
+        ],
+        "norm_mps": 1.3762178421020508
+      },
+      "task_minus_actual_mps": {
+        "xyz_mps": [
+          -0.7857170701026917,
+          -0.30578741431236267,
+          1.348893165588379
+        ],
+        "norm_mps": 1.590713620185852
+      },
+      "actual_source": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/joint_coordinator_v2/v2_1000_model900_velocity_decomposition_20260726.json"
+    },
+    {
+      "motion_id": 2,
+      "episode_id": "T002_023_gao01_26p64_28p64",
+      "motion_length_frames": 39,
+      "hit_frame": 30,
+      "control_dt_s": 0.02,
+      "fit_frames": [
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "tail_sampled": false,
+      "manifest_task_velocity_mps": [
+        -1.5694847106933594,
+        0.37733983993530273,
+        0.6524026989936829
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_fit_mps": [
+        -1.4969487190246582,
+        0.36855798959732056,
+        0.5817161798477173
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_backward_mps": [
+        -1.3834238052368164,
+        0.3432631492614746,
+        0.5392849445343018
+      ],
+      "npz_declared_tcp_velocity_mps": [
+        -1.753757357597351,
+        0.28337669372558594,
+        0.6253394484519958
+      ],
+      "npz_declared_minus_canonical_mps": {
+        "xyz_mps": [
+          -0.25680863857269287,
+          -0.08518129587173462,
+          0.043623268604278564
+        ],
+        "norm_mps": 0.2740611732006073
+      },
+      "task_minus_reference_mps": {
+        "xyz_mps": [
+          -0.07253599166870117,
+          0.008781850337982178,
+          0.07068651914596558
+        ],
+        "norm_mps": 0.1016620621085167
+      },
+      "reference_tcp_positions_m": [
+        [
+          2.8622992038726807,
+          -0.5730897784233093,
+          0.9693872332572937
+        ],
+        [
+          2.8463246822357178,
+          -0.5693989992141724,
+          0.9738764762878418
+        ],
+        [
+          2.8266968727111816,
+          -0.564887285232544,
+          0.9799253940582275
+        ],
+        [
+          2.8023715019226074,
+          -0.5591139793395996,
+          0.9882826209068298
+        ],
+        [
+          2.774703025817871,
+          -0.5522487163543701,
+          0.9990683197975159
+        ]
+      ],
+      "actual_velocity_mps": [
+        -0.5250511765480042,
+        0.12619194388389587,
+        -0.09038974344730377
+      ],
+      "reference_minus_actual_mps": {
+        "xyz_mps": [
+          -0.971897542476654,
+          0.24236604571342468,
+          0.6721059083938599
+        ],
+        "norm_mps": 1.206255555152893
+      },
+      "task_minus_actual_mps": {
+        "xyz_mps": [
+          -1.04443359375,
+          0.25114789605140686,
+          0.7427924275398254
+        ],
+        "norm_mps": 1.306008219718933
+      },
+      "actual_source": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/joint_coordinator_v2/v2_1000_model900_velocity_decomposition_20260726.json"
+    },
+    {
+      "motion_id": 3,
+      "episode_id": "T_010_gao01_8p47_10p47",
+      "motion_length_frames": 39,
+      "hit_frame": 30,
+      "control_dt_s": 0.02,
+      "fit_frames": [
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "tail_sampled": false,
+      "manifest_task_velocity_mps": [
+        -1.3702629804611206,
+        0.3045896887779236,
+        0.9444922804832458
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_fit_mps": [
+        -1.3218709230422974,
+        0.349528968334198,
+        0.897394061088562
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_backward_mps": [
+        -1.2200236320495605,
+        0.3211885690689087,
+        0.8277356624603271
+      ],
+      "npz_declared_tcp_velocity_mps": [
+        -1.5058441162109375,
+        0.32551309466362,
+        0.9515985250473022
+      ],
+      "npz_declared_minus_canonical_mps": {
+        "xyz_mps": [
+          -0.18397319316864014,
+          -0.024015873670578003,
+          0.054204463958740234
+        ],
+        "norm_mps": 0.19328999519348145
+      },
+      "task_minus_reference_mps": {
+        "xyz_mps": [
+          -0.04839205741882324,
+          -0.044939279556274414,
+          0.04709821939468384
+        ],
+        "norm_mps": 0.08111456036567688
+      },
+      "reference_tcp_positions_m": [
+        [
+          2.653630256652832,
+          -0.37568020820617676,
+          0.9662317037582397
+        ],
+        [
+          2.6379168033599854,
+          -0.37032899260520935,
+          0.9746018648147583
+        ],
+        [
+          2.6191484928131104,
+          -0.3643377125263214,
+          0.9852885007858276
+        ],
+        [
+          2.596641778945923,
+          -0.3576158285140991,
+          0.9991747140884399
+        ],
+        [
+          2.5722413063049316,
+          -0.35119205713272095,
+          1.0157294273376465
+        ]
+      ],
+      "actual_velocity_mps": [
+        -0.5053662657737732,
+        0.14163783192634583,
+        -0.2942527234554291
+      ],
+      "reference_minus_actual_mps": {
+        "xyz_mps": [
+          -0.8165046572685242,
+          0.20789113640785217,
+          1.1916468143463135
+        ],
+        "norm_mps": 1.4594247341156006
+      },
+      "task_minus_actual_mps": {
+        "xyz_mps": [
+          -0.8648967146873474,
+          0.16295185685157776,
+          1.2387449741363525
+        ],
+        "norm_mps": 1.519568681716919
+      },
+      "actual_source": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/joint_coordinator_v2/v2_1000_model900_velocity_decomposition_20260726.json"
+    },
+    {
+      "motion_id": 4,
+      "episode_id": "T03_038_gao01_5p27_7p27",
+      "motion_length_frames": 39,
+      "hit_frame": 30,
+      "control_dt_s": 0.02,
+      "fit_frames": [
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "tail_sampled": false,
+      "manifest_task_velocity_mps": [
+        -2.7610292434692383,
+        0.144879549741745,
+        1.4166250228881836
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_fit_mps": [
+        -2.5989627838134766,
+        0.1408221274614334,
+        1.2031553983688354
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_backward_mps": [
+        -2.3914694786071777,
+        0.12744516134262085,
+        1.109325885772705
+      ],
+      "npz_declared_tcp_velocity_mps": [
+        -2.9809391498565674,
+        0.05938561260700226,
+        1.333124041557312
+      ],
+      "npz_declared_minus_canonical_mps": {
+        "xyz_mps": [
+          -0.3819763660430908,
+          -0.08143651485443115,
+          0.12996864318847656
+        ],
+        "norm_mps": 0.4116184115409851
+      },
+      "task_minus_reference_mps": {
+        "xyz_mps": [
+          -0.16206645965576172,
+          0.0040574222803115845,
+          0.21346962451934814
+        ],
+        "norm_mps": 0.2680509090423584
+      },
+      "reference_tcp_positions_m": [
+        [
+          2.952226400375366,
+          -0.42503827810287476,
+          1.026808500289917
+        ],
+        [
+          2.923153877258301,
+          -0.4275534152984619,
+          1.032619595527649
+        ],
+        [
+          2.887693405151367,
+          -0.4293299913406372,
+          1.042107105255127
+        ],
+        [
+          2.844371795654297,
+          -0.42943015694618225,
+          1.0574228763580322
+        ],
+        [
+          2.7965424060821533,
+          -0.42688125371932983,
+          1.0796093940734863
+        ]
+      ],
+      "actual_velocity_mps": [
+        -0.6724501848220825,
+        0.02080405503511429,
+        -0.009387634694576263
+      ],
+      "reference_minus_actual_mps": {
+        "xyz_mps": [
+          -1.926512598991394,
+          0.12001807242631912,
+          1.21254301071167
+        ],
+        "norm_mps": 2.279499053955078
+      },
+      "task_minus_actual_mps": {
+        "xyz_mps": [
+          -2.0885791778564453,
+          0.1240754947066307,
+          1.426012635231018
+        ],
+        "norm_mps": 2.5320091247558594
+      },
+      "actual_source": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/joint_coordinator_v2/v2_1000_model900_velocity_decomposition_20260726.json"
+    },
+    {
+      "motion_id": 5,
+      "episode_id": "T03_037_gao01_1p02_3p02",
+      "motion_length_frames": 39,
+      "hit_frame": 30,
+      "control_dt_s": 0.02,
+      "fit_frames": [
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "tail_sampled": false,
+      "manifest_task_velocity_mps": [
+        -2.7765772342681885,
+        -0.09974624216556549,
+        1.0812158584594727
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_fit_mps": [
+        -2.5973703861236572,
+        -0.11113337427377701,
+        0.9617078900337219
+      ],
+      "canonical_reference_tcp_velocity_pre_hit_backward_mps": [
+        -2.3915529251098633,
+        -0.10002255439758301,
+        0.8881926536560059
+      ],
+      "npz_declared_tcp_velocity_mps": [
+        -3.040803909301758,
+        -0.16786979138851166,
+        1.0744651556015015
+      ],
+      "npz_declared_minus_canonical_mps": {
+        "xyz_mps": [
+          -0.4434335231781006,
+          -0.05673641711473465,
+          0.11275726556777954
+        ],
+        "norm_mps": 0.4610493779182434
+      },
+      "task_minus_reference_mps": {
+        "xyz_mps": [
+          -0.17920684814453125,
+          0.011387132108211517,
+          0.11950796842575073
+        ],
+        "norm_mps": 0.21570098400115967
+      },
+      "reference_tcp_positions_m": [
+        [
+          2.8312840461730957,
+          -0.4460504651069641,
+          0.9704387784004211
+        ],
+        [
+          2.8033933639526367,
+          -0.45076578855514526,
+          0.9745983481407166
+        ],
+        [
+          2.769044876098633,
+          -0.45551738142967224,
+          0.9817136526107788
+        ],
+        [
+          2.7265021800994873,
+          -0.45955175161361694,
+          0.9936203956604004
+        ],
+        [
+          2.67867112159729,
+          -0.4615522027015686,
+          1.0113842487335205
+        ]
+      ],
+      "actual_velocity_mps": [
+        -0.765956699848175,
+        -0.028107909485697746,
+        -0.5476390719413757
+      ],
+      "reference_minus_actual_mps": {
+        "xyz_mps": [
+          -1.831413745880127,
+          -0.08302546292543411,
+          1.5093469619750977
+        ],
+        "norm_mps": 2.374678373336792
+      },
+      "task_minus_actual_mps": {
+        "xyz_mps": [
+          -2.010620594024658,
+          -0.0716383308172226,
+          1.6288549900054932
+        ],
+        "norm_mps": 2.588608980178833
+      },
+      "actual_source": "/home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/eval_outputs/joint_coordinator_v2/v2_1000_model900_velocity_decomposition_20260726.json"
+    }
+  ]
+}

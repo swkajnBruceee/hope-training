@@ -117,6 +117,19 @@ gym.register(
     },
 )
 
+# Current-contract retraining chain: historical Stage-A strategy with the
+# corrected root work point, semantic swing observation, and current backhand
+# strike-only manifest.  Keep this ID separate from historical checkpoints.
+gym.register(
+    id="HOPE-RetrainStrikeStabilizerA-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3RetrainStrikeStabilizerEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
 # F1 in-place migration: freeze model_900 upper strike control and adapt only
 # the Stage-A leg stabilizer on the current backhand manifest.
 gym.register(
@@ -126,5 +139,54 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": native_strike_env_cfg.A3FloatingF1EnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingUpperCorrection-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingUpperCorrectionEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# Final floating-base strike stage: both historical capabilities remain frozen
+# and a single PPO coordinator learns small leg/waist/right-arm corrections.
+gym.register(
+    id="HOPE-FloatingJointCoordinator-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingJointCoordinatorEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV2-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.native_strike_env_cfg:A3FloatingJointCoordinatorV2EnvCfg",
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV3-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.native_strike_env_cfg:A3FloatingJointCoordinatorV3EnvCfg",
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV4-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.native_strike_env_cfg:A3FloatingJointCoordinatorV4EnvCfg",
     },
 )

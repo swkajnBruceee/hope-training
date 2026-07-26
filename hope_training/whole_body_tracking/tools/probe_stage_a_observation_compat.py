@@ -16,11 +16,11 @@ from evaluate_f0_migration import (
     CheckpointPolicy,
     _make_env,
     _prepare_episode,
-    _rotate_stage_a_observation_180,
     _path,
     _group_obs,
     _vec,
 )
+from stage_a_compat import adapt_stage_a_observation_legacy_yaw_pi, validate_stage_a_legacy_layout
 
 
 def _set_state(raw, robot, root_state, joint_pos, root_quat, env_ids):
@@ -31,6 +31,9 @@ def _set_state(raw, robot, root_state, joint_pos, root_quat, env_ids):
     robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
     robot.write_root_state_to_sim(state, env_ids=env_ids)
     raw.scene.write_data_to_sim()
+    # Refresh cached body transforms without advancing the physical state.
+    raw.sim.forward()
+    raw.scene.update(0.0)
 
 
 @hydra.main(version_base=None, config_path="../cfg", config_name="play")
@@ -91,17 +94,7 @@ def main(cfg: Any):
                 int(shape[0])
                 for shape in raw.observation_manager.group_obs_term_dim["stage_a"]
             ]
-            expected_names = [
-                "base_lin_vel", "base_ang_vel", "joint_pos", "joint_vel", "actions",
-                "projected_gravity", "racket_target_pos_b", "racket_target_vel_b",
-                "racket_target_normal_b", "racket_pos_b", "racket_lin_vel_b",
-                "racket_normal_b", "time_to_strike", "swing_type",
-                "strike_joint_pos", "strike_joint_vel", "strike_reference_joint_pos",
-                "strike_reference_joint_vel", "strike_reference_joint_vel_8",
-                "strike_reference_joint_vel_16", "strike_phase",
-            ]
-            if term_names != expected_names or sum(term_dims) != 126:
-                raise RuntimeError(f"Unexpected Stage-A contract: {term_names} / {term_dims}")
+            validate_stage_a_legacy_layout(term_names, term_dims)
 
             # Disable observation noise for a mathematical frame comparison.
             term_cfgs = raw.observation_manager._group_obs_term_cfgs["stage_a"]
@@ -120,7 +113,7 @@ def main(cfg: Any):
                 for term, noise in zip(term_cfgs, saved_noise):
                     term.noise = noise
 
-            adapted_obs = _rotate_stage_a_observation_180(new_obs)
+            adapted_obs = adapt_stage_a_observation_legacy_yaw_pi(new_obs)
             old_action = stage_a(old_obs)
             adapted_action = stage_a(adapted_obs)
             diff = torch.abs(old_obs - adapted_obs)

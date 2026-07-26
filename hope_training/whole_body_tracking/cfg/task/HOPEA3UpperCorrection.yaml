@@ -1,0 +1,68 @@
+name: HOPEA3UpperCorrection
+gym_task: HOPE-FloatingUpperCorrection-AgibotA3-v0
+experiment_name: agibot_a3_upper_correction_20260726
+
+motion_manifest: sample_motions/p2_data260708_backhand_strike_only_v1/manifest.json
+manifest_subset_size: null
+manifest_frame_z_offset: 0.76
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  episode_length_s: 3.0
+
+actions:
+  raw_clip: 1.0
+  native_residual_scale: 0.25
+  reference_lookahead_steps: 0
+  joint_reference_lookahead_steps:
+    right_shoulder_pitch_joint: 12.0
+    right_shoulder_yaw_joint: 12.0
+  upper_prelude_release_steps: 12
+  upper_checkpoint: /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-24_22-00-32_backhand_strike_only_v1_shoulders_lead12_res025_clip050_3000it/model_900.pt
+  legacy_stage_a_checkpoint: /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it/model_3396.pt
+
+rewards:
+  racket_position_weight: 2.0
+  racket_position_std: 0.08
+  racket_position_y_weight: 1.0
+  racket_position_y_std: 0.10
+  racket_velocity_weight: 0.75
+  racket_velocity_std: 0.75
+  racket_normal_weight: 0.75
+  racket_normal_std: 0.35
+  racket_hit_coupled_weight: 0.25
+  action_execution_gap_weight: -0.15
+  action_residual_weight: -0.10
+  joint_limit_weight: -15.0
+
+racket:
+  target_mode: manifest
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  strike_time_std_s: 0.04
+  strike_success_pos_thresh: 0.10
+  strike_success_vel_thresh: 2.0
+  strike_success_normal_thresh_deg: 20.0
+  forehand_on_negative_y: false
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0
+
+domain_rand:
+  pd_gain_range: null
+
+motion:
+  sample_random_start_phase: false
+  prelude_steps: 50
+  reset_to_default_pose: true
+  hold_last_frame_steps: 0
+  return_to_default_steps: 0
+  pose_range: {}
+  velocity_range: {}
+  joint_position_range: [0.0, 0.0]
+  reset_perturbation_probability: 0.0
+  hard_case_probability: 0.0

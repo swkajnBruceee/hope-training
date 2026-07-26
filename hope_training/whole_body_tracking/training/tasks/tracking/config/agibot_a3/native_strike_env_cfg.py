@@ -22,6 +22,8 @@ from training.tasks.base_locomotion.mdp import (
     A3_PD_STAND_BASE_ACTION_SCALE_RAD,
     A3F1FrozenUpperBaseCompositePositionActionCfg,
     A3F0UpperBaseCompositePositionActionCfg,
+    A3FrozenStageAJointCoordinatorActionCfg,
+    A3FrozenStageAUpperCorrectionActionCfg,
     A3StrikeConditionedBaseCompositePositionActionCfg,
     RootHeightBelowMinimum,
 )
@@ -116,6 +118,57 @@ class A3F1ActionsCfg(ActionsCfg):
         action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
         action_mask=(1.0,) * len(A3_BASE_ACTION_JOINTS),
         raw_clip=0.25,
+        upper_raw_clip=0.50,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+        upper_observation_group="upper",
+    )
+
+
+@configclass
+class A3UpperCorrectionActionsCfg(ActionsCfg):
+    """PPO publishes only a 10-D upper correction; both parent actors are frozen."""
+
+    joint_pos = A3FrozenStageAUpperCorrectionActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        action_mask=(1.0,) * 12 + (0.0, 0.0),
+        raw_clip=1.0,
+        upper_raw_clip=0.50,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+        upper_observation_group="upper",
+    )
+
+
+@configclass
+class A3JointCoordinatorActionsCfg(ActionsCfg):
+    """One PPO action split into leg, waist and right-arm corrections."""
+
+    joint_pos = A3FrozenStageAJointCoordinatorActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        # This mask applies only to frozen model_3396. Its legacy waist
+        # outputs stay disabled while the coordinator owns all waist deltas.
+        action_mask=(1.0,) * 12 + (0.0, 0.0),
+        raw_clip=1.0,
+        smooth_raw_bound=True,
         upper_raw_clip=0.50,
         scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
         clip_to_soft_joint_limits=True,
@@ -358,6 +411,47 @@ class A3F1ObservationsCfg(A3StrikeConditionedBaseObservationsCfg):
     policy: A3StrikeConditionedBaseObservationsCfg.PolicyCfg = A3StrikeConditionedBaseObservationsCfg.PolicyCfg()
     critic: A3StrikeConditionedBaseObservationsCfg.CriticCfg = A3StrikeConditionedBaseObservationsCfg.CriticCfg()
     upper: UpperCfg = UpperCfg()
+
+
+@configclass
+class A3UpperCorrectionObservationsCfg(A3F0ObservationsCfg):
+    """Keep independent action histories for frozen model_900 and model_3396."""
+
+    @configclass
+    class StageACfg(A3F0ObservationsCfg.StageACfg):
+        actions = ObsTerm(func=mdp.legacy_stage_a_last_action)
+
+    policy: A3F0ObservationsCfg.PolicyCfg = A3F0ObservationsCfg.PolicyCfg()
+    upper: A3F0ObservationsCfg.PolicyCfg = A3F0ObservationsCfg.PolicyCfg()
+    stage_a: StageACfg = StageACfg()
+
+
+@configclass
+class A3JointCoordinatorObservationsCfg(A3UpperCorrectionObservationsCfg):
+    """Expose both frozen-policy contracts and the last coordinator action."""
+
+    @configclass
+    class CoordinatorCfg(ObservationsCfg.PolicyCfg):
+        # The coordinator owns a single explicit 204-D contract below. Do not
+        # retain the generic tracking terms inherited from PolicyCfg: they
+        # duplicate the frozen-policy inputs and silently enlarge the PPO
+        # observation with a third, differently normalized state view.
+        command = None
+        motion_anchor_pos_b = None
+        motion_anchor_ori_b = None
+        base_lin_vel = None
+        base_ang_vel = None
+        joint_pos = None
+        joint_vel = None
+        actions = None
+        coordinator = ObsTerm(func=mdp.joint_coordinator_observation)
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    policy: CoordinatorCfg = CoordinatorCfg()
+    critic: CoordinatorCfg = CoordinatorCfg()
 
 
 @configclass
@@ -649,6 +743,37 @@ class A3F1StrikeAwareRewardsCfg(A3StrikeStabilizerARewardsCfg):
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=A3_FEET_BODIES),
             "threshold": 10.0,
         },
+    )
+
+
+@configclass
+class A3JointCoordinatorRewardsCfg(A3F1StrikeAwareRewardsCfg):
+    """Strike-aware stability rewards with separate correction trust regions."""
+
+    racket_velocity_position_gated = RewTerm(
+        func=mdp.racket_velocity_tracking_position_gated_exp,
+        weight=0.0,
+        params={
+            "command_name": "racket_target",
+            "velocity_std": 2.0,
+            "position_threshold": 0.10,
+            "position_excess_std": 0.025,
+        },
+    )
+    coordinator_leg_l2 = RewTerm(
+        func=mdp.action_subset_raw_l2,
+        weight=-0.03,
+        params={"action_name": "joint_pos", "action_indices": tuple(range(12))},
+    )
+    coordinator_waist_l2 = RewTerm(
+        func=mdp.action_subset_raw_l2,
+        weight=-0.12,
+        params={"action_name": "joint_pos", "action_indices": (12, 13, 14)},
+    )
+    coordinator_arm_l2 = RewTerm(
+        func=mdp.action_subset_raw_l2,
+        weight=-0.05,
+        params={"action_name": "joint_pos", "action_indices": tuple(range(15, 22))},
     )
 
 
@@ -1005,6 +1130,10 @@ class A3FloatingF0EnvCfg(A3StrikeConditionedBaseEnvCfg):
         self.actions.joint_pos.phase_gate_end = 0.45
         self.actions.joint_pos.phase_gate_tail_release_steps = 0
         self.actions.joint_pos.ready_hold_residual_release_steps = 0
+        # Preserve the validated flexed ready-pose blend.  The frozen upper
+        # policy's 12-step shoulder lead is restored over the first 12 motion
+        # frames, so it is fully active before the hit frame.
+        self.actions.joint_pos.upper_prelude_release_steps = 12
 
 
 @configclass
@@ -1100,6 +1229,25 @@ class A3StrikeStabilizerAUnifiedEnvCfg(A3StrikeStabilizerAEnvCfg):
 
 
 @configclass
+class A3RetrainStrikeStabilizerEnvCfg(A3StrikeStabilizerAUnifiedEnvCfg):
+    """Current-contract Stage-A plant for the reproducible retraining chain.
+
+    The historical Stage-A class is intentionally left unchanged.  This class
+    keeps its leg-only Base14 contract and rewards, but uses the corrected
+    strike work point shared by the current F0/F1 audits.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Keep the corrected world-frame work point and 180-degree root frame
+        # used by the current backhand F0/F1 contract.  The inherited joint
+        # initialization is the validated flexed ready stance.
+        self.scene.robot.init_state.pos = (3.1500, -0.3500, 1.0400)
+        self.scene.robot.init_state.rot = (0.0, 0.0, 0.0, 1.0)
+        self.scene.robot.spawn.fix_base = False
+
+
+@configclass
 class A3FloatingF1EnvCfg(A3FloatingF0EnvCfg):
     """F1 in-place migration: frozen model_900 upper body, trainable legs only."""
 
@@ -1138,6 +1286,140 @@ class A3FloatingF1EnvCfg(A3FloatingF0EnvCfg):
         self.actions.joint_pos.phase_gate_end = 0.45
         self.actions.joint_pos.phase_gate_tail_release_steps = 0
         self.actions.joint_pos.ready_hold_residual_release_steps = 0
+
+
+@configclass
+class A3FloatingUpperCorrectionEnvCfg(A3FloatingF0EnvCfg):
+    """Frozen model_3396 support with PPO correction only on upper joints."""
+
+    actions: A3UpperCorrectionActionsCfg = A3UpperCorrectionActionsCfg()
+    observations: A3UpperCorrectionObservationsCfg = A3UpperCorrectionObservationsCfg()
+    rewards: A3F1StrikeAwareRewardsCfg = A3F1StrikeAwareRewardsCfg()
+    terminations: A3StrikeStabilizerATerminationsCfg = A3StrikeStabilizerATerminationsCfg()
+    events: A3StrikeStabilizerAEventsCfg = A3StrikeStabilizerAEventsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.actions.joint_pos.upper_prelude_release_steps = 12
+        # F1 inherits a Base14 execution-gap penalty.  This task's public
+        # action is instead the 10-D upper correction, so its indices must
+        # match that public contract rather than the frozen leg actor.
+        self.rewards.raw_action_excess.params["action_indices"] = tuple(range(10))
+        self.rewards.action_execution_gap.params["action_indices"] = tuple(range(10))
+
+
+@configclass
+class A3FloatingJointCoordinatorEnvCfg(A3FloatingF0EnvCfg):
+    """Final fixed-stance floating-base strike controller with frozen priors."""
+
+    actions: A3JointCoordinatorActionsCfg = A3JointCoordinatorActionsCfg()
+    observations: A3JointCoordinatorObservationsCfg = A3JointCoordinatorObservationsCfg()
+    rewards: A3JointCoordinatorRewardsCfg = A3JointCoordinatorRewardsCfg()
+    terminations: A3StrikeStabilizerATerminationsCfg = A3StrikeStabilizerATerminationsCfg()
+    events: A3StrikeStabilizerAEventsCfg = A3StrikeStabilizerAEventsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Keep the exact F0/J0 plant: same flexed ready state, root frame,
+        # 50-step prelude and 12-step shoulder lead release.  The only new
+        # trainable authority is the coordinator correction around frozen
+        # model_3396/model_900 outputs.
+        self.actions.joint_pos.upper_prelude_release_steps = 12
+        self.actions.joint_pos.action_mask = (1.0,) * 12 + (0.0, 0.0)
+        self.rewards.raw_action_excess.params["action_indices"] = tuple(range(22))
+        self.rewards.raw_action_excess.params["raw_limit"] = 0.80
+        self.rewards.action_execution_gap.params["action_indices"] = tuple(range(22))
+        self.rewards.action_execution_gap.params["deadband"] = 0.05
+
+
+@configclass
+class A3FloatingJointCoordinatorV2EnvCfg(A3FloatingJointCoordinatorEnvCfg):
+    """Single-strike coordinator with authority sized for observed shoulder lag.
+
+    This deliberately remains a residual policy around the frozen Stage-A and
+    fixed-base strike priors.  It changes only the trainable correction trust
+    region and strike-reward shaping; the plant, ready stance, prelude and
+    lead-compensated upper reference remain unchanged.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Keep the verified leg authority unchanged.  The 1200-iteration audit
+        # found the dominant controllable error at right shoulder pitch/yaw,
+        # so widen only waist/arm channels needed to compensate it.
+        self.actions.joint_pos.waist_correction_scale_rad = (0.020, 0.020, 0.025)
+        self.actions.joint_pos.arm_correction_scale_rad = (
+            0.050,  # right shoulder pitch
+            0.040,  # right shoulder roll
+            0.050,  # right shoulder yaw
+            0.045,  # right elbow
+            0.025,  # wrist roll
+            0.025,  # wrist pitch
+            0.025,  # wrist yaw
+        )
+        # At the observed 13 cm error the old 8 cm exponential kernel was
+        # almost flat and active only near impact.  A broad term drives the
+        # approach; a fine term preserves the incentive below 10 cm.
+        self.rewards.racket_position.weight = 6.0
+        self.rewards.racket_position.params["std"] = 0.14
+        self.rewards.racket_position_y.weight = 3.0
+        self.rewards.racket_position_y.params["std"] = 0.14
+        self.rewards.racket_position_fine = RewTerm(
+            func=mdp.racket_position_tracking_exp,
+            weight=2.0,
+            params={"command_name": "racket_target", "std": 0.06},
+        )
+        self.rewards.racket_hit_coupled.weight = 0.75
+        self.rewards.racket_hit_coupled.params["pos_std"] = 0.14
+        # Preserve a trust region but do not teach the old zero-correction
+        # solution merely because waist/arm corrections are more useful.
+        self.rewards.action_residual_l2.weight = -0.01
+        self.rewards.coordinator_leg_l2.weight = -0.015
+        self.rewards.coordinator_waist_l2.weight = -0.04
+        self.rewards.coordinator_arm_l2.weight = -0.02
+
+
+@configclass
+class A3FloatingJointCoordinatorV3EnvCfg(A3FloatingJointCoordinatorV2EnvCfg):
+    """V2 continuation that restores a usable strike-velocity gradient.
+
+    V2 reaches the target position reliably, but its 0.75 m/s velocity kernel
+    is effectively zero for the observed 1.5--2.6 m/s impact-speed errors.
+    This keeps the V2 plant, priors, action authority and position/stability
+    objectives intact while making speed correction learnable from model_900.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        # exp(-e^2 / 0.75^2) is nearly flat at the current error range.  A
+        # 2.0 m/s kernel preserves gradient without weakening exact position.
+        self.rewards.racket_velocity.weight = 3.0
+        self.rewards.racket_velocity.params["std"] = 2.0
+        # Keep the coupled impact objective aligned with the direct speed
+        # reward, but do not let it replace the established position term.
+        self.rewards.racket_hit_coupled.weight = 1.0
+        self.rewards.racket_hit_coupled.params["vel_std"] = 2.0
+
+
+@configclass
+class A3FloatingJointCoordinatorV4EnvCfg(A3FloatingJointCoordinatorV2EnvCfg):
+    """V2 continuation with speed improvement gated by hit placement.
+
+    The V3 unconditional velocity reward improved mean speed slightly by
+    sacrificing exact placement.  V4 restores the V2 objective and rewards
+    speed only once the racket is inside the 10 cm placement corridor.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        # The inherited narrow velocity term was intentionally ineffective at
+        # the observed error range.  Replace it with a broad but position-safe
+        # velocity term; all V2 position, normal and stability terms remain.
+        self.rewards.racket_velocity.weight = 0.0
+        self.rewards.racket_velocity_position_gated.weight = 2.0
+        self.rewards.racket_velocity_position_gated.params["velocity_std"] = 2.0
+        self.rewards.racket_velocity_position_gated.params["position_threshold"] = 0.10
+        self.rewards.racket_velocity_position_gated.params["position_excess_std"] = 0.025
 
 
 @configclass

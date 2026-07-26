@@ -165,6 +165,9 @@ class RacketTargetCommand(CommandTerm):
         self.metrics["racket_hit_coupled_pos_raw"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["racket_hit_coupled_vel_raw"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["racket_hit_coupled_normal_raw"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["racket_velocity_position_gated_reward_raw"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["racket_velocity_position_gated_velocity_raw"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["racket_velocity_position_gated_position_gate"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["base_pos_error"] = torch.zeros(self.num_envs, device=self.device)
         # Strike-window metrics: hold the value from the MOST RECENT strike — these map directly to
         # the acceptance criteria (racket pos < 7.5 cm, vel < 0.5 m/s, normal < 15 deg AT strike) and

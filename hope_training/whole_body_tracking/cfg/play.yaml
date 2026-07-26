@@ -23,6 +23,22 @@ wandb_path: null      # optional <entity>/<project>/<run_id> trained run to load
 checkpoint: null      # explicit local model_*.pt path (takes precedence over wandb_path / latest-local)
 upper_checkpoint: null
 stage_a_checkpoint: null
+# Exact historical Stage-A reproduction inputs.  The archive's env.pkl is the
+# authoritative old plant contract; current source configs are intentionally
+# not substituted during legacy checkpoint audits.
+legacy_stage_a_archive: /workspace/hopetmp/reproducibility_archives/model_3396_lineage_20260725/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it
+legacy_deterministic: true
+# Opt-in adapter for the archived 126-D Stage-A checkpoint trained in the
+# asset-default yaw frame. It only transforms the Stage-A inference input.
+adapt_stage_a_obs_180: false
+record_trace: false  # write per-control-step state/action diagnostics in evaluation reports
+# Experimental read-only support proxy: exposes a nearest archived K17 upper
+# reference to model_3396 while the current model_900 remains the plant actor.
+legacy_support_reference_proxy: false
+legacy_support_proxy_report: eval_outputs/upper_contract/motion_envelope_report.json
+# F0/F1 integration guard: suppress upper lookahead/residual during the
+# validated ready-pose prelude, then blend it in over this many motion steps.
+upper_prelude_release_steps: 0
 cases: 6
 seed: 20260725
 output: eval_outputs/f0_migration/f0_report.json
