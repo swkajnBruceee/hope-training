@@ -190,3 +190,12 @@ gym.register(
         "env_cfg_entry_point": f"{__name__}.native_strike_env_cfg:A3FloatingJointCoordinatorV4EnvCfg",
     },
 )
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV5Preview-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.native_strike_env_cfg:A3FloatingJointCoordinatorV5PreviewEnvCfg",
+    },
+)

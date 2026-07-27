@@ -1,0 +1,14 @@
+# Isolate the ready-to-frame-0 minimum-jerk position transition.  This keeps
+# the validated V17 action/velocity contract and deliberately omits launch
+# blending so hit timing cannot move.
+defaults:
+  - HOPEA3JointCoordinatorV17PredictiveWaistGuardAudit
+  - _self_
+
+name: HOPEA3JointCoordinatorV18SettleOnlyAudit
+
+motion:
+  prelude_steps: 50
+  prelude_settle_steps: 10
+  prelude_launch_steps: 0
+  prelude_minimum_jerk: true

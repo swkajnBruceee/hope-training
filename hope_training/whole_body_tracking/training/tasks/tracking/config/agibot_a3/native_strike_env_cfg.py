@@ -455,6 +455,18 @@ class A3JointCoordinatorObservationsCfg(A3UpperCorrectionObservationsCfg):
 
 
 @configclass
+class A3JointCoordinatorPreviewObservationsCfg(A3JointCoordinatorObservationsCfg):
+    """Coordinator contract with a zero-migratable 18-D upper dynamics preview."""
+
+    @configclass
+    class CoordinatorCfg(A3JointCoordinatorObservationsCfg.CoordinatorCfg):
+        coordinator = ObsTerm(func=mdp.joint_coordinator_observation_with_upper_preview)
+
+    policy: CoordinatorCfg = CoordinatorCfg()
+    critic: CoordinatorCfg = CoordinatorCfg()
+
+
+@configclass
 class A3NativeStrikeRewardsCfg(RewardsCfg):
     # Strike objective. These are the main task rewards.
     racket_position = RewTerm(
@@ -750,6 +762,34 @@ class A3F1StrikeAwareRewardsCfg(A3StrikeStabilizerARewardsCfg):
 class A3JointCoordinatorRewardsCfg(A3F1StrikeAwareRewardsCfg):
     """Strike-aware stability rewards with separate correction trust regions."""
 
+    # Disabled by default so historical V2/V5 runs remain reproducible.  The
+    # full-cycle recovery curriculum explicitly enables it to intervene before
+    # the root-height fall termination becomes the only remaining signal.
+    post_strike_root_tilt_l2 = RewTerm(
+        func=mdp.post_strike_root_tilt_l2,
+        weight=0.0,
+        params={"command_name": "motion"},
+    )
+    post_strike_recovery_progress = RewTerm(
+        func=mdp.PostStrikeRootRecoveryProgress,
+        weight=0.0,
+        params={"command_name": "motion"},
+    )
+    pre_hit_root_tilt_l2 = RewTerm(
+        func=mdp.pre_hit_root_tilt_l2,
+        weight=0.0,
+        params={"command_name": "motion"},
+    )
+    pre_hit_root_angular_velocity_l2 = RewTerm(
+        func=mdp.pre_hit_root_angular_velocity_l2,
+        weight=0.0,
+        params={"command_name": "motion"},
+    )
+    pre_hit_root_forward_velocity_l2 = RewTerm(
+        func=mdp.pre_hit_root_forward_velocity_l2,
+        weight=0.0,
+        params={"command_name": "motion"},
+    )
     racket_velocity_position_gated = RewTerm(
         func=mdp.racket_velocity_tracking_position_gated_exp,
         weight=0.0,
@@ -794,6 +834,17 @@ class A3StrikeStabilizerATerminationsCfg(A3NativeStrikeTerminationsCfg):
     base_height = DoneTerm(
         func=RootHeightBelowMinimum,
         params={"minimum_height": 0.65},
+    )
+    # Kept effectively disabled by default for historical task compatibility.
+    # Full-cycle coordinator tasks opt into a conservative 30 degree envelope
+    # through their YAML contract so PPO cannot learn from an already-falling
+    # 30--60 degree trajectory until root height finally crosses 0.65 m.
+    recovery_tilt = DoneTerm(
+        func=mdp.SustainedRootTiltExceeded,
+        params={
+            "max_tilt_rad": 1.55,
+            "required_steps": 3,
+        },
     )
     non_foot_ground_contact = DoneTerm(
         func=mdp.illegal_contact,
@@ -1420,6 +1471,15 @@ class A3FloatingJointCoordinatorV4EnvCfg(A3FloatingJointCoordinatorV2EnvCfg):
         self.rewards.racket_velocity_position_gated.params["velocity_std"] = 2.0
         self.rewards.racket_velocity_position_gated.params["position_threshold"] = 0.10
         self.rewards.racket_velocity_position_gated.params["position_excess_std"] = 0.025
+
+
+@configclass
+class A3FloatingJointCoordinatorV5PreviewEnvCfg(A3FloatingJointCoordinatorV2EnvCfg):
+    """V2 impact controller with an appended anticipatory dynamics preview."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.observations = A3JointCoordinatorPreviewObservationsCfg()
 
 
 @configclass

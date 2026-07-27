@@ -1,0 +1,15 @@
+# Diagnostic-only V11 contract: double the minimum-jerk return duration while
+# preserving the V9 impact and tail-support gates.  It isolates return
+# acceleration from recovery-policy quality.
+defaults:
+  - HOPEA3JointCoordinatorV9RecoveryProgress
+  - _self_
+
+name: HOPEA3JointCoordinatorV11SlowReturnAudit
+experiment_name: agibot_a3_joint_coordinator_v11_slow_return_audit_20260727
+
+env:
+  episode_length_s: 6.5
+
+motion:
+  return_to_default_steps: 100

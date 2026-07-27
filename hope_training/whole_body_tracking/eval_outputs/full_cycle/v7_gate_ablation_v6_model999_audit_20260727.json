@@ -1,0 +1,571 @@
+{
+  "task": "HOPE-FloatingJointCoordinatorV2-AgibotA3-v0",
+  "action": "deterministic_checkpoint_actor",
+  "audit_scope": {
+    "motions": 6,
+    "full_episode": true,
+    "post_hit_steps_required": 20,
+    "hard_safety_rule": "natural timeout only, finite state, root height >= 0.65 m through the full episode",
+    "stability_screen": "hard safety plus root tilt <= 30 deg and loaded-foot contact fraction >= 0.50"
+  },
+  "results": [
+    {
+      "motion_id": 0,
+      "position_error_m": 0.08312509953975677,
+      "position_error_x_m": -0.04120206832885742,
+      "position_error_y_m": 0.06569743156433105,
+      "position_error_z_m": 0.029933571815490723,
+      "velocity_error_mps": 1.2084996700286865,
+      "velocity_error_x_mps": -0.6251641511917114,
+      "velocity_error_y_mps": -0.18407432734966278,
+      "velocity_error_z_mps": 1.0177218914031982,
+      "racket_velocity_x_mps": -0.9221490621566772,
+      "racket_velocity_y_mps": 0.09204232692718506,
+      "racket_velocity_z_mps": -0.08833283185958862,
+      "target_velocity_x_mps": -1.5473132133483887,
+      "target_velocity_y_mps": -0.09203200042247772,
+      "target_velocity_z_mps": 0.9293889999389648,
+      "normal_error_deg": 1.468204379081726,
+      "root_displacement_m": 0.13550914824008942,
+      "hit_control_step": 80,
+      "coordinator_leg_raw_l2": 0.7757790088653564,
+      "coordinator_leg_raw_max_abs": 0.42129215598106384,
+      "coordinator_leg_physical_l2_rad": 0.03809758648276329,
+      "coordinator_leg_physical_max_abs_rad": 0.03040575049817562,
+      "coordinator_waist_raw_l2": 0.3464577794075012,
+      "coordinator_waist_raw_max_abs": 0.24256180226802826,
+      "coordinator_waist_physical_l2_rad": 0.007732219994068146,
+      "coordinator_waist_physical_max_abs_rad": 0.005718883126974106,
+      "coordinator_arm_raw_l2": 0.6266514658927917,
+      "coordinator_arm_raw_max_abs": 0.4784422814846039,
+      "coordinator_arm_physical_l2_rad": 0.0271706935018301,
+      "coordinator_arm_physical_max_abs_rad": 0.023922113701701164,
+      "largest_joint_target_errors": [
+        {
+          "joint": "left_shoulder_pitch_joint",
+          "actual_minus_target_rad": -0.11345349252223969,
+          "abs_error_rad": 0.11345349252223969
+        },
+        {
+          "joint": "right_shoulder_pitch_joint",
+          "actual_minus_target_rad": 0.08807897567749023,
+          "abs_error_rad": 0.08807897567749023
+        },
+        {
+          "joint": "left_shoulder_roll_joint",
+          "actual_minus_target_rad": -0.08330488204956055,
+          "abs_error_rad": 0.08330488204956055
+        },
+        {
+          "joint": "right_shoulder_roll_joint",
+          "actual_minus_target_rad": 0.05652284622192383,
+          "abs_error_rad": 0.05652284622192383
+        },
+        {
+          "joint": "right_elbow_joint",
+          "actual_minus_target_rad": 0.05612456798553467,
+          "abs_error_rad": 0.05612456798553467
+        }
+      ],
+      "safety_pass": false,
+      "stability_pass": false,
+      "first_failure_step": 172,
+      "termination_reasons": [
+        "base_height"
+      ],
+      "termination_count_by_reason": {
+        "time_out": 0,
+        "base_height": 1,
+        "non_foot_ground_contact": 0
+      },
+      "clean_timeout": false,
+      "observed_steps": 172,
+      "post_hit_steps_observed": 91,
+      "minimum_root_height_m": 0.6517598628997803,
+      "max_root_displacement_m": 1.098881721496582,
+      "max_root_xy_displacement_m": 1.028012990951538,
+      "max_root_linear_velocity_mps": 2.6654000282287598,
+      "max_root_angular_velocity_radps": 2.688673257827759,
+      "max_root_tilt_deg": 59.53041458129883,
+      "foot_contact_fraction": 1.0,
+      "max_loaded_foot_tangential_speed_mps": 2.1038849353790283,
+      "max_applied_torque_nm": 118.0,
+      "minimum_soft_joint_margin_rad": -0.045455217361450195,
+      "minimum_soft_joint_margin_joint": "waist_pitch_joint",
+      "minimum_soft_joint_margin_step": 96,
+      "minimum_margin_joint_position_rad": 0.4189556837081909,
+      "minimum_margin_joint_lower_limit_rad": -0.4433135986328125,
+      "minimum_margin_joint_upper_limit_rad": 0.3735004663467407,
+      "minimum_margin_joint_target_rad": 0.3735004663467407,
+      "torque_saturation_fraction": 0.0007501875468867217,
+      "velocity_saturation_fraction": 0.0,
+      "finite_state": true
+    },
+    {
+      "motion_id": 1,
+      "position_error_m": 0.10372313857078552,
+      "position_error_x_m": -0.07729959487915039,
+      "position_error_y_m": -0.0690729022026062,
+      "position_error_z_m": -0.0034922361373901367,
+      "velocity_error_mps": 1.2724266052246094,
+      "velocity_error_x_mps": -0.6544312238693237,
+      "velocity_error_y_mps": -0.4508279860019684,
+      "velocity_error_z_mps": 0.993752121925354,
+      "racket_velocity_x_mps": -0.9898436069488525,
+      "racket_velocity_y_mps": 0.45065879821777344,
+      "racket_velocity_z_mps": -0.13973495364189148,
+      "target_velocity_x_mps": -1.6442748308181763,
+      "target_velocity_y_mps": -0.00016919837798923254,
+      "target_velocity_z_mps": 0.8540171384811401,
+      "normal_error_deg": 14.903708457946777,
+      "root_displacement_m": 0.15394607186317444,
+      "hit_control_step": 80,
+      "coordinator_leg_raw_l2": 0.9502012133598328,
+      "coordinator_leg_raw_max_abs": 0.514320969581604,
+      "coordinator_leg_physical_l2_rad": 0.02920462377369404,
+      "coordinator_leg_physical_max_abs_rad": 0.015429629012942314,
+      "coordinator_waist_raw_l2": 0.3597702980041504,
+      "coordinator_waist_raw_max_abs": 0.2967515289783478,
+      "coordinator_waist_physical_l2_rad": 0.007729578763246536,
+      "coordinator_waist_physical_max_abs_rad": 0.005935030523687601,
+      "coordinator_arm_raw_l2": 0.6766040921211243,
+      "coordinator_arm_raw_max_abs": 0.4161505401134491,
+      "coordinator_arm_physical_l2_rad": 0.030447153374552727,
+      "coordinator_arm_physical_max_abs_rad": 0.020807527005672455,
+      "largest_joint_target_errors": [
+        {
+          "joint": "left_shoulder_pitch_joint",
+          "actual_minus_target_rad": -0.12616786360740662,
+          "abs_error_rad": 0.12616786360740662
+        },
+        {
+          "joint": "right_shoulder_pitch_joint",
+          "actual_minus_target_rad": 0.10890352725982666,
+          "abs_error_rad": 0.10890352725982666
+        },
+        {
+          "joint": "left_shoulder_roll_joint",
+          "actual_minus_target_rad": -0.08166307210922241,
+          "abs_error_rad": 0.08166307210922241
+        },
+        {
+          "joint": "waist_yaw_joint",
+          "actual_minus_target_rad": -0.08049052953720093,
+          "abs_error_rad": 0.08049052953720093
+        },
+        {
+          "joint": "left_ankle_pitch_joint",
+          "actual_minus_target_rad": -0.0559721365571022,
+          "abs_error_rad": 0.0559721365571022
+        }
+      ],
+      "safety_pass": false,
+      "stability_pass": false,
+      "first_failure_step": 186,
+      "termination_reasons": [
+        "base_height"
+      ],
+      "termination_count_by_reason": {
+        "time_out": 0,
+        "base_height": 1,
+        "non_foot_ground_contact": 0
+      },
+      "clean_timeout": false,
+      "observed_steps": 186,
+      "post_hit_steps_observed": 105,
+      "minimum_root_height_m": 0.6594710350036621,
+      "max_root_displacement_m": 1.0830477476119995,
+      "max_root_xy_displacement_m": 1.013997197151184,
+      "max_root_linear_velocity_mps": 2.621392011642456,
+      "max_root_angular_velocity_radps": 2.547685384750366,
+      "max_root_tilt_deg": 59.10907745361328,
+      "foot_contact_fraction": 1.0,
+      "max_loaded_foot_tangential_speed_mps": 2.1084353923797607,
+      "max_applied_torque_nm": 118.0,
+      "minimum_soft_joint_margin_rad": -0.04546165466308594,
+      "minimum_soft_joint_margin_joint": "waist_pitch_joint",
+      "minimum_soft_joint_margin_step": 115,
+      "minimum_margin_joint_position_rad": 0.41896212100982666,
+      "minimum_margin_joint_lower_limit_rad": -0.4433135986328125,
+      "minimum_margin_joint_upper_limit_rad": 0.3735004663467407,
+      "minimum_margin_joint_target_rad": 0.3735004663467407,
+      "torque_saturation_fraction": 0.0015608740894901144,
+      "velocity_saturation_fraction": 0.0,
+      "finite_state": true
+    },
+    {
+      "motion_id": 2,
+      "position_error_m": 0.12662534415721893,
+      "position_error_x_m": -0.0790870189666748,
+      "position_error_y_m": 0.09380817413330078,
+      "position_error_z_m": 0.03129291534423828,
+      "velocity_error_mps": 1.1280990839004517,
+      "velocity_error_x_mps": -0.9346786141395569,
+      "velocity_error_y_mps": 0.19380539655685425,
+      "velocity_error_z_mps": 0.6011844277381897,
+      "racket_velocity_x_mps": -0.6348060965538025,
+      "racket_velocity_y_mps": 0.1835344433784485,
+      "racket_velocity_z_mps": 0.05121826380491257,
+      "target_velocity_x_mps": -1.5694847106933594,
+      "target_velocity_y_mps": 0.37733983993530273,
+      "target_velocity_z_mps": 0.6524026989936829,
+      "normal_error_deg": 4.092228889465332,
+      "root_displacement_m": 0.1488981395959854,
+      "hit_control_step": 80,
+      "coordinator_leg_raw_l2": 0.7514709830284119,
+      "coordinator_leg_raw_max_abs": 0.4707844853401184,
+      "coordinator_leg_physical_l2_rad": 0.0326208658516407,
+      "coordinator_leg_physical_max_abs_rad": 0.02140621468424797,
+      "coordinator_waist_raw_l2": 0.26353251934051514,
+      "coordinator_waist_raw_max_abs": 0.20406433939933777,
+      "coordinator_waist_physical_l2_rad": 0.005708564538508654,
+      "coordinator_waist_physical_max_abs_rad": 0.0040812864899635315,
+      "coordinator_arm_raw_l2": 0.5737117528915405,
+      "coordinator_arm_raw_max_abs": 0.4802052080631256,
+      "coordinator_arm_physical_l2_rad": 0.026124916970729828,
+      "coordinator_arm_physical_max_abs_rad": 0.02401026152074337,
+      "largest_joint_target_errors": [
+        {
+          "joint": "right_elbow_joint",
+          "actual_minus_target_rad": 0.08424457907676697,
+          "abs_error_rad": 0.08424457907676697
+        },
+        {
+          "joint": "left_shoulder_pitch_joint",
+          "actual_minus_target_rad": -0.08357304334640503,
+          "abs_error_rad": 0.08357304334640503
+        },
+        {
+          "joint": "left_shoulder_roll_joint",
+          "actual_minus_target_rad": -0.07366587221622467,
+          "abs_error_rad": 0.07366587221622467
+        },
+        {
+          "joint": "right_shoulder_pitch_joint",
+          "actual_minus_target_rad": 0.06881260871887207,
+          "abs_error_rad": 0.06881260871887207
+        },
+        {
+          "joint": "left_hip_yaw_joint",
+          "actual_minus_target_rad": 0.057872071862220764,
+          "abs_error_rad": 0.057872071862220764
+        }
+      ],
+      "safety_pass": true,
+      "stability_pass": false,
+      "first_failure_step": null,
+      "termination_reasons": [
+        "time_out"
+      ],
+      "termination_count_by_reason": {
+        "time_out": 1,
+        "base_height": 0,
+        "non_foot_ground_contact": 0
+      },
+      "clean_timeout": true,
+      "observed_steps": 275,
+      "post_hit_steps_observed": 194,
+      "minimum_root_height_m": 0.7429472208023071,
+      "max_root_displacement_m": 0.9742411375045776,
+      "max_root_xy_displacement_m": 0.9278498888015747,
+      "max_root_linear_velocity_mps": 2.3633432388305664,
+      "max_root_angular_velocity_radps": 2.4252593517303467,
+      "max_root_tilt_deg": 54.441741943359375,
+      "foot_contact_fraction": 0.9981818181818182,
+      "max_loaded_foot_tangential_speed_mps": 2.0803792476654053,
+      "max_applied_torque_nm": 118.0,
+      "minimum_soft_joint_margin_rad": -0.045459479093551636,
+      "minimum_soft_joint_margin_joint": "waist_pitch_joint",
+      "minimum_soft_joint_margin_step": 222,
+      "minimum_margin_joint_position_rad": 0.41895994544029236,
+      "minimum_margin_joint_lower_limit_rad": -0.4433135986328125,
+      "minimum_margin_joint_upper_limit_rad": 0.3735004663467407,
+      "minimum_margin_joint_target_rad": 0.3735004663467407,
+      "torque_saturation_fraction": 0.0005865102639296188,
+      "velocity_saturation_fraction": 0.0,
+      "finite_state": true
+    },
+    {
+      "motion_id": 3,
+      "position_error_m": 0.11700770258903503,
+      "position_error_x_m": -0.09519171714782715,
+      "position_error_y_m": 0.06763976812362671,
+      "position_error_z_m": 0.0073621273040771484,
+      "velocity_error_mps": 1.2112541198730469,
+      "velocity_error_x_mps": -0.6718956828117371,
+      "velocity_error_y_mps": 0.1514970064163208,
+      "velocity_error_z_mps": 0.9963641166687012,
+      "racket_velocity_x_mps": -0.6983672976493835,
+      "racket_velocity_y_mps": 0.15309268236160278,
+      "racket_velocity_z_mps": -0.051871832460165024,
+      "target_velocity_x_mps": -1.3702629804611206,
+      "target_velocity_y_mps": 0.3045896887779236,
+      "target_velocity_z_mps": 0.9444922804832458,
+      "normal_error_deg": 5.5890021324157715,
+      "root_displacement_m": 0.14648333191871643,
+      "hit_control_step": 80,
+      "coordinator_leg_raw_l2": 0.9960970282554626,
+      "coordinator_leg_raw_max_abs": 0.5730782747268677,
+      "coordinator_leg_physical_l2_rad": 0.03217114880681038,
+      "coordinator_leg_physical_max_abs_rad": 0.01719234697520733,
+      "coordinator_waist_raw_l2": 0.3375510275363922,
+      "coordinator_waist_raw_max_abs": 0.29273679852485657,
+      "coordinator_waist_physical_l2_rad": 0.00716561172157526,
+      "coordinator_waist_physical_max_abs_rad": 0.005854735616594553,
+      "coordinator_arm_raw_l2": 0.6118698716163635,
+      "coordinator_arm_raw_max_abs": 0.4492470920085907,
+      "coordinator_arm_physical_l2_rad": 0.02828354761004448,
+      "coordinator_arm_physical_max_abs_rad": 0.022462354972958565,
+      "largest_joint_target_errors": [
+        {
+          "joint": "left_shoulder_pitch_joint",
+          "actual_minus_target_rad": -0.10569484531879425,
+          "abs_error_rad": 0.10569484531879425
+        },
+        {
+          "joint": "right_shoulder_pitch_joint",
+          "actual_minus_target_rad": 0.08698761463165283,
+          "abs_error_rad": 0.08698761463165283
+        },
+        {
+          "joint": "left_shoulder_roll_joint",
+          "actual_minus_target_rad": -0.08158263564109802,
+          "abs_error_rad": 0.08158263564109802
+        },
+        {
+          "joint": "right_shoulder_roll_joint",
+          "actual_minus_target_rad": 0.07972800731658936,
+          "abs_error_rad": 0.07972800731658936
+        },
+        {
+          "joint": "left_hip_yaw_joint",
+          "actual_minus_target_rad": 0.07443547993898392,
+          "abs_error_rad": 0.07443547993898392
+        }
+      ],
+      "safety_pass": false,
+      "stability_pass": false,
+      "first_failure_step": 271,
+      "termination_reasons": [
+        "base_height"
+      ],
+      "termination_count_by_reason": {
+        "time_out": 0,
+        "base_height": 1,
+        "non_foot_ground_contact": 0
+      },
+      "clean_timeout": false,
+      "observed_steps": 271,
+      "post_hit_steps_observed": 190,
+      "minimum_root_height_m": 0.656804084777832,
+      "max_root_displacement_m": 1.0811549425125122,
+      "max_root_xy_displacement_m": 1.0109683275222778,
+      "max_root_linear_velocity_mps": 2.644601583480835,
+      "max_root_angular_velocity_radps": 2.6957852840423584,
+      "max_root_tilt_deg": 60.51258087158203,
+      "foot_contact_fraction": 0.9981549815498155,
+      "max_loaded_foot_tangential_speed_mps": 2.1017496585845947,
+      "max_applied_torque_nm": 118.0,
+      "minimum_soft_joint_margin_rad": -0.045463502407073975,
+      "minimum_soft_joint_margin_joint": "waist_pitch_joint",
+      "minimum_soft_joint_margin_step": 218,
+      "minimum_margin_joint_position_rad": 0.4189639687538147,
+      "minimum_margin_joint_lower_limit_rad": -0.4433135986328125,
+      "minimum_margin_joint_upper_limit_rad": 0.3735004663467407,
+      "minimum_margin_joint_target_rad": 0.3735004663467407,
+      "torque_saturation_fraction": 0.0008332341387930008,
+      "velocity_saturation_fraction": 0.0,
+      "finite_state": true
+    },
+    {
+      "motion_id": 4,
+      "position_error_m": 0.08878649026155472,
+      "position_error_x_m": -0.05954301357269287,
+      "position_error_y_m": 0.06441330909729004,
+      "position_error_z_m": -0.01373302936553955,
+      "velocity_error_mps": 2.187389373779297,
+      "velocity_error_x_mps": -1.885380744934082,
+      "velocity_error_y_mps": 0.0520828515291214,
+      "velocity_error_z_mps": 1.107835292816162,
+      "racket_velocity_x_mps": -0.8756484985351562,
+      "racket_velocity_y_mps": 0.0927966982126236,
+      "racket_velocity_z_mps": 0.3087896704673767,
+      "target_velocity_x_mps": -2.7610292434692383,
+      "target_velocity_y_mps": 0.144879549741745,
+      "target_velocity_z_mps": 1.4166250228881836,
+      "normal_error_deg": 13.102895736694336,
+      "root_displacement_m": 0.1405876874923706,
+      "hit_control_step": 80,
+      "coordinator_leg_raw_l2": 0.7774115204811096,
+      "coordinator_leg_raw_max_abs": 0.4831593334674835,
+      "coordinator_leg_physical_l2_rad": 0.02939741685986519,
+      "coordinator_leg_physical_max_abs_rad": 0.014494779519736767,
+      "coordinator_waist_raw_l2": 0.29301053285598755,
+      "coordinator_waist_raw_max_abs": 0.2547352612018585,
+      "coordinator_waist_physical_l2_rad": 0.0058700041845440865,
+      "coordinator_waist_physical_max_abs_rad": 0.0050947051495313644,
+      "coordinator_arm_raw_l2": 0.5977218151092529,
+      "coordinator_arm_raw_max_abs": 0.5000620484352112,
+      "coordinator_arm_physical_l2_rad": 0.028110800310969353,
+      "coordinator_arm_physical_max_abs_rad": 0.02500310353934765,
+      "largest_joint_target_errors": [
+        {
+          "joint": "left_shoulder_pitch_joint",
+          "actual_minus_target_rad": -0.08658051490783691,
+          "abs_error_rad": 0.08658051490783691
+        },
+        {
+          "joint": "left_shoulder_roll_joint",
+          "actual_minus_target_rad": -0.0753166526556015,
+          "abs_error_rad": 0.0753166526556015
+        },
+        {
+          "joint": "right_wrist_pitch_joint",
+          "actual_minus_target_rad": 0.06465089321136475,
+          "abs_error_rad": 0.06465089321136475
+        },
+        {
+          "joint": "waist_pitch_joint",
+          "actual_minus_target_rad": 0.05217030644416809,
+          "abs_error_rad": 0.05217030644416809
+        },
+        {
+          "joint": "left_hip_yaw_joint",
+          "actual_minus_target_rad": 0.05071428418159485,
+          "abs_error_rad": 0.05071428418159485
+        }
+      ],
+      "safety_pass": true,
+      "stability_pass": true,
+      "first_failure_step": null,
+      "termination_reasons": [
+        "time_out"
+      ],
+      "termination_count_by_reason": {
+        "time_out": 1,
+        "base_height": 0,
+        "non_foot_ground_contact": 0
+      },
+      "clean_timeout": true,
+      "observed_steps": 275,
+      "post_hit_steps_observed": 194,
+      "minimum_root_height_m": 0.9956290125846863,
+      "max_root_displacement_m": 0.5146821141242981,
+      "max_root_xy_displacement_m": 0.5127659440040588,
+      "max_root_linear_velocity_mps": 1.1627646684646606,
+      "max_root_angular_velocity_radps": 1.1892751455307007,
+      "max_root_tilt_deg": 29.015134811401367,
+      "foot_contact_fraction": 1.0,
+      "max_loaded_foot_tangential_speed_mps": 1.5260441303253174,
+      "max_applied_torque_nm": 111.37293243408203,
+      "minimum_soft_joint_margin_rad": -0.04098057001829147,
+      "minimum_soft_joint_margin_joint": "left_shoulder_roll_joint",
+      "minimum_soft_joint_margin_step": 129,
+      "minimum_margin_joint_position_rad": 0.007016071584075689,
+      "minimum_margin_joint_lower_limit_rad": 0.0479966402053833,
+      "minimum_margin_joint_upper_limit_rad": 2.4827303886413574,
+      "minimum_margin_joint_target_rad": 0.11999999731779099,
+      "torque_saturation_fraction": 0.0007038123167155425,
+      "velocity_saturation_fraction": 0.0,
+      "finite_state": true
+    },
+    {
+      "motion_id": 5,
+      "position_error_m": 0.1279352456331253,
+      "position_error_x_m": -0.10382288694381714,
+      "position_error_y_m": 0.07160043716430664,
+      "position_error_z_m": -0.021485209465026855,
+      "velocity_error_mps": 2.2008955478668213,
+      "velocity_error_x_mps": -1.8183648586273193,
+      "velocity_error_y_mps": -0.014585919678211212,
+      "velocity_error_z_mps": 1.2398698329925537,
+      "racket_velocity_x_mps": -0.9582123756408691,
+      "racket_velocity_y_mps": -0.08516032248735428,
+      "racket_velocity_z_mps": -0.15865394473075867,
+      "target_velocity_x_mps": -2.7765772342681885,
+      "target_velocity_y_mps": -0.09974624216556549,
+      "target_velocity_z_mps": 1.0812158584594727,
+      "normal_error_deg": 8.426623344421387,
+      "root_displacement_m": 0.14205855131149292,
+      "hit_control_step": 80,
+      "coordinator_leg_raw_l2": 0.8601340651512146,
+      "coordinator_leg_raw_max_abs": 0.5179269909858704,
+      "coordinator_leg_physical_l2_rad": 0.031620804220438004,
+      "coordinator_leg_physical_max_abs_rad": 0.016466567292809486,
+      "coordinator_waist_raw_l2": 0.3215923309326172,
+      "coordinator_waist_raw_max_abs": 0.2976166605949402,
+      "coordinator_waist_physical_l2_rad": 0.006446564570069313,
+      "coordinator_waist_physical_max_abs_rad": 0.005952333100140095,
+      "coordinator_arm_raw_l2": 0.6546181440353394,
+      "coordinator_arm_raw_max_abs": 0.5106961131095886,
+      "coordinator_arm_physical_l2_rad": 0.030536983162164688,
+      "coordinator_arm_physical_max_abs_rad": 0.02553480677306652,
+      "largest_joint_target_errors": [
+        {
+          "joint": "left_shoulder_pitch_joint",
+          "actual_minus_target_rad": -0.10942792892456055,
+          "abs_error_rad": 0.10942792892456055
+        },
+        {
+          "joint": "right_shoulder_roll_joint",
+          "actual_minus_target_rad": 0.08364999294281006,
+          "abs_error_rad": 0.08364999294281006
+        },
+        {
+          "joint": "left_shoulder_roll_joint",
+          "actual_minus_target_rad": -0.07865619659423828,
+          "abs_error_rad": 0.07865619659423828
+        },
+        {
+          "joint": "waist_pitch_joint",
+          "actual_minus_target_rad": 0.06339308619499207,
+          "abs_error_rad": 0.06339308619499207
+        },
+        {
+          "joint": "left_hip_yaw_joint",
+          "actual_minus_target_rad": 0.05266483128070831,
+          "abs_error_rad": 0.05266483128070831
+        }
+      ],
+      "safety_pass": false,
+      "stability_pass": false,
+      "first_failure_step": 273,
+      "termination_reasons": [
+        "base_height"
+      ],
+      "termination_count_by_reason": {
+        "time_out": 0,
+        "base_height": 1,
+        "non_foot_ground_contact": 0
+      },
+      "clean_timeout": false,
+      "observed_steps": 273,
+      "post_hit_steps_observed": 192,
+      "minimum_root_height_m": 0.6668791174888611,
+      "max_root_displacement_m": 1.0696570873260498,
+      "max_root_xy_displacement_m": 1.0024704933166504,
+      "max_root_linear_velocity_mps": 2.5831527709960938,
+      "max_root_angular_velocity_radps": 2.592465400695801,
+      "max_root_tilt_deg": 59.85253143310547,
+      "foot_contact_fraction": 1.0,
+      "max_loaded_foot_tangential_speed_mps": 2.1008193492889404,
+      "max_applied_torque_nm": 118.0,
+      "minimum_soft_joint_margin_rad": -0.045453280210494995,
+      "minimum_soft_joint_margin_joint": "waist_pitch_joint",
+      "minimum_soft_joint_margin_step": 93,
+      "minimum_margin_joint_position_rad": 0.4189537465572357,
+      "minimum_margin_joint_lower_limit_rad": -0.4433135986328125,
+      "minimum_margin_joint_upper_limit_rad": 0.3735004663467407,
+      "minimum_margin_joint_target_rad": 0.3436146378517151,
+      "torque_saturation_fraction": 0.0008271298593879239,
+      "velocity_saturation_fraction": 0.0,
+      "finite_state": true
+    }
+  ],
+  "safety_pass_count": 2,
+  "safety_pass_fraction": 0.3333333333333333,
+  "stability_pass_count": 1,
+  "stability_pass_fraction": 0.16666666666666666,
+  "mean_position_error_m": 0.10786717012524605,
+  "mean_root_displacement_m": 0.9702774584293365
+}

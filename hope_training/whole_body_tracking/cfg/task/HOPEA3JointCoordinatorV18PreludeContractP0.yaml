@@ -1,0 +1,23 @@
+# Deterministic P0 for the ready -> swing execution contract.  No PPO run may
+# use this task until its six-motion full-cycle audit passes the bridge gates.
+defaults:
+  - HOPEA3JointCoordinatorV17PredictiveWaistGuardAudit
+  - _self_
+
+name: HOPEA3JointCoordinatorV18PreludeContractP0
+
+motion:
+  # 10 settled ready steps, then a 40-step quintic bridge.  The first eight
+  # swing frames are smoothly launched by MotionCommand without moving hit.
+  prelude_steps: 50
+  prelude_settle_steps: 10
+  prelude_launch_steps: 8
+  prelude_minimum_jerk: true
+  prelude_continuous_velocity_reference: true
+  prelude_waist_pitch_anchor_rad: 0.30
+
+actions:
+  # Keep the waist away from the target soft boundary throughout the bridge
+  # and pre-hit swing, not just in the last eight frames before impact.
+  waist_soft_limit_guard_in_prelude: true
+  waist_soft_limit_enforce_inner_limit: true

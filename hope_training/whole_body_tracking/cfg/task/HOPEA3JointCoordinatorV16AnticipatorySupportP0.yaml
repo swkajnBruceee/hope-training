@@ -1,0 +1,17 @@
+# P0: verify anticipatory support before any RSI, locomotion, or action-space
+# expansion.  V15's split post-hit safety contract remains intact.
+defaults:
+  - HOPEA3JointCoordinatorV15SplitPostHitContractAudit
+  - _self_
+
+name: HOPEA3JointCoordinatorV16AnticipatorySupportP0
+gym_task: HOPE-FloatingJointCoordinatorV5Preview-AgibotA3-v0
+experiment_name: agibot_a3_joint_coordinator_v16_anticipatory_support_20260727
+
+rewards:
+  # Applied from ready/prelude through exact impact.  These are symmetric in
+  # P0: the signed forward convention is recorded before enabling a one-sided
+  # forward-only cost in a later phase.
+  pre_hit_root_tilt_weight: -3.0
+  pre_hit_root_angular_velocity_l2_weight: -0.50
+  pre_hit_root_forward_velocity_l2_weight: -1.00

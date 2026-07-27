@@ -1,0 +1,14 @@
+# Stage 2 preserves the V12 learned recovery policy while tightening the
+# minimum-jerk return toward the deployment contract.
+defaults:
+  - HOPEA3JointCoordinatorV9RecoveryProgress
+  - _self_
+
+name: HOPEA3JointCoordinatorV13RecoveryCurriculumStage2
+experiment_name: agibot_a3_joint_coordinator_v13_recovery_curriculum_20260727
+
+env:
+  episode_length_s: 6.0
+
+motion:
+  return_to_default_steps: 75

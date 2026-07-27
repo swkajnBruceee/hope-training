@@ -343,6 +343,18 @@ class MotionCommand(CommandTerm):
         self.prelude_steps = int(self.cfg.prelude_steps)
         if self.prelude_steps < 0:
             raise ValueError("prelude_steps must be non-negative")
+        self.prelude_settle_steps = int(self.cfg.prelude_settle_steps)
+        self.prelude_launch_steps = int(self.cfg.prelude_launch_steps)
+        if not 0 <= self.prelude_settle_steps <= self.prelude_steps:
+            raise ValueError("prelude_settle_steps must be within [0, prelude_steps]")
+        if self.prelude_launch_steps < 0:
+            raise ValueError("prelude_launch_steps must be non-negative")
+        self._prelude_waist_pitch_id: int | None = None
+        if self.cfg.prelude_waist_pitch_anchor_rad is not None:
+            joint_ids, resolved = self.robot.find_joints(["waist_pitch_joint"], preserve_order=True)
+            if resolved != ["waist_pitch_joint"]:
+                raise ValueError("Prelude waist-pitch anchor joint could not be resolved")
+            self._prelude_waist_pitch_id = int(joint_ids[0])
         self.prelude_elapsed_steps = torch.zeros(
             self.num_envs, dtype=torch.long, device=self.device
         )
@@ -407,13 +419,40 @@ class MotionCommand(CommandTerm):
             reference = self.motion.joint_pos[self.time_steps]
         reference = reference + self._joint_position_offset
         if self.prelude_steps > 0:
-            alpha = (
-                self.prelude_elapsed_steps.to(dtype=reference.dtype)
-                / float(self.prelude_steps)
-            ).clamp_(0.0, 1.0).unsqueeze(-1)
-            reference = self.robot.data.default_joint_pos + alpha * (
-                reference - self.robot.data.default_joint_pos
+            in_prelude = self.prelude_elapsed_steps < self.prelude_steps
+            if not self._prelude_position_bridge_enabled():
+                # Exact legacy path: the original reference is linearly
+                # blended throughout prelude.  Established checkpoints were
+                # trained under this timing and must not silently change.
+                alpha = (
+                    self.prelude_elapsed_steps.to(dtype=reference.dtype)
+                    / float(self.prelude_steps)
+                ).clamp_(0.0, 1.0).unsqueeze(-1)
+                return self.robot.data.default_joint_pos + alpha * (
+                    reference - self.robot.data.default_joint_pos
+                )
+            endpoint = self._prelude_endpoint(reference)
+            alpha, _ = self._prelude_blend(reference.dtype)
+            bridge = self.robot.data.default_joint_pos + alpha.unsqueeze(-1) * (
+                endpoint - self.robot.data.default_joint_pos
             )
+            reference = torch.where(in_prelude.unsqueeze(-1), bridge, reference)
+
+            # After the bridge reaches a zero-velocity safe anchor, blend the
+            # first known swing frames in rather than jumping directly from
+            # frame zero to frame one.  Motion phase still advances normally,
+            # so hit timing and task targets remain unchanged.
+            launch_steps = self.prelude_launch_steps
+            launch_active = (
+                (~in_prelude)
+                & (self.tail_steps == 0)
+                & (self.time_steps < launch_steps)
+            )
+            if launch_steps > 0:
+                u = (self.time_steps.to(dtype=reference.dtype) / float(launch_steps)).clamp(0.0, 1.0)
+                smooth = u * u * u * (10.0 - 15.0 * u + 6.0 * u * u)
+                launch = endpoint + smooth.unsqueeze(-1) * (reference - endpoint)
+                reference = torch.where(launch_active.unsqueeze(-1), launch, reference)
 
         # A finite strike must not abruptly release the arm at its final
         # frame.  Keep the final pose long enough for the legs to absorb the
@@ -443,6 +482,33 @@ class MotionCommand(CommandTerm):
         else:
             reference_vel = self.motion.joint_vel[self.time_steps]
             final_joint_pos = self.motion.joint_pos[self.time_steps]
+        reference_pos = self._initial_joint_reference_at_current_phase()
+        # Position shaping and velocity shaping are intentionally independent.
+        # The legacy contract keeps its original reference velocity throughout
+        # prelude unless this explicit opt-in is set.
+        if self.prelude_steps > 0 and self.cfg.prelude_continuous_velocity_reference:
+            in_prelude = self.prelude_elapsed_steps < self.prelude_steps
+            endpoint = self._prelude_endpoint(self._initial_joint_reference())
+            _, blend_rate = self._prelude_blend(reference_vel.dtype)
+            prelude_velocity = blend_rate.unsqueeze(-1) * (endpoint - self.robot.data.default_joint_pos)
+            launch_steps = self.prelude_launch_steps
+            launch_active = (
+                (~in_prelude)
+                & (self.tail_steps == 0)
+                & (self.time_steps < launch_steps)
+            )
+            if launch_steps > 0:
+                control_dt = float(self._env.cfg.decimation * self._env.cfg.sim.dt)
+                u = (self.time_steps.to(dtype=reference_vel.dtype) / float(launch_steps)).clamp(0.0, 1.0)
+                smooth = u * u * u * (10.0 - 15.0 * u + 6.0 * u * u)
+                smooth_rate = 30.0 * u * u * (1.0 - u) * (1.0 - u) / (float(launch_steps) * control_dt)
+                launch_velocity = (
+                    smooth.unsqueeze(-1) * reference_vel
+                    + smooth_rate.unsqueeze(-1) * (reference_pos - endpoint)
+                )
+                reference_vel = torch.where(launch_active.unsqueeze(-1), launch_velocity, reference_vel)
+            reference_vel = torch.where(in_prelude.unsqueeze(-1), prelude_velocity, reference_vel)
+
         if self.return_to_default_steps <= 0:
             return reference_vel
 
@@ -461,6 +527,62 @@ class MotionCommand(CommandTerm):
         )
         in_return_or_ready = self.tail_steps > hold_steps
         return torch.where(in_return_or_ready.unsqueeze(-1), return_velocity, reference_vel)
+
+    def _initial_joint_reference(self) -> torch.Tensor:
+        """Return frame-zero motion joints in runtime articulation order."""
+        if self._use_motion_library:
+            reference = self.motion.joint_pos[self.motion_ids, 0]
+        else:
+            reference = self.motion.joint_pos[0].unsqueeze(0).expand(self.num_envs, -1)
+        return reference + self._joint_position_offset
+
+    def _prelude_position_bridge_enabled(self) -> bool:
+        """Whether this task intentionally replaces the legacy linear prelude."""
+        return bool(
+            self.cfg.prelude_minimum_jerk
+            or self.prelude_settle_steps > 0
+            or self.prelude_launch_steps > 0
+            or self.cfg.prelude_waist_pitch_anchor_rad is not None
+        )
+
+    def _initial_joint_reference_at_current_phase(self) -> torch.Tensor:
+        """Return current raw motion joints, including configured static offsets."""
+        if self._use_motion_library:
+            reference = self.motion.joint_pos[self.motion_ids, self.time_steps]
+        else:
+            reference = self.motion.joint_pos[self.time_steps]
+        return reference + self._joint_position_offset
+
+    def _prelude_endpoint(self, frame_zero_reference: torch.Tensor) -> torch.Tensor:
+        """Build the safe, per-joint prelude endpoint without altering the motion clip."""
+        endpoint = frame_zero_reference.clone()
+        if self._prelude_waist_pitch_id is not None:
+            anchor = float(self.cfg.prelude_waist_pitch_anchor_rad)
+            endpoint[:, self._prelude_waist_pitch_id] = torch.minimum(
+                endpoint[:, self._prelude_waist_pitch_id],
+                torch.full((self.num_envs,), anchor, dtype=endpoint.dtype, device=self.device),
+            )
+        return endpoint
+
+    def _prelude_blend(self, dtype: torch.dtype) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return bridge blend and d(blend)/dt with an optional ready settle."""
+        transition_steps = self.prelude_steps - self.prelude_settle_steps
+        if transition_steps <= 0:
+            zero = torch.zeros(self.num_envs, dtype=dtype, device=self.device)
+            return zero, zero
+        elapsed = (self.prelude_elapsed_steps - self.prelude_settle_steps).clamp(
+            min=0, max=transition_steps
+        ).to(dtype=dtype)
+        u = elapsed / float(transition_steps)
+        if not self.cfg.prelude_minimum_jerk:
+            blend = u
+            rate = torch.full_like(u, 1.0 / (float(transition_steps) * self._env.cfg.decimation * self._env.cfg.sim.dt))
+            rate = torch.where((u <= 0.0) | (u >= 1.0), torch.zeros_like(rate), rate)
+            return blend, rate
+        blend = u * u * u * (10.0 - 15.0 * u + 6.0 * u * u)
+        control_dt = float(self._env.cfg.decimation * self._env.cfg.sim.dt)
+        rate = 30.0 * u * u * (1.0 - u) * (1.0 - u) / (float(transition_steps) * control_dt)
+        return blend, rate
 
     @property
     def body_pos_w(self) -> torch.Tensor:
@@ -931,6 +1053,13 @@ class MotionCommandCfg(CommandTermCfg):
     # A pre-swing bridge from ``robot.init_state`` into motion frame zero.
     # It is disabled for legacy tracking tasks.
     prelude_steps: int = 0
+    # Optional three-part ready-to-swing bridge.  Legacy tasks retain the
+    # prior linear bridge because all controls default to disabled.
+    prelude_settle_steps: int = 0
+    prelude_launch_steps: int = 0
+    prelude_minimum_jerk: bool = False
+    prelude_continuous_velocity_reference: bool = False
+    prelude_waist_pitch_anchor_rad: float | None = None
     reset_to_default_pose: bool = False
     # Reset curriculum for task-conditioned stabilizers.  A hard case is a
     # physically sampled initial condition, not a hand-authored leg action.

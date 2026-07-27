@@ -1,0 +1,16 @@
+# Unified 22-D coordinator, stage 1 of the corrected full-cycle contract.
+# The impact contract remains V9; only the physical return is slowed so PPO
+# first experiences and learns the real recovery distribution.
+defaults:
+  - HOPEA3JointCoordinatorV9RecoveryProgress
+  - _self_
+
+name: HOPEA3JointCoordinatorV12RecoveryCurriculumStage1
+experiment_name: agibot_a3_joint_coordinator_v12_recovery_curriculum_20260727
+
+env:
+  # 50 prelude + 39 strike + 25 final-pose hold + 100 return + 100 ready hold.
+  episode_length_s: 6.5
+
+motion:
+  return_to_default_steps: 100

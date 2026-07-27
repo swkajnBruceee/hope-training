@@ -711,6 +711,62 @@ def _apply_task_overrides(env_cfg, task):
                 "actions.joint_pos.upper_prelude_release_steps="
                 f"{upper_prelude_release_steps}"
             )
+        for key in (
+            "phase_gate_tail_release_steps",
+            "ready_hold_residual_release_steps",
+            "upper_policy_tail_release_steps",
+            "upper_policy_waist_post_hit_release_steps",
+            "coordinator_arm_tail_release_steps",
+            "waist_post_hit_settle_steps",
+            "waist_post_hit_return_steps",
+            "arm_tail_hold_steps",
+            "arm_tail_return_steps",
+            "waist_soft_limit_brake_lead_steps",
+            "waist_soft_limit_prediction_horizon_steps",
+        ):
+            value = _get(actions, key)
+            if value is None:
+                continue
+            _require(hasattr(env_cfg.actions.joint_pos, key), f"actions.joint_pos.{key}")
+            value = int(value)
+            _require(value >= 0, f"actions.{key} >= 0")
+            setattr(env_cfg.actions.joint_pos, key, value)
+            applied.append(f"actions.joint_pos.{key}={value}")
+        waist_soft_limit_margin = _get(actions, "waist_soft_limit_margin_rad")
+        if waist_soft_limit_margin is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "waist_soft_limit_margin_rad"),
+                "actions.joint_pos.waist_soft_limit_margin_rad",
+            )
+            waist_soft_limit_margin = float(waist_soft_limit_margin)
+            _require(waist_soft_limit_margin >= 0.0, "actions.waist_soft_limit_margin_rad >= 0")
+            env_cfg.actions.joint_pos.waist_soft_limit_margin_rad = waist_soft_limit_margin
+            applied.append(
+                "actions.joint_pos.waist_soft_limit_margin_rad="
+                f"{waist_soft_limit_margin}"
+            )
+        waist_soft_limit_velocity_brake_gain = _get(actions, "waist_soft_limit_velocity_brake_gain")
+        if waist_soft_limit_velocity_brake_gain is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "waist_soft_limit_velocity_brake_gain"),
+                "actions.joint_pos.waist_soft_limit_velocity_brake_gain",
+            )
+            waist_soft_limit_velocity_brake_gain = float(waist_soft_limit_velocity_brake_gain)
+            _require(
+                waist_soft_limit_velocity_brake_gain >= 0.0,
+                "actions.waist_soft_limit_velocity_brake_gain >= 0",
+            )
+            env_cfg.actions.joint_pos.waist_soft_limit_velocity_brake_gain = waist_soft_limit_velocity_brake_gain
+            applied.append(
+                "actions.joint_pos.waist_soft_limit_velocity_brake_gain="
+                f"{waist_soft_limit_velocity_brake_gain}"
+            )
+        for key in ("waist_soft_limit_guard_in_prelude", "waist_soft_limit_enforce_inner_limit"):
+            value = _get(actions, key)
+            if value is not None:
+                _require(hasattr(env_cfg.actions.joint_pos, key), f"actions.joint_pos.{key}")
+                setattr(env_cfg.actions.joint_pos, key, bool(value))
+                applied.append(f"actions.joint_pos.{key}={bool(value)}")
         for key, expected_length in (
             ("coordinator_leg_correction_scale_rad", 12),
             ("coordinator_waist_correction_scale_rad", 3),
@@ -837,6 +893,28 @@ def _apply_task_overrides(env_cfg, task):
                 getattr(R, _name).weight = float(_w)
                 applied.append(f"rewards.{_name}.weight={float(_w)}")
 
+        for _name, _key in (
+            ("post_strike_root_tilt_l2", "post_strike_root_tilt_weight"),
+            ("post_strike_recovery_progress", "post_strike_recovery_progress_weight"),
+            ("pre_hit_root_tilt_l2", "pre_hit_root_tilt_weight"),
+            ("pre_hit_root_angular_velocity_l2", "pre_hit_root_angular_velocity_l2_weight"),
+            ("pre_hit_root_forward_velocity_l2", "pre_hit_root_forward_velocity_l2_weight"),
+            ("post_strike_root_linear_velocity_l2", "post_strike_root_linear_velocity_l2_weight"),
+            ("post_strike_root_angular_velocity_l2", "post_strike_root_angular_velocity_l2_weight"),
+            ("post_strike_root_height_deficit", "post_strike_root_height_deficit_weight"),
+            ("post_strike_both_feet_contact", "post_strike_both_feet_contact_weight"),
+            ("post_strike_ready", "post_strike_ready_weight"),
+            ("fall", "fall_weight"),
+            ("root_position_drift", "root_position_drift_weight"),
+            ("feet_slip", "feet_slip_weight"),
+        ):
+            _w = _get(rw, _key)
+            if _w is not None:
+                _require(hasattr(R, _name), f"rewards.{_name}")
+                _require(getattr(R, _name) is not None, f"rewards.{_name} (term is disabled/None)")
+                getattr(R, _name).weight = float(_w)
+                applied.append(f"rewards.{_name}.weight={float(_w)}")
+
     rk = _get(task, "racket")
     if rk is not None:
         # Only require the racket_target command when the YAML actually sets racket keys, so tasks
@@ -852,6 +930,7 @@ def _apply_task_overrides(env_cfg, task):
             _set_attr(C, "strike_success_pos_thresh", _get(rk, "strike_success_pos_thresh"), float, applied, "racket_target")
             _set_attr(C, "strike_success_vel_thresh", _get(rk, "strike_success_vel_thresh"), float, applied, "racket_target")
             _set_attr(C, "strike_success_normal_thresh_deg", _get(rk, "strike_success_normal_thresh_deg"), float, applied, "racket_target")
+
             _set_range(C, "racket_pos_x_range", _get(rk, "pos_x_range"), applied, "racket_target")
             _set_range(C, "racket_pos_y_range", _get(rk, "pos_y_range"), applied, "racket_target")
             _set_range(C, "racket_pos_z_range", _get(rk, "pos_z_range"), applied, "racket_target")
@@ -877,6 +956,31 @@ def _apply_task_overrides(env_cfg, task):
             _set_attr(C, "exact_success_decay", _get(rk, "exact_success_decay"), float, applied, "racket_target")
             _set_attr(C, "exact_success_min_count", _get(rk, "exact_success_min_count"), float, applied, "racket_target")
 
+    terminations = _get(task, "terminations")
+    if terminations is not None:
+        recovery_tilt_max_deg = _get(terminations, "recovery_tilt_max_deg")
+        recovery_tilt_required_steps = _get(terminations, "recovery_tilt_required_steps")
+        if recovery_tilt_max_deg is not None or recovery_tilt_required_steps is not None:
+            _require(hasattr(env_cfg.terminations, "recovery_tilt"), "terminations.recovery_tilt")
+            recovery_tilt = env_cfg.terminations.recovery_tilt
+            _require(recovery_tilt is not None, "terminations.recovery_tilt (term is disabled/None)")
+            if recovery_tilt_max_deg is not None:
+                recovery_tilt_max_deg = float(recovery_tilt_max_deg)
+                _require(0.0 < recovery_tilt_max_deg < 90.0, "terminations.recovery_tilt_max_deg in (0, 90)")
+                recovery_tilt.params["max_tilt_rad"] = recovery_tilt_max_deg * 3.141592653589793 / 180.0
+                applied.append(
+                    "terminations.recovery_tilt.max_tilt_rad="
+                    f"{recovery_tilt.params['max_tilt_rad']}"
+                )
+            if recovery_tilt_required_steps is not None:
+                recovery_tilt_required_steps = int(recovery_tilt_required_steps)
+                _require(recovery_tilt_required_steps >= 1, "terminations.recovery_tilt_required_steps >= 1")
+                recovery_tilt.params["required_steps"] = recovery_tilt_required_steps
+                applied.append(
+                    "terminations.recovery_tilt.required_steps="
+                    f"{recovery_tilt_required_steps}"
+                )
+
     # Domain randomization: behaviour preserved exactly (the pd_gain "absent/null -> disable" semantics
     # are intentional). Only logging is added; the hasattr guards stay so DR stays optional per task.
     dr = _get(task, "domain_rand")
@@ -899,6 +1003,41 @@ def _apply_task_overrides(env_cfg, task):
     motion = _get(task, "motion")
     if motion is not None and hasattr(env_cfg, "commands") and hasattr(env_cfg.commands, "motion"):
         C = env_cfg.commands.motion
+        for key in ("prelude_steps", "prelude_settle_steps", "prelude_launch_steps"):
+            value = _get(motion, key)
+            if value is not None:
+                _require(hasattr(C, key), f"commands.motion.{key}")
+                value = int(value)
+                _require(value >= 0, f"motion.{key} >= 0")
+                setattr(C, key, value)
+                applied.append(f"commands.motion.{key}={value}")
+        prelude_minimum_jerk = _get(motion, "prelude_minimum_jerk")
+        if prelude_minimum_jerk is not None:
+            _require(hasattr(C, "prelude_minimum_jerk"), "commands.motion.prelude_minimum_jerk")
+            C.prelude_minimum_jerk = bool(prelude_minimum_jerk)
+            applied.append(f"commands.motion.prelude_minimum_jerk={C.prelude_minimum_jerk}")
+        prelude_continuous_velocity = _get(motion, "prelude_continuous_velocity_reference")
+        if prelude_continuous_velocity is not None:
+            _require(
+                hasattr(C, "prelude_continuous_velocity_reference"),
+                "commands.motion.prelude_continuous_velocity_reference",
+            )
+            C.prelude_continuous_velocity_reference = bool(prelude_continuous_velocity)
+            applied.append(
+                "commands.motion.prelude_continuous_velocity_reference="
+                f"{C.prelude_continuous_velocity_reference}"
+            )
+        prelude_waist_anchor = _get(motion, "prelude_waist_pitch_anchor_rad")
+        if prelude_waist_anchor is not None:
+            _require(
+                hasattr(C, "prelude_waist_pitch_anchor_rad"),
+                "commands.motion.prelude_waist_pitch_anchor_rad",
+            )
+            C.prelude_waist_pitch_anchor_rad = float(prelude_waist_anchor)
+            applied.append(
+                "commands.motion.prelude_waist_pitch_anchor_rad="
+                f"{C.prelude_waist_pitch_anchor_rad}"
+            )
         pose_range = _get(motion, "pose_range")
         if pose_range is not None:
             C.pose_range = {str(k): (float(v[0]), float(v[1])) for k, v in pose_range.items()}
@@ -1045,10 +1184,13 @@ def _run(cfg):
         agent_cfg.neptune_project = str(cfg.log_project_name)
     agent_cfg.resume = bool(cfg.get("resume", False))
     warm_start_actor_only = bool(cfg.get("warm_start_actor_only", False))
+    warm_start_append_zero_policy_obs = bool(cfg.get("warm_start_append_zero_policy_obs", False))
     if agent_cfg.resume and warm_start_actor_only:
         raise ValueError("resume=true and warm_start_actor_only=true are mutually exclusive")
     if warm_start_actor_only and cfg.get("checkpoint", None) is None:
         raise ValueError("warm_start_actor_only=true requires an explicit checkpoint=<model_*.pt>")
+    if warm_start_append_zero_policy_obs and not warm_start_actor_only:
+        raise ValueError("warm_start_append_zero_policy_obs=true requires warm_start_actor_only=true")
     if cfg.get("load_run", None) is not None:
         agent_cfg.load_run = str(cfg.load_run)
     if cfg.get("checkpoint", None) is not None:
@@ -1146,6 +1288,22 @@ def _run(cfg):
     # 5) build env, wrap, run
     render_mode = "rgb_array" if cfg.video else None
     env = gym.make(task_id, cfg=env_cfg, render_mode=render_mode)
+    preview_audit_mode = str(cfg.get("preview_audit_mode", "normal"))
+    if preview_audit_mode not in {"normal", "zero", "shuffle", "reverse"}:
+        raise ValueError(f"Unknown preview_audit_mode={preview_audit_mode!r}")
+    if preview_audit_mode != "normal" and not bool(cfg.get("audit_policy_action", False)):
+        raise ValueError("preview_audit_mode other than 'normal' is allowed only with +audit_policy_action=true")
+    env.unwrapped.coordinator_preview_audit_mode = preview_audit_mode
+    if preview_audit_mode != "normal":
+        print(f"[train.py] coordinator preview causal audit mode={preview_audit_mode}", flush=True)
+    prelude_audit_mode = str(cfg.get("coordinator_prelude_audit_mode", "none"))
+    if prelude_audit_mode not in {"none", "all", "leg", "waist", "arm"}:
+        raise ValueError(f"Unknown coordinator_prelude_audit_mode={prelude_audit_mode!r}")
+    if prelude_audit_mode != "none" and not bool(cfg.get("audit_policy_action", False)):
+        raise ValueError("coordinator_prelude_audit_mode other than 'none' requires +audit_policy_action=true")
+    env.unwrapped.coordinator_prelude_audit_mode = prelude_audit_mode
+    if prelude_audit_mode != "none":
+        print(f"[train.py] coordinator prelude causal audit mode={prelude_audit_mode}", flush=True)
     if cfg.video:
         env = gym.wrappers.RecordVideo(
             env,
@@ -1195,6 +1353,7 @@ def _run(cfg):
                     "HOPE-FloatingJointCoordinatorV2-AgibotA3-v0",
                     "HOPE-FloatingJointCoordinatorV3-AgibotA3-v0",
                     "HOPE-FloatingJointCoordinatorV4-AgibotA3-v0",
+                    "HOPE-FloatingJointCoordinatorV5Preview-AgibotA3-v0",
                 }
                 else 10 if task_id.startswith("HOPE-FixedBase") or task_id == "HOPE-FloatingUpperCorrection-AgibotA3-v0"
                 else 14
@@ -1226,6 +1385,37 @@ def _run(cfg):
         if not actor_state or "std" not in actor_state:
             raise RuntimeError(f"checkpoint has no compatible actor/std tensors: {warm_path}")
         runtime_state_keys = set(runner.alg.policy.state_dict())
+        runtime_state = runner.alg.policy.state_dict()
+        appended_obs_features = 0
+        if warm_start_append_zero_policy_obs:
+            mismatched = [
+                name
+                for name, value in actor_state.items()
+                if name in runtime_state and torch.is_tensor(value) and value.shape != runtime_state[name].shape
+            ]
+            if len(mismatched) != 1:
+                raise RuntimeError(
+                    "append-zero actor migration requires exactly one mismatched actor tensor, "
+                    f"got {mismatched}"
+                )
+            input_weight_name = mismatched[0]
+            old_weight = actor_state[input_weight_name]
+            new_weight = runtime_state[input_weight_name]
+            if (
+                not input_weight_name.startswith("actor.")
+                or old_weight.ndim != 2
+                or new_weight.ndim != 2
+                or old_weight.shape[0] != new_weight.shape[0]
+                or old_weight.shape[1] >= new_weight.shape[1]
+            ):
+                raise RuntimeError(
+                    "append-zero actor migration only permits widening the first actor input layer: "
+                    f"{input_weight_name} {tuple(old_weight.shape)} -> {tuple(new_weight.shape)}"
+                )
+            appended_obs_features = int(new_weight.shape[1] - old_weight.shape[1])
+            migrated_weight = torch.zeros_like(new_weight)
+            migrated_weight[:, : old_weight.shape[1]] = old_weight
+            actor_state[input_weight_name] = migrated_weight
         expected_missing = {
             name
             for name in runtime_state_keys
@@ -1247,15 +1437,30 @@ def _run(cfg):
         if not isinstance(actor_norm_state, dict):
             raise RuntimeError(f"checkpoint has no actor observation normalizer: {warm_path}")
         runtime_norm_state = runner.obs_normalizer.state_dict()
+        migrated_normalizer = False
         for key in ("_mean", "_var", "_std"):
             if key not in actor_norm_state or key not in runtime_norm_state:
                 raise RuntimeError(f"actor-only warm-start normalizer missing {key!r}")
             if actor_norm_state[key].shape != runtime_norm_state[key].shape:
-                raise RuntimeError(
-                    "actor-only warm-start observation width mismatch: "
-                    f"checkpoint {key}={tuple(actor_norm_state[key].shape)}, "
-                    f"runtime={tuple(runtime_norm_state[key].shape)}"
-                )
+                if not warm_start_append_zero_policy_obs:
+                    raise RuntimeError(
+                        "actor-only warm-start observation width mismatch: "
+                        f"checkpoint {key}={tuple(actor_norm_state[key].shape)}, "
+                        f"runtime={tuple(runtime_norm_state[key].shape)}"
+                    )
+                old_value = actor_norm_state[key]
+                new_value = runtime_norm_state[key]
+                if old_value.ndim != new_value.ndim or old_value.shape[:-1] != new_value.shape[:-1] or old_value.shape[-1] >= new_value.shape[-1]:
+                    raise RuntimeError(
+                        "append-zero normalizer migration requires an appended observation width: "
+                        f"{key} {tuple(old_value.shape)} -> {tuple(new_value.shape)}"
+                    )
+                migrated = new_value.clone()
+                migrated[..., : old_value.shape[-1]] = old_value
+                actor_norm_state[key] = migrated
+                migrated_normalizer = True
+        if warm_start_append_zero_policy_obs and (appended_obs_features <= 0 or not migrated_normalizer):
+            raise RuntimeError("append-zero actor migration did not widen both actor and observation normalizer")
         runner.obs_normalizer.load_state_dict(actor_norm_state)
         # The optimizer and critic normalizer are intentionally untouched.
         # Explicitly reset the visible iteration counter as a guard against
@@ -1265,6 +1470,7 @@ def _run(cfg):
             "mode": "actor_only",
             "checkpoint": str(warm_path.resolve()),
             "loaded": ["actor", "std", "actor_observation_normalizer"],
+            "appended_zero_policy_observation_features": appended_obs_features,
             "reset": ["critic", "critic_observation_normalizer", "optimizer", "iteration"],
         }
         Path(log_dir, "params", "warm_start.json").parent.mkdir(parents=True, exist_ok=True)
@@ -1466,6 +1672,7 @@ def _run(cfg):
             raise RuntimeError(
                 f"zero-action audit foot sensor mismatch: expected={A3_FEET_BODIES}, got={resolved_feet}"
             )
+        foot_initial_xy = robot.data.body_pos_w[:, foot_ids, :2].clone()
         action_term = raw.action_manager.get_term("joint_pos")
         backend_ids = torch.as_tensor(
             action_term._backend_joint_ids,
@@ -1479,7 +1686,11 @@ def _run(cfg):
         audit_trace_after_hit_steps = int(cfg.get("audit_trace_after_hit_steps", 2))
         if audit_trace_after_hit_steps < 0:
             raise ValueError("audit_trace_after_hit_steps must be non-negative")
+        audit_trace_full_episode = bool(cfg.get("audit_trace_full_episode", False))
         trace_joint_names = (
+            "waist_yaw_joint",
+            "waist_roll_joint",
+            "waist_pitch_joint",
             "right_shoulder_pitch_joint",
             "right_shoulder_yaw_joint",
             "right_elbow_joint",
@@ -1505,6 +1716,7 @@ def _run(cfg):
         else:
             hit_deadline = int(motion.prelude_steps) + int(hit.max().item()) + post_hit_required + 2
             max_audit_steps = min(int(raw.max_episode_length), hit_deadline)
+        from isaaclab.utils.math import euler_xyz_from_quat, wrap_to_pi
         exact = [None] * cases
         policy = None
         observation = None
@@ -1665,15 +1877,21 @@ def _run(cfg):
             )
             racket._compute_racket_state()
             if audit_trace_path is not None:
-                # This trace is intentionally limited to the pre-hit dynamic
-                # window.  It exposes whether a key arm joint is late, weak,
-                # or saturating without mixing in the frozen post-hit tail.
+                # Default to the compact pre-hit diagnostic window. Full-cycle
+                # traces are opt-in because they are used to diagnose delayed
+                # falls during the hold/return/ready segments.
                 current_steps = motion.time_steps.clone()
                 trace_window = (
                     active_before_step
-                    & (motion.prelude_elapsed_steps >= int(motion.prelude_steps))
-                    & (current_steps >= hit - 15)
-                    & (current_steps <= hit + audit_trace_after_hit_steps)
+                    & (
+                        torch.ones_like(active_before_step)
+                        if audit_trace_full_episode
+                        else (
+                            (motion.prelude_elapsed_steps >= int(motion.prelude_steps))
+                            & (current_steps >= hit - 15)
+                            & (current_steps <= hit + audit_trace_after_hit_steps)
+                        )
+                    )
                 )
                 for env_id in torch.nonzero(trace_window, as_tuple=False).flatten().tolist():
                     motion_id = int(ids[env_id].item())
@@ -1697,12 +1915,115 @@ def _run(cfg):
                             "torque_limit_nm": float(robot.data.joint_effort_limits[env_id, sim_joint_index].item()),
                             "velocity_limit_radps": float(robot.data.joint_vel_limits[env_id, sim_joint_index].item()),
                         }
+                    coordinator_groups = {}
+                    # The coordinator has one policy but three physically different
+                    # correction groups.  Keep them separate in full-cycle traces so
+                    # a delayed fall can be attributed to its initiating channel.
+                    for group_name, start, end in (
+                        ("leg", 0, 12),
+                        ("waist", 12, 15),
+                        ("arm", 15, 22),
+                    ):
+                        raw_group = action_term.raw_actions[env_id, start:end]
+                        processed_group = action_term.processed_actions[env_id, start:end]
+                        coordinator_groups[group_name] = {
+                            "raw_l2": float(torch.linalg.vector_norm(raw_group).item()),
+                            "raw_max_abs": float(raw_group.abs().max().item()),
+                            "physical_l2_rad": float(torch.linalg.vector_norm(processed_group).item()),
+                            "physical_max_abs_rad": float(processed_group.abs().max().item()),
+                        }
+                    waist_command = {}
+                    upper_names = tuple(getattr(action_term.cfg, "upper_joint_names", ()) or ())
+                    for joint_name in ("waist_yaw_joint", "waist_roll_joint", "waist_pitch_joint"):
+                        if joint_name not in upper_names:
+                            continue
+                        upper_index = upper_names.index(joint_name)
+                        waist_command[joint_name] = {
+                            "reference_rad": float(action_term.upper_reference_actions[env_id, upper_index].item()),
+                            "frozen_primary_residual_rad": float(
+                                action_term.upper_primary_contribution[env_id, upper_index].item()
+                            ),
+                            "coordinator_residual_rad": float(
+                                action_term.upper_coordinator_contribution[env_id, upper_index].item()
+                            ),
+                            "safety_override_rad": float(
+                                action_term.upper_safety_override[env_id, upper_index].item()
+                            ),
+                            "velocity_safety_override_radps": float(
+                                action_term.upper_velocity_safety_override[env_id, upper_index].item()
+                            ),
+                            "final_target_rad": float(
+                                action_term.upper_processed_actions[env_id, upper_index].item()
+                            ),
+                            "actual_rad": float(robot.data.joint_pos[env_id, backend_ids[upper_index]].item()),
+                        }
+                    foot_xy = robot.data.body_pos_w[env_id, foot_ids, :2]
+                    foot_displacement = torch.linalg.vector_norm(foot_xy - foot_initial_xy[env_id], dim=-1)
+                    foot_force_row = foot_force[env_id]
+                    foot_contact_row = foot_contact[env_id]
+                    foot_speed_row = foot_tangential_speed[env_id]
+                    # Two feet define a center-line support proxy rather than a
+                    # fictitious point-support polygon.  Positive values mean
+                    # the root projection is within a conservative 10 cm tube
+                    # around loaded-foot centers; the raw foot data is also
+                    # retained for a full support-polygon analysis offline.
+                    root_xy = robot.data.root_pos_w[env_id, :2]
+                    support_radius = 0.10
+                    if bool(foot_contact_row.all()):
+                        segment = foot_xy[1] - foot_xy[0]
+                        denom = torch.dot(segment, segment).clamp_min(1.0e-8)
+                        alpha = (torch.dot(root_xy - foot_xy[0], segment) / denom).clamp(0.0, 1.0)
+                        support_distance = torch.linalg.vector_norm(root_xy - (foot_xy[0] + alpha * segment))
+                    elif bool(foot_contact_row.any()):
+                        support_distance = torch.linalg.vector_norm(root_xy - foot_xy[foot_contact_row][0])
+                    else:
+                        support_distance = torch.tensor(float("inf"), device=raw.device)
+                    feet_trace = [
+                        {
+                            "name": resolved_feet[index],
+                            "contact": bool(foot_contact_row[index].item()),
+                            "force_norm_n": float(foot_force_row[index].item()),
+                            "tangential_speed_mps": float(foot_speed_row[index].item()),
+                            "displacement_from_reset_m": float(foot_displacement[index].item()),
+                            "position_xy_w_m": [float(value) for value in foot_xy[index].tolist()],
+                        }
+                        for index in range(len(resolved_feet))
+                    ]
+                    root_roll, root_pitch, _ = euler_xyz_from_quat(robot.data.root_quat_w)
+                    root_roll = wrap_to_pi(root_roll)
+                    root_pitch = wrap_to_pi(root_pitch)
                     audit_trace.append(
                         {
                             "motion_id": motion_id,
                             "control_step": step + 1,
                             "motion_step": motion_step,
+                            "tail_steps": int(motion.tail_steps[env_id].item()),
+                            "prelude_elapsed_steps": int(motion.prelude_elapsed_steps[env_id].item()),
                             "relative_to_hit_steps": motion_step - int(hit[env_id].item()),
+                            "root_height_m": float(robot.data.root_pos_w[env_id, 2].item()),
+                            "root_linear_speed_mps": float(
+                                torch.linalg.vector_norm(robot.data.root_lin_vel_b[env_id]).item()
+                            ),
+                            "root_angular_speed_radps": float(
+                                torch.linalg.vector_norm(robot.data.root_ang_vel_b[env_id]).item()
+                            ),
+                            "root_roll_rad": float(root_roll[env_id].item()),
+                            "root_pitch_rad": float(root_pitch[env_id].item()),
+                            "root_forward_velocity_mps": float(robot.data.root_lin_vel_b[env_id, 0].item()),
+                            "root_lateral_velocity_mps": float(robot.data.root_lin_vel_b[env_id, 1].item()),
+                            "root_pitch_rate_radps": float(robot.data.root_ang_vel_b[env_id, 1].item()),
+                            "root_roll_rate_radps": float(robot.data.root_ang_vel_b[env_id, 0].item()),
+                            "root_tilt_deg": float(root_tilt_deg[env_id].item()),
+                            "root_support_centerline_margin_m": float((support_radius - support_distance).item()),
+                            "feet": feet_trace,
+                            "coordinator_raw_l2": float(
+                                torch.linalg.vector_norm(action_term.raw_actions[env_id]).item()
+                            ),
+                            "coordinator_raw_max_abs": float(
+                                action_term.raw_actions[env_id].abs().max().item()
+                            ),
+                            "coordinator_groups": coordinator_groups,
+                            "waist_command": waist_command,
                             "racket_actual_velocity_mps": [
                                 float(value) for value in racket.racket_lin_vel_w[env_id].tolist()
                             ],
@@ -1894,11 +2215,19 @@ def _run(cfg):
         if audit_trace_path is not None:
             audit_trace_path.parent.mkdir(parents=True, exist_ok=True)
             audit_trace_report = {
-                "purpose": "deterministic V2 pre-hit actuator trace",
+                "purpose": (
+                    "deterministic full-cycle actuator and recovery trace"
+                    if audit_trace_full_episode
+                    else "deterministic V2 pre-hit actuator trace"
+                ),
                 "checkpoint": str(agent_cfg.load_checkpoint),
                 "task": task_id,
                 "joint_names": trace_joint_names,
-                "window": f"hit-15 through hit+{audit_trace_after_hit_steps} control steps",
+                "window": (
+                    "all active control steps through timeout or physical termination"
+                    if audit_trace_full_episode
+                    else f"hit-15 through hit+{audit_trace_after_hit_steps} control steps"
+                ),
                 "rows": audit_trace,
             }
             audit_trace_path.write_text(json.dumps(audit_trace_report, indent=2), encoding="utf-8")

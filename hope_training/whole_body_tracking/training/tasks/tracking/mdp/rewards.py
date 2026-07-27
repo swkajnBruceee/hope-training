@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import ManagerTermBase, SceneEntityCfg
 from isaaclab.sensors import ContactSensor
 from isaaclab.utils.math import quat_error_magnitude
 
@@ -230,6 +230,112 @@ def post_strike_root_height_deficit_l2(
     deficit = torch.relu(minimum_height - env.scene["robot"].data.root_pos_w[:, 2])
     cost = torch.square(deficit)
     return torch.where(tail_steps > 0, cost, torch.zeros_like(cost))
+
+
+def post_strike_root_tilt_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+) -> torch.Tensor:
+    """Penalize developing roll/pitch throughout the finite recovery tail.
+
+    Root-height termination only fires after a substantial fall has already
+    developed.  This term supplies a dense, outcome-only signal from the
+    first observable lean without constraining a particular leg or waist
+    posture during the strike itself.
+    """
+
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    tail_steps = getattr(command, "tail_steps", None)
+    if tail_steps is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    gravity_b = env.scene["robot"].data.projected_gravity_b
+    tilt_cost = torch.sum(torch.square(gravity_b[:, :2]), dim=-1)
+    return torch.where(tail_steps > 0, tilt_cost, torch.zeros_like(tilt_cost))
+
+
+def _through_hit_mask(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Select prelude and strike states through the exact hit frame."""
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    if command._use_motion_library:
+        hit = command.motion.hit_frame[command.motion_ids]
+    else:
+        hit = torch.full_like(command.time_steps, int(command.motion.hit_frame[0]))
+    in_prelude = command.prelude_elapsed_steps < int(command.prelude_steps)
+    return in_prelude | ((command.tail_steps == 0) & (command.time_steps <= hit))
+
+
+def pre_hit_root_tilt_l2(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Dense prelude-to-impact roll/pitch cost for anticipatory stabilization."""
+    gravity_b = env.scene["robot"].data.projected_gravity_b
+    cost = torch.sum(torch.square(gravity_b[:, :2]), dim=-1)
+    return torch.where(_through_hit_mask(env, command_name), cost, torch.zeros_like(cost))
+
+
+def pre_hit_root_angular_velocity_l2(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Penalize roll/pitch angular momentum before it becomes a recovery problem."""
+    angular_velocity_b = env.scene["robot"].data.root_ang_vel_b[:, :2]
+    cost = torch.sum(torch.square(angular_velocity_b), dim=-1)
+    return torch.where(_through_hit_mask(env, command_name), cost, torch.zeros_like(cost))
+
+
+def pre_hit_root_forward_velocity_l2(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """Keep body-frame fore-aft drift small through impact without forcing a lean direction."""
+    forward_velocity = env.scene["robot"].data.root_lin_vel_b[:, 0]
+    cost = torch.square(forward_velocity)
+    return torch.where(_through_hit_mask(env, command_name), cost, torch.zeros_like(cost))
+
+
+class PostStrikeRootRecoveryProgress(ManagerTermBase):
+    """Reward tail-only reduction of an observable floating-root instability potential.
+
+    The term is outcome-based: it uses root tilt, body-frame linear/angular
+    velocity, and height loss, but never encodes a preferred leg or waist
+    posture.  Returning a rate makes the integrated reward equal the actual
+    potential decrease after RewardManager applies the policy timestep.
+    """
+
+    def __init__(self, cfg, env):
+        super().__init__(cfg, env)
+        self._previous = torch.zeros(env.num_envs, device=env.device)
+        self._initialized = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+
+    def reset(self, env_ids=None):
+        if env_ids is None:
+            self._initialized[:] = False
+        else:
+            self._initialized[env_ids] = False
+
+    def __call__(
+        self,
+        env: ManagerBasedRLEnv,
+        command_name: str,
+        tilt_scale: float = 0.35,
+        linear_velocity_scale: float = 0.75,
+        angular_velocity_scale: float = 1.25,
+        minimum_height: float = 0.70,
+        height_scale: float = 0.12,
+    ) -> torch.Tensor:
+        command: MotionCommand = env.command_manager.get_term(command_name)
+        tail_steps = getattr(command, "tail_steps", None)
+        if tail_steps is None:
+            return torch.zeros(env.num_envs, device=env.device)
+
+        robot = env.scene["robot"]
+        gravity = robot.data.projected_gravity_b[:, :2]
+        potential = torch.sum(torch.square(gravity / tilt_scale), dim=-1)
+        potential += torch.sum(torch.square(robot.data.root_lin_vel_b / linear_velocity_scale), dim=-1)
+        potential += torch.sum(torch.square(robot.data.root_ang_vel_b / angular_velocity_scale), dim=-1)
+        height_deficit = torch.relu(minimum_height - robot.data.root_pos_w[:, 2])
+        potential += torch.square(height_deficit / height_scale)
+
+        progress = (self._previous - potential) / float(env.step_dt)
+        progress = torch.where(self._initialized, progress, torch.zeros_like(progress))
+        self._previous[:] = potential
+        self._initialized[:] = True
+        # Bound a single contact transient without removing the direction of
+        # the recovery signal.
+        progress = torch.clamp(progress, min=-25.0, max=25.0)
+        return torch.where(tail_steps > 0, progress, torch.zeros_like(progress))
 
 
 def post_strike_both_feet_contact(

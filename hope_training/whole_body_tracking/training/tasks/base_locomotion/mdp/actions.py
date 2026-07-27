@@ -356,6 +356,27 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
             (self.num_envs, len(self._upper_joint_ids)), device=self.device
         )
         self._upper_processed_actions = torch.zeros_like(self._upper_raw_actions)
+        # Keep the upper command decomposition observable.  Full-cycle audits
+        # need to distinguish an unsafe reference from a frozen-prior residual
+        # or a learned coordinator correction.
+        self._upper_reference_actions = torch.zeros_like(self._upper_raw_actions)
+        self._upper_primary_contribution = torch.zeros_like(self._upper_raw_actions)
+        self._upper_coordinator_contribution = torch.zeros_like(self._upper_raw_actions)
+        self._upper_safety_override = torch.zeros_like(self._upper_raw_actions)
+        self._upper_velocity_safety_override = torch.zeros_like(self._upper_raw_actions)
+        waist_names = tuple(getattr(cfg, "upper_waist_joint_names", ()) or ())
+        if waist_names:
+            unknown_waist = sorted(set(waist_names) - set(cfg.upper_joint_names))
+            if unknown_waist:
+                raise ValueError(f"Configured waist joints are not upper joints: {unknown_waist}")
+        self._upper_waist_indices = torch.tensor(
+            [cfg.upper_joint_names.index(name) for name in waist_names], dtype=torch.long, device=self.device
+        )
+        self._upper_arm_indices = torch.tensor(
+            [i for i, name in enumerate(cfg.upper_joint_names) if name not in set(waist_names)],
+            dtype=torch.long,
+            device=self.device,
+        )
         self._upper_velocity_joint_indices = self._resolve_upper_velocity_indices()
         self._upper_velocity_targets = torch.zeros_like(self._upper_raw_actions)
         env.f0_upper_last_action = self._upper_raw_actions.clone()
@@ -367,6 +388,26 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
     @property
     def upper_processed_actions(self) -> torch.Tensor:
         return self._upper_processed_actions
+
+    @property
+    def upper_reference_actions(self) -> torch.Tensor:
+        return self._upper_reference_actions
+
+    @property
+    def upper_primary_contribution(self) -> torch.Tensor:
+        return self._upper_primary_contribution
+
+    @property
+    def upper_coordinator_contribution(self) -> torch.Tensor:
+        return self._upper_coordinator_contribution
+
+    @property
+    def upper_safety_override(self) -> torch.Tensor:
+        return self._upper_safety_override
+
+    @property
+    def upper_velocity_safety_override(self) -> torch.Tensor:
+        return self._upper_velocity_safety_override
 
     def _resolve_upper_velocity_indices(self) -> torch.Tensor:
         """Resolve the explicitly opt-in velocity-feedforward joints once."""
@@ -406,6 +447,157 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
         lead_reference = lead_reference.gather(2, joint_ids.unsqueeze(-1)).squeeze(-1)
         return lead_reference
 
+    def _motion_final_steps(self, motion_cmd) -> torch.Tensor:
+        if motion_cmd._use_motion_library:
+            return motion_cmd.motion.motion_lengths[motion_cmd.motion_ids].long() - 1
+        return torch.full_like(motion_cmd.time_steps, motion_cmd.motion.time_step_total - 1)
+
+    def _motion_hit_steps(self, motion_cmd) -> torch.Tensor:
+        if motion_cmd._use_motion_library:
+            return motion_cmd.motion.hit_frame[motion_cmd.motion_ids].long()
+        return torch.full_like(motion_cmd.time_steps, int(motion_cmd.motion.hit_frame[0]))
+
+    def _post_hit_elapsed_steps(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
+        """Return non-wrapping elapsed control steps since impact."""
+        hit = self._motion_hit_steps(motion_cmd)
+        final = self._motion_final_steps(motion_cmd)
+        active_elapsed = (time_steps - hit).clamp(min=0)
+        tail_elapsed = (final - hit + motion_cmd.tail_steps).clamp(min=0)
+        return torch.where(motion_cmd.tail_steps > 0, tail_elapsed, active_elapsed)
+
+    def _minimum_jerk_blend(self, elapsed: torch.Tensor, settle_steps: int, return_steps: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return position blend and d(blend)/dt for a finite return."""
+        if settle_steps < 0 or return_steps < 1:
+            raise ValueError("settle_steps must be >= 0 and return_steps must be >= 1")
+        local = (elapsed - settle_steps).clamp(min=0).to(dtype=torch.float)
+        u = (local / float(return_steps)).clamp(0.0, 1.0)
+        blend = u * u * u * (10.0 - 15.0 * u + 6.0 * u * u)
+        control_dt = float(self._env.cfg.decimation * self._env.cfg.sim.dt)
+        if control_dt <= 0.0:
+            raise RuntimeError(f"Invalid control dt for recovery reference: {control_dt}")
+        rate = 30.0 * u * u * (1.0 - u) * (1.0 - u) / (float(return_steps) * control_dt)
+        return blend, rate
+
+    def _apply_split_post_hit_reference(self, motion_cmd, time_steps: torch.Tensor, reference: torch.Tensor) -> torch.Tensor:
+        """Use independent waist and arm recovery trajectories when enabled."""
+        result = reference.clone()
+        in_prelude = motion_cmd.prelude_elapsed_steps < int(motion_cmd.prelude_steps)
+        hit = self._motion_hit_steps(motion_cmd)
+        post_hit = (~in_prelude) & ((time_steps >= hit) | (motion_cmd.tail_steps > 0))
+
+        waist_return_steps = int(getattr(self.cfg, "waist_post_hit_return_steps", 0))
+        if waist_return_steps > 0 and self._upper_waist_indices.numel() > 0:
+            settle_steps = int(getattr(self.cfg, "waist_post_hit_settle_steps", 0))
+            elapsed = self._post_hit_elapsed_steps(motion_cmd, time_steps)
+            blend, _ = self._minimum_jerk_blend(elapsed, settle_steps, waist_return_steps)
+            hit_query = hit.float().unsqueeze(-1).expand(-1, len(self._upper_joint_ids))
+            hit_reference = self._sample_upper_motion(motion_cmd, hit_query)
+            ready = self._asset.data.default_joint_pos[:, self._upper_joint_ids_tensor]
+            waist_reference = hit_reference + blend.unsqueeze(-1) * (ready - hit_reference)
+            result[:, self._upper_waist_indices] = torch.where(
+                post_hit.unsqueeze(-1),
+                waist_reference[:, self._upper_waist_indices],
+                result[:, self._upper_waist_indices],
+            )
+
+        arm_return_steps = int(getattr(self.cfg, "arm_tail_return_steps", 0))
+        if arm_return_steps > 0 and self._upper_arm_indices.numel() > 0:
+            arm_hold_steps = int(getattr(self.cfg, "arm_tail_hold_steps", 0))
+            tail = motion_cmd.tail_steps
+            blend, _ = self._minimum_jerk_blend(tail, arm_hold_steps, arm_return_steps)
+            final = self._motion_final_steps(motion_cmd)
+            final_query = final.float().unsqueeze(-1).expand(-1, len(self._upper_joint_ids))
+            final_reference = self._sample_upper_motion(motion_cmd, final_query)
+            ready = self._asset.data.default_joint_pos[:, self._upper_joint_ids_tensor]
+            arm_reference = final_reference + blend.unsqueeze(-1) * (ready - final_reference)
+            result[:, self._upper_arm_indices] = torch.where(
+                (tail > 0).unsqueeze(-1),
+                arm_reference[:, self._upper_arm_indices],
+                result[:, self._upper_arm_indices],
+            )
+        return result
+
+    def _apply_waist_soft_limit_guard(self, motion_cmd, time_steps: torch.Tensor) -> None:
+        """Brake toward an inner waist limit before an impact-pose overshoot.
+
+        The normal soft-limit clamp only acts after the target has reached the
+        boundary.  A fast floating-base swing can then overshoot physically
+        even though the target is numerically clipped.  This optional guard
+        starts a smooth blend a few steps before impact and reserves a small
+        inner margin for PD braking.  It is disabled by default.
+        """
+        self._upper_safety_override.zero_()
+        self._upper_velocity_safety_override.zero_()
+        margin = float(getattr(self.cfg, "waist_soft_limit_margin_rad", 0.0))
+        if margin <= 0.0 or self._upper_waist_indices.numel() == 0:
+            return
+        lead_steps = int(getattr(self.cfg, "waist_soft_limit_brake_lead_steps", 0))
+        if lead_steps < 1:
+            raise ValueError("waist_soft_limit_brake_lead_steps must be >= 1 when the waist guard is enabled")
+        hit = self._motion_hit_steps(motion_cmd)
+        start = hit - lead_steps
+        in_prelude = motion_cmd.prelude_elapsed_steps < int(motion_cmd.prelude_steps)
+        allow_prelude = bool(getattr(self.cfg, "waist_soft_limit_guard_in_prelude", False))
+        guard_allowed = (~in_prelude) | allow_prelude
+        phase_active = (~in_prelude) & ((time_steps >= start) | (motion_cmd.tail_steps > 0))
+        elapsed = torch.where(
+            motion_cmd.tail_steps > 0,
+            torch.full_like(time_steps, lead_steps),
+            (time_steps - start).clamp(min=0),
+        ).to(dtype=self._full_joint_targets.dtype)
+        u = (elapsed / float(lead_steps)).clamp(0.0, 1.0)
+        blend = (u * u * (3.0 - 2.0 * u)).unsqueeze(-1)
+        waist_joint_ids = self._upper_joint_ids_tensor[self._upper_waist_indices]
+        limits = self._asset.data.soft_joint_pos_limits[:, waist_joint_ids]
+        lower = limits[..., 0] + margin
+        upper = limits[..., 1] - margin
+        if torch.any(lower >= upper):
+            raise ValueError("waist_soft_limit_margin_rad leaves no valid waist target interval")
+        before = self._full_joint_targets[:, waist_joint_ids].clone()
+        guarded = torch.clamp(before, min=lower, max=upper)
+        phase_after = before + blend * (guarded - before)
+
+        # Position clipping alone reacts after a moving waist has already
+        # crossed the inner bound.  Optional predictive braking uses current
+        # measured q and qdot, not a motion-id-specific phase rule.  It starts
+        # correcting both the position target and the PD velocity target when
+        # the short-horizon state estimate would leave the inner interval.
+        horizon_steps = int(getattr(self.cfg, "waist_soft_limit_prediction_horizon_steps", 0))
+        velocity_gain = float(getattr(self.cfg, "waist_soft_limit_velocity_brake_gain", 0.0))
+        if horizon_steps < 0:
+            raise ValueError("waist_soft_limit_prediction_horizon_steps must be >= 0")
+        if velocity_gain < 0.0:
+            raise ValueError("waist_soft_limit_velocity_brake_gain must be >= 0")
+        after = torch.where(phase_active.unsqueeze(-1), phase_after, before)
+        if bool(getattr(self.cfg, "waist_soft_limit_enforce_inner_limit", False)):
+            after = torch.where(guard_allowed.unsqueeze(-1), guarded, after)
+        if horizon_steps > 0 and velocity_gain > 0.0:
+            control_dt = float(self._env.cfg.decimation * self._env.cfg.sim.dt)
+            if control_dt <= 0.0:
+                raise RuntimeError(f"Invalid control dt for waist soft-limit guard: {control_dt}")
+            actual = self._asset.data.joint_pos[:, waist_joint_ids]
+            actual_velocity = self._asset.data.joint_vel[:, waist_joint_ids]
+            predicted = actual + float(horizon_steps) * control_dt * actual_velocity
+            upper_excess = torch.relu(predicted - upper)
+            lower_excess = torch.relu(lower - predicted)
+            risk_distance = upper_excess + lower_excess
+            # A one-margin transition avoids discontinuous target changes
+            # while fully braking states already outside the inner interval.
+            risk = (risk_distance / margin).clamp(0.0, 1.0)
+            risk = torch.maximum(risk, (actual > upper).to(risk.dtype))
+            risk = torch.maximum(risk, (actual < lower).to(risk.dtype))
+            predicted_after = after + risk * (guarded - after)
+            after = torch.where(guard_allowed.unsqueeze(-1), predicted_after, after)
+
+            velocity_before = self._full_joint_velocity_targets[:, waist_joint_ids].clone()
+            brake_velocity = velocity_gain * (lower_excess - upper_excess)
+            velocity_after = velocity_before + risk * (brake_velocity - velocity_before)
+            velocity_after = torch.where(guard_allowed.unsqueeze(-1), velocity_after, velocity_before)
+            self._full_joint_velocity_targets[:, waist_joint_ids] = velocity_after
+            self._upper_velocity_safety_override[:, self._upper_waist_indices] = velocity_after - velocity_before
+        self._full_joint_targets[:, waist_joint_ids] = after
+        self._upper_safety_override[:, self._upper_waist_indices] = after - before
+
     def _upper_reference(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
         """Gather the same lead-compensated raw motion reference as model_900."""
         query = time_steps.float().unsqueeze(-1) + self._upper_lead.unsqueeze(0)
@@ -422,7 +614,16 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
         in_prelude = motion_cmd.prelude_elapsed_steps < int(motion_cmd.prelude_steps)
         release = (time_steps.float() / float(release_steps)).clamp(0.0, 1.0).unsqueeze(-1)
         blended = no_lead + release * (lead_reference - no_lead)
-        return torch.where(in_prelude.unsqueeze(-1), no_lead, blended)
+        reference = torch.where(in_prelude.unsqueeze(-1), no_lead, blended)
+
+        # ``MotionCommand.joint_pos`` owns the finite tail: final-pose hold,
+        # minimum-jerk return to ready, then ready hold.  The raw lookahead
+        # sampler above is valid only while the strike clip advances.  Keeping
+        # it active after the final frame pins waist/arm joints at the strike
+        # pose and defeats the configured recovery trajectory.
+        in_tail = motion_cmd.tail_steps > 0
+        reference = torch.where(in_tail.unsqueeze(-1), no_lead, reference)
+        return self._apply_split_post_hit_reference(motion_cmd, time_steps, reference)
 
     def _upper_velocity_reference(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
         """Return an optional, finite-difference upper joint velocity target.
@@ -435,6 +636,19 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
         wrap a strike into its next repetition.
         """
         self._upper_velocity_targets.zero_()
+        in_prelude = motion_cmd.prelude_elapsed_steps < int(motion_cmd.prelude_steps)
+        launch_steps = int(getattr(motion_cmd, "prelude_launch_steps", 0))
+        in_launch = (~in_prelude) & (motion_cmd.tail_steps == 0) & (time_steps < launch_steps)
+        bridge_velocity_enabled = bool(getattr(motion_cmd.cfg, "prelude_continuous_velocity_reference", False))
+        if bridge_velocity_enabled and torch.any(in_prelude | in_launch):
+            # MotionCommand owns the bridge position and its analytic velocity.
+            # Preserve the established position/velocity pair throughout the
+            # bridge instead of forcing a zero-velocity PD target until the
+            # first swing frame.
+            bridge_velocity = motion_cmd.joint_vel[:, self._upper_joint_ids_tensor]
+            self._upper_velocity_targets[:] = torch.where(
+                (in_prelude | in_launch).unsqueeze(-1), bridge_velocity, self._upper_velocity_targets
+            )
         mode = str(getattr(self.cfg, "joint_velocity_feedforward_mode", "none"))
         beta = float(getattr(self.cfg, "joint_velocity_feedforward_beta", 0.0))
         if mode == "none" or beta == 0.0 or self._upper_velocity_joint_indices.numel() == 0:
@@ -458,7 +672,6 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
 
         # Suppress the prelude, then smoothly remove the target velocity after
         # impact.  A hard hit->hit+1 zero would create a torque impulse.
-        in_prelude = motion_cmd.prelude_elapsed_steps < int(motion_cmd.prelude_steps)
         if motion_cmd._use_motion_library:
             hit = motion_cmd.motion.hit_frame[motion_cmd.motion_ids]
         else:
@@ -470,11 +683,64 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
         u = (post_hit / float(decay_steps)).clamp(0.0, 1.0)
         smooth = u * u * (3.0 - 2.0 * u)
         phase_gate = (1.0 - smooth).unsqueeze(-1)
-        velocity = torch.where(in_prelude.unsqueeze(-1), torch.zeros_like(velocity), velocity * phase_gate)
+        bridge_mask = in_prelude | in_launch
+        velocity = torch.where(bridge_mask.unsqueeze(-1), torch.zeros_like(velocity), velocity * phase_gate)
         self._upper_velocity_targets[:, self._upper_velocity_joint_indices] = (
             beta * velocity[:, self._upper_velocity_joint_indices]
         )
+        if bridge_velocity_enabled and torch.any(in_prelude | in_launch):
+            self._upper_velocity_targets[:] = torch.where(
+                (in_prelude | in_launch).unsqueeze(-1),
+                motion_cmd.joint_vel[:, self._upper_joint_ids_tensor],
+                self._upper_velocity_targets,
+            )
+
+        # During the finite return, use the command's continuous minimum-jerk
+        # velocity for every upper joint.  The ready-hold velocity is already
+        # zero, so this does not reintroduce residual tail velocity.
+        in_tail = motion_cmd.tail_steps > 0
+        tail_velocity = motion_cmd.joint_vel[:, self._upper_joint_ids_tensor]
+        self._upper_velocity_targets[:] = torch.where(
+            in_tail.unsqueeze(-1), tail_velocity, self._upper_velocity_targets
+        )
+        self._apply_split_post_hit_velocity(motion_cmd, time_steps)
         return self._upper_velocity_targets
+
+    def _apply_split_post_hit_velocity(self, motion_cmd, time_steps: torch.Tensor) -> None:
+        """Override velocity targets for enabled split waist/arm recoveries."""
+        in_prelude = motion_cmd.prelude_elapsed_steps < int(motion_cmd.prelude_steps)
+        hit = self._motion_hit_steps(motion_cmd)
+        post_hit = (~in_prelude) & ((time_steps >= hit) | (motion_cmd.tail_steps > 0))
+        ready = self._asset.data.default_joint_pos[:, self._upper_joint_ids_tensor]
+
+        waist_return_steps = int(getattr(self.cfg, "waist_post_hit_return_steps", 0))
+        if waist_return_steps > 0 and self._upper_waist_indices.numel() > 0:
+            settle_steps = int(getattr(self.cfg, "waist_post_hit_settle_steps", 0))
+            elapsed = self._post_hit_elapsed_steps(motion_cmd, time_steps)
+            _, rate = self._minimum_jerk_blend(elapsed, settle_steps, waist_return_steps)
+            hit_query = hit.float().unsqueeze(-1).expand(-1, len(self._upper_joint_ids))
+            hit_reference = self._sample_upper_motion(motion_cmd, hit_query)
+            waist_velocity = rate.unsqueeze(-1) * (ready - hit_reference)
+            self._upper_velocity_targets[:, self._upper_waist_indices] = torch.where(
+                post_hit.unsqueeze(-1),
+                waist_velocity[:, self._upper_waist_indices],
+                self._upper_velocity_targets[:, self._upper_waist_indices],
+            )
+
+        arm_return_steps = int(getattr(self.cfg, "arm_tail_return_steps", 0))
+        if arm_return_steps > 0 and self._upper_arm_indices.numel() > 0:
+            arm_hold_steps = int(getattr(self.cfg, "arm_tail_hold_steps", 0))
+            _, rate = self._minimum_jerk_blend(motion_cmd.tail_steps, arm_hold_steps, arm_return_steps)
+            final = self._motion_final_steps(motion_cmd)
+            final_query = final.float().unsqueeze(-1).expand(-1, len(self._upper_joint_ids))
+            final_reference = self._sample_upper_motion(motion_cmd, final_query)
+            arm_velocity = rate.unsqueeze(-1) * (ready - final_reference)
+            in_tail = motion_cmd.tail_steps > 0
+            self._upper_velocity_targets[:, self._upper_arm_indices] = torch.where(
+                in_tail.unsqueeze(-1),
+                arm_velocity[:, self._upper_arm_indices],
+                self._upper_velocity_targets[:, self._upper_arm_indices],
+            )
 
     def process_actions(self, actions: torch.Tensor):
         # Reuse the reviewed Stage-A/Base14 leg mask, gate, nominal reference,
@@ -497,10 +763,15 @@ class A3F0UpperBaseCompositePositionAction(A3StrikeConditionedBaseCompositePosit
             release = (motion_cmd.time_steps.float() / float(release_steps)).clamp(0.0, 1.0).unsqueeze(-1)
             raw_gate = torch.where(in_prelude.unsqueeze(-1), torch.zeros_like(release), release)
         self._upper_processed_actions[:] = reference + raw_gate * self._upper_raw_actions * self._upper_scale
+        self._upper_reference_actions[:] = reference
+        self._upper_primary_contribution[:] = raw_gate * self._upper_raw_actions * self._upper_scale
+        self._upper_coordinator_contribution.zero_()
         self._full_joint_targets[:, self._upper_joint_ids_tensor] = self._upper_processed_actions
         self._full_joint_velocity_targets[:, self._upper_joint_ids_tensor] = self._upper_velocity_reference(
             motion_cmd, motion_cmd.time_steps
         )
+        self._apply_waist_soft_limit_guard(motion_cmd, motion_cmd.time_steps)
+        self._upper_processed_actions[:] = self._full_joint_targets[:, self._upper_joint_ids_tensor]
         if self.cfg.clip_to_soft_joint_limits:
             limits = self._asset.data.soft_joint_pos_limits
             self._full_joint_targets[:] = torch.clamp(
@@ -516,6 +787,21 @@ class A3F0UpperBaseCompositePositionActionCfg(A3StrikeConditionedBaseCompositePo
     upper_joint_names: tuple[str, ...] = MISSING
     upper_raw_clip: float = 0.50
     upper_prelude_release_steps: int = 0
+    upper_waist_joint_names: tuple[str, ...] = (
+        "waist_yaw_joint", "waist_roll_joint", "waist_pitch_joint"
+    )
+    # Disabled by default.  Full-cycle tasks can retire the waist from its
+    # impact pose independently of arm completion and recovery.
+    waist_post_hit_settle_steps: int = 0
+    waist_post_hit_return_steps: int = 0
+    arm_tail_hold_steps: int = 0
+    arm_tail_return_steps: int = 0
+    waist_soft_limit_margin_rad: float = 0.0
+    waist_soft_limit_brake_lead_steps: int = 0
+    waist_soft_limit_prediction_horizon_steps: int = 0
+    waist_soft_limit_velocity_brake_gain: float = 0.0
+    waist_soft_limit_guard_in_prelude: bool = False
+    waist_soft_limit_enforce_inner_limit: bool = False
     # These fields let the common native-strike task override path configure
     # the frozen upper contract without knowing about the F0 composite term.
     joint_names: tuple[str, ...] = ()
@@ -769,10 +1055,67 @@ class A3FrozenStageAJointCoordinatorAction(A3F1FrozenUpperBaseCompositePositionA
             )).clamp(0.0, 1.0)
             smooth = u * u * (3.0 - 2.0 * u)
             gate = self.cfg.phase_gate_min_scale + (1.0 - self.cfg.phase_gate_min_scale) * smooth
+            # Reproduce model_3396's tail contract: hip yaw is useful while
+            # bracing for the swing, but must relinquish authority while the
+            # reference settles back to the ready stance.
+            release_steps = int(self.cfg.phase_gate_tail_release_steps)
+            if release_steps > 0:
+                tail = motion.tail_steps.to(dtype=gate.dtype)
+                release_u = (tail / float(release_steps)).clamp(0.0, 1.0)
+                release_smooth = release_u * release_u * (3.0 - 2.0 * release_u)
+                tail_gate = self.cfg.phase_gate_min_scale + (
+                    1.0 - self.cfg.phase_gate_min_scale
+                ) * (1.0 - release_smooth)
+                gate = torch.where(tail > 0, tail_gate, gate)
             for index in self._phase_gate_base_indices:
                 lower[:, index] *= gate
+
+        # The original Stage-A checkpoint was not a permanent standing
+        # controller.  Once the upper reference reaches ready, it smoothly
+        # hands the legs back to nominal PD.  Without this gate the frozen
+        # policy keeps emitting a swing-conditioned residual indefinitely.
+        ready_release_steps = int(self.cfg.ready_hold_residual_release_steps)
+        if ready_release_steps > 0 and motion.return_to_default_steps > 0:
+            ready_elapsed = (
+                motion.tail_steps
+                - int(motion.cfg.hold_last_frame_steps)
+                - int(motion.cfg.return_to_default_steps)
+            ).clamp(min=0).to(dtype=lower.dtype)
+            ready_u = (ready_elapsed / float(ready_release_steps)).clamp(0.0, 1.0)
+            ready_smooth = ready_u * ready_u * (3.0 - 2.0 * ready_u)
+            lower *= (1.0 - ready_smooth).unsqueeze(-1)
         self._legacy_bounded[:] = self._bound_actions(lower)
         return self._legacy_bounded
+
+    def _post_hit_release_gate(self, motion, release_steps: int) -> torch.Tensor:
+        """Smoothly retire a strike-only residual during the finite recovery tail.
+
+        The frozen upper actor was qualified only through impact.  Leaving its
+        residual active while the reference returns to ready creates an
+        unqualified second upper-body trajectory.  The coordinator keeps leg
+        and waist authority for recovery; only strike-specific upper terms use
+        this gate.
+        """
+        gate = torch.ones((self.num_envs, 1), dtype=torch.float, device=self.device)
+        if release_steps <= 0:
+            return gate
+        tail = motion.tail_steps.to(dtype=gate.dtype)
+        u = (tail / float(release_steps)).clamp(0.0, 1.0)
+        smooth = u * u * (3.0 - 2.0 * u)
+        return (1.0 - smooth).unsqueeze(-1)
+
+    def _post_hit_phase_release_gate(self, motion, release_steps: int) -> torch.Tensor:
+        """Fade a strike residual from impact, before the finite tail begins."""
+        gate = torch.ones((self.num_envs, 1), dtype=torch.float, device=self.device)
+        if release_steps <= 0:
+            return gate
+        elapsed = self._post_hit_elapsed_steps(motion, motion.time_steps).to(dtype=gate.dtype)
+        hit = self._motion_hit_steps(motion)
+        in_prelude = motion.prelude_elapsed_steps < int(motion.prelude_steps)
+        active = (~in_prelude) & ((motion.time_steps >= hit) | (motion.tail_steps > 0))
+        u = (elapsed / float(release_steps)).clamp(0.0, 1.0)
+        smooth = u * u * (3.0 - 2.0 * u)
+        return torch.where(active.unsqueeze(-1), (1.0 - smooth).unsqueeze(-1), gate)
 
     def process_actions(self, actions: torch.Tensor):
         if actions.shape != self._raw_actions.shape or not torch.isfinite(actions).all():
@@ -782,6 +1125,16 @@ class A3FrozenStageAJointCoordinatorAction(A3F1FrozenUpperBaseCompositePositionA
         legacy_leg = self._legacy_leg_action(motion)
         self._unbounded_actions[:] = actions
         self._raw_actions[:] = self._bound_actions(actions)
+
+        # Audit-only phase-local ablation.  Upper corrections are already
+        # gated during the prelude; this hook isolates whether the coordinator
+        # leg residual is amplifying the ready-to-swing transition.
+        prelude_mask_mode = str(getattr(self._env, "coordinator_prelude_audit_mode", "none"))
+        if prelude_mask_mode not in {"none", "all", "leg", "waist", "arm"}:
+            raise ValueError(f"Unknown coordinator_prelude_audit_mode={prelude_mask_mode!r}")
+        in_prelude = motion.prelude_elapsed_steps < int(motion.prelude_steps)
+        if prelude_mask_mode in {"all", "leg"}:
+            self._raw_actions[:, :12] *= (~in_prelude).unsqueeze(-1)
 
         # Reproduce the validated legacy support target first, then let only
         # the new 12-D leg correction perturb its physical target.
@@ -794,19 +1147,38 @@ class A3FrozenStageAJointCoordinatorAction(A3F1FrozenUpperBaseCompositePositionA
 
         upper_obs = self._compute_observation_group(self._upper_observation_group)
         primary = self._upper_policy(upper_obs).clamp(-self.cfg.upper_raw_clip, self.cfg.upper_raw_clip)
-        in_prelude = motion.prelude_elapsed_steps < int(motion.prelude_steps)
         release = (motion.time_steps.float() / float(max(self.cfg.upper_prelude_release_steps, 1))).clamp(0.0, 1.0)
         upper_gate = torch.where(in_prelude, torch.zeros_like(release), release).unsqueeze(-1)
         reference = self._upper_reference(motion, motion.time_steps)
         upper_delta = torch.cat((self._raw_actions[:, 12:15], self._raw_actions[:, 15:22]), dim=-1)
-        self._upper_raw_actions[:] = primary
-        self._upper_processed_actions[:] = reference + upper_gate * (
-            primary * self._upper_scale + upper_delta * self._upper_correction_scale
+        # The frozen upper prior supplies a strike residual, not a recovery
+        # controller.  Fade it out while the reference settles to ready.
+        frozen_upper_gate = self._post_hit_release_gate(
+            motion, int(getattr(self.cfg, "upper_policy_tail_release_steps", 0))
         )
+        waist_primary_gate = self._post_hit_phase_release_gate(
+            motion, int(getattr(self.cfg, "upper_policy_waist_post_hit_release_steps", 0))
+        )
+        arm_gate = self._post_hit_release_gate(
+            motion, int(getattr(self.cfg, "coordinator_arm_tail_release_steps", 0))
+        )
+        gated_primary = primary * frozen_upper_gate
+        gated_primary[:, self._upper_waist_indices] *= waist_primary_gate
+        gated_upper_delta = upper_delta.clone()
+        gated_upper_delta[:, 3:] *= arm_gate
+        primary_contribution = upper_gate * gated_primary * self._upper_scale
+        coordinator_contribution = upper_gate * gated_upper_delta * self._upper_correction_scale
+        self._upper_raw_actions[:] = primary
+        self._upper_reference_actions[:] = reference
+        self._upper_primary_contribution[:] = primary_contribution
+        self._upper_coordinator_contribution[:] = coordinator_contribution
+        self._upper_processed_actions[:] = reference + primary_contribution + coordinator_contribution
         self._full_joint_targets[:, self._upper_joint_ids_tensor] = self._upper_processed_actions
         self._full_joint_velocity_targets[:, self._upper_joint_ids_tensor] = self._upper_velocity_reference(
             motion, motion.time_steps
         )
+
+        self._apply_waist_soft_limit_guard(motion, motion.time_steps)
 
         limits = self._asset.data.soft_joint_pos_limits
         self._full_joint_targets[:] = torch.clamp(self._full_joint_targets, min=limits[..., 0], max=limits[..., 1])
@@ -828,3 +1200,11 @@ class A3FrozenStageAJointCoordinatorActionCfg(A3F1FrozenUpperBaseCompositePositi
     leg_correction_scale_rad: tuple[float, ...] = (0.012, 0.035, 0.046, 0.010, 0.015, 0.007) * 2
     waist_correction_scale_rad: tuple[float, ...] = (0.010, 0.010, 0.010)
     arm_correction_scale_rad: tuple[float, ...] = (0.025,) * 7
+    # Disabled by default to preserve historical V2/V5 execution.  Full-cycle
+    # tasks explicitly retire the unqualified strike residual after impact.
+    upper_policy_tail_release_steps: int = 0
+    # The waist can retire from the impact residual before the clip reaches its
+    # final frame.  This prevents a strike-only model_900 waist command from
+    # opposing the dedicated post-hit waist recovery reference.
+    upper_policy_waist_post_hit_release_steps: int = 0
+    coordinator_arm_tail_release_steps: int = 0

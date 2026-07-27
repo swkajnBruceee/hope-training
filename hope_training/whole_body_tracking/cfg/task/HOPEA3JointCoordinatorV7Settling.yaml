@@ -1,10 +1,10 @@
-# Final floating-base joint coordinator: preserve the audited V2 strike
-# contract, but train and evaluate a complete strike -> settle -> return ->
-# ready cycle.  This file intentionally does not alter V2, which remains the
-# reproducible short-window impact baseline.
-name: HOPEA3JointCoordinatorV5FullCycle
+# Full-cycle unified coordinator with an explicit recovery execution contract.
+# The 22-D policy still owns leg/waist/arm corrections jointly.  Only the
+# frozen strike residual and coordinator arm correction are retired after hit;
+# leg and waist remain available to arrest whole-body lean.
+name: HOPEA3JointCoordinatorV7Settling
 gym_task: HOPE-FloatingJointCoordinatorV2-AgibotA3-v0
-experiment_name: agibot_a3_joint_coordinator_v5_full_cycle_20260726
+experiment_name: agibot_a3_joint_coordinator_v7_settling_20260727
 
 motion_manifest: sample_motions/p2_data260708_backhand_strike_only_v1/manifest.json
 manifest_subset_size: null
@@ -17,9 +17,6 @@ defaults:
   - _self_
 
 env:
-  # 50-step ready bridge + 39-frame strike + 25-step final-pose hold +
-  # 50-step minimum-jerk return + at least 100 ready-hold steps at 50 Hz.
-  # The 5.5 s timeout leaves margin for all six equal-length clips.
   episode_length_s: 5.5
 
 actions:
@@ -30,20 +27,18 @@ actions:
     right_shoulder_pitch_joint: 12.0
     right_shoulder_yaw_joint: 12.0
   upper_prelude_release_steps: 12
-  # Keep the qualified B execution contract.  Position targets retain the
-  # shoulder lead; target velocities use the current strike phase and decay
-  # after impact, rather than inheriting source-tail velocity.
   joint_velocity_feedforward_mode: task_phase
   joint_velocity_feedforward_beta: 0.75
   joint_velocity_feedforward_joint_names:
     - right_shoulder_pitch_joint
     - right_shoulder_yaw_joint
   joint_velocity_feedforward_post_hit_decay_steps: 6
-  # Reproduce model_3396's validated finite-cycle handoff.  Hip yaw releases
-  # during the tail and all frozen leg residuals fade after the upper body is
-  # back at ready, rather than becoming a permanent stand controller.
   phase_gate_tail_release_steps: 50
   ready_hold_residual_release_steps: 50
+  # Retire strike-only residuals over the 0.5 s final-pose hold.  Waist and
+  # legs are deliberately not gated: they remain the recovery controller.
+  upper_policy_tail_release_steps: 25
+  coordinator_arm_tail_release_steps: 25
   coordinator_leg_correction_scale_rad: [0.024, 0.070, 0.092, 0.020, 0.030, 0.014, 0.024, 0.070, 0.092, 0.020, 0.030, 0.014]
   coordinator_waist_correction_scale_rad: [0.020, 0.020, 0.025]
   coordinator_arm_correction_scale_rad: [0.050, 0.040, 0.050, 0.045, 0.025, 0.025, 0.025]
@@ -64,6 +59,15 @@ rewards:
   racket_hit_coupled_weight: 0.75
   racket_hit_coupled:
     pos_std: 0.14
+  post_strike_root_tilt_weight: -8.0
+  post_strike_root_linear_velocity_l2_weight: -1.0
+  post_strike_root_angular_velocity_l2_weight: -1.0
+  post_strike_root_height_deficit_weight: -20.0
+  post_strike_both_feet_contact_weight: 1.5
+  post_strike_ready_weight: 2.0
+  fall_weight: -50.0
+  root_position_drift_weight: -1.5
+  feet_slip_weight: -1.0
   action_execution_gap_weight: -0.15
   action_residual_weight: -0.01
   joint_limit_weight: -15.0
