@@ -74,6 +74,7 @@ class MotionLibraryLoader:
         ground_align: bool = False,
         validate_stance_contract: bool = False,
         stance_contract_mode: str | None = None,
+        require_upper_momentum: bool = False,
     ):
         self.manifest_file = self._resolve_path(manifest_file)
         with open(self.manifest_file, "r", encoding="utf-8") as f:
@@ -129,6 +130,25 @@ class MotionLibraryLoader:
             if not np.isfinite(n) or n < 1e-6:
                 raise ValueError(f"{motion_path}: invalid racket_normal_w={normal}")
             normal = normal / n
+            if require_upper_momentum:
+                required = {"upper_momentum_pelvis", "upper_mass_kg", "upper_length_scale_m"}
+                missing = sorted(required - set(data.files))
+                if missing:
+                    raise ValueError(f"{motion_path}: missing required canonical momentum fields {missing}")
+                upper_momentum = np.asarray(data["upper_momentum_pelvis"], dtype=np.float32)
+                if upper_momentum.shape != (joint_pos.shape[0], 6):
+                    raise ValueError(
+                        f"{motion_path}: upper_momentum_pelvis shape {upper_momentum.shape}, "
+                        f"expected {(joint_pos.shape[0], 6)}"
+                    )
+                upper_mass = float(np.asarray(data["upper_mass_kg"]).reshape(-1)[0])
+                upper_length_scale = float(np.asarray(data["upper_length_scale_m"]).reshape(-1)[0])
+                if not np.isfinite(upper_momentum).all() or upper_mass <= 0.0 or upper_length_scale <= 0.0:
+                    raise ValueError(f"{motion_path}: invalid canonical momentum metadata")
+            else:
+                upper_momentum = np.zeros((joint_pos.shape[0], 6), dtype=np.float32)
+                upper_mass = 1.0
+                upper_length_scale = 1.0
 
             arrays.append(
                 {
@@ -143,6 +163,9 @@ class MotionLibraryLoader:
                     "strike_pos_w": np.asarray(target.get("racket_position_m", [0.0, 0.0, 0.0]), dtype=np.float32),
                     "strike_vel_w": np.asarray(target.get("racket_velocity_mps", [0.0, 0.0, 0.0]), dtype=np.float32),
                     "strike_normal_w": normal,
+                    "upper_momentum_pelvis": upper_momentum,
+                    "upper_mass_kg": upper_mass,
+                    "upper_length_scale_m": upper_length_scale,
                 }
             )
 
@@ -185,6 +208,14 @@ class MotionLibraryLoader:
         self._body_quat_w = padded("body_quat_w", arrays[0]["body_quat_w"].shape[1:])
         self._body_lin_vel_w = padded("body_lin_vel_w", arrays[0]["body_lin_vel_w"].shape[1:])
         self._body_ang_vel_w = padded("body_ang_vel_w", arrays[0]["body_ang_vel_w"].shape[1:])
+        self.upper_momentum_pelvis = padded("upper_momentum_pelvis", (6,))
+        self.upper_mass_kg = torch.tensor(
+            [a["upper_mass_kg"] for a in arrays], dtype=torch.float32, device=device
+        )
+        self.upper_length_scale_m = torch.tensor(
+            [a["upper_length_scale_m"] for a in arrays], dtype=torch.float32, device=device
+        )
+        self.has_canonical_upper_momentum = bool(require_upper_momentum)
         self.hit_frame = torch.tensor([a["hit_frame"] for a in arrays], dtype=torch.long, device=device)
         self.strike_pos_w = torch.tensor(np.stack([a["strike_pos_w"] for a in arrays]), dtype=torch.float32, device=device)
         self.strike_vel_w = torch.tensor(np.stack([a["strike_vel_w"] for a in arrays]), dtype=torch.float32, device=device)
@@ -298,6 +329,7 @@ class MotionCommand(CommandTerm):
                 ground_align=self.cfg.manifest_ground_align,
                 validate_stance_contract=self.cfg.validate_stance_contract,
                 stance_contract_mode=self.cfg.stance_contract_mode,
+                require_upper_momentum=self.cfg.require_upper_momentum,
             )
             self.motion_ids = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
             self._use_motion_library = True
@@ -314,6 +346,11 @@ class MotionCommand(CommandTerm):
             self.motion_ids = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
             self._use_motion_library = False
         self.time_steps = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        # Monotonic within-episode strike generation.  Episode resets return
+        # this to zero; begin_next_shot() increments it without touching the
+        # physical articulation state.  Runtime controllers use this explicit
+        # signal instead of mistaking a reference phase rewind for a reset.
+        self.shot_cycle = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
         # A task may define a static, named joint offset around the retargeted
         # motion.  Strike Stabilizer uses this for a leg ``strike-ready``
         # working point: the upper-body motion remains unchanged while hip,
@@ -813,9 +850,61 @@ class MotionCommand(CommandTerm):
             return out
         return torch.randint(self.motion.num_motions, (count,), dtype=torch.long, device=self.device)
 
+    def begin_next_shot(
+        self,
+        env_ids: Sequence[int] | torch.Tensor,
+        motion_ids: Sequence[int] | torch.Tensor | int | None = None,
+    ) -> None:
+        """Start another finite strike without resetting robot physics.
+
+        This is intentionally separate from ``_resample_command``: that reset
+        path writes root and joint state into simulation, which would hide
+        inter-shot instability.  Callers must first verify that the robot is
+        settled and ready for a new strike.
+        """
+        env_ids_tensor = torch.as_tensor(
+            env_ids, dtype=torch.long, device=self.device
+        ).flatten()
+        if env_ids_tensor.numel() == 0:
+            return
+        if torch.any((env_ids_tensor < 0) | (env_ids_tensor >= self.num_envs)):
+            raise IndexError("begin_next_shot env_ids are outside the environment batch")
+        if not self._use_motion_library and motion_ids is not None:
+            requested = torch.as_tensor(
+                motion_ids, dtype=torch.long, device=self.device
+            ).flatten()
+            if torch.any(requested != 0):
+                raise ValueError("Single-motion commands only accept motion_id=0")
+        if self._use_motion_library:
+            if motion_ids is None:
+                selected = self._sample_motion_ids(env_ids_tensor.numel())
+            else:
+                selected = torch.as_tensor(
+                    motion_ids, dtype=torch.long, device=self.device
+                ).flatten()
+                if selected.numel() == 1:
+                    selected = selected.expand(env_ids_tensor.numel())
+                if selected.numel() != env_ids_tensor.numel():
+                    raise ValueError(
+                        "begin_next_shot requires one motion_id per environment"
+                    )
+                if torch.any(
+                    (selected < 0) | (selected >= self.motion.num_motions)
+                ):
+                    raise ValueError(
+                        "begin_next_shot motion_ids are outside the motion library"
+                    )
+            self.motion_ids[env_ids_tensor] = selected
+
+        self.time_steps[env_ids_tensor] = 0
+        self.tail_steps[env_ids_tensor] = 0
+        self.prelude_elapsed_steps[env_ids_tensor] = 0
+        self.shot_cycle[env_ids_tensor] += 1
+
     def _resample_command(self, env_ids: Sequence[int]):
         if len(env_ids) == 0:
             return
+        self.shot_cycle[env_ids] = 0
         self.tail_steps[env_ids] = 0
         self.prelude_elapsed_steps[env_ids] = 0
         hard_case_probability = float(self.cfg.hard_case_probability)
@@ -1024,6 +1113,9 @@ class MotionCommandCfg(CommandTermCfg):
     # remain unchanged unless this is explicitly enabled.
     validate_stance_contract: bool = False
     stance_contract_mode: str | None = None
+    # V19+ must fail closed when a legacy NPZ without canonical FK-derived
+    # upper momentum is selected.
+    require_upper_momentum: bool = False
     anchor_body_name: str = MISSING
     body_names: list[str] = MISSING
 

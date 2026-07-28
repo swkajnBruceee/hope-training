@@ -1,0 +1,105 @@
+{
+  "checkpoint": "logs/rsl_rl/agibot_a3_joint_coordinator_v22_wide_deep_stability_20260727/2026-07-27_20-39-41_v22_2d_support_from_zero_left004_wide004_knee042_256x1500/model_1499.pt",
+  "task": "HOPEA3JointCoordinatorV26MultiShotRearm",
+  "sequence": [
+    5,
+    1
+  ],
+  "complete": true,
+  "failure": null,
+  "control_steps": 682,
+  "shots": [
+    {
+      "shot_index": 0,
+      "motion_id": 5,
+      "hit_control_step": 80,
+      "position_error_m": 0.09987815469503403,
+      "velocity_error_mps": 2.1444013118743896,
+      "normal_error_deg": 7.440203666687012,
+      "ready_control_step": 379,
+      "ready_hold_steps": 20
+    },
+    {
+      "shot_index": 1,
+      "motion_id": 1,
+      "hit_control_step": 459,
+      "position_error_m": 0.23925961554050446,
+      "velocity_error_mps": 1.07421875,
+      "normal_error_deg": 14.012078285217285,
+      "ready_control_step": 682,
+      "ready_hold_steps": 20
+    }
+  ],
+  "state_transitions": [
+    {
+      "control_step": 1,
+      "shot_index": 0,
+      "motion_id": 5,
+      "state": 0,
+      "scale": 1.0
+    },
+    {
+      "control_step": 140,
+      "shot_index": 0,
+      "motion_id": 5,
+      "state": 1,
+      "scale": 0.8960000276565552
+    },
+    {
+      "control_step": 144,
+      "shot_index": 0,
+      "motion_id": 5,
+      "state": 2,
+      "scale": 0.0
+    },
+    {
+      "control_step": 379,
+      "shot_index": 0,
+      "motion_id": 5,
+      "state": 3,
+      "scale": 0.0
+    },
+    {
+      "control_step": 380,
+      "shot_index": 1,
+      "motion_id": 1,
+      "state": 4,
+      "scale": 0.04296875
+    },
+    {
+      "control_step": 387,
+      "shot_index": 1,
+      "motion_id": 1,
+      "state": 0,
+      "scale": 1.0
+    },
+    {
+      "control_step": 520,
+      "shot_index": 1,
+      "motion_id": 1,
+      "state": 1,
+      "scale": 0.8960000276565552
+    },
+    {
+      "control_step": 524,
+      "shot_index": 1,
+      "motion_id": 1,
+      "state": 2,
+      "scale": 0.0
+    },
+    {
+      "control_step": 682,
+      "shot_index": 1,
+      "motion_id": 1,
+      "state": 3,
+      "scale": 0.0
+    }
+  ],
+  "state_contract": {
+    "0": "SUPPORT_ACTIVE",
+    "1": "DECAYING",
+    "2": "SETTLED",
+    "3": "READY",
+    "4": "RAMPING"
+  }
+}

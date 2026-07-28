@@ -1,0 +1,12 @@
+# Deterministic full-cycle qualification for V19 P0 checkpoints. It restores
+# the 6.5 s physical horizon without changing observations, actions, priors,
+# or the trained policy architecture.
+defaults:
+  - HOPEA3JointCoordinatorV19MomentumPreviewP0
+  - _self_
+
+name: HOPEA3JointCoordinatorV19MomentumPreviewFullCycleAudit
+experiment_name: agibot_a3_joint_coordinator_v19_momentum_preview_full_cycle_audit_20260727
+
+env:
+  episode_length_s: 6.5

@@ -41,6 +41,7 @@ def _run_play(cfg, simulation_app):
     import torch
 
     from rsl_rl.runners import OnPolicyRunner
+    import rsl_rl.runners.on_policy_runner as rsl_on_policy_runner
 
     from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper, export_policy_as_onnx
     from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
@@ -49,6 +50,11 @@ def _run_play(cfg, simulation_app):
     from training.tasks.table_tennis.mdp.racket import racket_normal_w, racket_state_w
     from training.utils.exporter import attach_onnx_metadata, export_motion_policy_as_onnx
     from training.utils.ppo_cfg import runner_kwargs
+    from training.utils.stagger_support_actor_critic import (
+        StaggerSupportActorCritic,
+        WideStaggerRecoveryActorCritic,
+        WideStaggerSupportActorCritic,
+    )
 
     def _obs_to_device(obs, device):
         if isinstance(obs, tuple):
@@ -57,12 +63,48 @@ def _run_play(cfg, simulation_app):
 
     task_id = str(cfg.task.gym_task)
     num_envs = int(cfg.num_envs) if cfg.num_envs is not None else int(cfg.task.env.num_envs)
+    multi_shot_raw = cfg.get("multi_shot_sequence", None)
+    multi_shot_sequence = None
+    multi_shot_max_steps = None
+    if multi_shot_raw is not None:
+        if isinstance(multi_shot_raw, str):
+            multi_shot_sequence = [
+                int(token.strip())
+                for token in multi_shot_raw.split(",")
+                if token.strip()
+            ]
+        else:
+            multi_shot_sequence = [int(value) for value in multi_shot_raw]
+        if not multi_shot_sequence:
+            raise ValueError("multi_shot_sequence must contain at least one motion ID")
+        if num_envs != 1:
+            raise ValueError("multi_shot_sequence requires num_envs=1")
+        if bool(cfg.get("ball", False)):
+            raise ValueError("multi_shot_sequence does not yet support dynamic-ball replay")
 
     env_cfg = parse_env_cfg(task_id, device=str(cfg.device), num_envs=num_envs)
     _apply_task_overrides(env_cfg, cfg.task)
     env_cfg.sim.device = str(cfg.device)
     # Keep visual replay aligned with train.py's deterministic paired audits.
     env_cfg.seed = int(cfg.seed)
+    if multi_shot_sequence is not None:
+        control_dt = float(env_cfg.decimation * env_cfg.sim.dt)
+        multi_shot_max_steps = cfg.get("multi_shot_max_steps", None)
+        if multi_shot_max_steps is None:
+            multi_shot_max_steps = 350 * len(multi_shot_sequence)
+        multi_shot_max_steps = int(multi_shot_max_steps)
+        if multi_shot_max_steps < 1:
+            raise ValueError("multi_shot_max_steps must be positive")
+        env_cfg.episode_length_s = max(
+            float(env_cfg.episode_length_s),
+            multi_shot_max_steps * control_dt,
+        )
+        print(
+            "[INFO] multi-shot no-reset audit: "
+            f"sequence={multi_shot_sequence}, max_steps={multi_shot_max_steps}, "
+            f"episode_length_s={env_cfg.episode_length_s:.3f}",
+            flush=True,
+        )
 
     # Optional diagnostic table: extend the *original training scene* with a
     # static tabletop.  Do not replace the training scene with the match scene,
@@ -203,6 +245,50 @@ def _run_play(cfg, simulation_app):
 
     agent_cfg = RslRlOnPolicyRunnerCfg(**runner_kwargs(OmegaConf.to_container(cfg.algo, resolve=True), str(cfg.task.experiment_name)))
     agent_cfg.device = str(cfg.device)
+    legacy_stagger_support_task = (
+        task_id == "HOPE-FloatingJointCoordinatorV8StaggerSupport-AgibotA3-v0"
+    )
+    wide_stagger_support_task = (
+        task_id
+        == "HOPE-FloatingJointCoordinatorV9WideStaggerSupport-AgibotA3-v0"
+    )
+    wide_stagger_recovery_task = (
+        task_id
+        == "HOPE-FloatingJointCoordinatorV10WideStaggerRecovery-AgibotA3-v0"
+    )
+    stagger_support_task = (
+        legacy_stagger_support_task
+        or wide_stagger_support_task
+        or wide_stagger_recovery_task
+    )
+    if wide_stagger_recovery_task:
+        rsl_on_policy_runner.WideStaggerRecoveryActorCritic = (
+            WideStaggerRecoveryActorCritic
+        )
+        agent_cfg.policy.class_name = "WideStaggerRecoveryActorCritic"
+        print(
+            "[play.py] V23 policy=WideStaggerRecoveryActorCritic "
+            "(229-D observation; frozen V22 plus gated recovery adapter)",
+            flush=True,
+        )
+    elif wide_stagger_support_task:
+        rsl_on_policy_runner.WideStaggerSupportActorCritic = (
+            WideStaggerSupportActorCritic
+        )
+        agent_cfg.policy.class_name = "WideStaggerSupportActorCritic"
+        print(
+            "[play.py] V22 policy=WideStaggerSupportActorCritic "
+            "(227-D 2-D support observation; frozen legacy arm contract)",
+            flush=True,
+        )
+    elif legacy_stagger_support_task:
+        rsl_on_policy_runner.StaggerSupportActorCritic = StaggerSupportActorCritic
+        agent_cfg.policy.class_name = "StaggerSupportActorCritic"
+        print(
+            "[play.py] V21 policy=StaggerSupportActorCritic "
+            "(223-D stance observation; frozen legacy arm contract)",
+            flush=True,
+        )
 
     log_root_path = os.path.abspath(os.path.join("logs", "rsl_rl", agent_cfg.experiment_name))
 
@@ -295,6 +381,16 @@ def _run_play(cfg, simulation_app):
 
     render_mode = "rgb_array" if cfg.video else None
     env = gym.make(task_id, cfg=env_cfg, render_mode=render_mode)
+    if multi_shot_sequence is not None and not bool(
+        getattr(
+            env.unwrapped.action_manager.get_term("joint_pos").cfg,
+            "stage_a_sagittal_rearm_enabled",
+            False,
+        )
+    ):
+        raise RuntimeError(
+            "multi_shot_sequence requires a task with Stage-A sagittal re-arm enabled"
+        )
     if bool(cfg.get("ball_racket_proxy", False)) and "racket_proxy" in env.unwrapped.scene.rigid_objects:
         # The proxy overlaps the imported wrist/racket assembly by design.  A
         # filtered pair prevents the proxy from pushing the articulated robot,
@@ -353,10 +449,29 @@ def _run_play(cfg, simulation_app):
     env = RslRlVecEnvWrapper(env)
 
     ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+    if stagger_support_task:
+        original_obs_normalizer_forward = ppo_runner.obs_normalizer.forward
+
+        def v21_actor_observation_normalizer(observation):
+            normalized = original_obs_normalizer_forward(observation)
+            normalized[..., 204:] = observation[..., 204:]
+            return normalized
+
+        ppo_runner.obs_normalizer.forward = v21_actor_observation_normalizer
+        support_end = 227 if wide_stagger_support_task else 223
+        print(
+            "[play.py] stagger actor normalizer preserves physical support columns "
+            f"204:{support_end}",
+            flush=True,
+        )
     ppo_runner.load(resume_path)
     policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
 
-    forced_motion_id = cfg.get("motion_id", None)
+    forced_motion_id = (
+        multi_shot_sequence[0]
+        if multi_shot_sequence is not None
+        else cfg.get("motion_id", None)
+    )
     if has_motion_command and forced_motion_id is not None:
         motion = env.unwrapped.command_manager.get_term("motion")
         motion_id = int(forced_motion_id)
@@ -379,24 +494,24 @@ def _run_play(cfg, simulation_app):
         racket = env.unwrapped.command_manager.get_term("racket_target")
         racket._resample_command(env_ids)
         racket._compute_strike_timing()
-        # A forced-motion replay must synchronize the physical robot to the
-        # selected motion's frame zero.  Merely changing motion_ids after the
-        # environment reset leaves the robot at the default ready pose while
-        # the command/reference jumps to the selected clip, producing a large
-        # artificial racket-position error and an invalid policy observation.
-        with torch.inference_mode():
-            motion_cmd = env.unwrapped.command_manager.get_term("motion")
-            motion_cmd._prev_motion_steps = motion_cmd.time_steps.clone()
-            joint_pos = motion_cmd.joint_pos.clone()
-            joint_vel = motion_cmd.joint_vel.clone()
-            root_pos, root_ori, root_lin_vel, root_ang_vel = motion_cmd._motion_root_state_w()
-            motion_cmd.robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
-            motion_cmd.robot.write_root_state_to_sim(
-                torch.cat([root_pos, root_ori, root_lin_vel, root_ang_vel], dim=-1), env_ids=env_ids
-            )
-            env.unwrapped.scene.write_data_to_sim()
-            env.unwrapped.sim.forward()
-            motion_cmd._update_command()
+        if multi_shot_sequence is None:
+            # Legacy forced-motion replay synchronizes the initial physical
+            # state.  Multi-shot evaluation deliberately skips this path:
+            # every shot starts from the actual settled state, never a
+            # reference teleport.
+            with torch.inference_mode():
+                motion_cmd = env.unwrapped.command_manager.get_term("motion")
+                motion_cmd._prev_motion_steps = motion_cmd.time_steps.clone()
+                joint_pos = motion_cmd.joint_pos.clone()
+                joint_vel = motion_cmd.joint_vel.clone()
+                root_pos, root_ori, root_lin_vel, root_ang_vel = motion_cmd._motion_root_state_w()
+                motion_cmd.robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
+                motion_cmd.robot.write_root_state_to_sim(
+                    torch.cat([root_pos, root_ori, root_lin_vel, root_ang_vel], dim=-1), env_ids=env_ids
+                )
+                env.unwrapped.scene.write_data_to_sim()
+                env.unwrapped.sim.forward()
+                motion_cmd._update_command()
         print(f"[INFO] forced manifest motion_id={motion_id} for deterministic replay", flush=True)
 
     # Optional dynamic-ball validation.  This deliberately runs inside the
@@ -764,6 +879,45 @@ def _run_play(cfg, simulation_app):
     terminated_count = 0
     truncated_count = 0
     first_termination_step = None
+    multi_shot_records = []
+    multi_shot_transitions = []
+    multi_shot_index = 0
+    multi_shot_hit_recorded = False
+    multi_shot_complete = False
+    multi_shot_failure = None
+    multi_shot_last_state = None
+    multi_shot_start_state = None
+    multi_shot_last_pre_step_state = None
+
+    def _multi_shot_state_snapshot(raw_env):
+        from training.tasks.tracking.mdp.observations import stagger_support_state
+
+        support = stagger_support_state(raw_env)
+        gravity_b = raw_env.scene["robot"].data.projected_gravity_b[0]
+        tilt = torch.acos(torch.clamp(-gravity_b[2], -1.0, 1.0))
+        return {
+            "root_position_w_m": [
+                float(value)
+                for value in raw_env.scene["robot"].data.root_pos_w[0].tolist()
+            ],
+            "root_tilt_deg": float(torch.rad2deg(tilt).item()),
+            "root_forward_velocity_mps": float(
+                raw_env.scene["robot"].data.root_lin_vel_b[0, 0].item()
+            ),
+            "root_pitch_rate_radps": float(
+                raw_env.scene["robot"].data.root_ang_vel_b[0, 1].item()
+            ),
+            "capture_rel_support_x_m": float(
+                support["capture_rel_support_x_b"][0].item()
+            ),
+            "capture_front_margin_m": float(
+                support["capture_front_margin"][0].item()
+            ),
+            "capture_rear_margin_m": float(
+                support["capture_rear_margin"][0].item()
+            ),
+            "both_feet_contact": bool(support["contacts"][0].all().item()),
+        }
     ball_launched = False
     ball_bounce_applied = False
     ball_racket_return_applied = False
@@ -779,6 +933,12 @@ def _run_play(cfg, simulation_app):
     timestep = 0
     while simulation_app.is_running():
         with torch.inference_mode():
+            if multi_shot_sequence is not None:
+                multi_shot_last_pre_step_state = _multi_shot_state_snapshot(
+                    env.unwrapped
+                )
+                if multi_shot_start_state is None:
+                    multi_shot_start_state = dict(multi_shot_last_pre_step_state)
             if ball_plan is not None and racket_proxy_enabled:
                 # Kinematic blade proxy: it follows the same FK pose and
                 # velocity used by the racket diagnostics.  In natural mode
@@ -820,6 +980,139 @@ def _run_play(cfg, simulation_app):
             actions = policy(obs)
             obs, _, terminated, truncated = env.step(actions.to(env.unwrapped.device))
             obs = _obs_to_device(obs, agent_cfg.device)
+            if multi_shot_sequence is not None:
+                raw_env = env.unwrapped
+                motion_cmd = raw_env.command_manager.get_term("motion")
+                racket_cmd = raw_env.command_manager.get_term("racket_target")
+                state = int(raw_env.stage_a_sagittal_exit_state[0].item())
+                scale = float(raw_env.stage_a_sagittal_exit_scale[0].item())
+                if state != multi_shot_last_state:
+                    multi_shot_transitions.append(
+                        {
+                            "control_step": timestep + 1,
+                            "shot_index": multi_shot_index,
+                            "motion_id": int(motion_cmd.motion_ids[0].item()),
+                            "state": state,
+                            "scale": scale,
+                        }
+                    )
+                    multi_shot_last_state = state
+
+                hit_step = int(
+                    motion_cmd.motion.hit_frame[motion_cmd.motion_ids[0]].item()
+                )
+                in_swing = (
+                    int(motion_cmd.prelude_elapsed_steps[0].item())
+                    >= int(motion_cmd.prelude_steps)
+                )
+                exact_hit = (
+                    in_swing
+                    and int(motion_cmd.tail_steps[0].item()) == 0
+                    and int(motion_cmd.time_steps[0].item()) == hit_step
+                )
+                if exact_hit and not multi_shot_hit_recorded:
+                    multi_shot_records.append(
+                        {
+                            "shot_index": multi_shot_index,
+                            "motion_id": int(motion_cmd.motion_ids[0].item()),
+                            "hit_control_step": timestep + 1,
+                            "position_error_m": float(
+                                racket_cmd.metrics[
+                                    "racket_pos_error_exact_strike"
+                                ][0].item()
+                            ),
+                            "velocity_error_mps": float(
+                                racket_cmd.metrics[
+                                    "racket_vel_error_exact_strike"
+                                ][0].item()
+                            ),
+                            "normal_error_deg": float(
+                                racket_cmd.metrics[
+                                    "racket_normal_error_deg_exact_strike"
+                                ][0].item()
+                            ),
+                            "start_state": multi_shot_start_state,
+                            "hit_state": _multi_shot_state_snapshot(raw_env),
+                        }
+                    )
+                    multi_shot_hit_recorded = True
+
+                done_now = bool(
+                    torch.as_tensor(terminated, device=raw_env.device)[0].item()
+                )
+                # RslRlVecEnvWrapper follows the four-value VecEnv API:
+                # (obs, reward, dones, extras).  A plain Gym environment may
+                # instead return a tensor in the fourth slot.  Never coerce
+                # the extras dictionary into a fake truncation tensor.
+                if torch.is_tensor(truncated):
+                    truncated_now = bool(
+                        torch.as_tensor(truncated, device=raw_env.device)[0].item()
+                    )
+                    termination_log = {}
+                else:
+                    time_outs = truncated.get("time_outs", None)
+                    truncated_now = bool(time_outs[0].item()) if time_outs is not None else False
+                    termination_log = dict(truncated.get("log", {}) or {})
+                terminated_now = done_now and not truncated_now
+                termination_reasons = sorted(
+                    key.removeprefix("Episode_Termination/")
+                    for key, value in termination_log.items()
+                    if key.startswith("Episode_Termination/")
+                    and float(torch.as_tensor(value).sum().item()) > 0.0
+                )
+                if done_now:
+                    multi_shot_failure = {
+                        "control_step": timestep + 1,
+                        "shot_index": multi_shot_index,
+                        "terminated": terminated_now,
+                        "truncated": truncated_now,
+                        "termination_reasons": termination_reasons,
+                        "last_pre_step_state": multi_shot_last_pre_step_state,
+                    }
+                elif bool(raw_env.stage_a_sagittal_rearm_rejected[0].item()):
+                    multi_shot_failure = {
+                        "control_step": timestep + 1,
+                        "shot_index": multi_shot_index,
+                        "reason": "rearm_rejected_unstable",
+                    }
+                elif bool(raw_env.stage_a_sagittal_rearm_ready[0].item()):
+                    if not multi_shot_hit_recorded:
+                        multi_shot_failure = {
+                            "control_step": timestep + 1,
+                            "shot_index": multi_shot_index,
+                            "reason": "ready_before_exact_hit",
+                        }
+                    elif multi_shot_index + 1 >= len(multi_shot_sequence):
+                        multi_shot_complete = True
+                    else:
+                        multi_shot_records[-1]["ready_control_step"] = timestep + 1
+                        multi_shot_records[-1]["ready_hold_steps"] = int(
+                            raw_env.stage_a_sagittal_rearm_stable_steps[0].item()
+                        )
+                        multi_shot_records[-1]["ready_state"] = (
+                            _multi_shot_state_snapshot(raw_env)
+                        )
+                        next_motion = int(
+                            multi_shot_sequence[multi_shot_index + 1]
+                        )
+                        motion_cmd.begin_next_shot([0], [next_motion])
+                        racket_cmd._resample_command([0])
+                        racket_cmd._compute_strike_timing()
+                        multi_shot_index += 1
+                        multi_shot_hit_recorded = False
+                        multi_shot_start_state = _multi_shot_state_snapshot(raw_env)
+                        # Refresh the observation after changing the reference
+                        # so the next coordinator action is not computed from
+                        # the previous shot's READY command.
+                        obs = _obs_to_device(
+                            env.get_observations(), agent_cfg.device
+                        )
+                        print(
+                            "[INFO] multi-shot re-arm accepted: "
+                            f"shot={multi_shot_index}, motion_id={next_motion}, "
+                            f"step={timestep + 1}",
+                            flush=True,
+                        )
             if (
                 ball_plan is not None
                 and ball_plan["bounce_once"]
@@ -1011,13 +1304,22 @@ def _run_play(cfg, simulation_app):
                     final_ball_pos = ball.data.root_pos_w[0].detach().clone()
                     final_ball_vel = ball.data.root_lin_vel_w[0].detach().clone()
         if cfg.video:
-            frame = env.unwrapped.render()
-            if frame is not None:
-                frames.append(frame)
-            if timestep >= int(cfg.video_length):
+            if timestep >= int(cfg.get("video_start_step", 0)):
+                frame = env.unwrapped.render()
+                if frame is not None:
+                    frames.append(frame)
+            if multi_shot_sequence is None and timestep >= int(cfg.video_length):
                 break
         timestep += 1
-        max_steps = cfg.get("max_steps", None)
+        if multi_shot_sequence is not None and (
+            multi_shot_complete or multi_shot_failure is not None
+        ):
+            break
+        max_steps = (
+            multi_shot_max_steps
+            if multi_shot_sequence is not None
+            else cfg.get("max_steps", None)
+        )
         if max_steps is not None and timestep >= int(max_steps):
             break
         # non-video: keep stepping until the Isaac Sim window is closed (live viewing)
@@ -1106,6 +1408,54 @@ def _run_play(cfg, simulation_app):
         print("[INFO] manifest command metrics:", flush=True)
         for name in sorted(command_metric_sums):
             print(f"[INFO]   {name}={command_metric_sums[name] / command_metric_count:.4f}", flush=True)
+
+    if multi_shot_sequence is not None:
+        if multi_shot_complete and multi_shot_records:
+            multi_shot_records[-1]["ready_control_step"] = timestep
+            multi_shot_records[-1]["ready_hold_steps"] = int(
+                env.unwrapped.stage_a_sagittal_rearm_stable_steps[0].item()
+            )
+            multi_shot_records[-1]["ready_state"] = _multi_shot_state_snapshot(
+                env.unwrapped
+            )
+        report = {
+            "checkpoint": str(resume_path),
+            "task": str(cfg.task.name),
+            "sequence": multi_shot_sequence,
+            "complete": multi_shot_complete,
+            "failure": multi_shot_failure,
+            "control_steps": timestep,
+            "shots": multi_shot_records,
+            "state_transitions": multi_shot_transitions,
+            "state_contract": {
+                "0": "SUPPORT_ACTIVE",
+                "1": "DECAYING",
+                "2": "SETTLED",
+                "3": "READY",
+                "4": "RAMPING",
+            },
+        }
+        report_path = cfg.get("multi_shot_report", None)
+        if report_path is None:
+            report_path = os.path.join(
+                os.path.dirname(resume_path),
+                "multi_shot_report.json",
+            )
+        report_path = pathlib.Path(str(report_path)).expanduser()
+        if not report_path.is_absolute():
+            report_path = pathlib.Path.cwd() / report_path
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        print(
+            "[INFO] multi-shot audit: "
+            f"complete={multi_shot_complete}, shots={len(multi_shot_records)}/"
+            f"{len(multi_shot_sequence)}, failure={multi_shot_failure}",
+            flush=True,
+        )
+        print(f"[INFO] wrote multi-shot report -> {report_path}", flush=True)
 
     env.close()
 

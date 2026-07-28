@@ -17,6 +17,7 @@ import os
 import sys
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import hydra
@@ -559,6 +560,221 @@ def _apply_task_overrides(env_cfg, task):
         if els is not None:
             env_cfg.episode_length_s = float(els)
             applied.append(f"episode_length_s={float(els)}")
+        staggered_half_span = _get(env, "staggered_stance_half_span_m")
+        left_forward_offset = _get(env, "left_foot_forward_offset_m")
+        lateral_widen_per_foot = _get(env, "stance_lateral_widen_per_foot_m")
+        knee_flexion = _get(env, "stance_knee_flexion_rad")
+        if staggered_half_span is not None and left_forward_offset is not None:
+            raise ValueError(
+                "Choose one stance transform: staggered_stance_half_span_m "
+                "or left_foot_forward_offset_m"
+            )
+        if (lateral_widen_per_foot is not None or knee_flexion is not None) and staggered_half_span is None:
+            raise ValueError(
+                "stance_lateral_widen_per_foot_m and stance_knee_flexion_rad "
+                "currently require staggered_stance_half_span_m"
+            )
+        if staggered_half_span is not None:
+            custom_lateral_stance = lateral_widen_per_foot is not None
+            custom_knee_flexion = knee_flexion is not None
+            staggered_half_span = float(staggered_half_span)
+            _require(
+                0.0 <= staggered_half_span <= 0.10,
+                "0 <= env.staggered_stance_half_span_m <= 0.10",
+            )
+            lateral_widen_per_foot = (
+                0.0 if lateral_widen_per_foot is None else float(lateral_widen_per_foot)
+            )
+            _require(
+                0.0 <= lateral_widen_per_foot <= 0.08,
+                "0 <= env.stance_lateral_widen_per_foot_m <= 0.08",
+            )
+            base_hip_pitch = -0.160
+            base_knee = 0.320
+            base_ankle_pitch = -0.155
+            base_foot_pitch = base_hip_pitch + base_knee + base_ankle_pitch
+            nominal_knee = base_knee if knee_flexion is None else float(knee_flexion)
+            _require(
+                base_knee <= nominal_knee <= 0.60,
+                "0.32 <= env.stance_knee_flexion_rad <= 0.60",
+            )
+            # Split extra flexion equally across hip and ankle while retaining
+            # the validated nearly-flat sagittal foot orientation.
+            nominal_hip_pitch = -0.5 * nominal_knee
+            nominal_ankle_pitch = base_foot_pitch - nominal_hip_pitch - nominal_knee
+
+            # Shift the feet fore/aft by equal amounts. A separate lateral
+            # transform below widens the support without moving its center.
+            thigh_length = 0.370
+            shank_length = 0.415
+            nominal_foot_pitch = base_foot_pitch
+            a = thigh_length + shank_length * math.cos(nominal_knee)
+            b = shank_length * math.sin(nominal_knee)
+            radius = math.hypot(a, b)
+            phase = math.atan2(b, a)
+
+            def _foot_x(hip_pitch: float) -> float:
+                return (
+                    -thigh_length * math.sin(hip_pitch)
+                    - shank_length * math.sin(hip_pitch + nominal_knee)
+                )
+
+            def _foot_z(hip_pitch: float) -> float:
+                return (
+                    -thigh_length * math.cos(hip_pitch)
+                    - shank_length * math.cos(hip_pitch + nominal_knee)
+                )
+
+            def _hip_for_x(target_x: float) -> float:
+                ratio = max(-1.0, min(1.0, -target_x / radius))
+                primary = math.asin(ratio) - phase
+                alternate = math.pi - math.asin(ratio) - phase
+                candidates = (
+                    primary,
+                    alternate,
+                    primary + 2.0 * math.pi,
+                    primary - 2.0 * math.pi,
+                    alternate + 2.0 * math.pi,
+                    alternate - 2.0 * math.pi,
+                )
+                return min(candidates, key=lambda value: abs(value - nominal_hip_pitch))
+
+            nominal_x = _foot_x(nominal_hip_pitch)
+            left_hip_pitch = _hip_for_x(nominal_x + staggered_half_span)
+            right_hip_pitch = _hip_for_x(nominal_x - staggered_half_span)
+            left_ankle_pitch = nominal_foot_pitch - left_hip_pitch - nominal_knee
+            right_ankle_pitch = nominal_foot_pitch - right_hip_pitch - nominal_knee
+            baseline_z = (
+                -thigh_length * math.cos(base_hip_pitch)
+                - shank_length * math.cos(base_hip_pitch + base_knee)
+            )
+            mean_staggered_z = 0.5 * (
+                _foot_z(left_hip_pitch) + _foot_z(right_hip_pitch)
+            )
+
+            # Increase hip roll symmetrically to add the requested lateral
+            # distance per foot. Counter-rotate each ankle by the same delta
+            # so the validated sole-roll orientation is preserved.
+            base_hip_roll_abs = 0.080
+            base_left_ankle_roll = -0.0078
+            base_right_ankle_roll = 0.0078
+            leg_height = max(0.40, -mean_staggered_z)
+            widened_sin = math.sin(base_hip_roll_abs) + lateral_widen_per_foot / leg_height
+            _require(widened_sin < 0.95, "requested lateral stance is reachable")
+            hip_roll_abs = math.asin(widened_sin)
+            hip_roll_delta = hip_roll_abs - base_hip_roll_abs
+            left_ankle_roll = base_left_ankle_roll - hip_roll_delta
+            right_ankle_roll = base_right_ankle_roll + hip_roll_delta
+
+            # Lower the pelvis so deeper flexion and the wider roll transform
+            # keep the feet on the same ground plane.
+            baseline_vertical = baseline_z * math.cos(base_hip_roll_abs)
+            staggered_vertical = mean_staggered_z * math.cos(hip_roll_abs)
+            pelvis_height_delta = (
+                baseline_vertical - staggered_vertical
+                if custom_lateral_stance or custom_knee_flexion
+                else baseline_z - mean_staggered_z
+            )
+
+            joint_pos = env_cfg.scene.robot.init_state.joint_pos
+            joint_pos.pop(".*_hip_pitch_joint", None)
+            joint_pos.pop(".*_knee_joint", None)
+            joint_pos.pop(".*_ankle_pitch_joint", None)
+            joint_pos.update(
+                {
+                    "left_hip_pitch_joint": left_hip_pitch,
+                    "right_hip_pitch_joint": right_hip_pitch,
+                    "left_knee_joint": nominal_knee,
+                    "right_knee_joint": nominal_knee,
+                    "left_ankle_pitch_joint": left_ankle_pitch,
+                    "right_ankle_pitch_joint": right_ankle_pitch,
+                    "left_hip_roll_joint": hip_roll_abs,
+                    "right_hip_roll_joint": -hip_roll_abs,
+                    "left_ankle_roll_joint": left_ankle_roll,
+                    "right_ankle_roll_joint": right_ankle_roll,
+                }
+            )
+            root_x, root_y, root_z = env_cfg.scene.robot.init_state.pos
+            env_cfg.scene.robot.init_state.pos = (
+                root_x,
+                root_y,
+                root_z + pelvis_height_delta,
+            )
+            applied.append(
+                "staggered_stance("
+                f"half_span={staggered_half_span:.3f}m,"
+                f"lateral_widen_per_foot={lateral_widen_per_foot:.3f}m,"
+                f"knee={nominal_knee:.6f},"
+                f"left_hip={left_hip_pitch:.6f},"
+                f"right_hip={right_hip_pitch:.6f},"
+                f"left_ankle={left_ankle_pitch:.6f},"
+                f"right_ankle={right_ankle_pitch:.6f},"
+                f"hip_roll_abs={hip_roll_abs:.6f},"
+                f"left_ankle_roll={left_ankle_roll:.6f},"
+                f"right_ankle_roll={right_ankle_roll:.6f},"
+                f"pelvis_dz={pelvis_height_delta:.6f}m)"
+            )
+        if left_forward_offset is not None:
+            left_forward_offset = float(left_forward_offset)
+            _require(
+                0.0 <= left_forward_offset <= 0.10,
+                "0 <= env.left_foot_forward_offset_m <= 0.10",
+            )
+            # Move only the left foot forward while keeping its height and
+            # pitch exact.  The right leg and pelvis remain at the validated
+            # Stage-A ready state, so the support center moves forward without
+            # introducing a right-leg out-of-distribution posture.
+            thigh_length = 0.370
+            shank_length = 0.415
+            nominal_hip_pitch = -0.160
+            nominal_knee = 0.320
+            nominal_ankle_pitch = -0.155
+            nominal_foot_pitch = (
+                nominal_hip_pitch + nominal_knee + nominal_ankle_pitch
+            )
+            nominal_x = (
+                -thigh_length * math.sin(nominal_hip_pitch)
+                - shank_length * math.sin(nominal_hip_pitch + nominal_knee)
+            )
+            nominal_z = (
+                -thigh_length * math.cos(nominal_hip_pitch)
+                - shank_length * math.cos(nominal_hip_pitch + nominal_knee)
+            )
+            target_x = nominal_x + left_forward_offset
+            distance_sq = target_x * target_x + nominal_z * nominal_z
+            knee_cos = (
+                distance_sq - thigh_length * thigh_length - shank_length * shank_length
+            ) / (2.0 * thigh_length * shank_length)
+            _require(abs(knee_cos) <= 1.0, "left-forward stance is reachable")
+            left_knee = math.acos(max(-1.0, min(1.0, knee_cos)))
+            a = thigh_length + shank_length * math.cos(left_knee)
+            b = shank_length * math.sin(left_knee)
+            theta = math.atan2(-target_x, -nominal_z)
+            left_hip_pitch = theta - math.atan2(b, a)
+            left_ankle_pitch = nominal_foot_pitch - left_hip_pitch - left_knee
+
+            joint_pos = env_cfg.scene.robot.init_state.joint_pos
+            joint_pos.pop(".*_hip_pitch_joint", None)
+            joint_pos.pop(".*_knee_joint", None)
+            joint_pos.pop(".*_ankle_pitch_joint", None)
+            joint_pos.update(
+                {
+                    "left_hip_pitch_joint": left_hip_pitch,
+                    "right_hip_pitch_joint": nominal_hip_pitch,
+                    "left_knee_joint": left_knee,
+                    "right_knee_joint": nominal_knee,
+                    "left_ankle_pitch_joint": left_ankle_pitch,
+                    "right_ankle_pitch_joint": nominal_ankle_pitch,
+                }
+            )
+            applied.append(
+                "left_forward_stance("
+                f"offset={left_forward_offset:.3f}m,"
+                f"left_hip={left_hip_pitch:.6f},"
+                f"left_knee={left_knee:.6f},"
+                f"left_ankle={left_ankle_pitch:.6f},"
+                "right_leg=validated_ready)"
+            )
 
     # sim base (control frequency = 1 / (dt * decimation))
     sim = _get(task, "sim")
@@ -723,6 +939,11 @@ def _apply_task_overrides(env_cfg, task):
             "arm_tail_return_steps",
             "waist_soft_limit_brake_lead_steps",
             "waist_soft_limit_prediction_horizon_steps",
+            "stage_a_sagittal_exit_positive_confirm_steps",
+            "stage_a_sagittal_exit_neutral_confirm_steps",
+            "stage_a_sagittal_exit_decay_steps",
+            "stage_a_sagittal_rearm_stable_steps",
+            "stage_a_sagittal_rearm_ramp_steps",
         ):
             value = _get(actions, key)
             if value is None:
@@ -730,6 +951,38 @@ def _apply_task_overrides(env_cfg, task):
             _require(hasattr(env_cfg.actions.joint_pos, key), f"actions.joint_pos.{key}")
             value = int(value)
             _require(value >= 0, f"actions.{key} >= 0")
+            setattr(env_cfg.actions.joint_pos, key, value)
+            applied.append(f"actions.joint_pos.{key}={value}")
+        for key in (
+            "stage_a_sagittal_exit_enabled",
+            "stage_a_sagittal_exit_require_both_feet",
+            "stage_a_sagittal_rearm_enabled",
+            "stage_a_sagittal_rearm_require_ready_reference",
+        ):
+            value = _get(actions, key)
+            if value is None:
+                continue
+            _require(hasattr(env_cfg.actions.joint_pos, key), f"actions.joint_pos.{key}")
+            setattr(env_cfg.actions.joint_pos, key, _as_bool(value))
+            applied.append(f"actions.joint_pos.{key}={_as_bool(value)}")
+        for key in (
+            "stage_a_sagittal_exit_center_half_width_m",
+            "stage_a_sagittal_exit_velocity_deadband_mps",
+            "stage_a_sagittal_front_gain",
+            "stage_a_sagittal_front_margin_m",
+            "stage_a_sagittal_front_velocity_mps",
+            "stage_a_sagittal_rearm_center_half_width_m",
+            "stage_a_sagittal_rearm_velocity_max_mps",
+            "stage_a_sagittal_rearm_pitch_rate_max_radps",
+            "stage_a_sagittal_rearm_tilt_max_rad",
+            "stage_a_sagittal_rearm_arm_error_max_rad",
+        ):
+            value = _get(actions, key)
+            if value is None:
+                continue
+            _require(hasattr(env_cfg.actions.joint_pos, key), f"actions.joint_pos.{key}")
+            value = float(value)
+            _require(value >= 0.0, f"actions.{key} >= 0")
             setattr(env_cfg.actions.joint_pos, key, value)
             applied.append(f"actions.joint_pos.{key}={value}")
         waist_soft_limit_margin = _get(actions, "waist_soft_limit_margin_rad")
@@ -899,14 +1152,54 @@ def _apply_task_overrides(env_cfg, task):
             ("pre_hit_root_tilt_l2", "pre_hit_root_tilt_weight"),
             ("pre_hit_root_angular_velocity_l2", "pre_hit_root_angular_velocity_l2_weight"),
             ("pre_hit_root_forward_velocity_l2", "pre_hit_root_forward_velocity_l2_weight"),
+            ("strike_approach_pitch_rate_deadband_l2", "strike_approach_pitch_rate_deadband_l2_weight"),
+            (
+                "strike_approach_forward_velocity_deadband_l2",
+                "strike_approach_forward_velocity_deadband_l2_weight",
+            ),
+            ("exact_strike_pitch_rate_deadband_l2", "exact_strike_pitch_rate_deadband_l2_weight"),
+            (
+                "exact_strike_forward_velocity_deadband_l2",
+                "exact_strike_forward_velocity_deadband_l2_weight",
+            ),
+            (
+                "post_hit_forward_velocity_deadband_l2",
+                "post_hit_forward_velocity_deadband_l2_weight",
+            ),
+            (
+                "post_hit_pitch_rate_deadband_l2",
+                "post_hit_pitch_rate_deadband_l2_weight",
+            ),
+            (
+                "post_hit_capture_point_center_l2",
+                "post_hit_capture_point_center_l2_weight",
+            ),
+            (
+                "post_hit_capture_point_barrier_l2",
+                "post_hit_capture_point_barrier_l2_weight",
+            ),
+            (
+                "post_hit_capture_point_center_progress",
+                "post_hit_capture_point_center_progress_weight",
+            ),
+            ("post_strike_root_linear_velocity", "post_strike_root_linear_velocity_weight"),
             ("post_strike_root_linear_velocity_l2", "post_strike_root_linear_velocity_l2_weight"),
             ("post_strike_root_angular_velocity_l2", "post_strike_root_angular_velocity_l2_weight"),
             ("post_strike_root_height_deficit", "post_strike_root_height_deficit_weight"),
             ("post_strike_both_feet_contact", "post_strike_both_feet_contact_weight"),
             ("post_strike_ready", "post_strike_ready_weight"),
             ("fall", "fall_weight"),
+            ("alive", "alive_weight"),
             ("root_position_drift", "root_position_drift_weight"),
             ("feet_slip", "feet_slip_weight"),
+            ("stagger_capture_point_margin_l2", "stagger_capture_point_margin_l2_weight"),
+            (
+                "stagger_lateral_capture_point_margin_l2",
+                "stagger_lateral_capture_point_margin_l2_weight",
+            ),
+            ("stagger_minimum_foot_load", "stagger_minimum_foot_load_weight"),
+            ("stagger_sagittal_span_l2", "stagger_sagittal_span_l2_weight"),
+            ("stagger_lateral_span_l2", "stagger_lateral_span_l2_weight"),
         ):
             _w = _get(rw, _key)
             if _w is not None:
@@ -1121,7 +1414,15 @@ def _run(cfg):
     import training.tasks  # noqa: F401  -- registers the gym tasks
     from training.utils.my_on_policy_runner import MotionOnPolicyRunner, MyOnPolicyRunner
     from training.utils.a3_base_actor_init import initialize_zero_residual_actor_mean
+    from training.utils.momentum_preview_actor_critic import MomentumPreviewActorCritic
+    from training.utils.stagger_support_actor_critic import (
+        StaggerSupportActorCritic,
+        WideStaggerRecoveryActorCritic,
+        WideStaggerSupportActorCritic,
+    )
+    from training.utils.support_recovery_actor_critic import SupportRecoveryActorCritic
     from training.utils.ppo_cfg import runner_kwargs
+    import rsl_rl.runners.on_policy_runner as rsl_on_policy_runner
 
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
@@ -1183,14 +1484,92 @@ def _run(cfg):
         agent_cfg.wandb_project = str(cfg.log_project_name)
         agent_cfg.neptune_project = str(cfg.log_project_name)
     agent_cfg.resume = bool(cfg.get("resume", False))
+    momentum_preview_task = task_id == "HOPE-FloatingJointCoordinatorV6MomentumPreview-AgibotA3-v0"
+    support_recovery_task = (
+        task_id == "HOPE-FloatingJointCoordinatorV7StaggeredRecovery-AgibotA3-v0"
+    )
+    legacy_stagger_support_task = (
+        task_id == "HOPE-FloatingJointCoordinatorV8StaggerSupport-AgibotA3-v0"
+    )
+    wide_stagger_support_task = (
+        task_id
+        == "HOPE-FloatingJointCoordinatorV9WideStaggerSupport-AgibotA3-v0"
+    )
+    wide_stagger_recovery_task = (
+        task_id
+        == "HOPE-FloatingJointCoordinatorV10WideStaggerRecovery-AgibotA3-v0"
+    )
+    stagger_support_task = (
+        legacy_stagger_support_task
+        or wide_stagger_support_task
+        or wide_stagger_recovery_task
+    )
+    frozen_support_task = momentum_preview_task or support_recovery_task or stagger_support_task
+    if momentum_preview_task:
+        # OnPolicyRunner resolves policy classes in its own module globals.
+        rsl_on_policy_runner.MomentumPreviewActorCritic = MomentumPreviewActorCritic
+        agent_cfg.policy.class_name = "MomentumPreviewActorCritic"
+        print(
+            "[train.py] V19 policy=MomentumPreviewActorCritic "
+            "(legacy state actor frozen; preview adapter trains leg+waist only)",
+            flush=True,
+        )
+    elif support_recovery_task:
+        rsl_on_policy_runner.SupportRecoveryActorCritic = SupportRecoveryActorCritic
+        agent_cfg.policy.class_name = "SupportRecoveryActorCritic"
+        print(
+            "[train.py] V20 policy=SupportRecoveryActorCritic "
+            "(legacy coordinator frozen; state adapter trains leg+waist only)",
+            flush=True,
+        )
+    elif wide_stagger_recovery_task:
+        rsl_on_policy_runner.WideStaggerRecoveryActorCritic = (
+            WideStaggerRecoveryActorCritic
+        )
+        agent_cfg.policy.class_name = "WideStaggerRecoveryActorCritic"
+        print(
+            "[train.py] V23 policy=WideStaggerRecoveryActorCritic "
+            "(frozen V22 model_1499; gated 22-D post-hit recovery adapter)",
+            flush=True,
+        )
+    elif wide_stagger_support_task:
+        rsl_on_policy_runner.WideStaggerSupportActorCritic = (
+            WideStaggerSupportActorCritic
+        )
+        agent_cfg.policy.class_name = "WideStaggerSupportActorCritic"
+        print(
+            "[train.py] V22 policy=WideStaggerSupportActorCritic "
+            "(legacy coordinator frozen; 2-D support adapter trains leg+waist only)",
+            flush=True,
+        )
+    elif legacy_stagger_support_task:
+        rsl_on_policy_runner.StaggerSupportActorCritic = StaggerSupportActorCritic
+        agent_cfg.policy.class_name = "StaggerSupportActorCritic"
+        print(
+            "[train.py] V21 policy=StaggerSupportActorCritic "
+            "(legacy coordinator frozen; explicit stance branch trains leg+waist only)",
+            flush=True,
+        )
     warm_start_actor_only = bool(cfg.get("warm_start_actor_only", False))
+    warm_start_support_actor_only = bool(cfg.get("warm_start_support_actor_only", False))
     warm_start_append_zero_policy_obs = bool(cfg.get("warm_start_append_zero_policy_obs", False))
-    if agent_cfg.resume and warm_start_actor_only:
-        raise ValueError("resume=true and warm_start_actor_only=true are mutually exclusive")
-    if warm_start_actor_only and cfg.get("checkpoint", None) is None:
-        raise ValueError("warm_start_actor_only=true requires an explicit checkpoint=<model_*.pt>")
-    if warm_start_append_zero_policy_obs and not warm_start_actor_only:
-        raise ValueError("warm_start_append_zero_policy_obs=true requires warm_start_actor_only=true")
+    actor_only_warm_start = warm_start_actor_only or warm_start_support_actor_only
+    if warm_start_actor_only and warm_start_support_actor_only:
+        raise ValueError(
+            "warm_start_actor_only=true and warm_start_support_actor_only=true are mutually exclusive"
+        )
+    if agent_cfg.resume and actor_only_warm_start:
+        raise ValueError("resume=true and actor-only warm starts are mutually exclusive")
+    if actor_only_warm_start and cfg.get("checkpoint", None) is None:
+        raise ValueError("actor-only warm starts require an explicit checkpoint=<model_*.pt>")
+    if warm_start_append_zero_policy_obs and not actor_only_warm_start:
+        raise ValueError(
+            "warm_start_append_zero_policy_obs=true requires an actor-only warm start"
+        )
+    if warm_start_support_actor_only and not stagger_support_task:
+        raise ValueError(
+            "warm_start_support_actor_only=true is only valid for the stagger-support policy"
+        )
     if cfg.get("load_run", None) is not None:
         agent_cfg.load_run = str(cfg.load_run)
     if cfg.get("checkpoint", None) is not None:
@@ -1289,7 +1668,7 @@ def _run(cfg):
     render_mode = "rgb_array" if cfg.video else None
     env = gym.make(task_id, cfg=env_cfg, render_mode=render_mode)
     preview_audit_mode = str(cfg.get("preview_audit_mode", "normal"))
-    if preview_audit_mode not in {"normal", "zero", "shuffle", "reverse"}:
+    if preview_audit_mode not in {"normal", "zero", "shuffle", "reverse", "scale_080", "scale_120"}:
         raise ValueError(f"Unknown preview_audit_mode={preview_audit_mode!r}")
     if preview_audit_mode != "normal" and not bool(cfg.get("audit_policy_action", False)):
         raise ValueError("preview_audit_mode other than 'normal' is allowed only with +audit_policy_action=true")
@@ -1321,6 +1700,70 @@ def _run(cfg):
         )
     else:
         runner = MyOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    if momentum_preview_task:
+        # The final 18 observations are already physically normalized by
+        # m*g and m*g*L. Preserve them exactly instead of allowing the generic
+        # running normalizer to erase magnitude semantics or map physical zero
+        # to a nonzero feature vector.
+        original_obs_normalizer_forward = runner.obs_normalizer.forward
+
+        def v19_actor_observation_normalizer(observation):
+            normalized = original_obs_normalizer_forward(observation)
+            normalized[..., 204:] = observation[..., 204:]
+            return normalized
+
+        runner.obs_normalizer.forward = v19_actor_observation_normalizer
+        print(
+            "[train.py] V19 actor normalizer preserves canonical preview columns 204:222",
+            flush=True,
+        )
+    elif stagger_support_task:
+        original_obs_normalizer_forward = runner.obs_normalizer.forward
+
+        def v21_actor_observation_normalizer(observation):
+            normalized = original_obs_normalizer_forward(observation)
+            normalized[..., 204:] = observation[..., 204:]
+            return normalized
+
+        runner.obs_normalizer.forward = v21_actor_observation_normalizer
+        support_end = (
+            227
+            if wide_stagger_support_task or wide_stagger_recovery_task
+            else 223
+        )
+        print(
+            "[train.py] stagger actor normalizer preserves physical support columns "
+            f"204:{support_end}",
+            flush=True,
+        )
+        if wide_stagger_recovery_task:
+            original_train_mode = runner.train_mode
+
+            def v23_train_mode_with_frozen_actor_normalizer():
+                original_train_mode()
+                # V22 model_1499 is an immutable behavior prior. Updating its
+                # legacy observation statistics would change the frozen actor
+                # even when every network parameter stays unchanged.
+                runner.obs_normalizer.eval()
+
+            runner.train_mode = v23_train_mode_with_frozen_actor_normalizer
+            print(
+                "[train.py] V23 freezes the loaded V22 actor observation "
+                "normalizer; critic normalization remains trainable",
+                flush=True,
+            )
+    zero_legacy_support_action = bool(cfg.get("zero_legacy_support_action", False))
+    if zero_legacy_support_action:
+        if not wide_stagger_support_task:
+            raise ValueError(
+                "zero_legacy_support_action=true is only valid for the V22 wide-stagger policy"
+            )
+        runner.alg.policy.zero_legacy_support_action = True
+        print(
+            "[train.py] V22 audit contract: legacy leg/waist coordinator output is zero; "
+            "legacy arm output and frozen base priors remain active",
+            flush=True,
+        )
     zero_residual_tasks = {
         "A3BaseStandPassiveStableCandidate-v0",
         "A3CatchReadyStand-v0",
@@ -1365,7 +1808,7 @@ def _run(cfg):
             flush=True,
         )
     runner.add_git_repo_to_log(__file__)
-    if warm_start_actor_only:
+    if actor_only_warm_start:
         # A changed episode horizon/recovery objective invalidates the old
         # critic, optimizer moments, iteration count and critic normalizer.
         # Preserve only the compatible coordinator actor and its 204-D input
@@ -1377,17 +1820,64 @@ def _run(cfg):
         model_state = warm_state.get("model_state_dict")
         if not isinstance(model_state, dict):
             raise RuntimeError(f"checkpoint has no model_state_dict: {warm_path}")
-        actor_state = {
-            name: value
-            for name, value in model_state.items()
-            if name == "std" or name.startswith("actor.")
-        }
+        if warm_start_support_actor_only:
+            support_prefixes = (
+                "support_state_encoder.",
+                "stagger_encoder.",
+                "support_fusion.",
+                "support_adapter.",
+            )
+            actor_state = {
+                name: value
+                for name, value in model_state.items()
+                if name == "std"
+                or name.startswith("actor.")
+                or name.startswith(support_prefixes)
+            }
+        else:
+            actor_state = {
+                name: value
+                for name, value in model_state.items()
+                if name == "std" or name.startswith("actor.")
+            }
         if not actor_state or "std" not in actor_state:
             raise RuntimeError(f"checkpoint has no compatible actor/std tensors: {warm_path}")
         runtime_state_keys = set(runner.alg.policy.state_dict())
         runtime_state = runner.alg.policy.state_dict()
         appended_obs_features = 0
-        if warm_start_append_zero_policy_obs:
+        if frozen_support_task:
+            if support_recovery_task and warm_start_append_zero_policy_obs:
+                raise RuntimeError(
+                    "V20 support recovery keeps the legacy 204-D observation contract; "
+                    "do not set +warm_start_append_zero_policy_obs=true"
+                )
+            if wide_stagger_recovery_task and (
+                not warm_start_support_actor_only
+                or not warm_start_append_zero_policy_obs
+            ):
+                raise RuntimeError(
+                    "V23 recovery requires +warm_start_support_actor_only=true and "
+                    "+warm_start_append_zero_policy_obs=true"
+                )
+            if not warm_start_append_zero_policy_obs and not warm_start_support_actor_only:
+                if momentum_preview_task:
+                    raise RuntimeError("V19 warm start requires +warm_start_append_zero_policy_obs=true")
+                if stagger_support_task:
+                    raise RuntimeError("V21 warm start requires +warm_start_append_zero_policy_obs=true")
+            # Preserve V2's deterministic actor mean, but retain the new
+            # support branch's configured exploration scale.
+            actor_state["std"] = runtime_state["std"].clone()
+            mismatched = [
+                name
+                for name, value in actor_state.items()
+                if name in runtime_state and torch.is_tensor(value) and value.shape != runtime_state[name].shape
+            ]
+            if mismatched:
+                raise RuntimeError(
+                    "frozen legacy actor must retain the exact 204-D model_0 shape; "
+                    f"mismatched={mismatched}"
+                )
+        elif warm_start_append_zero_policy_obs:
             mismatched = [
                 name
                 for name, value in actor_state.items()
@@ -1416,11 +1906,43 @@ def _run(cfg):
             migrated_weight = torch.zeros_like(new_weight)
             migrated_weight[:, : old_weight.shape[1]] = old_weight
             actor_state[input_weight_name] = migrated_weight
-        expected_missing = {
-            name
-            for name in runtime_state_keys
-            if name.startswith("critic.")
-        }
+        expected_missing = {name for name in runtime_state_keys if name.startswith("critic.")}
+        if warm_start_support_actor_only:
+            expected_missing = {
+                name for name in runtime_state_keys if name.startswith("critic.")
+            }
+            if wide_stagger_recovery_task:
+                expected_missing.update(
+                    name
+                    for name in runtime_state_keys
+                    if name.startswith("recovery_encoder.")
+                    or name.startswith("recovery_adapter.")
+                )
+        elif momentum_preview_task:
+            expected_missing.update(
+                name
+                for name in runtime_state_keys
+                if name.startswith("preview_encoder.")
+                or name.startswith("support_state_encoder.")
+                or name.startswith("preview_state_gate.")
+                or name.startswith("preview_adapter.")
+            )
+        elif stagger_support_task:
+            expected_missing.update(
+                name
+                for name in runtime_state_keys
+                if name.startswith("support_state_encoder.")
+                or name.startswith("stagger_encoder.")
+                or name.startswith("support_fusion.")
+                or name.startswith("support_adapter.")
+            )
+        elif support_recovery_task:
+            expected_missing.update(
+                name
+                for name in runtime_state_keys
+                if name.startswith("support_encoder.")
+                or name.startswith("support_adapter.")
+            )
         missing_keys = runtime_state_keys - set(actor_state)
         unexpected_keys = set(actor_state) - runtime_state_keys
         if missing_keys != expected_missing or unexpected_keys:
@@ -1458,19 +1980,129 @@ def _run(cfg):
                 migrated = new_value.clone()
                 migrated[..., : old_value.shape[-1]] = old_value
                 actor_norm_state[key] = migrated
+                appended_obs_features = max(
+                    appended_obs_features,
+                    int(new_value.shape[-1] - old_value.shape[-1]),
+                )
                 migrated_normalizer = True
         if warm_start_append_zero_policy_obs and (appended_obs_features <= 0 or not migrated_normalizer):
             raise RuntimeError("append-zero actor migration did not widen both actor and observation normalizer")
         runner.obs_normalizer.load_state_dict(actor_norm_state)
+        equivalence_max_abs = None
+        if wide_stagger_recovery_task and warm_start_support_actor_only:
+            policy = runner.alg.policy
+            if any(
+                torch.count_nonzero(value).item() != 0
+                for value in policy.recovery_adapter.state_dict().values()
+            ):
+                raise RuntimeError("V23 recovery adapter is not exactly zero after warm start")
+            with torch.no_grad():
+                probe = torch.linspace(
+                    -1.0,
+                    1.0,
+                    steps=4 * policy.recovery_total_obs_dim,
+                    device=agent_cfg.device,
+                ).reshape(4, policy.recovery_total_obs_dim)
+                expected_action = policy.base_action_mean(
+                    probe[:, : policy.BASE_OBS_DIM]
+                )
+                expanded_action = policy.act_inference(probe)
+                equivalence_max_abs = float(
+                    torch.max(torch.abs(expected_action - expanded_action)).item()
+                )
+            if equivalence_max_abs >= 1.0e-6:
+                raise RuntimeError(
+                    "V23 model_1499 zero-adapter equivalence failed: "
+                    f"max_abs={equivalence_max_abs:.9g}"
+                )
+            print(
+                "[train.py] V23 model_1499 zero-adapter equivalence passed: "
+                f"max_abs={equivalence_max_abs:.3e}",
+                flush=True,
+            )
+        elif frozen_support_task and not warm_start_support_actor_only:
+            policy = runner.alg.policy
+            if momentum_preview_task:
+                if any(torch.count_nonzero(value).item() != 0 for value in policy.preview_adapter.state_dict().values()):
+                    raise RuntimeError("V19 preview adapter is not exactly zero after warm start")
+                if any(torch.count_nonzero(value).item() != 0 for value in policy.preview_state_gate.state_dict().values()):
+                    raise RuntimeError("V19 preview state gate is not exactly zero after warm start")
+            else:
+                if any(torch.count_nonzero(value).item() != 0 for value in policy.support_adapter.state_dict().values()):
+                    raise RuntimeError("Support adapter is not exactly zero after warm start")
+            with torch.no_grad():
+                probe_state = torch.linspace(
+                    -1.0, 1.0, steps=4 * 204, device=agent_cfg.device
+                ).reshape(4, 204)
+                legacy_action = policy.actor(probe_state)
+                if momentum_preview_task:
+                    probe_preview = torch.linspace(
+                        0.75, -0.75, steps=4 * 18, device=agent_cfg.device
+                    ).reshape(4, 18)
+                    expanded_input = torch.cat((probe_state, probe_preview), dim=-1)
+                elif stagger_support_task:
+                    probe_support = torch.linspace(
+                        -0.5,
+                        0.5,
+                        steps=4 * policy.support_obs_dim,
+                        device=agent_cfg.device,
+                    ).reshape(4, policy.support_obs_dim)
+                    expanded_input = torch.cat((probe_state, probe_support), dim=-1)
+                else:
+                    expanded_input = probe_state
+                expanded_action = policy.act_inference(expanded_input)
+                expected_action = legacy_action
+                if zero_legacy_support_action:
+                    expected_action = legacy_action.clone()
+                    expected_action[..., : policy.support_action_dim] = 0.0
+                equivalence_max_abs = float(
+                    torch.max(torch.abs(expected_action - expanded_action)).item()
+                )
+            if equivalence_max_abs >= 1.0e-6:
+                raise RuntimeError(
+                    f"frozen-support model_0 action equivalence failed: max_abs={equivalence_max_abs:.9g}"
+                )
+            print(
+                "[train.py] frozen-support model_0 action equivalence passed: "
+                f"max_abs={equivalence_max_abs:.3e}; arm exploration std={policy.fixed_arm_std:.1e}",
+                flush=True,
+            )
         # The optimizer and critic normalizer are intentionally untouched.
         # Explicitly reset the visible iteration counter as a guard against
         # accidentally treating this new contract as a continuation.
         runner.current_learning_iteration = 0
         warm_start_record = {
-            "mode": "actor_only",
+            "mode": (
+                "support_actor_only"
+                if warm_start_support_actor_only
+                else "actor_only"
+            ),
             "checkpoint": str(warm_path.resolve()),
-            "loaded": ["actor", "std", "actor_observation_normalizer"],
+            "loaded": (
+                [
+                    "actor",
+                    "stagger_support_encoder_and_adapter",
+                    "actor_observation_normalizer",
+                ]
+                if warm_start_support_actor_only
+                else ["actor", "actor_observation_normalizer"]
+                if frozen_support_task
+                else ["actor", "std", "actor_observation_normalizer"]
+            ),
+            "reset_support_exploration_std": (
+                float(runner.alg.policy.std[: runner.alg.policy.support_action_dim].mean().item())
+                if frozen_support_task
+                else None
+            ),
             "appended_zero_policy_observation_features": appended_obs_features,
+            "model_0_action_equivalence_max_abs": equivalence_max_abs,
+            "frozen_legacy_state_actor": frozen_support_task,
+            "loaded_support_adapter": warm_start_support_actor_only,
+            "support_corrected_action_indices": list(range(15)) if frozen_support_task else None,
+            "fixed_arm_exploration_std": (
+                runner.alg.policy.fixed_arm_std if frozen_support_task else None
+            ),
+            "frozen_actor_observation_normalizer": wide_stagger_recovery_task,
             "reset": ["critic", "critic_observation_normalizer", "optimizer", "iteration"],
         }
         Path(log_dir, "params", "warm_start.json").parent.mkdir(parents=True, exist_ok=True)
@@ -1478,7 +2110,15 @@ def _run(cfg):
             json.dumps(warm_start_record, indent=2) + "\n", encoding="utf-8"
         )
         print(
-            "[train.py] actor-only warm start: loaded V2 actor/std/actor normalizer; "
+            "[train.py] actor-only warm start: loaded "
+            + (
+                "legacy actor + learned stagger support adapter"
+                if warm_start_support_actor_only
+                else "V2 actor"
+            )
+            + "/actor normalizer"
+            + (" with support std reset; " if frozen_support_task else "/std; ")
+            +
             "critic, critic normalizer, optimizer, and iteration reset",
             flush=True,
         )
@@ -1616,11 +2256,191 @@ def _run(cfg):
         # termination term and independent physical safety signals before the
         # hit frame and through a short post-hit settling window.
         raw = env.unwrapped
+        recovery_adapter_scale = float(
+            cfg.get("audit_recovery_adapter_scale", 1.0)
+        )
+        recovery_center_decay_steps = int(
+            cfg.get("audit_recovery_center_decay_steps", 0)
+        )
+        recovery_center_half_width_m = float(
+            cfg.get("audit_recovery_center_half_width_m", 0.04)
+        )
+        recovery_center_decay_source = str(
+            cfg.get(
+                "audit_recovery_center_decay_source",
+                "recovery_adapter",
+            )
+        )
+        stage_a_front_gain = float(cfg.get("audit_stage_a_front_gain", 1.0))
+        stage_a_front_margin_m = float(
+            cfg.get("audit_stage_a_front_margin_m", 0.04)
+        )
+        stage_a_front_velocity_mps = float(
+            cfg.get("audit_stage_a_front_velocity_mps", 0.02)
+        )
+        stage_a_front_lead_steps = int(
+            cfg.get("audit_stage_a_front_lead_steps", 0)
+        )
+        if recovery_adapter_scale <= 0.0:
+            raise ValueError("audit_recovery_adapter_scale must be positive")
+        if recovery_center_decay_steps < 0:
+            raise ValueError("audit_recovery_center_decay_steps must be non-negative")
+        if recovery_center_half_width_m <= 0.0:
+            raise ValueError("audit_recovery_center_half_width_m must be positive")
+        if stage_a_front_gain < 1.0:
+            raise ValueError("audit_stage_a_front_gain must be at least 1.0")
+        if stage_a_front_margin_m <= 0.0:
+            raise ValueError("audit_stage_a_front_margin_m must be positive")
+        if stage_a_front_velocity_mps < 0.0:
+            raise ValueError("audit_stage_a_front_velocity_mps must be non-negative")
+        if stage_a_front_lead_steps < 0:
+            raise ValueError("audit_stage_a_front_lead_steps must be non-negative")
+        if recovery_center_decay_source not in {
+            "recovery_adapter",
+            "v22_support_adapter",
+            "all_coordinator",
+            "stage_a",
+        }:
+            raise ValueError(
+                "audit_recovery_center_decay_source must be one of "
+                "recovery_adapter, v22_support_adapter, all_coordinator, stage_a"
+            )
+        if recovery_center_decay_steps > 0 and (
+            not audit_policy_action or not wide_stagger_recovery_task
+        ):
+            raise ValueError(
+                "audit_recovery_center_decay_steps requires a V23 policy audit"
+            )
+        if abs(stage_a_front_gain - 1.0) > 1.0e-9 and (
+            not audit_policy_action or not stagger_support_task
+        ):
+            raise ValueError(
+                "audit_stage_a_front_gain requires a stagger-support policy audit"
+            )
+        if (
+            abs(stage_a_front_gain - 1.0) > 1.0e-9
+            and recovery_center_decay_steps > 0
+        ):
+            raise ValueError(
+                "Do not combine audit_stage_a_front_gain with center-decay audits"
+            )
+        if abs(recovery_adapter_scale - 1.0) > 1.0e-9:
+            if not audit_policy_action or not wide_stagger_recovery_task:
+                raise ValueError(
+                    "audit_recovery_adapter_scale requires a V23 policy audit"
+                )
+            with torch.no_grad():
+                for parameter in runner.alg.policy.recovery_adapter.parameters():
+                    parameter.mul_(recovery_adapter_scale)
+            print(
+                "[train.py] V23 audit-only recovery adapter scale="
+                f"{recovery_adapter_scale:g}",
+                flush=True,
+            )
         motion = raw.command_manager.get_term("motion")
         racket = raw.command_manager.get_term("racket_target")
         cases = raw.num_envs
+        support_fd_epsilon = float(cfg.get("audit_support_fd_epsilon", 0.0))
+        support_fd_dims = 15
+        support_fd_variants = 1 + 2 * support_fd_dims
+        support_candidates_value = cfg.get("audit_support_candidates", None)
+        support_candidates_path = (
+            Path(str(support_candidates_value)).expanduser().resolve()
+            if support_candidates_value
+            else None
+        )
+        support_candidate_knots = None
+        support_candidate_ids = None
+        support_candidate_prelude_steps = int(cfg.get("audit_support_candidate_prelude_steps", 0))
+        support_candidate_swing_steps = int(cfg.get("audit_support_candidate_swing_steps", 30))
+        if support_fd_epsilon < 0.0:
+            raise ValueError("audit_support_fd_epsilon must be non-negative")
+        if support_candidates_path is not None and support_fd_epsilon > 0.0:
+            raise ValueError("support candidates and finite-difference audit are mutually exclusive")
+        if support_candidate_prelude_steps < 0 or support_candidate_swing_steps <= 0:
+            raise ValueError(
+                "support candidate windows require prelude_steps >= 0 and swing_steps > 0"
+            )
+        if support_fd_epsilon > 0.0:
+            expected_cases = motion.motion.num_motions * support_fd_variants
+            if not audit_policy_action:
+                raise ValueError("support finite-difference audit requires +audit_policy_action=true")
+            if cases != expected_cases:
+                raise ValueError(
+                    "support finite-difference audit requires "
+                    f"num_envs={expected_cases}, got {cases}"
+                )
+            print(
+                "[train.py] support finite-difference audit: "
+                f"{motion.motion.num_motions} motions x {support_fd_variants} variants, "
+                f"epsilon={support_fd_epsilon:.4f}",
+                flush=True,
+            )
+        if support_candidates_path is not None:
+            if not audit_policy_action:
+                raise ValueError("support candidate audit requires +audit_policy_action=true")
+            if not support_candidates_path.is_file():
+                raise FileNotFoundError(f"support candidate file does not exist: {support_candidates_path}")
+            import numpy as np
+
+            with np.load(support_candidates_path, allow_pickle=False) as candidate_data:
+                if "motion_ids" not in candidate_data or "support_knots" not in candidate_data:
+                    raise ValueError(
+                        "support candidate NPZ requires motion_ids[N] and support_knots[N,K,15]"
+                    )
+                support_candidate_ids = torch.as_tensor(
+                    candidate_data["motion_ids"], dtype=torch.long, device=raw.device
+                )
+                support_candidate_knots = torch.as_tensor(
+                    candidate_data["support_knots"], dtype=torch.float, device=raw.device
+                )
+            if support_candidate_ids.shape != (cases,):
+                raise ValueError(
+                    f"candidate motion_ids must have shape ({cases},), got {tuple(support_candidate_ids.shape)}"
+                )
+            if (
+                support_candidate_knots.ndim != 3
+                or support_candidate_knots.shape[0] != cases
+                or support_candidate_knots.shape[2] != support_fd_dims
+            ):
+                raise ValueError(
+                    "candidate support_knots must have shape "
+                    f"({cases}, K, {support_fd_dims}), got {tuple(support_candidate_knots.shape)}"
+                )
+            if support_candidate_knots.shape[1] < 1:
+                raise ValueError("candidate support_knots requires at least one temporal knot")
+            if not torch.isfinite(support_candidate_knots).all():
+                raise ValueError("candidate support_knots contains non-finite values")
+            if (
+                support_candidate_ids.min().item() < 0
+                or support_candidate_ids.max().item() >= motion.motion.num_motions
+            ):
+                raise ValueError("candidate motion_ids contains an invalid motion index")
+            print(
+                "[train.py] support candidate audit: "
+                f"source={support_candidates_path} cases={cases} "
+                f"knots={support_candidate_knots.shape[1]} "
+                f"prelude_window={support_candidate_prelude_steps} "
+                f"swing_window={support_candidate_swing_steps}",
+                flush=True,
+            )
         env.reset()
-        ids = torch.arange(cases, device=raw.device) % motion.motion.num_motions
+        ids = (
+            support_candidate_ids
+            if support_candidate_ids is not None
+            else torch.arange(cases, device=raw.device) % motion.motion.num_motions
+        )
+        fd_variant = torch.arange(cases, device=raw.device) // motion.motion.num_motions
+        fd_action_index = torch.where(
+            fd_variant > 0,
+            (fd_variant - 1) // 2,
+            torch.full_like(fd_variant, -1),
+        )
+        fd_sign = torch.where(
+            fd_variant > 0,
+            torch.where((fd_variant - 1) % 2 == 0, 1.0, -1.0),
+            torch.zeros_like(fd_variant, dtype=torch.float),
+        )
         motion.motion_ids[:] = ids
         motion.time_steps.zero_()
         motion.tail_steps.zero_()
@@ -1656,6 +2476,29 @@ def _run(cfg):
         foot_contact_sum = torch.zeros(cases, device=raw.device)
         observed_steps = torch.zeros(cases, dtype=torch.long, device=raw.device)
         post_hit_steps = torch.zeros(cases, dtype=torch.long, device=raw.device)
+        min_capture_front_margin = torch.full(
+            (cases,), float("inf"), device=raw.device
+        )
+        min_capture_rear_margin = torch.full(
+            (cases,), float("inf"), device=raw.device
+        )
+        max_capture_center_distance = torch.zeros(cases, device=raw.device)
+        front_outside_steps = torch.zeros(cases, dtype=torch.long, device=raw.device)
+        rear_outside_steps = torch.zeros(cases, dtype=torch.long, device=raw.device)
+        first_front_outside_step = torch.full(
+            (cases,), -1, dtype=torch.long, device=raw.device
+        )
+        first_rear_outside_step = torch.full(
+            (cases,), -1, dtype=torch.long, device=raw.device
+        )
+        front_recentered = torch.zeros(cases, dtype=torch.bool, device=raw.device)
+        rear_recentered = torch.zeros(cases, dtype=torch.bool, device=raw.device)
+        max_forward_velocity = torch.zeros(cases, device=raw.device)
+        max_backward_velocity = torch.zeros(cases, device=raw.device)
+        max_forward_pitch_rate = torch.zeros(cases, device=raw.device)
+        max_backward_pitch_rate = torch.zeros(cases, device=raw.device)
+        max_recovery_group_l2 = torch.zeros((cases, 3), device=raw.device)
+        max_recovery_group_abs = torch.zeros((cases, 3), device=raw.device)
         active = torch.ones(cases, dtype=torch.bool, device=raw.device)
         finite = torch.ones(cases, dtype=torch.bool, device=raw.device)
         first_failure_step = torch.full((cases,), -1, dtype=torch.long, device=raw.device)
@@ -1691,6 +2534,12 @@ def _run(cfg):
             "waist_yaw_joint",
             "waist_roll_joint",
             "waist_pitch_joint",
+            "left_hip_pitch_joint",
+            "left_knee_joint",
+            "left_ankle_pitch_joint",
+            "right_hip_pitch_joint",
+            "right_knee_joint",
+            "right_ankle_pitch_joint",
             "right_shoulder_pitch_joint",
             "right_shoulder_yaw_joint",
             "right_elbow_joint",
@@ -1728,6 +2577,35 @@ def _run(cfg):
             observation, _ = env.get_observations()
         zero = torch.zeros((cases, raw.action_manager.total_action_dim), device=raw.device)
         clean_timeout = torch.zeros(cases, dtype=torch.bool, device=raw.device)
+        preview_adapter_action = torch.zeros_like(zero)
+        recovery_adapter_action = torch.zeros_like(zero)
+        recovery_decay_source_action = torch.zeros_like(zero)
+        recovery_decay_trigger_step = torch.full(
+            (cases,), -1, dtype=torch.long, device=raw.device
+        )
+        recovery_positive_forward_seen = torch.zeros(
+            cases, dtype=torch.bool, device=raw.device
+        )
+        recovery_decay_factor = torch.ones(cases, device=raw.device)
+        # Policy order is left leg, right leg, waist, right arm. Only retire
+        # the learned V23 sagittal recovery pulse; frozen priors and lateral
+        # stabilization remain untouched.
+        recovery_decay_action_indices = torch.tensor(
+            (0, 3, 4, 6, 9, 10, 14),
+            dtype=torch.long,
+            device=raw.device,
+        )
+        if (
+            recovery_center_decay_steps > 0
+            and recovery_center_decay_source == "stage_a"
+        ):
+            raw.stage_a_sagittal_audit_scale = torch.ones(
+                cases, device=raw.device
+            )
+        elif abs(stage_a_front_gain - 1.0) > 1.0e-9:
+            raw.stage_a_sagittal_audit_scale = torch.ones(
+                cases, device=raw.device
+            )
         for step in range(max_audit_steps):
             racket.racket_target_pos_w[:] = target_pos
             racket.racket_target_vel_w[:] = target_vel
@@ -1738,6 +2616,270 @@ def _run(cfg):
             else:
                 with torch.inference_mode():
                     action = policy(observation)
+                    if momentum_preview_task:
+                        normalized = runner.obs_normalizer(observation)
+                        v19_policy = runner.alg.policy
+                        state_features = v19_policy.support_state_encoder(normalized[:, :204])
+                        preview_features = v19_policy.preview_encoder(normalized[:, 204:])
+                        preview_modulation = 1.0 + torch.tanh(
+                            v19_policy.preview_state_gate(state_features)
+                        )
+                        preview_delta = v19_policy.preview_adapter(
+                            preview_features * preview_modulation
+                        )
+                        preview_adapter_action.zero_()
+                        preview_adapter_action[:, :15] = preview_delta
+                    if wide_stagger_recovery_task:
+                        normalized = runner.obs_normalizer(observation)
+                        recovery_policy = runner.alg.policy
+                        recovery_base_action = recovery_policy.base_action_mean(
+                            normalized[:, : recovery_policy.BASE_OBS_DIM]
+                        )
+                        recovery_adapter_action = (
+                            recovery_policy.act_inference(normalized)
+                            - recovery_base_action
+                        )
+                        if recovery_center_decay_steps > 0:
+                            from training.tasks.tracking.mdp.observations import (
+                                stagger_support_state,
+                            )
+
+                            recovery_state = stagger_support_state(raw)
+                            post_hit = torch.tensor(
+                                [row is not None for row in exact],
+                                dtype=torch.bool,
+                                device=raw.device,
+                            )
+                            forward_velocity = robot.data.root_lin_vel_b[:, 0]
+                            recovery_positive_forward_seen |= post_hit & (
+                                forward_velocity > 0.0
+                            )
+                            centered = (
+                                torch.abs(
+                                    recovery_state["capture_rel_support_x_b"]
+                                )
+                                <= recovery_center_half_width_m
+                            )
+                            trigger = (
+                                active_before_step
+                                & post_hit
+                                & recovery_positive_forward_seen
+                                & centered
+                                & (forward_velocity <= 0.0)
+                                & (recovery_decay_trigger_step < 0)
+                            )
+                            recovery_decay_trigger_step = torch.where(
+                                trigger,
+                                torch.full_like(
+                                    recovery_decay_trigger_step, step + 1
+                                ),
+                                recovery_decay_trigger_step,
+                            )
+                            triggered = recovery_decay_trigger_step >= 0
+                            elapsed = (
+                                (step + 1) - recovery_decay_trigger_step
+                            ).clamp(min=0).to(dtype=action.dtype)
+                            u = (
+                                elapsed / float(recovery_center_decay_steps)
+                            ).clamp(0.0, 1.0)
+                            smooth = u * u * (3.0 - 2.0 * u)
+                            recovery_decay_factor = torch.where(
+                                triggered, 1.0 - smooth, torch.ones_like(smooth)
+                            )
+                            if (
+                                recovery_center_decay_source
+                                == "recovery_adapter"
+                            ):
+                                recovery_decay_source_action = (
+                                    recovery_adapter_action
+                                )
+                            elif (
+                                recovery_center_decay_source
+                                == "v22_support_adapter"
+                            ):
+                                base_observation = normalized[
+                                    :, : recovery_policy.BASE_OBS_DIM
+                                ]
+                                support_features = torch.cat(
+                                    (
+                                        recovery_policy.support_state_encoder(
+                                            base_observation[
+                                                :, : recovery_policy.legacy_obs_dim
+                                            ]
+                                        ),
+                                        recovery_policy.stagger_encoder(
+                                            base_observation[
+                                                :, recovery_policy.legacy_obs_dim :
+                                            ]
+                                        ),
+                                    ),
+                                    dim=-1,
+                                )
+                                support_delta = (
+                                    recovery_policy.support_adapter(
+                                        recovery_policy.support_fusion(
+                                            support_features
+                                        )
+                                    )
+                                )
+                                recovery_decay_source_action = (
+                                    torch.zeros_like(action)
+                                )
+                                recovery_decay_source_action[:, :15] = (
+                                    support_delta
+                                )
+                            elif recovery_center_decay_source == "stage_a":
+                                recovery_decay_source_action = torch.zeros_like(
+                                    action
+                                )
+                                raw.stage_a_sagittal_audit_scale[:] = (
+                                    recovery_decay_factor
+                                )
+                            else:
+                                recovery_decay_source_action = action
+                            action = action.clone()
+                            selected_delta = (
+                                recovery_decay_source_action.index_select(
+                                    1, recovery_decay_action_indices
+                                )
+                            )
+                            action[:, recovery_decay_action_indices] -= (
+                                (1.0 - recovery_decay_factor).unsqueeze(-1)
+                                * selected_delta
+                            )
+                        for group_index, (start, end) in enumerate(
+                            ((0, 12), (12, 15), (15, 22))
+                        ):
+                            group = recovery_adapter_action[:, start:end]
+                            max_recovery_group_l2[:, group_index] = torch.maximum(
+                                max_recovery_group_l2[:, group_index],
+                                torch.linalg.vector_norm(group, dim=-1),
+                            )
+                            max_recovery_group_abs[:, group_index] = torch.maximum(
+                                max_recovery_group_abs[:, group_index],
+                                torch.abs(group).max(dim=-1).values,
+                            )
+                    if abs(stage_a_front_gain - 1.0) > 1.0e-9:
+                        from training.tasks.tracking.mdp.observations import (
+                            stagger_support_state,
+                        )
+
+                        front_support = stagger_support_state(raw)
+                        # The lead is phase-based rather than motion-ID based.
+                        # It answers whether front-side support is arriving too
+                        # late, while keeping prelude behavior untouched.
+                        in_swing = (
+                            motion.prelude_elapsed_steps
+                            >= int(motion.prelude_steps)
+                        )
+                        front_window = in_swing & (
+                            motion.time_steps
+                            >= (hit - stage_a_front_lead_steps).clamp(min=0)
+                        )
+                        both_feet = front_support["contacts"].all(dim=-1)
+                        front_risk = (
+                            active_before_step
+                            & front_window
+                            & both_feet
+                            & (
+                                front_support["capture_front_margin"]
+                                <= stage_a_front_margin_m
+                            )
+                            & (
+                                robot.data.root_lin_vel_b[:, 0]
+                                >= stage_a_front_velocity_mps
+                            )
+                        )
+                        raw.stage_a_sagittal_audit_scale[:] = torch.where(
+                            front_risk,
+                            torch.full_like(
+                                raw.stage_a_sagittal_audit_scale,
+                                stage_a_front_gain,
+                            ),
+                            torch.ones_like(raw.stage_a_sagittal_audit_scale),
+                        )
+            if support_fd_epsilon > 0.0:
+                # The environment updates command phase after physics. Apply the
+                # perturbation only after prelude has completed and when the
+                # upcoming physical sample lies in the hit-30 through exact-hit
+                # window.  During prelude motion.time_steps is held at zero, so
+                # omitting the explicit prelude gate would silently apply a
+                # hit-30 perturbation throughout the ready-pose transition.
+                action = action.clone()
+                upcoming_phase = motion.time_steps + 1
+                in_swing = motion.prelude_elapsed_steps >= int(motion.prelude_steps)
+                fd_window = (
+                    in_swing
+                    & (upcoming_phase >= torch.clamp(hit - 30, min=0))
+                    & (upcoming_phase <= hit)
+                )
+                fd_active = fd_window & (fd_variant > 0)
+                fd_env_ids = torch.nonzero(fd_active, as_tuple=False).flatten()
+                if fd_env_ids.numel() > 0:
+                    action[fd_env_ids, fd_action_index[fd_env_ids]] += (
+                        support_fd_epsilon * fd_sign[fd_env_ids]
+                    )
+                    action.clamp_(-1.0, 1.0)
+            if support_candidate_knots is not None:
+                # Candidate trajectories are additive raw support corrections.
+                # Prelude and swing windows are represented explicitly so a
+                # candidate cannot enter prelude merely because motion phase is
+                # held at zero there.
+                action = action.clone()
+                prelude_elapsed = motion.prelude_elapsed_steps
+                prelude_total = int(motion.prelude_steps)
+                upcoming_phase = motion.time_steps + 1
+                swing_start = torch.clamp(hit - support_candidate_swing_steps, min=0)
+                effective_swing_steps = (hit - swing_start).clamp_min(1)
+                in_prelude_window = (
+                    (support_candidate_prelude_steps > 0)
+                    & (prelude_elapsed < prelude_total)
+                    & (
+                        prelude_elapsed + 1
+                        > prelude_total - support_candidate_prelude_steps
+                    )
+                )
+                in_swing_window = (
+                    (prelude_elapsed >= prelude_total)
+                    & (upcoming_phase >= swing_start)
+                    & (upcoming_phase <= hit)
+                )
+                candidate_active = in_prelude_window | in_swing_window
+                prelude_progress = (
+                    prelude_elapsed + 1 - (prelude_total - support_candidate_prelude_steps)
+                ).clamp(min=0, max=max(support_candidate_prelude_steps, 1))
+                swing_progress = support_candidate_prelude_steps + (
+                    upcoming_phase - swing_start
+                ).clamp(min=0)
+                combined_progress = torch.where(
+                    in_prelude_window,
+                    prelude_progress,
+                    swing_progress,
+                ).float()
+                total_progress = (
+                    support_candidate_prelude_steps + effective_swing_steps
+                ).float().clamp_min(1.0)
+                knot_position = (
+                    combined_progress
+                    / total_progress
+                    * (support_candidate_knots.shape[1] - 1)
+                )
+                left_index = torch.floor(knot_position).to(torch.long).clamp(
+                    0, support_candidate_knots.shape[1] - 1
+                )
+                right_index = (left_index + 1).clamp(
+                    0, support_candidate_knots.shape[1] - 1
+                )
+                blend = (knot_position - left_index.float()).unsqueeze(-1)
+                row_index = torch.arange(cases, device=raw.device)
+                candidate_correction = (
+                    support_candidate_knots[row_index, left_index] * (1.0 - blend)
+                    + support_candidate_knots[row_index, right_index] * blend
+                )
+                action[:, :support_fd_dims] += (
+                    candidate_correction * candidate_active.unsqueeze(-1)
+                )
+                action.clamp_(-1.0, 1.0)
             observation, _, _, _ = env.step(action)
             root_delta = robot.data.root_pos_w - root0
             root_max = torch.where(
@@ -1837,16 +2979,92 @@ def _run(cfg):
             )
             foot_contact_sum += foot_contact.float().mean(dim=-1) * active_before_step
             observed_steps += active_before_step.to(torch.long)
+            termination_masks = {
+                name: raw.termination_manager.get_term(name).clone()
+                for name in raw.termination_manager.active_terms
+            }
+            manager_done = torch.zeros(cases, dtype=torch.bool, device=raw.device)
+            for mask in termination_masks.values():
+                manager_done |= mask.to(torch.bool) & active_before_step
+            if stagger_support_task:
+                from training.tasks.tracking.mdp.observations import stagger_support_state
+
+                support_state = stagger_support_state(raw)
+                exact_before_metrics = torch.tensor(
+                    [row is not None for row in exact],
+                    dtype=torch.bool,
+                    device=raw.device,
+                )
+                # Isaac resets terminated environments inside env.step(). Excluding
+                # those rows prevents the reset pose from looking like a recovery.
+                recovery_active = active_before_step & exact_before_metrics & ~manager_done
+                front_margin = support_state["capture_front_margin"]
+                rear_margin = support_state["capture_rear_margin"]
+                capture_distance = torch.abs(
+                    support_state["capture_rel_support_x_b"]
+                )
+                min_capture_front_margin = torch.where(
+                    recovery_active,
+                    torch.minimum(min_capture_front_margin, front_margin),
+                    min_capture_front_margin,
+                )
+                min_capture_rear_margin = torch.where(
+                    recovery_active,
+                    torch.minimum(min_capture_rear_margin, rear_margin),
+                    min_capture_rear_margin,
+                )
+                max_capture_center_distance = torch.where(
+                    recovery_active,
+                    torch.maximum(max_capture_center_distance, capture_distance),
+                    max_capture_center_distance,
+                )
+                front_outside = recovery_active & (front_margin < 0.0)
+                rear_outside = recovery_active & (rear_margin < 0.0)
+                front_outside_steps += front_outside.to(torch.long)
+                rear_outside_steps += rear_outside.to(torch.long)
+                first_front = front_outside & (first_front_outside_step < 0)
+                first_rear = rear_outside & (first_rear_outside_step < 0)
+                first_front_outside_step = torch.where(
+                    first_front,
+                    torch.full_like(first_front_outside_step, step + 1),
+                    first_front_outside_step,
+                )
+                first_rear_outside_step = torch.where(
+                    first_rear,
+                    torch.full_like(first_rear_outside_step, step + 1),
+                    first_rear_outside_step,
+                )
+                centered = recovery_active & (capture_distance <= 0.04)
+                front_recentered |= centered & (first_front_outside_step >= 0)
+                rear_recentered |= centered & (first_rear_outside_step >= 0)
+                forward_velocity = robot.data.root_lin_vel_b[:, 0]
+                pitch_rate = robot.data.root_ang_vel_b[:, 1]
+                max_forward_velocity = torch.where(
+                    recovery_active,
+                    torch.maximum(max_forward_velocity, torch.relu(forward_velocity)),
+                    max_forward_velocity,
+                )
+                max_backward_velocity = torch.where(
+                    recovery_active,
+                    torch.maximum(max_backward_velocity, torch.relu(-forward_velocity)),
+                    max_backward_velocity,
+                )
+                max_forward_pitch_rate = torch.where(
+                    recovery_active,
+                    torch.maximum(max_forward_pitch_rate, torch.relu(pitch_rate)),
+                    max_forward_pitch_rate,
+                )
+                max_backward_pitch_rate = torch.where(
+                    recovery_active,
+                    torch.maximum(max_backward_pitch_rate, torch.relu(-pitch_rate)),
+                    max_backward_pitch_rate,
+                )
             finite &= (
                 torch.isfinite(robot.data.root_state_w).all(dim=-1)
                 & torch.isfinite(robot.data.joint_pos).all(dim=-1)
                 & torch.isfinite(robot.data.joint_vel).all(dim=-1)
             )
 
-            termination_masks = {
-                name: raw.termination_manager.get_term(name).clone()
-                for name in raw.termination_manager.active_terms
-            }
             done = torch.zeros(cases, dtype=torch.bool, device=raw.device)
             failed = torch.zeros(cases, dtype=torch.bool, device=raw.device)
             for name, mask in termination_masks.items():
@@ -1877,6 +3095,11 @@ def _run(cfg):
             )
             racket._compute_racket_state()
             if audit_trace_path is not None:
+                stagger_trace_state = None
+                if stagger_support_task:
+                    from training.tasks.tracking.mdp.observations import stagger_support_state
+
+                    stagger_trace_state = stagger_support_state(raw)
                 # Default to the compact pre-hit diagnostic window. Full-cycle
                 # traces are opt-in because they are used to diagnose delayed
                 # falls during the hold/return/ready segments.
@@ -1992,6 +3215,40 @@ def _run(cfg):
                     root_roll, root_pitch, _ = euler_xyz_from_quat(robot.data.root_quat_w)
                     root_roll = wrap_to_pi(root_roll)
                     root_pitch = wrap_to_pi(root_pitch)
+                    stagger_support = None
+                    if stagger_trace_state is not None:
+                        stagger_support = {
+                            "foot_rel_root_b_m": [
+                                [float(value) for value in row]
+                                for row in stagger_trace_state["foot_rel_root_b"][env_id].tolist()
+                            ],
+                            "com_rel_support_b_m": [
+                                float(value)
+                                for value in stagger_trace_state["com_rel_support_b"][env_id].tolist()
+                            ],
+                            "capture_rel_support_x_m": float(
+                                stagger_trace_state["capture_rel_support_x_b"][env_id].item()
+                            ),
+                            "capture_front_margin_m": float(
+                                stagger_trace_state["capture_front_margin"][env_id].item()
+                            ),
+                            "capture_rear_margin_m": float(
+                                stagger_trace_state["capture_rear_margin"][env_id].item()
+                            ),
+                            "normalized_foot_load": [
+                                float(value)
+                                for value in stagger_trace_state["normalized_load"][env_id].tolist()
+                            ],
+                            "load_balance_left_minus_right": float(
+                                stagger_trace_state["load_balance"][env_id].item()
+                            ),
+                            "total_load_body_weight_ratio": float(
+                                stagger_trace_state["total_load_ratio"][env_id].item()
+                            ),
+                            "sagittal_span_m": float(
+                                stagger_trace_state["sagittal_span"][env_id].item()
+                            ),
+                        }
                     audit_trace.append(
                         {
                             "motion_id": motion_id,
@@ -2015,6 +3272,7 @@ def _run(cfg):
                             "root_roll_rate_radps": float(robot.data.root_ang_vel_b[env_id, 0].item()),
                             "root_tilt_deg": float(root_tilt_deg[env_id].item()),
                             "root_support_centerline_margin_m": float((support_radius - support_distance).item()),
+                            "stagger_support": stagger_support,
                             "feet": feet_trace,
                             "coordinator_raw_l2": float(
                                 torch.linalg.vector_norm(action_term.raw_actions[env_id]).item()
@@ -2023,6 +3281,102 @@ def _run(cfg):
                                 action_term.raw_actions[env_id].abs().max().item()
                             ),
                             "coordinator_groups": coordinator_groups,
+                            "stage_a_sagittal_exit": {
+                                "scale": float(
+                                    getattr(
+                                        raw,
+                                        "stage_a_sagittal_exit_scale",
+                                        torch.ones(cases, device=raw.device),
+                                    )[env_id].item()
+                                ),
+                                "state": int(
+                                    getattr(
+                                        raw,
+                                        "stage_a_sagittal_exit_state",
+                                        torch.zeros(
+                                            cases,
+                                            dtype=torch.long,
+                                            device=raw.device,
+                                        ),
+                                    )[env_id].item()
+                                ),
+                                "trigger_step": int(
+                                    getattr(
+                                        raw,
+                                        "stage_a_sagittal_exit_trigger_step",
+                                        torch.full(
+                                            (cases,),
+                                            -1,
+                                            dtype=torch.long,
+                                            device=raw.device,
+                                        ),
+                                    )[env_id].item()
+                                ),
+                                "front_gain": float(
+                                    getattr(
+                                        raw,
+                                        "stage_a_sagittal_front_gain",
+                                        torch.ones(cases, device=raw.device),
+                                    )[env_id].item()
+                                ),
+                                "rearm_ready": bool(
+                                    getattr(
+                                        raw,
+                                        "stage_a_sagittal_rearm_ready",
+                                        torch.zeros(
+                                            cases,
+                                            dtype=torch.bool,
+                                            device=raw.device,
+                                        ),
+                                    )[env_id].item()
+                                ),
+                                "rearm_stable": bool(
+                                    getattr(
+                                        raw,
+                                        "stage_a_sagittal_rearm_stable",
+                                        torch.zeros(
+                                            cases,
+                                            dtype=torch.bool,
+                                            device=raw.device,
+                                        ),
+                                    )[env_id].item()
+                                ),
+                                "rearm_stable_steps": int(
+                                    getattr(
+                                        raw,
+                                        "stage_a_sagittal_rearm_stable_steps",
+                                        torch.zeros(
+                                            cases,
+                                            dtype=torch.long,
+                                            device=raw.device,
+                                        ),
+                                    )[env_id].item()
+                                ),
+                                "rearm_rejected": bool(
+                                    getattr(
+                                        raw,
+                                        "stage_a_sagittal_rearm_rejected",
+                                        torch.zeros(
+                                            cases,
+                                            dtype=torch.bool,
+                                            device=raw.device,
+                                        ),
+                                    )[env_id].item()
+                                ),
+                                "audit_scale": float(
+                                    getattr(
+                                        raw,
+                                        "stage_a_sagittal_audit_scale",
+                                        torch.ones(cases, device=raw.device),
+                                    )[env_id].item()
+                                ),
+                                "raw_action": [
+                                    float(value)
+                                    for value in raw.legacy_stage_a_last_action[
+                                        env_id, :12
+                                    ].tolist()
+                                ],
+                            },
                             "waist_command": waist_command,
                             "racket_actual_velocity_mps": [
                                 float(value) for value in racket.racket_lin_vel_w[env_id].tolist()
@@ -2037,6 +3391,8 @@ def _run(cfg):
                 if exact[env_id] is None:
                     position_error = racket.racket_target_pos_w[env_id] - racket.racket_pos_w[env_id]
                     velocity_error = racket.racket_target_vel_w[env_id] - racket.racket_lin_vel_w[env_id]
+                    _, exact_root_pitch, _ = euler_xyz_from_quat(robot.data.root_quat_w[env_id : env_id + 1])
+                    exact_root_pitch = wrap_to_pi(exact_root_pitch)[0]
                     dot = torch.clamp(
                         torch.sum(racket.racket_target_normal_w[env_id] * racket.racket_normal_w[env_id]),
                         -1.0,
@@ -2060,8 +3416,29 @@ def _run(cfg):
                         "target_velocity_z_mps": float(racket.racket_target_vel_w[env_id, 2].item()),
                         "normal_error_deg": float(torch.rad2deg(torch.arccos(dot)).item()),
                         "root_displacement_m": float(root_max[env_id].item()),
+                        "root_forward_velocity_mps_at_hit": float(
+                            robot.data.root_lin_vel_b[env_id, 0].item()
+                        ),
+                        "root_pitch_rate_radps_at_hit": float(
+                            robot.data.root_ang_vel_b[env_id, 1].item()
+                        ),
+                        "root_pitch_rad_at_hit": float(exact_root_pitch.item()),
                         "hit_control_step": step + 1,
                     }
+                    if momentum_preview_task:
+                        adapter_row = preview_adapter_action[env_id]
+                        exact[env_id]["preview_adapter_support_l2"] = float(
+                            torch.linalg.vector_norm(adapter_row[:15]).item()
+                        )
+                        exact[env_id]["preview_adapter_support_max_abs"] = float(
+                            adapter_row[:15].abs().max().item()
+                        )
+                        exact[env_id]["preview_adapter_arm_max_abs"] = float(
+                            adapter_row[15:].abs().max().item()
+                        )
+                        exact[env_id]["preview_adapter_support_action"] = [
+                            float(value) for value in adapter_row[:15].tolist()
+                        ]
                     # For the joint coordinator, record what the learned actor
                     # actually contributed in physical radians.  This separates
                     # a reward/authority failure (no useful correction) from a
@@ -2070,6 +3447,9 @@ def _run(cfg):
                     raw_action = action_term.raw_actions[env_id]
                     processed_action = action_term.processed_actions[env_id]
                     if raw_action.numel() == 22 and processed_action.numel() == 22:
+                        exact[env_id]["coordinator_support_raw_action"] = [
+                            float(value) for value in raw_action[:15].tolist()
+                        ]
                         for group, start, end in (("leg", 0, 12), ("waist", 12, 15), ("arm", 15, 22)):
                             raw_group = raw_action[start:end]
                             physical_group = processed_action[start:end]
@@ -2140,9 +3520,29 @@ def _run(cfg):
                 and max_root_tilt_deg[env_id].item() <= 30.0
                 and foot_contact_sum[env_id].item() / max(observed_steps[env_id].item(), 1) >= 0.50
             )
+            capture_recenter_pass = True
+            if stagger_support_task:
+                capture_recenter_pass = not (
+                    (
+                        front_outside_steps[env_id].item() > 0
+                        and not front_recentered[env_id].item()
+                    )
+                    or (
+                        rear_outside_steps[env_id].item() > 0
+                        and not rear_recentered[env_id].item()
+                    )
+                )
+                stability_pass = stability_pass and capture_recenter_pass
             row.update({
+                "support_candidate_index": env_id if support_candidate_knots is not None else None,
+                "support_fd_action_index": (
+                    int(fd_action_index[env_id].item()) if fd_variant[env_id].item() > 0 else None
+                ),
+                "support_fd_sign": float(fd_sign[env_id].item()),
+                "support_fd_epsilon": support_fd_epsilon,
                 "safety_pass": hard_safety_pass,
                 "stability_pass": stability_pass,
+                "capture_recenter_pass": capture_recenter_pass,
                 "first_failure_step": None if first_failure_step[env_id].item() < 0 else int(first_failure_step[env_id].item()),
                 "termination_reasons": termination_labels[env_id],
                 "termination_count_by_reason": {
@@ -2178,6 +3578,89 @@ def _run(cfg):
                 ),
                 "finite_state": bool(finite[env_id].item()),
             })
+            if stagger_support_task:
+                row.update(
+                    {
+                        "post_hit_min_capture_front_margin_m": float(
+                            min_capture_front_margin[env_id].item()
+                        ),
+                        "post_hit_min_capture_rear_margin_m": float(
+                            min_capture_rear_margin[env_id].item()
+                        ),
+                        "post_hit_max_capture_center_distance_m": float(
+                            max_capture_center_distance[env_id].item()
+                        ),
+                        "post_hit_front_outside_steps": int(
+                            front_outside_steps[env_id].item()
+                        ),
+                        "post_hit_rear_outside_steps": int(
+                            rear_outside_steps[env_id].item()
+                        ),
+                        "post_hit_first_front_outside_step": (
+                            None
+                            if first_front_outside_step[env_id].item() < 0
+                            else int(first_front_outside_step[env_id].item())
+                        ),
+                        "post_hit_first_rear_outside_step": (
+                            None
+                            if first_rear_outside_step[env_id].item() < 0
+                            else int(first_rear_outside_step[env_id].item())
+                        ),
+                        "post_hit_recentered_after_front_exit": bool(
+                            front_recentered[env_id].item()
+                        ),
+                        "post_hit_recentered_after_rear_exit": bool(
+                            rear_recentered[env_id].item()
+                        ),
+                        "post_hit_max_forward_velocity_mps": float(
+                            max_forward_velocity[env_id].item()
+                        ),
+                        "post_hit_max_backward_velocity_mps": float(
+                            max_backward_velocity[env_id].item()
+                        ),
+                        "post_hit_max_forward_pitch_rate_radps": float(
+                            max_forward_pitch_rate[env_id].item()
+                        ),
+                        "post_hit_max_backward_pitch_rate_radps": float(
+                            max_backward_pitch_rate[env_id].item()
+                        ),
+                    }
+                )
+            if wide_stagger_recovery_task:
+                row.update(
+                    {
+                        "recovery_center_decay_steps": recovery_center_decay_steps,
+                        "recovery_center_decay_source": (
+                            recovery_center_decay_source
+                        ),
+                        "recovery_center_decay_trigger_step": (
+                            None
+                            if recovery_decay_trigger_step[env_id].item() < 0
+                            else int(recovery_decay_trigger_step[env_id].item())
+                        ),
+                        "recovery_center_decay_final_factor": float(
+                            recovery_decay_factor[env_id].item()
+                        ),
+                        "recovery_adapter_max_leg_raw_l2": float(
+                            max_recovery_group_l2[env_id, 0].item()
+                        ),
+                        "recovery_adapter_max_waist_raw_l2": float(
+                            max_recovery_group_l2[env_id, 1].item()
+                        ),
+                        "recovery_adapter_max_arm_raw_l2": float(
+                            max_recovery_group_l2[env_id, 2].item()
+                        ),
+                        "recovery_adapter_max_leg_raw_abs": float(
+                            max_recovery_group_abs[env_id, 0].item()
+                        ),
+                        "recovery_adapter_max_waist_raw_abs": float(
+                            max_recovery_group_abs[env_id, 1].item()
+                        ),
+                        "recovery_adapter_max_arm_raw_abs": float(
+                            max_recovery_group_abs[env_id, 2].item()
+                        ),
+                    }
+                )
             rows.append(row)
         if any(row["position_error_m"] is None for row in rows if "position_error_m" in row):
             raise RuntimeError("zero-action audit produced an invalid exact-hit metric")
@@ -2188,7 +3671,34 @@ def _run(cfg):
             "task": task_id,
             "action": "all_zero" if policy is None else "deterministic_checkpoint_actor",
             "audit_scope": {
-                "motions": int(cases),
+                "motions": int(motion.motion.num_motions),
+                "cases": int(cases),
+                "support_fd_variants": support_fd_variants if support_fd_epsilon > 0.0 else 1,
+                "support_fd_epsilon": support_fd_epsilon,
+                "recovery_adapter_scale": recovery_adapter_scale,
+                "recovery_center_decay": {
+                    "steps": recovery_center_decay_steps,
+                    "source": recovery_center_decay_source,
+                    "capture_center_half_width_m": recovery_center_half_width_m,
+                    "trigger": (
+                        "post-hit, positive forward velocity previously observed, "
+                        "current forward velocity <= 0, capture point within center band"
+                    ),
+                    "action_indices": [
+                        int(value) for value in recovery_decay_action_indices.tolist()
+                    ],
+                },
+                "support_candidates": (
+                    {
+                        "source": str(support_candidates_path),
+                        "temporal_knots": int(support_candidate_knots.shape[1]),
+                        "support_dimensions": support_fd_dims,
+                        "prelude_window_steps": support_candidate_prelude_steps,
+                        "swing_window_steps": support_candidate_swing_steps,
+                    }
+                    if support_candidate_knots is not None
+                    else None
+                ),
                 "full_episode": audit_full_episode,
                 "post_hit_steps_required": post_hit_required,
                 "hard_safety_rule": (

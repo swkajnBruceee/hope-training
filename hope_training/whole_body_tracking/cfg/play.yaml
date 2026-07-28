@@ -53,10 +53,18 @@ stance_contract_mode: null       # null=allow fixed/prepositioned mixed manifest
 # Force one manifest entry after the physical ready-pose reset.  Intended for
 # deterministic visual replay; null preserves normal manifest sampling.
 motion_id: null
+# Comma-separated manifest motion IDs for no-reset multi-shot evaluation.
+# Example: "0,0" or "0,4,2,5,1".  Requires the V26 re-arm task.
+multi_shot_sequence: null
+multi_shot_report: null
+multi_shot_max_steps: null
 
 video: false
 video_length: 200
 video_name: play
+# For long multi-shot audits, capture only a diagnostic suffix without
+# retaining thousands of full-resolution frames in host memory.
+video_start_step: 0
 max_steps: null
 
 # Optional static table added to the original training scene.  null keeps the

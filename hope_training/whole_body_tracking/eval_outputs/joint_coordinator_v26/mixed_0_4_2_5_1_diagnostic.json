@@ -1,0 +1,228 @@
+{
+  "checkpoint": "logs/rsl_rl/agibot_a3_joint_coordinator_v22_wide_deep_stability_20260727/2026-07-27_20-39-41_v22_2d_support_from_zero_left004_wide004_knee042_256x1500/model_1499.pt",
+  "task": "HOPEA3JointCoordinatorV26MultiShotRearm",
+  "sequence": [
+    0,
+    4,
+    2,
+    5,
+    1
+  ],
+  "complete": false,
+  "failure": {
+    "control_step": 1617,
+    "shot_index": 4,
+    "terminated": true,
+    "truncated": false,
+    "termination_reasons": [
+      "recovery_tilt"
+    ]
+  },
+  "control_steps": 1617,
+  "shots": [
+    {
+      "shot_index": 0,
+      "motion_id": 0,
+      "hit_control_step": 80,
+      "position_error_m": 0.047368500381708145,
+      "velocity_error_mps": 1.1990318298339844,
+      "normal_error_deg": 6.289242744445801,
+      "ready_control_step": 326,
+      "ready_hold_steps": 20
+    },
+    {
+      "shot_index": 1,
+      "motion_id": 4,
+      "hit_control_step": 406,
+      "position_error_m": 0.10078808665275574,
+      "velocity_error_mps": 2.1922097206115723,
+      "normal_error_deg": 9.885985374450684,
+      "ready_control_step": 704,
+      "ready_hold_steps": 20
+    },
+    {
+      "shot_index": 2,
+      "motion_id": 2,
+      "hit_control_step": 784,
+      "position_error_m": 0.08484397083520889,
+      "velocity_error_mps": 1.0375728607177734,
+      "normal_error_deg": 3.3638882637023926,
+      "ready_control_step": 1076,
+      "ready_hold_steps": 20
+    },
+    {
+      "shot_index": 3,
+      "motion_id": 5,
+      "hit_control_step": 1156,
+      "position_error_m": 0.08120669424533844,
+      "velocity_error_mps": 2.0323352813720703,
+      "normal_error_deg": 6.6937479972839355,
+      "ready_control_step": 1445,
+      "ready_hold_steps": 20
+    },
+    {
+      "shot_index": 4,
+      "motion_id": 1,
+      "hit_control_step": 1525,
+      "position_error_m": 0.09794101864099503,
+      "velocity_error_mps": 1.216963529586792,
+      "normal_error_deg": 7.422220706939697
+    }
+  ],
+  "state_transitions": [
+    {
+      "control_step": 1,
+      "shot_index": 0,
+      "motion_id": 0,
+      "state": 0,
+      "scale": 1.0
+    },
+    {
+      "control_step": 121,
+      "shot_index": 0,
+      "motion_id": 0,
+      "state": 1,
+      "scale": 0.8960000276565552
+    },
+    {
+      "control_step": 125,
+      "shot_index": 0,
+      "motion_id": 0,
+      "state": 2,
+      "scale": 0.0
+    },
+    {
+      "control_step": 326,
+      "shot_index": 0,
+      "motion_id": 0,
+      "state": 3,
+      "scale": 0.0
+    },
+    {
+      "control_step": 327,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 4,
+      "scale": 0.04296875
+    },
+    {
+      "control_step": 334,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 0,
+      "scale": 1.0
+    },
+    {
+      "control_step": 487,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 1,
+      "scale": 0.8960000276565552
+    },
+    {
+      "control_step": 491,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 2,
+      "scale": 0.0
+    },
+    {
+      "control_step": 704,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 3,
+      "scale": 0.0
+    },
+    {
+      "control_step": 705,
+      "shot_index": 2,
+      "motion_id": 2,
+      "state": 4,
+      "scale": 0.04296875
+    },
+    {
+      "control_step": 712,
+      "shot_index": 2,
+      "motion_id": 2,
+      "state": 0,
+      "scale": 1.0
+    },
+    {
+      "control_step": 865,
+      "shot_index": 2,
+      "motion_id": 2,
+      "state": 1,
+      "scale": 0.8960000276565552
+    },
+    {
+      "control_step": 869,
+      "shot_index": 2,
+      "motion_id": 2,
+      "state": 2,
+      "scale": 0.0
+    },
+    {
+      "control_step": 1076,
+      "shot_index": 2,
+      "motion_id": 2,
+      "state": 3,
+      "scale": 0.0
+    },
+    {
+      "control_step": 1077,
+      "shot_index": 3,
+      "motion_id": 5,
+      "state": 4,
+      "scale": 0.04296875
+    },
+    {
+      "control_step": 1084,
+      "shot_index": 3,
+      "motion_id": 5,
+      "state": 0,
+      "scale": 1.0
+    },
+    {
+      "control_step": 1234,
+      "shot_index": 3,
+      "motion_id": 5,
+      "state": 1,
+      "scale": 0.8960000276565552
+    },
+    {
+      "control_step": 1238,
+      "shot_index": 3,
+      "motion_id": 5,
+      "state": 2,
+      "scale": 0.0
+    },
+    {
+      "control_step": 1445,
+      "shot_index": 3,
+      "motion_id": 5,
+      "state": 3,
+      "scale": 0.0
+    },
+    {
+      "control_step": 1446,
+      "shot_index": 4,
+      "motion_id": 1,
+      "state": 4,
+      "scale": 0.04296875
+    },
+    {
+      "control_step": 1453,
+      "shot_index": 4,
+      "motion_id": 1,
+      "state": 0,
+      "scale": 1.0
+    }
+  ],
+  "state_contract": {
+    "0": "SUPPORT_ACTIVE",
+    "1": "DECAYING",
+    "2": "SETTLED",
+    "3": "READY",
+    "4": "RAMPING"
+  }
+}

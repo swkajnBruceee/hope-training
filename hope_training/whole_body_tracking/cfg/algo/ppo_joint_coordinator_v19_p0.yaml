@@ -1,0 +1,34 @@
+name: ppo_joint_coordinator_v19_p0
+
+runner:
+  num_steps_per_env: 64
+  max_iterations: 300
+  save_interval: 25
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [256, 128, 64]
+  critic_hidden_dims: [256, 128, 64]
+  activation: elu
+  # The paired finite-difference audit showed useful support corrections require
+  # several raw dimensions around 0.3-0.5. A 0.03 policy std never explored
+  # that basin; +/-0.10 perturbations were safe in all 186 paired hit windows.
+  init_noise_std: 0.10
+
+algorithm:
+  # Only the zero-initialized preview branch and new critic learn in P0.
+  # Adaptive KL collapsed the first smoke run to 1e-5 before the adapter
+  # developed a measurable response, so keep this diagnostic stage fixed.
+  learning_rate: 0.0001
+  schedule: fixed
+  desired_kl: 0.01
+  entropy_coef: 0.0005
+  num_learning_epochs: 3
+  num_mini_batches: 2
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0
+  normalize_advantage_per_mini_batch: false

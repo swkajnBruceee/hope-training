@@ -285,6 +285,218 @@ def pre_hit_root_forward_velocity_l2(env: ManagerBasedRLEnv, command_name: str) 
     return torch.where(_through_hit_mask(env, command_name), cost, torch.zeros_like(cost))
 
 
+def _strike_approach_weight(
+    env: ManagerBasedRLEnv, command_name: str, window_steps: int
+) -> torch.Tensor:
+    """Smooth 0..1 weight over the final reference steps before exact hit."""
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    if command._use_motion_library:
+        hit = command.motion.hit_frame[command.motion_ids]
+    else:
+        hit = torch.full_like(command.time_steps, int(command.motion.hit_frame[0]))
+    in_swing = command.prelude_elapsed_steps >= int(command.prelude_steps)
+    # Rewards observe the post-physics state one command update before
+    # MotionCommand advances its index.
+    physical_phase = command.time_steps + 1
+    active = in_swing & (command.tail_steps == 0) & (physical_phase <= hit)
+    start = hit - int(window_steps)
+    u = ((physical_phase - start).float() / float(max(window_steps, 1))).clamp(0.0, 1.0)
+    smooth = u * u * (3.0 - 2.0 * u)
+    return torch.where(active, smooth, torch.zeros_like(smooth))
+
+
+def strike_approach_pitch_rate_deadband_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    window_steps: int = 30,
+    deadband: float = 0.06,
+) -> torch.Tensor:
+    """Symmetrically drive body pitch rate toward zero during swing approach."""
+    pitch_rate = torch.abs(env.scene["robot"].data.root_ang_vel_b[:, 1])
+    excess = torch.clamp(pitch_rate - float(deadband), min=0.0)
+    return _strike_approach_weight(env, command_name, window_steps) * torch.square(excess)
+
+
+def strike_approach_forward_velocity_deadband_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    window_steps: int = 30,
+    deadband: float = 0.05,
+) -> torch.Tensor:
+    """Symmetrically drive body-frame fore-aft velocity toward zero before hit."""
+    forward_speed = torch.abs(env.scene["robot"].data.root_lin_vel_b[:, 0])
+    excess = torch.clamp(forward_speed - float(deadband), min=0.0)
+    return _strike_approach_weight(env, command_name, window_steps) * torch.square(excess)
+
+
+def _exact_strike_mask(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    if command._use_motion_library:
+        hit = command.motion.hit_frame[command.motion_ids]
+    else:
+        hit = torch.full_like(command.time_steps, int(command.motion.hit_frame[0]))
+    # ManagerBasedRLEnv computes rewards after physics but advances commands
+    # afterward. Thus the physical state reported as motion step `hit` was
+    # produced while command.time_steps still held `hit - 1`.
+    return (
+        (command.prelude_elapsed_steps >= int(command.prelude_steps))
+        & (command.tail_steps == 0)
+        & (command.time_steps + 1 == hit)
+    )
+
+
+def exact_strike_pitch_rate_deadband_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    deadband: float = 0.06,
+) -> torch.Tensor:
+    """One-step impact cost whose integrated magnitude is timestep invariant."""
+    pitch_rate = torch.abs(env.scene["robot"].data.root_ang_vel_b[:, 1])
+    excess = torch.clamp(pitch_rate - float(deadband), min=0.0)
+    cost = torch.square(excess) / float(env.step_dt)
+    return torch.where(_exact_strike_mask(env, command_name), cost, torch.zeros_like(cost))
+
+
+def exact_strike_forward_velocity_deadband_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    deadband: float = 0.05,
+) -> torch.Tensor:
+    """Directly constrain body-frame forward speed at the exact impact frame."""
+    forward_speed = torch.abs(env.scene["robot"].data.root_lin_vel_b[:, 0])
+    excess = torch.clamp(forward_speed - float(deadband), min=0.0)
+    cost = torch.square(excess) / float(env.step_dt)
+    return torch.where(_exact_strike_mask(env, command_name), cost, torch.zeros_like(cost))
+
+
+def _post_hit_weight(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    delay_steps: int = 2,
+    ramp_steps: int = 8,
+) -> torch.Tensor:
+    """Smoothly enable recovery shaping after, never before, exact impact."""
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    if command._use_motion_library:
+        hit = command.motion.hit_frame[command.motion_ids]
+        final = command.motion.motion_lengths[command.motion_ids] - 1
+    else:
+        hit = torch.full_like(command.time_steps, int(command.motion.hit_frame[0]))
+        final = torch.full_like(command.time_steps, int(command.motion.time_step_total) - 1)
+    physical_phase = command.time_steps + 1
+    steps_after_hit = torch.clamp(physical_phase - hit, min=0)
+    tail_after_hit = torch.clamp(final - hit, min=0) + command.tail_steps
+    steps_after_hit = torch.where(command.tail_steps > 0, tail_after_hit, steps_after_hit)
+    steps_after_hit = torch.where(
+        command.prelude_elapsed_steps >= int(command.prelude_steps),
+        steps_after_hit,
+        torch.zeros_like(steps_after_hit),
+    )
+    u = (
+        (steps_after_hit - int(delay_steps)).float()
+        / float(max(int(ramp_steps), 1))
+    ).clamp(0.0, 1.0)
+    return u * u * (3.0 - 2.0 * u)
+
+
+def post_hit_forward_velocity_deadband_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    deadband: float = 0.06,
+    delay_steps: int = 2,
+    ramp_steps: int = 8,
+) -> torch.Tensor:
+    """Symmetrically brake fore-aft motion without rewarding a sign reversal."""
+    speed = torch.abs(env.scene["robot"].data.root_lin_vel_b[:, 0])
+    excess = torch.relu(speed - float(deadband))
+    return _post_hit_weight(
+        env, command_name, delay_steps, ramp_steps
+    ) * torch.square(excess)
+
+
+def post_hit_pitch_rate_deadband_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    deadband: float = 0.08,
+    delay_steps: int = 2,
+    ramp_steps: int = 8,
+) -> torch.Tensor:
+    """Symmetrically brake pitch rotation after the strike."""
+    rate = torch.abs(env.scene["robot"].data.root_ang_vel_b[:, 1])
+    excess = torch.relu(rate - float(deadband))
+    return _post_hit_weight(
+        env, command_name, delay_steps, ramp_steps
+    ) * torch.square(excess)
+
+
+def post_hit_capture_point_center_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    deadband: float = 0.04,
+    delay_steps: int = 2,
+    ramp_steps: int = 8,
+) -> torch.Tensor:
+    """Penalize sagittal capture-point distance from the support center."""
+    from training.tasks.tracking.mdp.observations import stagger_support_state
+
+    distance = torch.abs(stagger_support_state(env)["capture_rel_support_x_b"])
+    excess = torch.relu(distance - float(deadband))
+    return _post_hit_weight(
+        env, command_name, delay_steps, ramp_steps
+    ) * torch.square(excess)
+
+
+def post_hit_capture_point_barrier_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    target_margin: float = 0.06,
+    delay_steps: int = 2,
+    ramp_steps: int = 8,
+) -> torch.Tensor:
+    """Increase braking pressure smoothly near either sagittal support edge."""
+    from training.tasks.tracking.mdp.observations import stagger_support_state
+
+    state = stagger_support_state(env)
+    front = torch.relu(float(target_margin) - state["capture_front_margin"])
+    rear = torch.relu(float(target_margin) - state["capture_rear_margin"])
+    return _post_hit_weight(
+        env, command_name, delay_steps, ramp_steps
+    ) * (torch.square(front) + torch.square(rear))
+
+
+class PostHitCapturePointCenterProgress(ManagerTermBase):
+    """Reward capture-point motion toward center and penalize motion away."""
+
+    def __init__(self, cfg, env):
+        super().__init__(cfg, env)
+        self._previous_distance = torch.zeros(env.num_envs, device=env.device)
+        self._active = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+
+    def reset(self, env_ids=None):
+        if env_ids is None:
+            self._active[:] = False
+        else:
+            self._active[env_ids] = False
+
+    def __call__(
+        self,
+        env: ManagerBasedRLEnv,
+        command_name: str,
+        delay_steps: int = 2,
+        ramp_steps: int = 8,
+    ) -> torch.Tensor:
+        from training.tasks.tracking.mdp.observations import stagger_support_state
+
+        weight = _post_hit_weight(env, command_name, delay_steps, ramp_steps)
+        active = weight > 0.0
+        distance = torch.abs(stagger_support_state(env)["capture_rel_support_x_b"])
+        progress = (self._previous_distance - distance) / float(env.step_dt)
+        progress = torch.where(self._active & active, progress, torch.zeros_like(progress))
+        self._previous_distance[:] = distance
+        self._active[:] = active
+        return weight * torch.clamp(progress, min=-2.0, max=2.0)
+
+
 class PostStrikeRootRecoveryProgress(ManagerTermBase):
     """Reward tail-only reduction of an observable floating-root instability potential.
 
@@ -362,6 +574,77 @@ def feet_contact_fraction(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, th
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     force = torch.linalg.vector_norm(contact_sensor.data.net_forces_w[:, sensor_cfg.body_ids], dim=-1)
     return (force > threshold).to(dtype=torch.float32).mean(dim=-1)
+
+
+def stagger_capture_point_margin_l2(
+    env: ManagerBasedRLEnv,
+    target_margin: float = 0.04,
+) -> torch.Tensor:
+    """Penalize a sagittal capture point that approaches either support edge."""
+    from training.tasks.tracking.mdp.observations import stagger_support_state
+
+    state = stagger_support_state(env)
+    front_deficit = torch.relu(float(target_margin) - state["capture_front_margin"])
+    rear_deficit = torch.relu(float(target_margin) - state["capture_rear_margin"])
+    return torch.square(front_deficit) + torch.square(rear_deficit)
+
+
+def stagger_lateral_capture_point_margin_l2(
+    env: ManagerBasedRLEnv,
+    target_margin: float = 0.035,
+) -> torch.Tensor:
+    """Penalize a lateral capture point approaching either widened support edge."""
+    from training.tasks.tracking.mdp.observations import stagger_support_state
+
+    state = stagger_support_state(env)
+    positive_deficit = torch.relu(
+        float(target_margin) - state["capture_lateral_positive_margin"]
+    )
+    negative_deficit = torch.relu(
+        float(target_margin) - state["capture_lateral_negative_margin"]
+    )
+    return torch.square(positive_deficit) + torch.square(negative_deficit)
+
+
+def stagger_minimum_foot_load(
+    env: ManagerBasedRLEnv,
+    minimum_body_weight_fraction: float = 0.08,
+) -> torch.Tensor:
+    """Reward keeping both feet meaningfully loaded without prescribing 50/50 load."""
+    from training.tasks.tracking.mdp.observations import stagger_support_state
+
+    state = stagger_support_state(env)
+    minimum_load = state["normalized_load"].min(dim=-1).values
+    load_score = torch.clamp(
+        minimum_load / float(minimum_body_weight_fraction),
+        min=0.0,
+        max=1.0,
+    )
+    return load_score * state["contacts"].all(dim=-1).to(dtype=load_score.dtype)
+
+
+def stagger_sagittal_span_l2(
+    env: ManagerBasedRLEnv,
+    target_span: float = 0.08,
+    deadband: float = 0.015,
+) -> torch.Tensor:
+    """Keep the fore-aft stance from collapsing back toward parallel feet."""
+    from training.tasks.tracking.mdp.observations import stagger_support_state
+
+    span_error = torch.abs(stagger_support_state(env)["sagittal_span"] - float(target_span))
+    return torch.square(torch.relu(span_error - float(deadband)))
+
+
+def stagger_lateral_span_l2(
+    env: ManagerBasedRLEnv,
+    target_span: float = 0.42,
+    deadband: float = 0.03,
+) -> torch.Tensor:
+    """Keep the widened stance from collapsing laterally during recovery."""
+    from training.tasks.tracking.mdp.observations import stagger_support_state
+
+    span_error = torch.abs(stagger_support_state(env)["lateral_span"] - float(target_span))
+    return torch.square(torch.relu(span_error - float(deadband)))
 
 
 def _get_body_indexes(command: MotionCommand, body_names: list[str] | None) -> list[int]:

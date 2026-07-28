@@ -70,6 +70,73 @@ class MotionOnPolicyRunner(OnPolicyRunner):
     def _log_live_metrics(self, step: int) -> None:
         """Log current manager state means every PPO iteration for richer dashboards."""
         env = self.env.unwrapped
+        policy = self.alg.policy
+        if hasattr(policy, "preview_adapter"):
+            with torch.no_grad():
+                self._log_scalar(
+                    "Live/V19/preview_adapter_weight_l2",
+                    torch.linalg.vector_norm(policy.preview_adapter.weight).item(),
+                    step,
+                )
+                self._log_scalar(
+                    "Live/V19/preview_encoder_weight_l2",
+                    sum(
+                        torch.linalg.vector_norm(parameter).item()
+                        for name, parameter in policy.preview_encoder.named_parameters()
+                        if name.endswith("weight")
+                    ),
+                    step,
+                )
+                self._log_scalar(
+                    "Live/V19/preview_state_gate_weight_l2",
+                    torch.linalg.vector_norm(policy.preview_state_gate.weight).item(),
+                    step,
+                )
+                self._log_scalar(
+                    "Live/V19/support_state_encoder_weight_l2",
+                    sum(
+                        torch.linalg.vector_norm(parameter).item()
+                        for name, parameter in policy.support_state_encoder.named_parameters()
+                        if name.endswith("weight")
+                    ),
+                    step,
+                )
+                self._log_scalar(
+                    "Live/V19/support_policy_std",
+                    policy.std[: policy.support_action_dim].mean().item(),
+                    step,
+                )
+                self._log_scalar(
+                    "Live/V19/fixed_arm_policy_std",
+                    float(policy.fixed_arm_std),
+                    step,
+                )
+        if hasattr(policy, "recovery_adapter"):
+            with torch.no_grad():
+                self._log_scalar(
+                    "Live/V23/recovery_adapter_weight_l2",
+                    torch.linalg.vector_norm(policy.recovery_adapter.weight).item(),
+                    step,
+                )
+                self._log_scalar(
+                    "Live/V23/recovery_adapter_bias_l2",
+                    torch.linalg.vector_norm(policy.recovery_adapter.bias).item(),
+                    step,
+                )
+                self._log_scalar(
+                    "Live/V23/recovery_encoder_weight_l2",
+                    sum(
+                        torch.linalg.vector_norm(parameter).item()
+                        for name, parameter in policy.recovery_encoder.named_parameters()
+                        if name.endswith("weight")
+                    ),
+                    step,
+                )
+                self._log_scalar(
+                    "Live/V23/recovery_policy_std",
+                    policy.std.mean().item(),
+                    step,
+                )
 
         if hasattr(env, "command_manager"):
             for term_name in env.command_manager.active_terms:
@@ -98,6 +165,24 @@ class MotionOnPolicyRunner(OnPolicyRunner):
 
         if hasattr(env, "action_manager"):
             action = getattr(env.action_manager, "action", None)
+            term = env.action_manager.get_term("joint_pos")
+            if hasattr(term, "raw_actions") and term.raw_actions.shape[-1] == 22:
+                for group_name, start, end in (
+                    ("leg", 0, 12),
+                    ("waist", 12, 15),
+                    ("arm", 15, 22),
+                ):
+                    group = term.raw_actions[:, start:end]
+                    self._log_scalar(
+                        f"Live/V19/{group_name}_raw_abs_mean",
+                        group.abs().mean().item(),
+                        step,
+                    )
+                    self._log_scalar(
+                        f"Live/V19/{group_name}_raw_clip_fraction",
+                        (group.abs() >= 0.999).float().mean().item(),
+                        step,
+                    )
             prev_action = getattr(env.action_manager, "prev_action", None)
             if action is not None:
                 action_abs = torch.abs(action)

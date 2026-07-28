@@ -1,0 +1,101 @@
+{
+  "checkpoint": "logs/rsl_rl/agibot_a3_joint_coordinator_v22_wide_deep_stability_20260727/2026-07-27_20-39-41_v22_2d_support_from_zero_left004_wide004_knee042_256x1500/model_1499.pt",
+  "task": "HOPEA3JointCoordinatorV26MultiShotRearm",
+  "sequence": [
+    0,
+    4
+  ],
+  "complete": false,
+  "failure": {
+    "control_step": 700,
+    "shot_index": 1,
+    "terminated": true,
+    "truncated": false
+  },
+  "control_steps": 700,
+  "shots": [
+    {
+      "shot_index": 0,
+      "motion_id": 0,
+      "hit_control_step": 80,
+      "position_error_m": 0.047368500381708145,
+      "velocity_error_mps": 1.1990318298339844,
+      "normal_error_deg": 6.289242744445801,
+      "ready_control_step": 326,
+      "ready_hold_steps": 20
+    },
+    {
+      "shot_index": 1,
+      "motion_id": 4,
+      "hit_control_step": 406,
+      "position_error_m": 0.10078808665275574,
+      "velocity_error_mps": 2.1922097206115723,
+      "normal_error_deg": 9.885985374450684
+    }
+  ],
+  "state_transitions": [
+    {
+      "control_step": 1,
+      "shot_index": 0,
+      "motion_id": 0,
+      "state": 0,
+      "scale": 1.0
+    },
+    {
+      "control_step": 121,
+      "shot_index": 0,
+      "motion_id": 0,
+      "state": 1,
+      "scale": 0.8960000276565552
+    },
+    {
+      "control_step": 125,
+      "shot_index": 0,
+      "motion_id": 0,
+      "state": 2,
+      "scale": 0.0
+    },
+    {
+      "control_step": 326,
+      "shot_index": 0,
+      "motion_id": 0,
+      "state": 3,
+      "scale": 0.0
+    },
+    {
+      "control_step": 327,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 4,
+      "scale": 0.04296875
+    },
+    {
+      "control_step": 334,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 0,
+      "scale": 1.0
+    },
+    {
+      "control_step": 487,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 1,
+      "scale": 0.8960000276565552
+    },
+    {
+      "control_step": 491,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 2,
+      "scale": 0.0
+    }
+  ],
+  "state_contract": {
+    "0": "SUPPORT_ACTIVE",
+    "1": "DECAYING",
+    "2": "SETTLED",
+    "3": "READY",
+    "4": "RAMPING"
+  }
+}

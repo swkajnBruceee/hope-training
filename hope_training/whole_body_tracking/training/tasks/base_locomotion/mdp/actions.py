@@ -1036,8 +1036,440 @@ class A3FrozenStageAJointCoordinatorAction(A3F1FrozenUpperBaseCompositePositionA
         self._legacy_bounded = torch.zeros_like(self._legacy_raw)
         self._leg_joint_ids_tensor = self._base_joint_ids_tensor[:12]
         self._processed_actions = torch.zeros((self.num_envs, self.action_dim), device=self.device)
+        # Per-episode latch for retiring the frozen Stage-A sagittal bracing
+        # residual after it has arrested the forward swing disturbance.
+        self._stage_a_exit_state = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
+        self._stage_a_exit_positive_steps = torch.zeros_like(self._stage_a_exit_state)
+        self._stage_a_exit_positive_confirmed = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
+        self._stage_a_exit_neutral_steps = torch.zeros_like(self._stage_a_exit_state)
+        self._stage_a_exit_decay_elapsed = torch.zeros_like(self._stage_a_exit_state)
+        self._stage_a_exit_last_episode_step = torch.full_like(
+            self._stage_a_exit_state, -1
+        )
+        self._stage_a_exit_scale = torch.ones(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
+        self._stage_a_front_gain = torch.ones(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
+        self._stage_a_exit_trigger_step = torch.full_like(
+            self._stage_a_exit_state, -1
+        )
+        self._stage_a_rearm_stable_steps = torch.zeros_like(
+            self._stage_a_exit_state
+        )
+        self._stage_a_rearm_ramp_elapsed = torch.zeros_like(
+            self._stage_a_exit_state
+        )
+        self._stage_a_rearm_last_shot_cycle = torch.zeros_like(
+            self._stage_a_exit_state
+        )
+        self._stage_a_rearm_rejected = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
+        self._stage_a_rearm_ready = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
+        self._stage_a_rearm_stable = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
+        env.stage_a_sagittal_exit_scale = self._stage_a_exit_scale
+        env.stage_a_sagittal_exit_state = self._stage_a_exit_state
+        env.stage_a_sagittal_exit_trigger_step = self._stage_a_exit_trigger_step
+        env.stage_a_sagittal_front_gain = self._stage_a_front_gain
+        env.stage_a_sagittal_rearm_ready = self._stage_a_rearm_ready
+        env.stage_a_sagittal_rearm_stable = self._stage_a_rearm_stable
+        env.stage_a_sagittal_rearm_stable_steps = self._stage_a_rearm_stable_steps
+        env.stage_a_sagittal_rearm_rejected = self._stage_a_rearm_rejected
         env.legacy_stage_a_last_action = self._legacy_raw.clone()
         env.joint_coordinator_last_action = torch.zeros((self.num_envs, self.action_dim), device=self.device)
+
+    def _stage_a_rearm_stability(self, motion, support) -> torch.Tensor:
+        """Return the fail-closed settled condition for another strike."""
+        center_half_width = float(
+            getattr(self.cfg, "stage_a_sagittal_rearm_center_half_width_m", 0.05)
+        )
+        velocity_max = float(
+            getattr(self.cfg, "stage_a_sagittal_rearm_velocity_max_mps", 0.06)
+        )
+        pitch_rate_max = float(
+            getattr(self.cfg, "stage_a_sagittal_rearm_pitch_rate_max_radps", 0.10)
+        )
+        tilt_max = float(
+            getattr(self.cfg, "stage_a_sagittal_rearm_tilt_max_rad", 0.10)
+        )
+        arm_error_max = float(
+            getattr(self.cfg, "stage_a_sagittal_rearm_arm_error_max_rad", 0.15)
+        )
+        if min(
+            center_half_width,
+            velocity_max,
+            pitch_rate_max,
+            tilt_max,
+            arm_error_max,
+        ) <= 0.0:
+            raise ValueError("Invalid Stage-A sagittal re-arm stability contract")
+
+        gravity_b = self._asset.data.projected_gravity_b
+        tilt = torch.acos(torch.clamp(-gravity_b[:, 2], -1.0, 1.0))
+        arm_ids = self._upper_joint_ids_tensor[3:]
+        arm_error = torch.max(
+            torch.abs(
+                self._asset.data.joint_pos[:, arm_ids]
+                - self._asset.data.default_joint_pos[:, arm_ids]
+            ),
+            dim=-1,
+        ).values
+        ready_reference = torch.ones(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
+        if bool(
+            getattr(
+                self.cfg,
+                "stage_a_sagittal_rearm_require_ready_reference",
+                True,
+            )
+        ):
+            ready_start = (
+                int(motion.cfg.hold_last_frame_steps)
+                + int(motion.return_to_default_steps)
+            )
+            ready_reference = motion.tail_steps >= ready_start
+        return (
+            ready_reference
+            & support["contacts"].all(dim=-1)
+            & (
+                torch.abs(support["capture_rel_support_x_b"])
+                <= center_half_width
+            )
+            & (torch.abs(self._asset.data.root_lin_vel_b[:, 0]) <= velocity_max)
+            & (
+                torch.abs(self._asset.data.root_ang_vel_b[:, 1])
+                <= pitch_rate_max
+            )
+            & (tilt <= tilt_max)
+            & (arm_error <= arm_error_max)
+        )
+
+    def _stage_a_sagittal_exit_gate(self, motion) -> torch.Tensor:
+        """Return a latched Stage-A sagittal exit gate for the current swing.
+
+        Stage-A remains fully active while it counters the forward swing
+        impulse. Once the body has crossed its velocity zero point near the
+        support center, the same sagittal residual becomes a rearward bias;
+        retire only those six leg channels with a finite smooth transition.
+        """
+        if not bool(getattr(self.cfg, "stage_a_sagittal_exit_enabled", False)):
+            self._stage_a_exit_scale.fill_(1.0)
+            return self._stage_a_exit_scale
+
+        decay_steps = int(getattr(self.cfg, "stage_a_sagittal_exit_decay_steps", 5))
+        positive_confirm_steps = int(
+            getattr(self.cfg, "stage_a_sagittal_exit_positive_confirm_steps", 2)
+        )
+        neutral_confirm_steps = int(
+            getattr(self.cfg, "stage_a_sagittal_exit_neutral_confirm_steps", 2)
+        )
+        center_half_width = float(
+            getattr(self.cfg, "stage_a_sagittal_exit_center_half_width_m", 0.04)
+        )
+        velocity_deadband = float(
+            getattr(self.cfg, "stage_a_sagittal_exit_velocity_deadband_mps", 0.03)
+        )
+        if (
+            decay_steps < 1
+            or positive_confirm_steps < 1
+            or neutral_confirm_steps < 1
+            or center_half_width <= 0.0
+            or velocity_deadband < 0.0
+        ):
+            raise ValueError("Invalid Stage-A sagittal exit contract")
+
+        episode_step = getattr(self._env, "episode_length_buf", None)
+        if episode_step is None:
+            episode_step = torch.zeros_like(self._stage_a_exit_state)
+        reset = episode_step < self._stage_a_exit_last_episode_step
+        if reset.any():
+            self._stage_a_exit_state[reset] = 0
+            self._stage_a_exit_positive_steps[reset] = 0
+            self._stage_a_exit_positive_confirmed[reset] = False
+            self._stage_a_exit_neutral_steps[reset] = 0
+            self._stage_a_exit_decay_elapsed[reset] = 0
+            self._stage_a_exit_trigger_step[reset] = -1
+            self._stage_a_rearm_stable_steps[reset] = 0
+            self._stage_a_rearm_ramp_elapsed[reset] = 0
+            self._stage_a_rearm_rejected[reset] = False
+            self._stage_a_rearm_ready[reset] = False
+            self._stage_a_rearm_stable[reset] = False
+            self._stage_a_rearm_last_shot_cycle[reset] = motion.shot_cycle[reset]
+        self._stage_a_exit_last_episode_step[:] = episode_step
+
+        from training.tasks.tracking.mdp.observations import stagger_support_state
+
+        support = stagger_support_state(self._env)
+        rearm_enabled = bool(
+            getattr(self.cfg, "stage_a_sagittal_rearm_enabled", False)
+        )
+        if rearm_enabled:
+            stable_hold_steps = int(
+                getattr(self.cfg, "stage_a_sagittal_rearm_stable_steps", 20)
+            )
+            ramp_steps = int(
+                getattr(self.cfg, "stage_a_sagittal_rearm_ramp_steps", 8)
+            )
+            if stable_hold_steps < 1 or ramp_steps < 1:
+                raise ValueError("Stage-A sagittal re-arm steps must be positive")
+            # A command cycle change is the authoritative launch event.  Test
+            # it against the READY latch before evaluating stability against
+            # the new prelude reference, which is intentionally no longer in
+            # the previous shot's ready-hold phase.
+            new_shot = (
+                motion.shot_cycle != self._stage_a_rearm_last_shot_cycle
+            )
+            accepted = new_shot & (self._stage_a_exit_state == 3)
+            rejected = new_shot & (~accepted)
+            self._stage_a_rearm_rejected |= rejected
+            self._stage_a_exit_state = torch.where(
+                accepted,
+                torch.full_like(self._stage_a_exit_state, 4),
+                self._stage_a_exit_state,
+            )
+            stable = self._stage_a_rearm_stability(motion, support)
+            self._stage_a_rearm_stable[:] = stable
+            settled = (self._stage_a_exit_state == 2) & (~new_shot)
+            self._stage_a_rearm_stable_steps = torch.where(
+                settled & stable,
+                self._stage_a_rearm_stable_steps + 1,
+                torch.where(
+                    settled,
+                    torch.zeros_like(self._stage_a_rearm_stable_steps),
+                    self._stage_a_rearm_stable_steps,
+                ),
+            )
+            become_ready = settled & (
+                self._stage_a_rearm_stable_steps >= stable_hold_steps
+            )
+            self._stage_a_exit_state = torch.where(
+                become_ready,
+                torch.full_like(self._stage_a_exit_state, 3),
+                self._stage_a_exit_state,
+            )
+            # READY is revocable until a new shot begins.  This prevents a
+            # delayed disturbance from being hidden by an old stable window.
+            lose_ready = (
+                (self._stage_a_exit_state == 3) & (~stable) & (~new_shot)
+            )
+            self._stage_a_exit_state = torch.where(
+                lose_ready,
+                torch.full_like(self._stage_a_exit_state, 2),
+                self._stage_a_exit_state,
+            )
+            self._stage_a_rearm_stable_steps = torch.where(
+                lose_ready,
+                torch.zeros_like(self._stage_a_rearm_stable_steps),
+                self._stage_a_rearm_stable_steps,
+            )
+            self._stage_a_rearm_ramp_elapsed = torch.where(
+                accepted,
+                torch.zeros_like(self._stage_a_rearm_ramp_elapsed),
+                self._stage_a_rearm_ramp_elapsed,
+            )
+            self._stage_a_exit_positive_steps = torch.where(
+                accepted,
+                torch.zeros_like(self._stage_a_exit_positive_steps),
+                self._stage_a_exit_positive_steps,
+            )
+            self._stage_a_exit_positive_confirmed &= ~accepted
+            self._stage_a_exit_neutral_steps = torch.where(
+                accepted,
+                torch.zeros_like(self._stage_a_exit_neutral_steps),
+                self._stage_a_exit_neutral_steps,
+            )
+            self._stage_a_exit_decay_elapsed = torch.where(
+                accepted,
+                torch.zeros_like(self._stage_a_exit_decay_elapsed),
+                self._stage_a_exit_decay_elapsed,
+            )
+            self._stage_a_exit_trigger_step = torch.where(
+                accepted,
+                torch.full_like(self._stage_a_exit_trigger_step, -1),
+                self._stage_a_exit_trigger_step,
+            )
+            self._stage_a_rearm_last_shot_cycle[:] = motion.shot_cycle
+            ramping = self._stage_a_exit_state == 4
+            self._stage_a_rearm_ramp_elapsed = torch.where(
+                ramping,
+                self._stage_a_rearm_ramp_elapsed + 1,
+                self._stage_a_rearm_ramp_elapsed,
+            )
+            ramp_u = (
+                self._stage_a_rearm_ramp_elapsed.float() / float(ramp_steps)
+            ).clamp(0.0, 1.0)
+            ramp_scale = ramp_u * ramp_u * (3.0 - 2.0 * ramp_u)
+            self._stage_a_exit_scale[:] = torch.where(
+                ramping, ramp_scale, self._stage_a_exit_scale
+            )
+            ramp_complete = ramping & (
+                self._stage_a_rearm_ramp_elapsed >= ramp_steps
+            )
+            self._stage_a_exit_state = torch.where(
+                ramp_complete,
+                torch.zeros_like(self._stage_a_exit_state),
+                self._stage_a_exit_state,
+            )
+            self._stage_a_exit_scale[ramp_complete] = 1.0
+            self._stage_a_rearm_ready[:] = self._stage_a_exit_state == 3
+        else:
+            self._stage_a_rearm_ready.zero_()
+            self._stage_a_rearm_stable.zero_()
+
+        hit = self._motion_hit_steps(motion)
+        in_prelude = motion.prelude_elapsed_steps < int(motion.prelude_steps)
+        post_hit = (~in_prelude) & (
+            (motion.time_steps >= hit) | (motion.tail_steps > 0)
+        )
+        both_feet = support["contacts"].all(dim=-1)
+        require_both_feet = bool(
+            getattr(self.cfg, "stage_a_sagittal_exit_require_both_feet", True)
+        )
+        contact_ok = both_feet if require_both_feet else torch.ones_like(both_feet)
+        forward_velocity = self._asset.data.root_lin_vel_b[:, 0]
+        positive = post_hit & contact_ok & (forward_velocity > velocity_deadband)
+        active = self._stage_a_exit_state == 0
+        self._stage_a_exit_positive_steps = torch.where(
+            active & positive,
+            self._stage_a_exit_positive_steps + 1,
+            torch.where(active, torch.zeros_like(self._stage_a_exit_positive_steps), self._stage_a_exit_positive_steps),
+        )
+        self._stage_a_exit_positive_confirmed |= (
+            active
+            & (
+                self._stage_a_exit_positive_steps
+                >= positive_confirm_steps
+            )
+        )
+        centered = torch.abs(support["capture_rel_support_x_b"]) <= center_half_width
+        neutral = (
+            active
+            & post_hit
+            & contact_ok
+            & self._stage_a_exit_positive_confirmed
+            & centered
+            & (forward_velocity <= velocity_deadband)
+        )
+        self._stage_a_exit_neutral_steps = torch.where(
+            neutral,
+            self._stage_a_exit_neutral_steps + 1,
+            torch.where(active, torch.zeros_like(self._stage_a_exit_neutral_steps), self._stage_a_exit_neutral_steps),
+        )
+        trigger = active & (
+            self._stage_a_exit_neutral_steps >= neutral_confirm_steps
+        )
+        self._stage_a_exit_state = torch.where(
+            trigger,
+            torch.ones_like(self._stage_a_exit_state),
+            self._stage_a_exit_state,
+        )
+        self._stage_a_exit_trigger_step = torch.where(
+            trigger,
+            episode_step.to(dtype=torch.long),
+            self._stage_a_exit_trigger_step,
+        )
+
+        decaying = self._stage_a_exit_state == 1
+        self._stage_a_exit_decay_elapsed = torch.where(
+            decaying,
+            self._stage_a_exit_decay_elapsed + 1,
+            self._stage_a_exit_decay_elapsed,
+        )
+        u = (
+            self._stage_a_exit_decay_elapsed.to(dtype=torch.float)
+            / float(decay_steps)
+        ).clamp(0.0, 1.0)
+        smooth = u * u * (3.0 - 2.0 * u)
+        ordinary_exit = (
+            (self._stage_a_exit_state == 1)
+            | (self._stage_a_exit_state == 2)
+            | (self._stage_a_exit_state == 3)
+        )
+        self._stage_a_exit_scale[:] = torch.where(
+            ordinary_exit,
+            1.0 - smooth,
+            self._stage_a_exit_scale,
+        )
+        self._stage_a_exit_scale[:] = torch.where(
+            self._stage_a_exit_state == 0,
+            torch.ones_like(self._stage_a_exit_scale),
+            self._stage_a_exit_scale,
+        )
+        complete = decaying & (self._stage_a_exit_decay_elapsed >= decay_steps)
+        self._stage_a_exit_state = torch.where(
+            complete,
+            torch.full_like(self._stage_a_exit_state, 2),
+            self._stage_a_exit_state,
+        )
+        self._stage_a_exit_scale[complete] = 0.0
+        # ``torch.where`` above replaces the state tensors.  Refresh the
+        # environment handles so audit traces observe the live latched state,
+        # not the zero-filled tensors created during initialization.
+        self._env.stage_a_sagittal_exit_scale = self._stage_a_exit_scale
+        self._env.stage_a_sagittal_exit_state = self._stage_a_exit_state
+        self._env.stage_a_sagittal_exit_trigger_step = self._stage_a_exit_trigger_step
+        self._env.stage_a_sagittal_rearm_ready = self._stage_a_rearm_ready
+        self._env.stage_a_sagittal_rearm_stable = self._stage_a_rearm_stable
+        self._env.stage_a_sagittal_rearm_stable_steps = self._stage_a_rearm_stable_steps
+        self._env.stage_a_sagittal_rearm_rejected = self._stage_a_rearm_rejected
+        return self._stage_a_exit_scale
+
+    def _stage_a_sagittal_front_gate(self, motion) -> torch.Tensor:
+        """Boost sagittal Stage-A support only for observable front-side risk.
+
+        The gain is applied before the frozen policy action is bounded, so it
+        cannot exceed the established physical residual envelope.  It is not
+        keyed to a motion ID or fixed recovery time: both the capture-point
+        margin and body-frame forward velocity must indicate a live risk.
+        """
+        gain = float(getattr(self.cfg, "stage_a_sagittal_front_gain", 1.0))
+        if gain < 1.0:
+            raise ValueError("stage_a_sagittal_front_gain must be at least 1.0")
+        if gain == 1.0:
+            self._stage_a_front_gain.fill_(1.0)
+            return self._stage_a_front_gain
+
+        margin = float(getattr(self.cfg, "stage_a_sagittal_front_margin_m", 0.07))
+        velocity = float(
+            getattr(self.cfg, "stage_a_sagittal_front_velocity_mps", 0.02)
+        )
+        if margin <= 0.0 or velocity < 0.0:
+            raise ValueError("Invalid Stage-A sagittal front-support contract")
+
+        from training.tasks.tracking.mdp.observations import stagger_support_state
+
+        support = stagger_support_state(self._env)
+        hit = self._motion_hit_steps(motion)
+        in_swing = motion.prelude_elapsed_steps >= int(motion.prelude_steps)
+        at_or_after_hit = motion.time_steps >= hit
+        both_feet = support["contacts"].all(dim=-1)
+        if not bool(getattr(self.cfg, "stage_a_sagittal_exit_require_both_feet", True)):
+            both_feet = torch.ones_like(both_feet)
+        front_risk = (
+            in_swing
+            & at_or_after_hit
+            & both_feet
+            & (support["capture_front_margin"] <= margin)
+            & (self._asset.data.root_lin_vel_b[:, 0] >= velocity)
+        )
+        self._stage_a_front_gain[:] = torch.where(
+            front_risk,
+            torch.full_like(self._stage_a_front_gain, gain),
+            torch.ones_like(self._stage_a_front_gain),
+        )
+        self._env.stage_a_sagittal_front_gain = self._stage_a_front_gain
+        return self._stage_a_front_gain
 
     def _legacy_leg_action(self, motion) -> torch.Tensor:
         stage_obs = self._compute_observation_group(self._legacy_stage_a_group)
@@ -1084,6 +1516,27 @@ class A3FrozenStageAJointCoordinatorAction(A3F1FrozenUpperBaseCompositePositionA
             ready_u = (ready_elapsed / float(ready_release_steps)).clamp(0.0, 1.0)
             ready_smooth = ready_u * ready_u * (3.0 - 2.0 * ready_u)
             lower *= (1.0 - ready_smooth).unsqueeze(-1)
+
+        runtime_sagittal_scale = self._stage_a_sagittal_exit_gate(motion)
+        runtime_sagittal_front_gain = self._stage_a_sagittal_front_gate(motion)
+        lower[:, (0, 3, 4, 6, 9, 10)] *= (
+            runtime_sagittal_scale * runtime_sagittal_front_gain
+        ).unsqueeze(-1)
+
+        # Deterministic audit hook: isolate whether the frozen Stage-A
+        # sagittal residual keeps pushing after capture-point recentering.
+        # Training and deployment never set this attribute.
+        sagittal_audit_scale = getattr(
+            self._env, "stage_a_sagittal_audit_scale", None
+        )
+        if sagittal_audit_scale is not None:
+            if sagittal_audit_scale.shape != (self.num_envs,):
+                raise ValueError(
+                    "stage_a_sagittal_audit_scale must have shape "
+                    f"({self.num_envs},), got {tuple(sagittal_audit_scale.shape)}"
+                )
+            sagittal_indices = (0, 3, 4, 6, 9, 10)
+            lower[:, sagittal_indices] *= sagittal_audit_scale.unsqueeze(-1)
         self._legacy_bounded[:] = self._bound_actions(lower)
         return self._legacy_bounded
 
@@ -1208,3 +1661,27 @@ class A3FrozenStageAJointCoordinatorActionCfg(A3F1FrozenUpperBaseCompositePositi
     # opposing the dedicated post-hit waist recovery reference.
     upper_policy_waist_post_hit_release_steps: int = 0
     coordinator_arm_tail_release_steps: int = 0
+    # State-latched exit for the frozen Stage-A sagittal brace. It is off by
+    # default so historical checkpoints remain exactly reproducible.
+    stage_a_sagittal_exit_enabled: bool = False
+    stage_a_sagittal_exit_center_half_width_m: float = 0.04
+    stage_a_sagittal_exit_velocity_deadband_mps: float = 0.03
+    stage_a_sagittal_exit_positive_confirm_steps: int = 2
+    stage_a_sagittal_exit_neutral_confirm_steps: int = 2
+    stage_a_sagittal_exit_decay_steps: int = 5
+    stage_a_sagittal_exit_require_both_feet: bool = True
+    stage_a_sagittal_front_gain: float = 1.0
+    stage_a_sagittal_front_margin_m: float = 0.07
+    stage_a_sagittal_front_velocity_mps: float = 0.02
+    # Optional multi-shot re-arm.  V25 leaves this disabled; V26 enables it
+    # only after a strict settled-state hold and ramps Stage-A back in at the
+    # start of the next explicit shot cycle.
+    stage_a_sagittal_rearm_enabled: bool = False
+    stage_a_sagittal_rearm_stable_steps: int = 20
+    stage_a_sagittal_rearm_ramp_steps: int = 8
+    stage_a_sagittal_rearm_center_half_width_m: float = 0.05
+    stage_a_sagittal_rearm_velocity_max_mps: float = 0.06
+    stage_a_sagittal_rearm_pitch_rate_max_radps: float = 0.10
+    stage_a_sagittal_rearm_tilt_max_rad: float = 0.10
+    stage_a_sagittal_rearm_arm_error_max_rad: float = 0.15
+    stage_a_sagittal_rearm_require_ready_reference: bool = True

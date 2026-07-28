@@ -199,3 +199,63 @@ gym.register(
         "env_cfg_entry_point": f"{__name__}.native_strike_env_cfg:A3FloatingJointCoordinatorV5PreviewEnvCfg",
     },
 )
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV6MomentumPreview-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.native_strike_env_cfg:"
+            "A3FloatingJointCoordinatorV6MomentumPreviewEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV7StaggeredRecovery-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.native_strike_env_cfg:"
+            "A3FloatingJointCoordinatorV7StaggeredRecoveryEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV8StaggerSupport-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.native_strike_env_cfg:"
+            "A3FloatingJointCoordinatorV8StaggerSupportEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV9WideStaggerSupport-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.native_strike_env_cfg:"
+            "A3FloatingJointCoordinatorV9WideStaggerSupportEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV10WideStaggerRecovery-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.native_strike_env_cfg:"
+            "A3FloatingJointCoordinatorV10WideStaggerRecoveryEnvCfg"
+        ),
+    },
+)

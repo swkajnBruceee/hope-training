@@ -467,6 +467,68 @@ class A3JointCoordinatorPreviewObservationsCfg(A3JointCoordinatorObservationsCfg
 
 
 @configclass
+class A3JointCoordinatorMomentumPreviewObservationsCfg(A3JointCoordinatorObservationsCfg):
+    """Coordinator contract with a canonical 18-D upper momentum preview."""
+
+    @configclass
+    class CoordinatorCfg(A3JointCoordinatorObservationsCfg.CoordinatorCfg):
+        coordinator = ObsTerm(func=mdp.joint_coordinator_observation_with_momentum_preview)
+
+    policy: CoordinatorCfg = CoordinatorCfg()
+    critic: CoordinatorCfg = CoordinatorCfg()
+
+
+@configclass
+class A3JointCoordinatorStaggerSupportObservationsCfg(A3JointCoordinatorObservationsCfg):
+    """Legacy coordinator state plus an explicit 19-D stagger-support contract."""
+
+    @configclass
+    class CoordinatorCfg(A3JointCoordinatorObservationsCfg.CoordinatorCfg):
+        coordinator = ObsTerm(func=mdp.joint_coordinator_observation_with_stagger_support)
+
+    policy: CoordinatorCfg = CoordinatorCfg()
+    critic: CoordinatorCfg = CoordinatorCfg()
+
+
+@configclass
+class A3JointCoordinatorWideStaggerSupportObservationsCfg(
+    A3JointCoordinatorObservationsCfg
+):
+    """Legacy coordinator state plus a complete 23-D 2-D support contract."""
+
+    @configclass
+    class CoordinatorCfg(A3JointCoordinatorObservationsCfg.CoordinatorCfg):
+        coordinator = ObsTerm(
+            func=mdp.joint_coordinator_observation_with_wide_stagger_support
+        )
+
+    policy: CoordinatorCfg = CoordinatorCfg()
+    critic: CoordinatorCfg = CoordinatorCfg()
+
+
+@configclass
+class A3JointCoordinatorWideStaggerRecoveryObservationsCfg(
+    A3JointCoordinatorObservationsCfg
+):
+    """V22 state plus capture-point rate and a post-hit recovery gate."""
+
+    @configclass
+    class CoordinatorCfg(A3JointCoordinatorObservationsCfg.CoordinatorCfg):
+        coordinator = ObsTerm(
+            func=mdp.JointCoordinatorWideStaggerRecoveryObservation,
+            params={
+                "command_name": "motion",
+                "gate_delay_steps": 2,
+                "gate_ramp_steps": 8,
+                "capture_rate_scale_mps": 1.0,
+            },
+        )
+
+    policy: CoordinatorCfg = CoordinatorCfg()
+    critic: CoordinatorCfg = CoordinatorCfg()
+
+
+@configclass
 class A3NativeStrikeRewardsCfg(RewardsCfg):
     # Strike objective. These are the main task rewards.
     racket_position = RewTerm(
@@ -790,6 +852,71 @@ class A3JointCoordinatorRewardsCfg(A3F1StrikeAwareRewardsCfg):
         weight=0.0,
         params={"command_name": "motion"},
     )
+    strike_approach_pitch_rate_deadband_l2 = RewTerm(
+        func=mdp.strike_approach_pitch_rate_deadband_l2,
+        weight=0.0,
+        params={"command_name": "motion", "window_steps": 30, "deadband": 0.06},
+    )
+    strike_approach_forward_velocity_deadband_l2 = RewTerm(
+        func=mdp.strike_approach_forward_velocity_deadband_l2,
+        weight=0.0,
+        params={"command_name": "motion", "window_steps": 30, "deadband": 0.05},
+    )
+    exact_strike_pitch_rate_deadband_l2 = RewTerm(
+        func=mdp.exact_strike_pitch_rate_deadband_l2,
+        weight=0.0,
+        params={"command_name": "motion", "deadband": 0.06},
+    )
+    exact_strike_forward_velocity_deadband_l2 = RewTerm(
+        func=mdp.exact_strike_forward_velocity_deadband_l2,
+        weight=0.0,
+        params={"command_name": "motion", "deadband": 0.05},
+    )
+    post_hit_forward_velocity_deadband_l2 = RewTerm(
+        func=mdp.post_hit_forward_velocity_deadband_l2,
+        weight=0.0,
+        params={
+            "command_name": "motion",
+            "deadband": 0.06,
+            "delay_steps": 2,
+            "ramp_steps": 8,
+        },
+    )
+    post_hit_pitch_rate_deadband_l2 = RewTerm(
+        func=mdp.post_hit_pitch_rate_deadband_l2,
+        weight=0.0,
+        params={
+            "command_name": "motion",
+            "deadband": 0.08,
+            "delay_steps": 2,
+            "ramp_steps": 8,
+        },
+    )
+    post_hit_capture_point_center_l2 = RewTerm(
+        func=mdp.post_hit_capture_point_center_l2,
+        weight=0.0,
+        params={
+            "command_name": "motion",
+            "deadband": 0.04,
+            "delay_steps": 2,
+            "ramp_steps": 8,
+        },
+    )
+    post_hit_capture_point_barrier_l2 = RewTerm(
+        func=mdp.post_hit_capture_point_barrier_l2,
+        weight=0.0,
+        params={
+            "command_name": "motion",
+            "target_margin": 0.06,
+            "delay_steps": 2,
+            "ramp_steps": 8,
+        },
+    )
+    post_hit_capture_point_center_progress = RewTerm(
+        func=mdp.PostHitCapturePointCenterProgress,
+        weight=0.0,
+        params={"command_name": "motion", "delay_steps": 2, "ramp_steps": 8},
+    )
     racket_velocity_position_gated = RewTerm(
         func=mdp.racket_velocity_tracking_position_gated_exp,
         weight=0.0,
@@ -814,6 +941,31 @@ class A3JointCoordinatorRewardsCfg(A3F1StrikeAwareRewardsCfg):
         func=mdp.action_subset_raw_l2,
         weight=-0.05,
         params={"action_name": "joint_pos", "action_indices": tuple(range(15, 22))},
+    )
+    stagger_capture_point_margin_l2 = RewTerm(
+        func=mdp.stagger_capture_point_margin_l2,
+        weight=0.0,
+        params={"target_margin": 0.04},
+    )
+    stagger_lateral_capture_point_margin_l2 = RewTerm(
+        func=mdp.stagger_lateral_capture_point_margin_l2,
+        weight=0.0,
+        params={"target_margin": 0.035},
+    )
+    stagger_minimum_foot_load = RewTerm(
+        func=mdp.stagger_minimum_foot_load,
+        weight=0.0,
+        params={"minimum_body_weight_fraction": 0.08},
+    )
+    stagger_sagittal_span_l2 = RewTerm(
+        func=mdp.stagger_sagittal_span_l2,
+        weight=0.0,
+        params={"target_span": 0.08, "deadband": 0.015},
+    )
+    stagger_lateral_span_l2 = RewTerm(
+        func=mdp.stagger_lateral_span_l2,
+        weight=0.0,
+        params={"target_span": 0.42, "deadband": 0.03},
     )
 
 
@@ -1480,6 +1632,58 @@ class A3FloatingJointCoordinatorV5PreviewEnvCfg(A3FloatingJointCoordinatorV2EnvC
     def __post_init__(self):
         super().__post_init__()
         self.observations = A3JointCoordinatorPreviewObservationsCfg()
+
+
+@configclass
+class A3FloatingJointCoordinatorV6MomentumPreviewEnvCfg(A3FloatingJointCoordinatorV2EnvCfg):
+    """V19 P0 plant with canonical upper momentum preview."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.observations = A3JointCoordinatorMomentumPreviewObservationsCfg()
+        self.commands.motion.require_upper_momentum = True
+
+
+@configclass
+class A3FloatingJointCoordinatorV7StaggeredRecoveryEnvCfg(A3FloatingJointCoordinatorV2EnvCfg):
+    """204-D coordinator plant for support-only staggered-stance adaptation.
+
+    The actual stagger geometry is an explicit task-YAML override so scans can
+    share this plant without creating multiple nearly identical Gym classes.
+    """
+
+    pass
+
+
+@configclass
+class A3FloatingJointCoordinatorV8StaggerSupportEnvCfg(A3FloatingJointCoordinatorV2EnvCfg):
+    """Staggered support plant with explicit geometry, load and capture state."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.observations = A3JointCoordinatorStaggerSupportObservationsCfg()
+
+
+@configclass
+class A3FloatingJointCoordinatorV9WideStaggerSupportEnvCfg(
+    A3FloatingJointCoordinatorV2EnvCfg
+):
+    """Wide stagger plant with explicit sagittal and lateral support state."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.observations = A3JointCoordinatorWideStaggerSupportObservationsCfg()
+
+
+@configclass
+class A3FloatingJointCoordinatorV10WideStaggerRecoveryEnvCfg(
+    A3FloatingJointCoordinatorV9WideStaggerSupportEnvCfg
+):
+    """V22 plant with a strictly post-hit recovery-adapter contract."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.observations = A3JointCoordinatorWideStaggerRecoveryObservationsCfg()
 
 
 @configclass

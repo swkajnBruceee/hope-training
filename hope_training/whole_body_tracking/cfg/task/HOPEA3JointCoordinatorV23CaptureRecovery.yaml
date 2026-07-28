@@ -1,0 +1,46 @@
+# Post-hit braking and capture-point recentering from the qualified V22 model_1499.
+defaults:
+  - HOPEA3JointCoordinatorV22WideDeepStability
+  - _self_
+
+name: HOPEA3JointCoordinatorV23CaptureRecovery
+gym_task: HOPE-FloatingJointCoordinatorV10WideStaggerRecovery-AgibotA3-v0
+experiment_name: agibot_a3_joint_coordinator_v23_capture_recovery_20260727
+
+rewards:
+  # V22's actor is frozen and the new adapter is structurally gated off
+  # through impact. These remain regression metrics rather than optimization
+  # levers for the recovery branch.
+  racket_position_weight: 0.50
+  racket_position_y_weight: 0.25
+  racket_position_fine_weight: 0.10
+  racket_velocity_weight: 0.05
+  racket_normal_weight: 0.05
+  racket_hit_coupled_weight: 0.05
+
+  # Keep V22's symmetric support barrier, then add explicit post-hit braking
+  # and recentering. No term rewards a particular sign of velocity.
+  stagger_capture_point_margin_l2_weight: -60.0
+  post_hit_forward_velocity_deadband_l2_weight: -20.0
+  post_hit_pitch_rate_deadband_l2_weight: -12.0
+  post_hit_capture_point_center_l2_weight: -35.0
+  post_hit_capture_point_barrier_l2_weight: -120.0
+  post_hit_capture_point_center_progress_weight: 6.0
+
+  # Full-cycle safety remains the terminal objective.
+  post_strike_root_tilt_weight: -30.0
+  post_strike_recovery_progress_weight: 2.0
+  post_strike_root_linear_velocity_l2_weight: -8.0
+  post_strike_root_angular_velocity_l2_weight: -8.0
+  post_strike_root_height_deficit_weight: -50.0
+  post_strike_both_feet_contact_weight: 4.0
+  post_strike_ready_weight: 4.0
+  alive_weight: 2.0
+  fall_weight: -300.0
+
+  stagger_lateral_capture_point_margin_l2_weight: -60.0
+  stagger_minimum_foot_load_weight: 5.0
+  stagger_sagittal_span_l2_weight: -30.0
+  stagger_lateral_span_l2_weight: -30.0
+  root_position_drift_weight: -1.0
+  feet_slip_weight: -4.0

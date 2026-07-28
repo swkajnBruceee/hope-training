@@ -1,0 +1,11 @@
+# User-selected backhand support geometry: keep the right leg at the validated
+# Stage-A ready pose and move only the left foot forward.
+defaults:
+  - HOPEA3JointCoordinatorV19MomentumPreviewFullCycleAudit
+  - _self_
+
+name: HOPEA3JointCoordinatorV21LeftForwardStanceAudit
+experiment_name: agibot_a3_joint_coordinator_v21_left_forward_stance_audit_20260727
+
+env:
+  left_foot_forward_offset_m: 0.06

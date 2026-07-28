@@ -1,0 +1,57 @@
+# Stability-first adaptation around the frozen Stage-A and fixed-base strike
+# priors.  The support center remains fixed while the left/right feet are
+# staggered by +/-4 cm in the body-forward direction.
+defaults:
+  - HOPEA3JointCoordinatorV15SplitPostHitContractAudit
+  - _self_
+
+name: HOPEA3JointCoordinatorV20StaggeredStability
+gym_task: HOPE-FloatingJointCoordinatorV7StaggeredRecovery-AgibotA3-v0
+experiment_name: agibot_a3_joint_coordinator_v20_staggered_stability_20260727
+
+motion_manifest: sample_motions/p2_data260708_backhand_strike_only_v2_momentum/manifest.json
+
+env:
+  episode_length_s: 6.5
+  staggered_stance_half_span_m: 0.04
+
+actions:
+  # Preserve V17's validated predictive waist brake.  Omitting this changes
+  # the physical launch state and erases the staggered-stance momentum gain.
+  waist_soft_limit_prediction_horizon_steps: 8
+  waist_soft_limit_velocity_brake_gain: 8.0
+
+rewards:
+  # The frozen upper prior still executes the strike.  Keep only enough strike
+  # shaping to prevent support corrections from destroying the task while
+  # full-cycle stability is the hard optimization priority.
+  racket_position_weight: 2.0
+  racket_position_y_weight: 1.0
+  racket_position_fine_weight: 0.5
+  racket_velocity_weight: 0.25
+  racket_normal_weight: 0.25
+  racket_hit_coupled_weight: 0.25
+
+  # Symmetric pre-impact momentum control.  These terms prefer zero momentum,
+  # not a sign reversal that merely changes a forward fall into a backward one.
+  pre_hit_root_tilt_weight: -2.0
+  pre_hit_root_angular_velocity_l2_weight: -4.0
+  pre_hit_root_forward_velocity_l2_weight: -12.0
+  strike_approach_pitch_rate_deadband_l2_weight: -8.0
+  strike_approach_forward_velocity_deadband_l2_weight: -20.0
+  exact_strike_pitch_rate_deadband_l2_weight: -6.0
+  exact_strike_forward_velocity_deadband_l2_weight: -12.0
+
+  # Full-cycle safety dominates the objective.  The episode terminates on a
+  # sustained 30-degree recovery tilt, and the terminal cost is deliberately
+  # larger than any strike-score gain.
+  post_strike_root_tilt_weight: -16.0
+  post_strike_recovery_progress_weight: 1.0
+  post_strike_root_linear_velocity_l2_weight: -3.0
+  post_strike_root_angular_velocity_l2_weight: -3.0
+  post_strike_root_height_deficit_weight: -30.0
+  post_strike_both_feet_contact_weight: 2.0
+  post_strike_ready_weight: 3.0
+  fall_weight: -100.0
+  root_position_drift_weight: -2.0
+  feet_slip_weight: -2.0
