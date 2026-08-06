@@ -23,7 +23,10 @@ from training.tasks.base_locomotion.mdp import (
     A3F1FrozenUpperBaseCompositePositionActionCfg,
     A3F0UpperBaseCompositePositionActionCfg,
     A3FrozenStageAJointCoordinatorActionCfg,
+    A3UnifiedUpperReferenceTrackerActionCfg,
+    A3TargetConditionedJointCoordinatorActionCfg,
     A3FrozenStageAUpperCorrectionActionCfg,
+    A3FrozenAnchorArmAdapterPositionActionCfg,
     A3StrikeConditionedBaseCompositePositionActionCfg,
     RootHeightBelowMinimum,
 )
@@ -31,8 +34,11 @@ from training.robots.agibot_a3 import (
     A3_BACKEND_JOINTS,
     A3_BASE_ACTION_JOINTS,
     A3_FEET_BODIES,
+    A3_LEFT_LEG_JOINTS,
     A3_NATIVE_STRIKE_JOINTS,
     A3_RIGHT_ARM_JOINTS,
+    A3_RIGHT_LEG_JOINTS,
+    A3_REFERENCE_TRACKER_JOINTS,
     A3_STRIKE_V2_REFERENCE_JOINTS,
     A3_WAIST_JOINTS,
     AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE,
@@ -61,6 +67,215 @@ class A3NativeStrikeActionsCfg(ActionsCfg):
         use_default_offset=True,
         raw_clip=1.0,
         reference_command_name="motion",
+    )
+
+
+@configclass
+class A3ReferenceTrackerActionsCfg(ActionsCfg):
+    """P5D pure safe-reference plus 22-D residual action contract.
+
+    No frozen Stage-A policy, upper policy, target adapter, control anchor, or
+    motion-specific target feed-forward is present here.  Zero PPO output is
+    exactly the safe reference command.
+    """
+
+    joint_pos = mdp.ReferenceResidualJointPositionActionCfg(
+        asset_name="robot",
+        joint_names=tuple(A3_REFERENCE_TRACKER_JOINTS),
+        preserve_order=True,
+        scale={
+            **dict(zip(A3_LEFT_LEG_JOINTS + A3_RIGHT_LEG_JOINTS, A3_PD_STAND_BASE_ACTION_SCALE_RAD[:12])),
+            "waist_yaw_joint": 0.10,
+            "waist_roll_joint": 0.06,
+            "waist_pitch_joint": 0.08,
+            "right_shoulder_pitch_joint": 0.10,
+            "right_shoulder_roll_joint": 0.10,
+            "right_shoulder_yaw_joint": 0.10,
+            "right_elbow_joint": 0.10,
+            "right_wrist_roll_joint": 0.06,
+            "right_wrist_pitch_joint": 0.05,
+            "right_wrist_yaw_joint": 0.05,
+        },
+        raw_clip=1.0,
+        reference_command_name="motion",
+        reference_lookahead_steps=0,
+        interpolate_reference=False,
+        soft_limit_margin_rad_by_joint={
+            "waist_yaw_joint": 0.08,
+            "waist_roll_joint": 0.12,
+            "waist_pitch_joint": 0.12,
+            "right_shoulder_roll_joint": 0.08,
+            "right_shoulder_pitch_joint": 0.04,
+            "right_shoulder_yaw_joint": 0.04,
+            "right_elbow_joint": 0.04,
+            "right_wrist_roll_joint": 0.03,
+            "right_wrist_pitch_joint": 0.03,
+            "right_wrist_yaw_joint": 0.03,
+        },
+    )
+
+
+@configclass
+class A3PriorGuidedReferenceTrackerActionsCfg(ActionsCfg):
+    """P5D bootstrap with frozen 3396/900 execution priors and a 10-D residual.
+
+    ``model_3396`` retains sole ownership of the 12 leg-support channels and
+    ``model_900`` retains the reviewed waist/right-arm swing prior.  The
+    learnable public action is *only* a bounded correction on the three waist
+    and seven right-arm joints.  This preserves the evaluated support-state
+    machine while keeping P5D a generic reference tracker rather than a new
+    full-body planner or a motion-specific target adapter.
+    """
+
+    joint_pos = A3FrozenStageAUpperCorrectionActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        # Preserve the reviewed split: 3396 supplies only leg support;
+        # model_900 supplies the strike prior; P5D may correct the upper ten
+        # joints only.  The two historical waist outputs from 3396 are masked.
+        action_mask=(1.0,) * 12 + (0.0, 0.0),
+        raw_clip=1.0,
+        smooth_raw_bound=True,
+        upper_raw_clip=0.50,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+        upper_observation_group="upper",
+        upper_checkpoint="checkpoints/frozen_priors/model_900.pt",
+        legacy_stage_a_checkpoint="checkpoints/frozen_priors/model_3396.pt",
+        legacy_stage_a_observation_group="stage_a",
+        # model_900 was trained under the V7 frozen-prior contract.  Keep
+        # that contract explicit here: removing these fields makes the same
+        # checkpoint run with a different plant (no shoulder lead and no
+        # velocity target), which systematically shifts the shoulder/elbow/
+        # wrist timing and invalidates P5D attribution.
+        joint_reference_lookahead_steps={
+            "right_shoulder_pitch_joint": 12.0,
+            "right_shoulder_yaw_joint": 12.0,
+        },
+        joint_velocity_feedforward_mode="task_phase",
+        joint_velocity_feedforward_beta=0.75,
+        joint_velocity_feedforward_joint_names=(
+            "right_shoulder_pitch_joint",
+            "right_shoulder_yaw_joint",
+        ),
+        joint_velocity_feedforward_post_hit_decay_steps=6,
+        upper_correction_scale_rad=(0.035,) * 10,
+    )
+
+
+@configclass
+class A3UnifiedUpperReferenceTrackerActionsCfg(ActionsCfg):
+    """P5U-1 action contract: model_3396 prior plus optional PPO balance residual."""
+
+    joint_pos = A3UnifiedUpperReferenceTrackerActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        action_mask=(1.0,) * 12 + (0.0, 0.0),
+        raw_clip=0.50,
+        smooth_raw_bound=True,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+        upper_waist_joint_names=tuple(A3_WAIST_JOINTS),
+        # Contract A: no hard command lead and no velocity feedforward.  The
+        # actor receives +1/+3/+6/+12 preview through its observation group.
+        reference_lookahead_steps=0,
+        joint_reference_lookahead_steps={},
+        joint_velocity_feedforward_mode="none",
+        joint_velocity_feedforward_beta=0.0,
+        joint_velocity_feedforward_joint_names=(),
+        upper_correction_scale_rad=(0.035,) * 10,
+        legacy_stage_a_checkpoint="checkpoints/frozen_priors/model_3396.pt",
+        legacy_stage_a_observation_group="stage_a",
+        legacy_stage_a_yaw_adapter=True,
+    )
+
+
+@configclass
+class A3UnifiedUpperReferenceTrackerGlobalPhaseActionsCfg(ActionsCfg):
+    """Contract B: ten position residuals plus one shared continuous phase offset."""
+
+    joint_pos = A3UnifiedUpperReferenceTrackerActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        action_mask=(1.0,) * 12 + (0.0, 0.0),
+        raw_clip=0.50,
+        smooth_raw_bound=True,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+        upper_waist_joint_names=tuple(A3_WAIST_JOINTS),
+        reference_lookahead_steps=0,
+        joint_reference_lookahead_steps={},
+        joint_velocity_feedforward_mode="none",
+        joint_velocity_feedforward_beta=0.0,
+        joint_velocity_feedforward_joint_names=(),
+        upper_correction_scale_rad=(0.035,) * 10,
+        legacy_stage_a_checkpoint="checkpoints/frozen_priors/model_3396.pt",
+        legacy_stage_a_observation_group="stage_a",
+        legacy_stage_a_yaw_adapter=True,
+        phase_contract="B",
+        global_phase_limit_steps=4.0,
+    )
+
+
+@configclass
+class A3UnifiedUpperReferenceTrackerGroupedPhaseActionsCfg(ActionsCfg):
+    """Contract C: position residual plus global and shoulder/elbow/wrist phases."""
+
+    joint_pos = A3UnifiedUpperReferenceTrackerActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        action_mask=(1.0,) * 12 + (0.0, 0.0),
+        raw_clip=0.50,
+        smooth_raw_bound=True,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+        upper_waist_joint_names=tuple(A3_WAIST_JOINTS),
+        reference_lookahead_steps=0,
+        joint_reference_lookahead_steps={},
+        joint_velocity_feedforward_mode="none",
+        joint_velocity_feedforward_beta=0.0,
+        joint_velocity_feedforward_joint_names=(),
+        upper_correction_scale_rad=(0.035,) * 10,
+        legacy_stage_a_checkpoint="checkpoints/frozen_priors/model_3396.pt",
+        legacy_stage_a_observation_group="stage_a",
+        legacy_stage_a_yaw_adapter=True,
+        phase_contract="C",
+        global_phase_limit_steps=4.0,
+        shoulder_phase_limit_steps=2.0,
+        elbow_phase_limit_steps=2.0,
+        wrist_phase_limit_steps=2.0,
     )
 
 
@@ -455,6 +670,63 @@ class A3JointCoordinatorObservationsCfg(A3UpperCorrectionObservationsCfg):
 
 
 @configclass
+class A3TargetConditionedCoordinatorObservationsCfg(
+    A3JointCoordinatorObservationsCfg
+):
+    """Split frozen-anchor and trainable external-target observation paths."""
+
+    @configclass
+    class CoordinatorUpperCfg(A3F0ObservationsCfg.PolicyCfg):
+        racket_target_pos_b = ObsTerm(
+            func=mdp.coordinator_racket_target_pos_b,
+            params={"command_name": "racket_target"},
+        )
+
+    @configclass
+    class CoordinatorCfg(A3JointCoordinatorObservationsCfg.CoordinatorCfg):
+        coordinator = ObsTerm(
+            func=mdp.joint_coordinator_target_conditioned_observation
+        )
+
+    policy: CoordinatorCfg = CoordinatorCfg()
+    critic: CoordinatorCfg = CoordinatorCfg()
+    coordinator_upper: CoordinatorUpperCfg = CoordinatorUpperCfg()
+
+
+@configclass
+class A3TargetConditionedRecoveryObservationsCfg(
+    A3TargetConditionedCoordinatorObservationsCfg
+):
+    """P3 target observation plus a predictive lower-body support suffix."""
+
+    @configclass
+    class CoordinatorCfg(A3TargetConditionedCoordinatorObservationsCfg.CoordinatorCfg):
+        coordinator = ObsTerm(
+            func=mdp.TargetConditionedRecoveryObservation,
+            params={
+                "command_name": "motion",
+                # Motion 3's deterministic failure has already crossed its
+                # forward capture boundary before its nominal hit frame.  The
+                # recovery branch must therefore establish a lower-body brace
+                # in the final part of READY and have full authority at the
+                # swing release; a post-hit-only residual is physically late.
+                # P3's arm actor and target feedforward remain frozen.
+                "gate_delay_steps": 0,
+                "gate_ramp_steps": 16,
+                "gate_lead_steps": 44,
+                # P3's controlled strike runs through a 75-control READY
+                # phase.  A brace that only begins in its last 16 controls
+                # cannot shift the support state enough before swing release,
+                # so make the lower-body gate a smooth READY-long ramp.
+                "prelude_prepare_steps": 75,
+            },
+        )
+
+    policy: CoordinatorCfg = CoordinatorCfg()
+    critic: CoordinatorCfg = CoordinatorCfg()
+
+
+@configclass
 class A3JointCoordinatorPreviewObservationsCfg(A3JointCoordinatorObservationsCfg):
     """Coordinator contract with a zero-migratable 18-D upper dynamics preview."""
 
@@ -516,6 +788,28 @@ class A3JointCoordinatorWideStaggerRecoveryObservationsCfg(
     class CoordinatorCfg(A3JointCoordinatorObservationsCfg.CoordinatorCfg):
         coordinator = ObsTerm(
             func=mdp.JointCoordinatorWideStaggerRecoveryObservation,
+            params={
+                "command_name": "motion",
+                "gate_delay_steps": 2,
+                "gate_ramp_steps": 8,
+                "capture_rate_scale_mps": 1.0,
+            },
+        )
+
+    policy: CoordinatorCfg = CoordinatorCfg()
+    critic: CoordinatorCfg = CoordinatorCfg()
+
+
+@configclass
+class A3JointCoordinatorBentReadyRecoveryObservationsCfg(
+    A3JointCoordinatorObservationsCfg
+):
+    """V28 state: V22 support plus explicit bent-READY settling signals."""
+
+    @configclass
+    class CoordinatorCfg(A3JointCoordinatorObservationsCfg.CoordinatorCfg):
+        coordinator = ObsTerm(
+            func=mdp.JointCoordinatorBentReadyRecoveryObservation,
             params={
                 "command_name": "motion",
                 "gate_delay_steps": 2,
@@ -952,6 +1246,8 @@ class A3JointCoordinatorRewardsCfg(A3F1StrikeAwareRewardsCfg):
         weight=0.0,
         params={"target_margin": 0.035},
     )
+
+
     stagger_minimum_foot_load = RewTerm(
         func=mdp.stagger_minimum_foot_load,
         weight=0.0,
@@ -966,6 +1262,22 @@ class A3JointCoordinatorRewardsCfg(A3F1StrikeAwareRewardsCfg):
         func=mdp.stagger_lateral_span_l2,
         weight=0.0,
         params={"target_span": 0.42, "deadband": 0.03},
+    )
+
+
+@configclass
+class A3BentReadyRecoveryRewardsCfg(A3JointCoordinatorRewardsCfg):
+    """V28 return-phase objective; strike terms remain inherited unchanged."""
+
+    bent_ready_arm_score = RewTerm(
+        func=mdp.post_strike_bent_ready_arm_score,
+        weight=3.0,
+        params={"command_name": "motion", "position_std": 0.15, "velocity_std": 0.50},
+    )
+    bent_ready_progress = RewTerm(
+        func=mdp.PostStrikeBentReadyProgress,
+        weight=2.0,
+        params={"command_name": "motion"},
     )
 
 
@@ -998,6 +1310,19 @@ class A3StrikeStabilizerATerminationsCfg(A3NativeStrikeTerminationsCfg):
             "required_steps": 3,
         },
     )
+    # Strict visual-fall gate.  The legacy 1.55 rad (~89 deg) envelope is
+    # retained above for compatibility, but is not sufficient to catch a
+    # robot that is visibly down while its root is still above 0.65 m.
+    strict_fall = DoneTerm(
+        func=mdp.StrictRootFallExceeded,
+        params={
+            "max_tilt_rad": 0.785398,  # 45 degrees
+            "minimum_height": 0.82,
+            "max_torso_tilt_rad": 0.785398,  # 45 degrees; catches torso collapse while root stays upright
+            "minimum_torso_height": 0.70,
+            "required_steps": 2,
+        },
+    )
     non_foot_ground_contact = DoneTerm(
         func=mdp.illegal_contact,
         params={
@@ -1010,7 +1335,8 @@ class A3StrikeStabilizerATerminationsCfg(A3NativeStrikeTerminationsCfg):
                     r"(?!pingpang_black_Link$)(?!pingbang_ball_Link$).+$"
                 ],
             ),
-            "threshold": 10.0,
+            # Strict visual-fall auditing should not wait for a 10 N impact.
+            "threshold": 1.0,
         },
     )
 
@@ -1026,6 +1352,52 @@ class A3StrikeStabilizerAEventsCfg(HOPEEventCfg):
             # may make bounded corrections from the first reference frame.
             "full_swing_probability": 1.0,
             "candidate_steps": (0,),
+        },
+    )
+
+
+@configclass
+class A3ProgressiveFallAssistEventsCfg(A3StrikeStabilizerAEventsCfg):
+    """P5U bootstrap events with a decaying anti-fall wrench."""
+
+    fall_assist = EventTerm(
+        func=mdp.apply_progressive_fall_assist,
+        mode="interval",
+        interval_range_s=(0.02, 0.02),
+        is_global_time=True,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=["pelvis_link"]),
+            # Bootstrap assistance is intentionally strong enough to keep the
+            # fixed upper-body reference physically recoverable for the full
+            # 10 s learning window.  This is still a bounded external wrench;
+            # it does not teleport pose or disable fall termination.
+            "max_torque_nm": 100.0,
+            "kp_nm_per_rad": 30.0,
+            "kd_nms_per_rad": 12.0,
+            "tilt_deadband_rad": 0.05,
+            # 24 control steps per PPO iteration: 1500 iterations = 36000
+            # control steps.  Adaptive feedback may restore assistance when
+            # strict-fall rate rises, but never lets it decay faster than this
+            # schedule.
+            "anneal_steps": 36000,
+            "minimum_scale": 0.10,
+            "adaptive_enabled": True,
+            "adapt_interval_steps": 24,
+            "failure_rate_high": 0.0025,
+            "failure_rate_low": 0.0008,
+            "adaptive_increase": 0.03,
+            "adaptive_decrease": 0.01,
+            "torso_max_torque_nm": 100.0,
+            "torso_kp_nm_per_rad": 40.0,
+            "torso_kd_nms_per_rad": 12.0,
+            "emergency_tilt_rad": 0.35,
+            "emergency_gain": 4.0,
+            "torso_emergency_tilt_rad": 0.35,
+            "torso_emergency_gain": 7.0,
+            "max_force_n": 0.0,
+            "force_kp_n_per_rad": 0.0,
+            "force_kd_ns_per_mps": 0.0,
+            "torso_max_force_n": 0.0,
         },
     )
 
@@ -1285,6 +1657,11 @@ class A3FloatingF0EnvCfg(A3StrikeConditionedBaseEnvCfg):
 
     actions: A3F0ActionsCfg = A3F0ActionsCfg()
     observations: A3F0ObservationsCfg = A3F0ObservationsCfg()
+    # F0 is an evaluation plant, but it must still terminate on the same
+    # unified physical fall contract as P5U/P5D.  Inheriting the native
+    # strike terminations silently left only ``time_out`` active, allowing a
+    # visibly collapsed torso to continue as a nominal episode.
+    terminations: A3StrikeStabilizerATerminationsCfg = A3StrikeStabilizerATerminationsCfg()
 
     def __post_init__(self):
         super().__post_init__()
@@ -1408,6 +1785,9 @@ class A3StrikeStabilizerAEnvCfg(A3StrikeConditionedBaseEnvCfg):
         self.commands.motion.reset_to_default_pose = True
         self.commands.motion.hold_last_frame_steps = 75
         self.commands.motion.return_to_default_steps = 50
+        self.commands.motion.post_hit_guard_steps = 75
+        self.commands.motion.recovery_timeout_steps = 250
+        self.commands.motion.recovery_ready_hold_steps = 15
         # The learned stabilizer is task-active during the full swing, final
         # hold and smooth return.  Once ready is reached, hand the legs back to
         # the verified PD strike-ready plant instead of retaining a permanent
@@ -1448,6 +1828,549 @@ class A3RetrainStrikeStabilizerEnvCfg(A3StrikeStabilizerAUnifiedEnvCfg):
         self.scene.robot.init_state.pos = (3.1500, -0.3500, 1.0400)
         self.scene.robot.init_state.rot = (0.0, 0.0, 0.0, 1.0)
         self.scene.robot.spawn.fix_base = False
+
+
+@configclass
+class A3ReferenceTrackerObservationsCfg(ObservationsCfg):
+    """Deployable state plus explicit current/future safe-reference preview."""
+
+    @configclass
+    class PolicyCfg(ObservationsCfg.PolicyCfg):
+        command = None
+        motion_anchor_pos_b = None
+        motion_anchor_ori_b = None
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.05, n_max=0.05))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.10, n_max=0.10))
+        projected_gravity = ObsTerm(func=mdp.projected_gravity, noise=Unoise(n_min=-0.03, n_max=0.03))
+        feet_contact = ObsTerm(
+            func=mdp.feet_contact_state,
+            params={
+                "sensor_cfg": SceneEntityCfg("contact_forces", body_names=A3_FEET_BODIES),
+                "threshold": 10.0,
+            },
+        )
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)},
+            noise=Unoise(n_min=-0.01, n_max=0.01),
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)},
+            noise=Unoise(n_min=-0.35, n_max=0.35),
+        )
+        reference_joint_pos = ObsTerm(
+            func=mdp.motion_joint_pos,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)},
+        )
+        reference_joint_vel = ObsTerm(
+            func=mdp.motion_joint_vel,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)},
+        )
+        reference_joint_pos_error = ObsTerm(
+            func=mdp.motion_joint_position_error,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)},
+        )
+        reference_joint_vel_error = ObsTerm(
+            func=mdp.motion_joint_velocity_error,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)},
+        )
+        reference_joint_pos_8 = ObsTerm(
+            func=mdp.motion_joint_pos,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 8},
+        )
+        reference_joint_vel_8 = ObsTerm(
+            func=mdp.motion_joint_vel,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 8},
+        )
+        reference_joint_pos_16 = ObsTerm(
+            func=mdp.motion_joint_pos,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 16},
+        )
+        reference_joint_vel_16 = ObsTerm(
+            func=mdp.motion_joint_vel,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 16},
+        )
+        # Multi-timescale preview is required for phase-lead learning. These
+        # terms are inputs to P5D only; the frozen 900 prior is unchanged.
+        reference_joint_pos_1 = ObsTerm(
+            func=mdp.motion_joint_pos,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 1},
+        )
+        reference_joint_vel_1 = ObsTerm(
+            func=mdp.motion_joint_vel,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 1},
+        )
+        reference_joint_pos_3 = ObsTerm(
+            func=mdp.motion_joint_pos,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 3},
+        )
+        reference_joint_vel_3 = ObsTerm(
+            func=mdp.motion_joint_vel,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 3},
+        )
+        reference_joint_pos_6 = ObsTerm(
+            func=mdp.motion_joint_pos,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 6},
+        )
+        reference_joint_vel_6 = ObsTerm(
+            func=mdp.motion_joint_vel,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 6},
+        )
+        reference_joint_pos_12 = ObsTerm(
+            func=mdp.motion_joint_pos,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 12},
+        )
+        reference_joint_vel_12 = ObsTerm(
+            func=mdp.motion_joint_vel,
+            params={"command_name": "motion", "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True), "lookahead_steps": 12},
+        )
+        strike_phase = ObsTerm(func=mdp.motion_phase, params={"command_name": "motion"})
+        strike_phase_sin = ObsTerm(func=mdp.motion_phase_sin, params={"command_name": "motion"})
+        strike_phase_cos = ObsTerm(func=mdp.motion_phase_cos, params={"command_name": "motion"})
+        time_to_strike = ObsTerm(func=mdp.time_to_strike, params={"command_name": "racket_target"})
+        marked_hit_step = ObsTerm(func=mdp.motion_hit_step_normalized, params={"command_name": "motion"})
+        racket_target_pos_b = ObsTerm(func=mdp.racket_target_pos_b, params={"command_name": "racket_target"})
+        racket_target_vel_b = ObsTerm(func=mdp.racket_target_vel_b, params={"command_name": "racket_target"})
+        racket_target_normal_b = ObsTerm(func=mdp.racket_target_normal_b, params={"command_name": "racket_target"})
+        racket_pos_b = ObsTerm(func=mdp.racket_pos_b, params={"command_name": "racket_target"})
+        racket_lin_vel_b = ObsTerm(func=mdp.racket_lin_vel_b, params={"command_name": "racket_target"})
+        racket_normal_b = ObsTerm(func=mdp.racket_normal_b, params={"command_name": "racket_target"})
+        racket_target_error_pos_b = ObsTerm(func=mdp.racket_target_error_pos_b, params={"command_name": "racket_target"})
+        racket_target_error_vel_b = ObsTerm(func=mdp.racket_target_error_vel_b, params={"command_name": "racket_target"})
+        racket_target_error_normal_b = ObsTerm(func=mdp.racket_target_error_normal_b, params={"command_name": "racket_target"})
+        reference_racket_pos_b = ObsTerm(func=mdp.motion_racket_pos_b, params={"command_name": "motion"})
+        reference_racket_vel_b = ObsTerm(func=mdp.motion_racket_vel_b, params={"command_name": "motion"})
+        reference_racket_normal_b = ObsTerm(func=mdp.motion_racket_normal_b, params={"command_name": "motion"})
+        reference_racket_pos_b_1 = ObsTerm(func=mdp.motion_racket_pos_b, params={"command_name": "motion", "lookahead_steps": 1})
+        reference_racket_vel_b_1 = ObsTerm(func=mdp.motion_racket_vel_b, params={"command_name": "motion", "lookahead_steps": 1})
+        reference_racket_normal_b_1 = ObsTerm(func=mdp.motion_racket_normal_b, params={"command_name": "motion", "lookahead_steps": 1})
+        reference_racket_pos_b_3 = ObsTerm(func=mdp.motion_racket_pos_b, params={"command_name": "motion", "lookahead_steps": 3})
+        reference_racket_vel_b_3 = ObsTerm(func=mdp.motion_racket_vel_b, params={"command_name": "motion", "lookahead_steps": 3})
+        reference_racket_normal_b_3 = ObsTerm(func=mdp.motion_racket_normal_b, params={"command_name": "motion", "lookahead_steps": 3})
+        reference_racket_pos_b_6 = ObsTerm(func=mdp.motion_racket_pos_b, params={"command_name": "motion", "lookahead_steps": 6})
+        reference_racket_vel_b_6 = ObsTerm(func=mdp.motion_racket_vel_b, params={"command_name": "motion", "lookahead_steps": 6})
+        reference_racket_normal_b_6 = ObsTerm(func=mdp.motion_racket_normal_b, params={"command_name": "motion", "lookahead_steps": 6})
+        reference_racket_pos_b_12 = ObsTerm(func=mdp.motion_racket_pos_b, params={"command_name": "motion", "lookahead_steps": 12})
+        reference_racket_vel_b_12 = ObsTerm(func=mdp.motion_racket_vel_b, params={"command_name": "motion", "lookahead_steps": 12})
+        reference_racket_normal_b_12 = ObsTerm(func=mdp.motion_racket_normal_b, params={"command_name": "motion", "lookahead_steps": 12})
+        reference_racket_pos_error_b = ObsTerm(func=mdp.motion_racket_pos_error_b, params={"command_name": "motion"})
+        reference_racket_vel_error_b = ObsTerm(func=mdp.motion_racket_vel_error_b, params={"command_name": "motion"})
+        reference_racket_normal_error_b = ObsTerm(func=mdp.motion_racket_normal_error_b, params={"command_name": "motion"})
+        actions = ObsTerm(func=mdp.last_action, params={"action_name": "joint_pos"})
+
+    @configclass
+    class CriticCfg(PolicyCfg):
+        """Asymmetric critic: privileged world root state during training only."""
+
+        root_pos_w = ObsTerm(
+            func=mdp.root_pos_w,
+            params={"asset_cfg": SceneEntityCfg("robot")},
+        )
+        root_quat_w = ObsTerm(
+            func=mdp.root_quat_w,
+            params={"asset_cfg": SceneEntityCfg("robot")},
+        )
+        root_lin_vel_w = ObsTerm(
+            func=mdp.root_lin_vel_w,
+            params={"asset_cfg": SceneEntityCfg("robot")},
+        )
+        root_ang_vel_w = ObsTerm(
+            func=mdp.root_ang_vel_w,
+            params={"asset_cfg": SceneEntityCfg("robot")},
+        )
+
+    policy: PolicyCfg = PolicyCfg()
+    critic: CriticCfg = CriticCfg()
+
+
+@configclass
+class A3PriorGuidedReferenceTrackerObservationsCfg(
+    A3ReferenceTrackerObservationsCfg
+):
+    """P5D tracker observation plus private frozen-prior input contracts."""
+
+    # These groups are consumed only inside the frozen 900/3396 action term.
+    # The learnable P5D actor still receives the reference-preview policy
+    # group above and never receives a motion ID or control anchor.
+    upper: A3F0ObservationsCfg.PolicyCfg = A3F0ObservationsCfg.PolicyCfg()
+    stage_a: A3UpperCorrectionObservationsCfg.StageACfg = (
+        A3UpperCorrectionObservationsCfg.StageACfg()
+    )
+
+
+@configclass
+class A3UnifiedUpperReferenceTrackerObservationsCfg(A3ReferenceTrackerObservationsCfg):
+    """Public reference-preview observations plus private model_3396 input."""
+
+    # Only the frozen lower-support action term consumes this group.  It is
+    # intentionally not part of the public policy group, so the new actor has
+    # no model/reference/seed ID and no access to the legacy upper prior.
+    stage_a: A3UpperCorrectionObservationsCfg.StageACfg = (
+        A3UpperCorrectionObservationsCfg.StageACfg()
+    )
+
+
+@configclass
+class A3ReferenceTrackerRewardsCfg(A3F1StrikeAwareRewardsCfg):
+    """Dense reference tracking with hit-window task and recovery checks."""
+
+    reference_joint_position = RewTerm(
+        func=mdp.motion_joint_position_error_exp,
+        weight=3.0,
+        params={
+            "command_name": "motion",
+            "std": 0.20,
+            "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True),
+        },
+    )
+    reference_joint_velocity = RewTerm(
+        func=mdp.motion_joint_velocity_error_exp,
+        weight=1.5,
+        params={
+            "command_name": "motion",
+            "std": 2.5,
+            "asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True),
+        },
+    )
+    racket_position = RewTerm(func=mdp.racket_position_tracking_exp, weight=8.0, params={"command_name": "racket_target", "std": 0.12})
+    racket_position_y = RewTerm(func=mdp.racket_position_axis_tracking_exp, weight=2.0, params={"command_name": "racket_target", "axis": 1, "std": 0.12})
+    racket_position_fine = RewTerm(func=mdp.racket_position_tracking_exp, weight=2.0, params={"command_name": "racket_target", "std": 0.05})
+    racket_velocity = RewTerm(func=mdp.racket_velocity_tracking_exp, weight=3.0, params={"command_name": "racket_target", "std": 1.5})
+    racket_velocity_magnitude = RewTerm(
+        func=mdp.racket_velocity_magnitude_tracking_exp,
+        weight=2.0,
+        params={"command_name": "racket_target", "std": 1.0, "half_window_steps": 3},
+    )
+    racket_velocity_direction = RewTerm(
+        func=mdp.racket_velocity_direction_tracking,
+        weight=2.0,
+        params={"command_name": "racket_target", "half_window_steps": 3},
+    )
+    racket_signed_velocity = RewTerm(
+        func=mdp.racket_signed_velocity_tracking,
+        weight=2.0,
+        params={"command_name": "racket_target", "half_window_steps": 3},
+    )
+    racket_pass_through = RewTerm(
+        func=mdp.racket_pass_through_reward,
+        weight=3.0,
+        params={"command_name": "racket_target", "position_gate": 0.10, "minimum_speed": 0.5, "half_window_steps": 3},
+    )
+    racket_stop_at_target = RewTerm(
+        func=mdp.racket_stop_at_target_penalty,
+        weight=2.0,
+        params={"command_name": "racket_target", "position_gate": 0.10, "minimum_speed": 0.5, "half_window_steps": 3},
+    )
+    racket_reverse_motion = RewTerm(
+        func=mdp.racket_reverse_motion_penalty,
+        weight=2.0,
+        params={"command_name": "racket_target", "half_window_steps": 3},
+    )
+    racket_hit_timing = RewTerm(
+        func=mdp.racket_hit_timing_kernel,
+        weight=1.0,
+        params={"command_name": "racket_target", "half_window_steps": 3},
+    )
+    racket_normal = RewTerm(func=mdp.racket_normal_tracking_exp, weight=2.0, params={"command_name": "racket_target", "std": 0.50})
+    racket_hit_coupled = RewTerm(
+        func=mdp.racket_hit_coupled_tracking_exp,
+        weight=1.0,
+        params={"command_name": "racket_target", "pos_std": 0.12, "vel_std": 1.5, "normal_std": 0.50},
+    )
+    racket_hit_precision = RewTerm(
+        func=mdp.racket_exact_hit_precision_tracking_exp,
+        weight=8.0,
+        params={
+            "command_name": "racket_target",
+            "pos_std": 0.08,
+            "vel_std": 1.0,
+            "normal_std": 0.35,
+            "time_std": 0.04,
+        },
+    )
+    # The safe reference is the nominal plan.  A weak residual trust region
+    # prevents PPO from replacing it with a second unconstrained planner.
+    action_residual_l2 = RewTerm(func=mdp.action_raw_l2, weight=-0.01, params={"action_name": "joint_pos"})
+    phase_magnitude = RewTerm(func=mdp.phase_magnitude_penalty, weight=0.02, params={"action_name": "joint_pos"})
+    phase_rate = RewTerm(func=mdp.phase_rate_penalty, weight=0.05, params={"action_name": "joint_pos"})
+    phase_group_consistency = RewTerm(func=mdp.phase_group_consistency_penalty, weight=0.02, params={"action_name": "joint_pos"})
+    joint_limit = RewTerm(
+        func=mdp.joint_pos_limits,
+        weight=-20.0,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)},
+    )
+    feet_slip = RewTerm(
+        func=mdp.feet_slip_l2,
+        weight=-1.0,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=A3_FEET_BODIES), "threshold": 10.0},
+    )
+    # Dense early warning complements the terminal fall penalty.  It is
+    # inactive in the normal upright range and rises before strict_fall fires.
+    strict_fall_risk = RewTerm(
+        func=mdp.strict_fall_risk_l2,
+        weight=-25.0,
+        params={
+            "minimum_upright": 0.80,
+            "minimum_height": 0.90,
+            "minimum_torso_upright": 0.85,
+            "minimum_torso_height": 0.80,
+        },
+    )
+    # The finite reference is held after the swing.  These two tail-only
+    # terms damp visible torso roll/pitch sway without suppressing the hit or
+    # follow-through and without penalizing the intended yaw heading.
+    post_strike_torso_angular_velocity_l2 = RewTerm(
+        func=mdp.post_strike_torso_angular_velocity_l2,
+        weight=-0.20,
+        params={
+            "command_name": "motion",
+            "torso_body_name": "torso_Link",
+            "deadband": 0.06,
+        },
+    )
+    post_strike_torso_tilt_l2 = RewTerm(
+        func=mdp.post_strike_torso_tilt_l2,
+        weight=-0.15,
+        params={
+            "command_name": "motion",
+            "torso_body_name": "torso_Link",
+        },
+    )
+    recovery_completion_bonus = RewTerm(
+        func=mdp.recovery_completion_bonus,
+        weight=0.0,
+    )
+    terminal_remaining_horizon = RewTerm(
+        func=mdp.terminal_remaining_horizon_penalty,
+        weight=0.0,
+        params={"horizon_steps": 250},
+    )
+    fall = RewTerm(func=mdp.is_terminated, weight=-150.0)
+    alive = RewTerm(func=mdp.is_alive, weight=1.0)
+
+
+@configclass
+class A3FloatingReferenceTrackerEnvCfg(A3StrikeConditionedBaseEnvCfg):
+    """P5D generic floating-base safe-reference execution task.
+
+    This is intentionally a tracker, not a target adapter: it receives a
+    reference trajectory from the manifest and learns only bounded residuals
+    that improve actual tracking under the same joint safety projection.
+    """
+
+    actions: A3ReferenceTrackerActionsCfg = A3ReferenceTrackerActionsCfg()
+    observations: A3ReferenceTrackerObservationsCfg = A3ReferenceTrackerObservationsCfg()
+    rewards: A3ReferenceTrackerRewardsCfg = A3ReferenceTrackerRewardsCfg()
+    terminations: A3StrikeStabilizerATerminationsCfg = A3StrikeStabilizerATerminationsCfg()
+    events: A3StrikeStabilizerAEventsCfg = A3StrikeStabilizerAEventsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        # A3NativeStrikeEnvCfg rewrites actions into its historical 10-D
+        # waist/right-arm executor.  Restore P5D's explicit 22-D tracker
+        # contract after that inherited compatibility mutation.
+        tracker_template = A3ReferenceTrackerActionsCfg().joint_pos
+        self.actions.joint_pos.joint_names = tuple(tracker_template.joint_names)
+        self.actions.joint_pos.scale = dict(tracker_template.scale)
+        self.actions.joint_pos.reference_lookahead_steps = 0
+        self.actions.joint_pos.joint_reference_lookahead_steps = {}
+        self.actions.joint_pos.soft_limit_margin_rad_by_joint = dict(
+            tracker_template.soft_limit_margin_rad_by_joint
+        )
+        self.scene.robot.spawn.fix_base = False
+        # Formal P1 materialized references are expressed in this scene root
+        # frame.  Do not inherit F0's historical (3.15, -0.35) work point:
+        # that creates metre-scale fake tracking error before PPO acts.
+        self.scene.robot.init_state.pos = (-0.5000, -0.7625, 1.0400)
+        self.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        self.commands.motion.expected_root_quaternion_wxyz = (1.0, 0.0, 0.0, 0.0)
+        self.scene.robot.init_state.joint_pos = {
+            **self.scene.robot.init_state.joint_pos,
+            ".*_hip_pitch_joint": -0.1600,
+            ".*_knee_joint": 0.3200,
+            ".*_ankle_pitch_joint": -0.1550,
+            "left_hip_roll_joint": 0.0800,
+            "right_hip_roll_joint": -0.0800,
+        }
+        # Match the formal P1 timing but leave target interpretation canonical.
+        self.commands.motion.sample_random_start_phase = False
+        self.commands.motion.prelude_steps = 50
+        self.commands.motion.hold_last_frame_steps = 0
+        self.commands.motion.return_to_default_steps = 0
+        self.commands.motion.reset_to_default_pose = True
+        self.commands.racket_target.target_mode = "manifest"
+        self.commands.racket_target.manifest_nominal_probability = 1.0
+        self.commands.racket_target.strike_time_std_s = 0.0
+        self.commands.racket_target.adapter_external_offset_half_range = (0.0, 0.0, 0.0)
+        self.commands.racket_target.adapter_external_zero_probability = 1.0
+        self.commands.racket_target.adapter_external_paired = False
+
+
+@configclass
+class A3FloatingPriorGuidedReferenceTrackerEnvCfg(
+    A3FloatingF0EnvCfg
+):
+    """P5D bootstrap plant retaining the verified 3396/900 support chain.
+
+    This class is intentionally separate from ``A3FloatingReferenceTracker``:
+    the latter remains the zero-prior ablation.  Neither class grants the
+    frozen policies authority to relabel a canonical goal or to approve a
+    teacher; they only supply a stable execution initialisation for the shared
+    residual tracker.
+    """
+
+    actions: A3PriorGuidedReferenceTrackerActionsCfg = (
+        A3PriorGuidedReferenceTrackerActionsCfg()
+    )
+    observations: A3PriorGuidedReferenceTrackerObservationsCfg = (
+        A3PriorGuidedReferenceTrackerObservationsCfg()
+    )
+    rewards: A3ReferenceTrackerRewardsCfg = A3ReferenceTrackerRewardsCfg()
+    terminations: A3StrikeStabilizerATerminationsCfg = A3StrikeStabilizerATerminationsCfg()
+    events: A3StrikeStabilizerAEventsCfg = A3StrikeStabilizerAEventsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        # A3F1StrikeAwareRewardsCfg was authored for a public Base14 action
+        # and inherits indices 0..11 for the old leg actor.  P5D's public
+        # tensor is instead exactly the 10-D upper correction; leaving those
+        # indices in place causes an out-of-range CUDA gather before any
+        # physics or balance conclusion can be drawn.
+        self.rewards.raw_action_excess.params["action_indices"] = tuple(range(10))
+        self.rewards.action_execution_gap.params["action_indices"] = tuple(range(10))
+        # The P1 materialized reference and its canonical goal use this
+        # physical root frame, rather than F0's historical work point.
+        self.scene.robot.init_state.pos = (-0.5000, -0.7625, 1.0400)
+        self.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        self.commands.motion.expected_root_quaternion_wxyz = (1.0, 0.0, 0.0, 0.0)
+        self.commands.motion.sample_random_start_phase = False
+        self.commands.motion.prelude_steps = 50
+        self.commands.motion.hold_last_frame_steps = 0
+        self.commands.motion.return_to_default_steps = 0
+        self.commands.motion.reset_to_default_pose = True
+        self.commands.racket_target.target_mode = "manifest"
+        self.commands.racket_target.manifest_nominal_probability = 1.0
+        self.commands.racket_target.strike_time_std_s = 0.0
+        self.commands.racket_target.adapter_external_offset_half_range = (0.0, 0.0, 0.0)
+        self.commands.racket_target.adapter_external_zero_probability = 1.0
+        self.commands.racket_target.adapter_external_paired = False
+
+
+@configclass
+class A3FloatingUnifiedUpperReferenceTrackerEnvCfg(A3FloatingF0EnvCfg):
+    """P5U-1 floating-base unified upper tracker.
+
+    ``model_3396`` remains the nominal lower support and ``model_900`` is not
+    constructed or called anywhere in this environment.  Legacy variants may
+    expose only the ten-dimensional upper residual; the production NoAssist
+    variant additionally enables a bounded 12-D lower balance residual around
+    model_3396.
+    """
+
+    actions: A3UnifiedUpperReferenceTrackerActionsCfg = A3UnifiedUpperReferenceTrackerActionsCfg()
+    observations: A3UnifiedUpperReferenceTrackerObservationsCfg = (
+        A3UnifiedUpperReferenceTrackerObservationsCfg()
+    )
+    rewards: A3ReferenceTrackerRewardsCfg = A3ReferenceTrackerRewardsCfg()
+    terminations: A3StrikeStabilizerATerminationsCfg = A3StrikeStabilizerATerminationsCfg()
+    events: A3ProgressiveFallAssistEventsCfg = A3ProgressiveFallAssistEventsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        # The inherited strike-aware reward bundle contains legacy Base14
+        # action-index defaults.  Legacy P5U exposes ten upper residuals, so
+        # every action-indexed diagnostic must be explicitly narrowed to 0:10
+        # before the first CUDA step.
+        self.rewards.raw_action_excess.params["action_indices"] = tuple(range(10))
+        self.rewards.action_execution_gap.params["action_indices"] = tuple(range(10))
+        # P5 canonical manifests use the same materialized world frame as the
+        # existing reference-tracker audit, not F0's historical work point.
+        self.scene.robot.init_state.pos = (-0.5000, -0.7625, 1.0400)
+        self.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        self.commands.motion.expected_root_quaternion_wxyz = (1.0, 0.0, 0.0, 0.0)
+        self.scene.robot.init_state.joint_pos = {
+            **self.scene.robot.init_state.joint_pos,
+            ".*_hip_pitch_joint": -0.1600,
+            ".*_knee_joint": 0.3200,
+            ".*_ankle_pitch_joint": -0.1550,
+            "left_hip_roll_joint": 0.0800,
+            "right_hip_roll_joint": -0.0800,
+        }
+        self.scene.robot.spawn.fix_base = False
+        self.commands.motion.sample_random_start_phase = False
+        self.commands.motion.prelude_steps = 50
+        self.commands.motion.hold_last_frame_steps = 0
+        self.commands.motion.return_to_default_steps = 0
+        self.commands.motion.reset_to_default_pose = True
+        self.commands.racket_target.target_mode = "manifest"
+        self.commands.racket_target.manifest_nominal_probability = 1.0
+        self.commands.racket_target.strike_time_std_s = 0.0
+        self.commands.racket_target.adapter_external_offset_half_range = (0.0, 0.0, 0.0)
+        self.commands.racket_target.adapter_external_zero_probability = 1.0
+        self.commands.racket_target.adapter_external_paired = False
+
+
+@configclass
+class A3FloatingUnifiedUpperReferenceTrackerNoAssistEnvCfg(
+    A3FloatingUnifiedUpperReferenceTrackerEnvCfg
+):
+    """P5U unified tracker with no external fall-assist wrench.
+
+    The regular P5U class retains the historical progressive fall-assist
+    bootstrap.  This separate environment keeps the same READY stance,
+    action contract, rewards, and terminations while removing that external
+    torque event for unbiased training on the safe augmented motion bank.
+    """
+
+    events: A3StrikeStabilizerAEventsCfg = A3StrikeStabilizerAEventsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        # model_3396 is a nominal prior, not the final lower-body controller.
+        # Give PPO explicit authority over all twelve leg channels while
+        # preserving the frozen prior as the additive baseline.  The action
+        # term ramps this residual in during the READY prelude.
+        self.actions.joint_pos.lower_balance_residual_enabled = True
+        # Contract A: 12 lower residuals + 10 upper residuals.  The action
+        # term computes the same dimension at runtime; keep the reward index
+        # contract explicit at config time because the cfg object has no
+        # bound ActionTerm instance yet.
+        action_dim = 12 + len(self.actions.joint_pos.upper_joint_names)
+        self.rewards.raw_action_excess.params["action_indices"] = tuple(range(action_dim))
+        self.rewards.action_execution_gap.params["action_indices"] = tuple(range(action_dim))
+
+
+@configclass
+class A3FloatingUnifiedUpperReferenceTrackerGlobalPhaseEnvCfg(
+    A3FloatingUnifiedUpperReferenceTrackerEnvCfg
+):
+    """P5U Contract B: shared continuous global phase action."""
+
+    actions: A3UnifiedUpperReferenceTrackerGlobalPhaseActionsCfg = (
+        A3UnifiedUpperReferenceTrackerGlobalPhaseActionsCfg()
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.rewards.raw_action_excess.params["action_indices"] = tuple(range(11))
+        self.rewards.action_execution_gap.params["action_indices"] = tuple(range(11))
+
+
+@configclass
+class A3FloatingUnifiedUpperReferenceTrackerGroupedPhaseEnvCfg(
+    A3FloatingUnifiedUpperReferenceTrackerEnvCfg
+):
+    """P5U Contract C: global plus shoulder/elbow/wrist phase actions."""
+
+    actions: A3UnifiedUpperReferenceTrackerGroupedPhaseActionsCfg = (
+        A3UnifiedUpperReferenceTrackerGroupedPhaseActionsCfg()
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.rewards.raw_action_excess.params["action_indices"] = tuple(range(14))
+        self.rewards.action_execution_gap.params["action_indices"] = tuple(range(14))
 
 
 @configclass
@@ -1687,6 +2610,24 @@ class A3FloatingJointCoordinatorV10WideStaggerRecoveryEnvCfg(
 
 
 @configclass
+class A3FloatingJointCoordinatorV11BentReadyRecoveryEnvCfg(
+    A3FloatingJointCoordinatorV9WideStaggerSupportEnvCfg
+):
+    """V28 plant: frozen V25/V27 stack plus a bounded settling adapter."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.observations = A3JointCoordinatorBentReadyRecoveryObservationsCfg()
+        # Preserve all V2/V25 reward mutations performed by the inherited
+        # __post_init__ chain (notably the enabled fine strike-position term).
+        # V28 adds only return/READY objectives; replacing the complete reward
+        # config here would silently discard that qualified impact contract.
+        bent_ready_terms = A3BentReadyRecoveryRewardsCfg()
+        self.rewards.bent_ready_arm_score = bent_ready_terms.bent_ready_arm_score
+        self.rewards.bent_ready_progress = bent_ready_terms.bent_ready_progress
+
+
+@configclass
 class A3FixedBaseBackhandRewardsCfg(A3NativeStrikeRewardsCfg):
     """Backhand residual rewards with a soft latent-action trust band."""
 
@@ -1757,6 +2698,162 @@ class A3FixedBaseStrikeObservationsCfg(A3StrikeConditionedBaseObservationsCfg):
 
 
 @configclass
+class A3FixedBaseTargetAdapterObservationsCfg(A3FixedBaseStrikeObservationsCfg):
+    """P0 adapter observations plus an anchor-only model_900 group."""
+
+    @configclass
+    class PolicyCfg(ObservationsCfg.PolicyCfg):
+        # This is deliberately a standalone 25-D contract, not the generic
+        # tracker observation plus an adapter suffix.
+        command = None
+        motion_anchor_pos_b = None
+        motion_anchor_ori_b = None
+        base_lin_vel = None
+        base_ang_vel = None
+        joint_pos = None
+        joint_vel = None
+        actions = None
+        adapter = ObsTerm(func=mdp.target_adapter_observation, params={"command_name": "racket_target"})
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    @configclass
+    class AnchorCfg(A3NativeStrikeObservationsCfg.PolicyCfg):
+        # The checkpoint was trained with the native 10-D upper action
+        # history, while the public P0 adapter action is 7-D.
+        actions = ObsTerm(func=mdp.f0_upper_last_action)
+        racket_target_pos_b = ObsTerm(
+            func=mdp.racket_anchor_target_pos_b, params={"command_name": "racket_target"}
+        )
+        racket_target_vel_b = ObsTerm(
+            func=mdp.racket_anchor_target_vel_b, params={"command_name": "racket_target"}
+        )
+        racket_target_normal_b = ObsTerm(
+            func=mdp.racket_anchor_target_normal_b, params={"command_name": "racket_target"}
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    policy: PolicyCfg = PolicyCfg()
+    anchor: AnchorCfg = AnchorCfg()
+
+
+@configclass
+class A3FixedBaseTargetAdapterActionsCfg(ActionsCfg):
+    """Seven-dimensional right-arm residual around the frozen anchor swing."""
+
+    joint_pos = A3FrozenAnchorArmAdapterPositionActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        adapter_joint_names=tuple(A3_RIGHT_ARM_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        action_mask=(1.0,) * len(A3_BASE_ACTION_JOINTS),
+        raw_clip=1.0,
+        upper_raw_clip=0.50,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+        upper_observation_group="anchor",
+        # P0 needs centimetre-scale wrist displacement.  Keep the physical
+        # envelope at +/- 0.05 rad independently from model_900's clip.
+        adapter_scale_rad=(0.10,) * 7,
+        adapter_raw_clip=0.5,
+        # P2 doubles the P1 centimetre envelope.  The corresponding physical
+        # feedforward authority is 0.10 rad, or 0.12 rad for motion 1's weak
+        # local-y direction.  The PPO contribution is still scaled by 0.1.
+        adapter_raw_clip_by_motion=(1.0, 1.2, 1.0, 1.0, 1.0, 1.0),
+        adapter_ramp_in_steps=10,
+        adapter_ramp_out_steps=8,
+        adapter_policy_residual_gain=0.1,
+        # Clip-aware inverse calibrated on the full {-1, 0, +1}^3 motion-0
+        # target grid.  This distributes authority across the arm so combined
+        # x/y/z requests remain useful after the per-joint +/-0.5 raw bound.
+        adapter_feedforward_pinv=(
+            (-28.301, -34.989, 17.405),
+            (-3.559, 49.620, -1.078),
+            (-22.918, -5.274, -32.356),
+            (25.083, -7.513, -33.957),
+            (36.379, -39.350, 6.404),
+            (-2.251, 48.212, -24.392),
+            (2.716, -49.938, 1.417),
+        ),
+        # P1 keeps the same public 7-D residual policy but conditions its
+        # analytic local controller on the selected anchor motion.
+        adapter_feedforward_pinv_by_motion=(
+            (
+                (-28.301, -34.989, 17.405),
+                (-3.559, 49.620, -1.078),
+                (-22.918, -5.274, -32.356),
+                (25.083, -7.513, -33.957),
+                (36.379, -39.350, 6.404),
+                (-2.251, 48.212, -24.392),
+                (2.716, -49.938, 1.417),
+            ),
+            (
+                (-11.735, -60.000, -20.667),
+                (5.863, 60.000, -16.778),
+                (-16.117, 19.600, -24.251),
+                (33.519, -32.230, -22.487),
+                (4.866, -60.000, 13.138),
+                (11.017, 60.000, -21.383),
+                (-24.825, -60.000, 8.000),
+            ),
+            (
+                (-8.506, -50.000, -8.837),
+                (-14.670, 50.000, 21.155),
+                (-33.767, 50.000, -9.707),
+                (11.381, 3.591, -32.116),
+                (14.411, 45.170, 8.235),
+                (-4.815, 50.000, -16.394),
+                (-14.469, -50.000, 1.731),
+            ),
+            (
+                (-13.126, -50.000, -11.936),
+                (4.522, 50.000, -12.598),
+                (-19.650, 50.000, -17.841),
+                (29.566, -24.297, -28.357),
+                (9.609, 22.421, 9.940),
+                (11.703, 50.000, -30.902),
+                (-19.752, -50.000, -3.189),
+            ),
+            (
+                (-23.914, 50.000, -7.509),
+                (-36.659, 50.000, -6.209),
+                (-25.521, -32.171, -15.293),
+                (16.411, -37.653, -23.893),
+                (13.539, 50.000, 3.348),
+                (-10.183, 50.000, -15.141),
+                (-8.728, -50.000, 11.612),
+            ),
+            (
+                (-23.346, 50.000, -14.901),
+                (-40.328, 50.000, -19.191),
+                (-17.277, -30.850, -17.621),
+                (25.203, -28.137, -23.681),
+                (8.467, 50.000, 9.681),
+                (-2.914, 50.000, -20.696),
+                (-8.778, -50.000, 10.589),
+            ),
+        ),
+        adapter_feedforward_target_transform=(
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (0.0, 0.0, 1.0),
+        ),
+    )
+
+
+@configclass
 class A3FixedBaseReferenceStrikeEnvCfg(A3NativeStrikeEnvCfg):
     """Fixed-base strike executor with explicit motion-reference preview.
 
@@ -1769,6 +2866,85 @@ class A3FixedBaseReferenceStrikeEnvCfg(A3NativeStrikeEnvCfg):
     """
 
     observations: A3FixedBaseStrikeObservationsCfg = A3FixedBaseStrikeObservationsCfg()
+
+
+@configclass
+class A3FixedBaseTargetAdapterEnvCfg(A3FixedBaseReferenceStrikeEnvCfg):
+    """P0 fixed-base motion-0 target residual adapter."""
+
+    actions: A3FixedBaseTargetAdapterActionsCfg = A3FixedBaseTargetAdapterActionsCfg()
+    observations: A3FixedBaseTargetAdapterObservationsCfg = A3FixedBaseTargetAdapterObservationsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.robot.spawn.fix_base = True
+        self.commands.motion.manifest_subset_size = 1
+        self.commands.racket_target.target_mode = "manifest"
+        self.commands.racket_target.manifest_nominal_probability = 1.0
+        # Every paired sibling must evaluate the same point on the reference
+        # swing.  A per-env strike-time jitter turns a 40-ms phase difference
+        # into several centimetres of false "incremental" position error.
+        self.commands.racket_target.strike_time_std_s = 0.0
+        self.commands.racket_target.adapter_external_offset_half_range = (0.01, 0.01, 0.01)
+        self.commands.racket_target.adapter_external_zero_probability = 0.20
+        self.commands.racket_target.adapter_external_paired = True
+        # P0 is deliberately an *incremental* identification task.  The
+        # frozen anchor still carries a roughly 10-cm absolute placement
+        # error, so the inherited absolute target reward would teach a fixed
+        # bias before it could learn ``external delta -> racket delta``.
+        # Preserve velocity/normal softly and keep the motion route as a weak
+        # safety prior; the paired displacement objective is the clear winner.
+        self.rewards.racket_position.weight = 0.0
+        self.rewards.racket_position_y.weight = 0.0
+        self.rewards.racket_position_fine.weight = 0.0
+        self.rewards.racket_position_y_fine.weight = 0.0
+        self.rewards.racket_hit_coupled.weight = 0.0
+        self.rewards.racket_velocity.weight = 0.5
+        self.rewards.racket_normal.weight = 0.5
+        for term_name in (
+            "motion_body_pos",
+            "motion_body_ori",
+            "motion_torso_ori",
+            "motion_native_joint_pos",
+            "motion_body_lin_vel",
+            "motion_body_ang_vel",
+        ):
+            term = getattr(self.rewards, term_name, None)
+            if term is not None:
+                term.weight *= 0.20
+        self.rewards.racket_incremental_position = RewTerm(
+            func=mdp.racket_paired_incremental_position_tracking,
+            weight=0.0,
+            # At a 1-cm target a 4-cm kernel rates zero response at 0.94,
+            # which is indistinguishable from useful gain.  P0 needs the
+            # centimetre-scale kernel to make an unchanged racket costly.
+            params={"command_name": "racket_target", "std": 0.012},
+        )
+        self.rewards.racket_incremental_direction = RewTerm(
+            func=mdp.racket_paired_incremental_direction_gain,
+            weight=0.0,
+            params={"command_name": "racket_target"},
+        )
+        self.rewards.racket_incremental_dense_huber = RewTerm(
+            func=mdp.racket_paired_incremental_dense_huber,
+            weight=0.5,
+            params={"command_name": "racket_target", "scale_m": 0.01},
+        )
+        self.rewards.racket_incremental_gain = RewTerm(
+            func=mdp.racket_paired_incremental_gain_loss,
+            weight=0.25,
+            params={"command_name": "racket_target"},
+        )
+        self.rewards.racket_incremental_cross_axis = RewTerm(
+            func=mdp.racket_paired_incremental_cross_axis_loss,
+            weight=2.0,
+            params={"command_name": "racket_target"},
+        )
+        self.rewards.target_adapter_zero_hold = RewTerm(
+            func=mdp.target_adapter_zero_action_hold,
+            weight=0.25,
+            params={"command_name": "racket_target"},
+        )
 
 
 @configclass
@@ -1788,3 +2964,370 @@ class A3FixedBaseBackhandReferenceStrikeEnvCfg(A3FixedBaseReferenceStrikeEnvCfg)
         # geometry.  Backhand is an explicit semantic contract (+1).
         self.observations.policy.swing_type.func = mdp.fixed_swing_type
         self.observations.policy.swing_type.params = {"value": 1.0}
+
+
+@configclass
+class A3FloatingTargetConditionedActionsCfg(ActionsCfg):
+    """V30's 22-D coordinator plus an internal target feedforward path."""
+
+    joint_pos = A3TargetConditionedJointCoordinatorActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        action_mask=(1.0,) * 12 + (0.0, 0.0),
+        raw_clip=1.0,
+        smooth_raw_bound=True,
+        upper_raw_clip=0.50,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        clip_to_soft_joint_limits=True,
+        reference_command_name="motion",
+        base_reference_mode="default",
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        preserve_order=True,
+        upper_observation_group="upper",
+        adapter_joint_names=tuple(A3_RIGHT_ARM_JOINTS),
+    )
+
+
+@configclass
+class A3FloatingTargetConditionedCoordinatorEnvCfg(A3FloatingJointCoordinatorV2EnvCfg):
+    """P3 floating-base replay with the fixed-base adapter held feedforward-only."""
+
+    actions: A3FloatingTargetConditionedActionsCfg = A3FloatingTargetConditionedActionsCfg()
+    observations: A3TargetConditionedCoordinatorObservationsCfg = (
+        A3TargetConditionedCoordinatorObservationsCfg()
+    )
+    rewards: A3JointCoordinatorRewardsCfg = A3JointCoordinatorRewardsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        # P3 is a paired system-identification task.  Independent observation
+        # corruption across siblings would appear as false Cartesian
+        # cross-axis response, so keep the frozen actors and coordinator's
+        # private upper copy deterministic here.
+        for group_name in ("upper", "stage_a", "coordinator_upper"):
+            getattr(self.observations, group_name).enable_corruption = False
+        self.commands.motion.manifest_subset_size = 6
+        self.commands.racket_target.target_mode = "manifest"
+        self.commands.racket_target.manifest_nominal_probability = 1.0
+        self.commands.racket_target.strike_time_std_s = 0.0
+        self.commands.racket_target.adapter_external_offset_half_range = (0.02, 0.02, 0.02)
+        self.commands.racket_target.adapter_external_zero_probability = 0.0
+        self.commands.racket_target.adapter_external_paired = False
+        self.commands.racket_target.external_delta_receipt_frame = True
+
+        # Keep the incremental terms available for the focused floating-base
+        # continuation below.  They are inactive when paired sampling is off
+        # (the replay default), so this does not alter the replay contract.
+        self.rewards.racket_incremental_dense_huber = RewTerm(
+            func=mdp.racket_paired_incremental_dense_huber,
+            weight=0.5,
+            params={"command_name": "racket_target", "scale_m": 0.01},
+        )
+        self.rewards.racket_incremental_gain = RewTerm(
+            func=mdp.racket_paired_incremental_gain_loss,
+            weight=0.25,
+            params={"command_name": "racket_target"},
+        )
+        self.rewards.racket_incremental_cross_axis = RewTerm(
+            func=mdp.racket_paired_incremental_cross_axis_loss,
+            weight=2.0,
+            params={"command_name": "racket_target"},
+        )
+        self.rewards.target_adapter_zero_hold = RewTerm(
+            func=mdp.target_adapter_zero_action_hold,
+            weight=0.25,
+            params={"command_name": "racket_target"},
+        )
+
+        # Reuse the audited fixed-base matrices verbatim.  This is a replay
+        # integration test; no floating-base target adapter is trained here.
+        source = A3FixedBaseTargetAdapterActionsCfg().joint_pos
+        target = self.actions.joint_pos
+        target.adapter_scale_rad = source.adapter_scale_rad
+        target.adapter_raw_clip = source.adapter_raw_clip
+        target.adapter_raw_clip_by_motion = source.adapter_raw_clip_by_motion
+        target.adapter_ramp_in_steps = source.adapter_ramp_in_steps
+        target.adapter_ramp_out_steps = source.adapter_ramp_out_steps
+        target.adapter_feedforward_pinv = source.adapter_feedforward_pinv
+        target.adapter_feedforward_pinv_by_motion = source.adapter_feedforward_pinv_by_motion
+        target.adapter_feedforward_target_transform = source.adapter_feedforward_target_transform
+
+
+@configclass
+class A3FloatingTargetConditionedRecoveryEnvCfg(
+    A3FloatingTargetConditionedCoordinatorEnvCfg
+):
+    """P3 plant with an observation suffix reserved for post-hit braking."""
+
+    observations: A3TargetConditionedRecoveryObservationsCfg = (
+        A3TargetConditionedRecoveryObservationsCfg()
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        # P4-A measured motion 3's stable native-time (1.56 s) hit centre
+        # relative to its manifest anchor.  This is deliberately an input
+        # coordinate calibration, rather than a large residual action: the
+        # local adapter remains confined to its validated centimetre range.
+        # Other motions retain the uncalibrated P3 contract until separately
+        # audited.  Delayed hit schedules also remain uncalibrated because
+        # P4-A showed their centre and tail stability are time-dependent.
+        self.actions.joint_pos.adapter_control_anchor_offset_b_by_motion = (
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+            (-0.0955253, 0.0660839, -0.0309181),
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_hit_steps_by_motion = (
+            -1,
+            -1,
+            -1,
+            # Manifest frame, not the externally reported control step.
+            # P4-A native schedule: prelude 50 + hit frame 30 + two commit
+            # updates = control-step 78 (1.56 s).
+            30,
+            -1,
+            -1,
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_prelude_steps_by_motion = (
+            -1,
+            -1,
+            -1,
+            50,
+            -1,
+            -1,
+        )
+
+
+@configclass
+class A3FloatingTargetConditionedRecoveryYCompEnvCfg(
+    A3FloatingTargetConditionedRecoveryEnvCfg
+):
+    """Isolated P4-D candidate: conservative local y/cross-axis pre-compensation."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        # T = 0.75 I + 0.25 J^{-1}, using P4-C's calibrated native-time
+        # motion-3 response.  This is deliberately partial: it improves the
+        # weak y gain without turning a 1-cm cube corner into a clipped arm
+        # command.  P4-C remains unchanged as the frozen fallback.
+        identity = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+        self.actions.joint_pos.adapter_feedforward_target_transform_by_motion = (
+            identity,
+            identity,
+            identity,
+            (
+                (1.007454, -0.047725, 0.014104),
+                (0.172997, 1.176075, -0.004985),
+                (-0.027995, 0.010253, 1.006042),
+            ),
+            identity,
+            identity,
+        )
+
+
+@configclass
+class A3FloatingTargetConditionedRecoveryMotion0CalibratedEnvCfg(
+    A3FloatingTargetConditionedRecoveryYCompEnvCfg
+):
+    """P5: retain P4-D motion 3 and add motion 0's measured native-time centre."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        # P5-A, motion 0, frame 30 / READY prelude 50.  This is the measured
+        # physical hit centre relative to its manifest anchor; it belongs in
+        # the external-coordinate bridge, never in the centimetre adapter.
+        self.actions.joint_pos.adapter_control_anchor_offset_b_by_motion = (
+            (-0.0343194, 0.0407395, -0.0581275),
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+            (-0.0955253, 0.0660839, -0.0309181),
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_hit_steps_by_motion = (
+            30,
+            -1,
+            -1,
+            30,
+            -1,
+            -1,
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_prelude_steps_by_motion = (
+            50,
+            -1,
+            -1,
+            50,
+            -1,
+            -1,
+        )
+
+
+@configclass
+class A3FloatingTargetConditionedRecoveryMotion2CalibratedEnvCfg(
+    A3FloatingTargetConditionedRecoveryMotion0CalibratedEnvCfg
+):
+    """P7: retain P5 contracts and add motion 2's native-time hit centre."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.actions.joint_pos.adapter_control_anchor_offset_b_by_motion = (
+            (-0.0343194, 0.0407395, -0.0581275),
+            (0.0, 0.0, 0.0),
+            (-0.0168705, 0.0431306, -0.0826364),
+            (-0.0955253, 0.0660839, -0.0309181),
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_hit_steps_by_motion = (
+            30,
+            -1,
+            30,
+            30,
+            -1,
+            -1,
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_prelude_steps_by_motion = (
+            50,
+            -1,
+            50,
+            50,
+            -1,
+            -1,
+        )
+
+
+@configclass
+class A3FloatingTargetConditionedRecoveryMotion4CalibratedEnvCfg(
+    A3FloatingTargetConditionedRecoveryMotion2CalibratedEnvCfg
+):
+    """P8: retain P7 contracts and add motion 4's native-time hit centre."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        # P8-A, motion 4, frame 30 / READY prelude 50.  The native-time
+        # response is well conditioned enough to first preserve its measured
+        # coordinates verbatim; any local cross-axis compensation remains a
+        # separate, reversible follow-up from this control-anchor contract.
+        self.actions.joint_pos.adapter_control_anchor_offset_b_by_motion = (
+            (-0.0343194, 0.0407395, -0.0581275),
+            (0.0, 0.0, 0.0),
+            (-0.0168705, 0.0431306, -0.0826364),
+            (-0.0955253, 0.0660839, -0.0309181),
+            (-0.0312324, 0.0621604, -0.0230464),
+            (0.0, 0.0, 0.0),
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_hit_steps_by_motion = (
+            30,
+            -1,
+            30,
+            30,
+            30,
+            -1,
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_prelude_steps_by_motion = (
+            50,
+            -1,
+            50,
+            50,
+            50,
+            -1,
+        )
+
+
+@configclass
+class A3FloatingTargetConditionedRecoveryMotion5CalibratedEnvCfg(
+    A3FloatingTargetConditionedRecoveryMotion4CalibratedEnvCfg
+):
+    """P9: retain P8 contracts and add motion 5's native-time hit centre."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        # P9-A, motion 5, frame 30 / READY prelude 50.  This is a measured
+        # centre offset only.  The y-to-z coupling seen in its first local
+        # grid is intentionally not folded into this layer, so an optional
+        # compensation can later be evaluated independently of calibration.
+        self.actions.joint_pos.adapter_control_anchor_offset_b_by_motion = (
+            (-0.0343194, 0.0407395, -0.0581275),
+            (0.0, 0.0, 0.0),
+            (-0.0168705, 0.0431306, -0.0826364),
+            (-0.0955253, 0.0660839, -0.0309181),
+            (-0.0312324, 0.0621604, -0.0230464),
+            (-0.0744438, 0.0363935, -0.0106046),
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_hit_steps_by_motion = (
+            30,
+            -1,
+            30,
+            30,
+            30,
+            30,
+        )
+        self.actions.joint_pos.adapter_control_anchor_calibration_prelude_steps_by_motion = (
+            50,
+            -1,
+            50,
+            50,
+            50,
+            50,
+        )
+        # P10 selection contract: select in the same measured control-centre
+        # coordinates consumed by the adapter.  Motion 1 is deliberately
+        # unavailable: its native full-tail audit still terminates after hit.
+        self.commands.motion.external_control_anchor_offset_b_by_motion = (
+            (-0.0343194, 0.0407395, -0.0581275),
+            (0.0, 0.0, 0.0),
+            (-0.0168705, 0.0431306, -0.0826364),
+            (-0.0955253, 0.0660839, -0.0309181),
+            (-0.0312324, 0.0621604, -0.0230464),
+            (-0.0744438, 0.0363935, -0.0106046),
+        )
+        self.commands.motion.external_control_anchor_enabled_by_motion = (
+            True,
+            False,
+            True,
+            True,
+            True,
+            True,
+        )
+        # Every admitted P10 control centre has been exercised only in its
+        # local +/-1 cm cube.  This task-level ceiling is intersected with
+        # caller policy rather than trusting play.yaml's older P3 +/-2 cm
+        # defaults.  The disabled motion retains a zero range for transparent
+        # diagnostics, but can never be selected in the first place.
+        self.commands.motion.external_control_local_half_range_by_motion = (
+            (0.01, 0.01, 0.01),
+            (0.0, 0.0, 0.0),
+            (0.01, 0.01, 0.01),
+            (0.01, 0.01, 0.01),
+            (0.01, 0.01, 0.01),
+            (0.01, 0.01, 0.01),
+        )
+
+
+@configclass
+class A3FloatingTargetConditionedRecoveryMotion1TrainEnvCfg(
+    A3FloatingTargetConditionedRecoveryMotion5CalibratedEnvCfg
+):
+    """P11: isolate motion 1's post-hit recovery without admitting it to P10.
+
+    This is a training-only contract. It fixes every reset to manifest motion
+    1 and removes paired external perturbations so PPO can attribute return
+    stability to the lower-body residual rather than target-side variation.
+    The inherited P10 selector still leaves motion 1 disabled for user-facing
+    external target execution.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.motion.fixed_motion_id = 1
+        self.commands.motion.manifest_balance_strokes = False
+        self.commands.racket_target.adapter_external_paired = False
+        self.commands.racket_target.adapter_external_offset_half_range = (0.0, 0.0, 0.0)
+        self.commands.racket_target.adapter_external_zero_probability = 1.0

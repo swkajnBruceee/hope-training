@@ -10,7 +10,59 @@ from isaaclab_rl.rsl_rl import export_policy_as_onnx
 from training.utils.exporter import attach_onnx_metadata, export_motion_policy_as_onnx
 
 
+def _install_paired_common_exploration_noise(runner: OnPolicyRunner) -> None:
+    """Share PPO exploration noise inside each seven-environment target pair.
+
+    The policy mean remains target-conditioned per environment.  Only the
+    standard-normal sample is copied from the group's zero-offset baseline,
+    which keeps every marginal action distribution valid while removing
+    exploration noise from paired incremental rewards.
+    """
+    env = runner.env.unwrapped
+    if not hasattr(env, "command_manager"):
+        return
+    try:
+        command = env.command_manager.get_term("racket_target")
+    except (KeyError, ValueError):
+        return
+    if not bool(getattr(command.cfg, "adapter_external_paired", False)):
+        return
+
+    original_act = runner.alg.act
+
+    def paired_act(observations, privileged_observations):
+        actions = original_act(observations, privileged_observations)
+        policy = runner.alg.policy
+        mean = policy.action_mean.detach()
+        sigma = policy.action_std.detach().clamp_min(1.0e-8)
+        standardized_noise = (actions - mean) / sigma
+        baseline = command.adapter_pair_baseline_env.to(
+            device=actions.device, dtype=torch.long
+        )
+        paired_actions = mean + standardized_noise[baseline] * sigma
+
+        # PPO must store the action that was actually executed, along with its
+        # probability under each sibling's own target-conditioned mean.
+        runner.alg.transition.actions = paired_actions.detach()
+        runner.alg.transition.actions_log_prob = policy.get_actions_log_prob(
+            paired_actions
+        ).detach()
+        runner.alg.transition.action_mean = mean
+        runner.alg.transition.action_sigma = sigma
+        return runner.alg.transition.actions
+
+    runner.alg.act = paired_act
+    print(
+        "[paired-target] sharing PPO exploration noise within each 7-env group",
+        flush=True,
+    )
+
+
 class MyOnPolicyRunner(OnPolicyRunner):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _install_paired_common_exploration_noise(self)
+
     def save(self, path: str, infos=None):
         """Save the model and training information."""
         super().save(path, infos)
@@ -35,6 +87,7 @@ class MotionOnPolicyRunner(OnPolicyRunner):
     ):
         super().__init__(env, train_cfg, log_dir, device)
         self.registry_name = registry_name
+        _install_paired_common_exploration_noise(self)
 
     def save(self, path: str, infos=None):
         """Save the model and training information."""

@@ -114,6 +114,33 @@ def _reference_racket_pos_w(env, motion_cmd, racket_cmd, n, device):
     return wrist_pos + quat_apply(wrist_quat, racket_cmd._mount_offset[:n])
 
 
+def _reference_racket_vel_w(env, motion_cmd, racket_cmd, n, device):
+    """Compute reference TCP velocity from the same motion-library state."""
+    import torch
+    from isaaclab.utils.math import quat_apply
+
+    motion_ids = motion_cmd.motion_ids[:n]
+    time_steps = motion_cmd.time_steps[:n]
+    if motion_cmd._use_motion_library:
+        body_pos = motion_cmd.motion._body_pos_w[motion_ids, time_steps]
+        body_quat = motion_cmd.motion._body_quat_w[motion_ids, time_steps]
+        body_lin = motion_cmd.motion._body_lin_vel_w[motion_ids, time_steps]
+        body_ang = motion_cmd.motion._body_ang_vel_w[motion_ids, time_steps]
+    else:
+        body_pos = motion_cmd.motion._body_pos_w[time_steps]
+        body_quat = motion_cmd.motion._body_quat_w[time_steps]
+        body_lin = motion_cmd.motion._body_lin_vel_w[time_steps]
+        body_ang = motion_cmd.motion._body_ang_vel_w[time_steps]
+    del body_pos
+    if racket_cmd._racket_mode == "body":
+        return body_lin[:, racket_cmd._racket_body_index]
+    wrist_lin = body_lin[:, racket_cmd._wrist_body_index]
+    wrist_ang = body_ang[:, racket_cmd._wrist_body_index]
+    wrist_quat = body_quat[:, racket_cmd._wrist_body_index]
+    offset_w = quat_apply(wrist_quat, racket_cmd._mount_offset[:n])
+    return wrist_lin + torch.cross(wrist_ang, offset_w, dim=-1)
+
+
 def _sync_motion_state(env, motion_cmd, n, device, start_steps=None):
     import torch
 
@@ -263,6 +290,16 @@ def _run(cfg, simulation_app):
     frame_z_offset = cfg.get("manifest_frame_z_offset", None)
     if frame_z_offset is None:
         frame_z_offset = cfg.task.get("manifest_frame_z_offset")
+    if (
+        task_id == "HOPE-FloatingUnifiedUpperReferenceTracker-AgibotA3-v0"
+        and frame_z_offset is not None
+        and abs(float(frame_z_offset)) > 1.0e-8
+    ):
+        raise ValueError(
+            "P5U unified upper tracker requires manifest_frame_z_offset=0.0: "
+            "P5D scene-placed NPZ files already contain the world z anchor; "
+            f"received {float(frame_z_offset):.6f} m (would double-apply the lift)."
+        )
     if frame_z_offset is not None:
         env_cfg.commands.motion.manifest_frame_z_offset = float(frame_z_offset)
     if _as_bool(cfg.get("validate_stance_contract", False)):
@@ -313,6 +350,12 @@ def _run(cfg, simulation_app):
     action_term = env.unwrapped.action_manager.get_term("joint_pos")
     diagnostic = _as_bool(cfg.get("diagnostic", False))
     native_joint_ids = getattr(action_term, "_joint_index_tensor", None)
+    # Some prior-guided P5D action terms intentionally do not expose their
+    # internal upper-joint index tensor.  Diagnostics still must report real
+    # soft-limit margins, so fall back to the full articulation joint set;
+    # this does not alter the actor action contract.
+    if diagnostic and native_joint_ids is None:
+        native_joint_ids = torch.arange(robot.num_joints, device=device, dtype=torch.long)
     action_scale = getattr(action_term, "_scale", None)
     if action_scale is not None:
         scale_abs_max = float(action_scale.abs().max().detach().cpu())
@@ -386,23 +429,135 @@ def _run(cfg, simulation_app):
                 "target_pos": torch.full((n, 3), float("nan"), device=device),
                 "reference_pos": torch.full((n, 3), float("nan"), device=device),
                 "actual_pos": torch.full((n, 3), float("nan"), device=device),
+                "target_vel": torch.full((n, 3), float("nan"), device=device),
+                "reference_vel": torch.full((n, 3), float("nan"), device=device),
+                "actual_vel": torch.full((n, 3), float("nan"), device=device),
+                "reference_root_pos": torch.full((n, 3), float("nan"), device=device),
+                "actual_root_pos": torch.full((n, 3), float("nan"), device=device),
+                "root_translation_error": torch.full((n,), float("nan"), device=device),
                 "target_reference_error": torch.full((n,), float("nan"), device=device),
                 "reference_actual_error": torch.full((n,), float("nan"), device=device),
+                "velocity_magnitude_error": torch.full((n,), float("nan"), device=device),
+                "velocity_direction_error_deg": torch.full((n,), float("nan"), device=device),
+                "best_pos_error": torch.full((n,), float("inf"), device=device),
+                "best_pos_step": torch.full((n,), -1, dtype=torch.long, device=device),
+                "best_pos_velocity_magnitude_error": torch.full((n,), float("nan"), device=device),
+                "best_pos_velocity_direction_error_deg": torch.full((n,), float("nan"), device=device),
                 "raw_action_max": torch.full((n,), float("nan"), device=device),
                 "raw_action_mean": torch.full((n,), float("nan"), device=device),
                 "residual_max": torch.full((n,), float("nan"), device=device),
                 "residual_mean": torch.full((n,), float("nan"), device=device),
+                "prior_contribution_max": torch.full((n,), float("nan"), device=device),
+                "prior_contribution_mean": torch.full((n,), float("nan"), device=device),
+                "tracker_residual_max": torch.full((n,), float("nan"), device=device),
+                "tracker_residual_mean": torch.full((n,), float("nan"), device=device),
+                "prior_contribution_vector": torch.full((n, 10), float("nan"), device=device),
+                "tracker_residual_vector": torch.full((n, 10), float("nan"), device=device),
                 "residual_clip_fraction": torch.full((n,), float("nan"), device=device),
+                "safety_projection_max": torch.zeros((n,), device=device),
+                "min_root_height": torch.full((n,), float("inf"), device=device),
+                "min_root_upright": torch.full((n,), float("inf"), device=device),
+                "physical_terminated": torch.zeros(n, dtype=torch.bool, device=device),
+                "timeout_seen": torch.zeros(n, dtype=torch.bool, device=device),
+                "terminated_step": torch.full((n,), -1, dtype=torch.long, device=device),
             }
         )
 
     obs = _obs_to_device(env.get_observations(), agent_cfg.device)
     max_steps = int(cfg.get("max_steps") or 60)
-    for _ in range(max_steps):
+    trace_path = cfg.get("dump_action_trace", None)
+    trace_steps = []
+    trace_time_steps = []
+    trace_motion_ids = []
+    for step_idx in range(max_steps):
         with torch.inference_mode():
             actions = policy(obs)
-            obs, _, _, _ = env.step(actions.to(device))
+            # Reference-only P5D audit: keep the frozen model_900/model_3396
+            # execution prior inside the action term, while suppressing only
+            # the newly learned public tracker residual.  This is evaluation
+            # only and never changes training behavior.
+            if _as_bool(cfg.get("zero_tracker_residual", False)):
+                if str(cfg.task.gym_task) not in {
+                    "HOPE-FloatingReferenceTracker-AgibotA3-v0",
+                    "HOPE-FloatingPriorGuidedReferenceTracker-AgibotA3-v0",
+                }:
+                    raise ValueError("zero_tracker_residual is only valid for a P5D reference-tracker task")
+                actions = torch.zeros_like(actions)
+            if trace_path is not None:
+                # process_actions runs inside env.step; retain the phase index
+                # before advancing MotionCommand so the trace can be aligned
+                # back to the source NPZ without exposing an ID to the actor.
+                trace_time_steps.append(motion_cmd.time_steps[:n].detach().cpu().clone())
+                trace_motion_ids.append(motion_cmd.motion_ids[:n].detach().cpu().clone())
+            obs, _, terminated, truncated = env.step(actions.to(device))
             obs = _obs_to_device(obs, agent_cfg.device)
+            if trace_path is not None and hasattr(action_term, "_upper_processed_actions"):
+                trace_steps.append(
+                    torch.cat(
+                        (
+                            action_term._upper_reference_actions[:n],
+                            action_term._upper_primary_contribution[:n],
+                            action_term._upper_coordinator_contribution[:n],
+                            action_term._upper_processed_actions[:n],
+                            action_term._upper_safety_override[:n],
+                        ),
+                        dim=-1,
+                    ).detach().cpu().clone()
+                )
+            if diagnostic and hasattr(action_term, "_upper_safety_override"):
+                captured["safety_projection_max"] = torch.maximum(
+                    captured["safety_projection_max"],
+                    action_term._upper_safety_override[:n].abs().max(dim=-1).values,
+                )
+            if diagnostic:
+                # Keep recovery/termination evidence separate from the
+                # hit-time task error.  A large reference->actual error is
+                # expected for tracker training; a physical termination is
+                # an execution-safety failure.
+                done_tensor = torch.as_tensor(terminated, device=device, dtype=torch.bool)[:n]
+                if torch.is_tensor(truncated):
+                    timeout_tensor = torch.as_tensor(truncated, device=device, dtype=torch.bool)[:n]
+                else:
+                    timeout_tensor = torch.as_tensor(
+                        truncated.get("time_outs", torch.zeros_like(done_tensor)),
+                        device=device,
+                        dtype=torch.bool,
+                    )[:n]
+                physical = done_tensor & (~timeout_tensor)
+                captured["physical_terminated"] |= physical
+                captured["timeout_seen"] |= timeout_tensor
+                newly = physical & (captured["terminated_step"] < 0)
+                captured["terminated_step"][newly] = step_idx + 1
+                root_pos = robot.data.root_pos_w[:n]
+                root_up = matrix_from_quat(robot.data.root_quat_w[:n])[:, 2, 2]
+                captured["min_root_height"] = torch.minimum(
+                    captured["min_root_height"], root_pos[:, 2]
+                )
+                captured["min_root_upright"] = torch.minimum(
+                    captured["min_root_upright"], root_up
+                )
+
+                # Track the best actual TCP position over the whole replay,
+                # not only at the marked hit frame.  This separates a phase
+                # error from a pure geometric miss.
+                current_pos_error = torch.linalg.norm(
+                    racket_cmd.racket_pos_w[:n] - racket_cmd.racket_target_pos_w[:n], dim=-1
+                )
+                better = current_pos_error < captured["best_pos_error"]
+                if bool(better.any()):
+                    actual_vel_now = racket_cmd.racket_lin_vel_w[:n]
+                    target_vel_now = racket_cmd.racket_target_vel_w[:n]
+                    speed_actual = torch.linalg.norm(actual_vel_now, dim=-1)
+                    speed_target = torch.linalg.norm(target_vel_now, dim=-1)
+                    vel_dot = torch.sum(actual_vel_now * target_vel_now, dim=-1)
+                    vel_denom = (speed_actual * speed_target).clamp_min(1.0e-6)
+                    vel_dir = torch.rad2deg(torch.acos((vel_dot / vel_denom).clamp(-1.0, 1.0)))
+                    captured["best_pos_error"][better] = current_pos_error[better]
+                    captured["best_pos_step"][better] = step_idx + 1
+                    captured["best_pos_velocity_magnitude_error"][better] = (
+                        speed_actual - speed_target
+                    ).abs()[better]
+                    captured["best_pos_velocity_direction_error_deg"][better] = vel_dir[better]
 
             exact = torch.abs(racket_cmd.time_to_strike[:n]) <= (0.5 * env.unwrapped.step_dt + 1.0e-6)
             take = exact & (~captured["captured"])
@@ -415,14 +570,63 @@ def _run(cfg, simulation_app):
                     )
                     raw_actions = action_term.raw_actions[:n]
                     processed_actions = action_term.processed_actions[:n]
-                    reference_joint_pos = action_term._reference_joint_pos_with_joint_lead(
-                        motion_cmd, motion_cmd.time_steps
+                    if hasattr(action_term, "_reference_joint_pos_with_joint_lead"):
+                        reference_joint_pos = action_term._reference_joint_pos_with_joint_lead(
+                            motion_cmd, motion_cmd.time_steps
+                        )
+                        processed_for_audit = action_term.processed_actions
+                    else:
+                        # Prior-guided P5D stores the complete upper command
+                        # and nominal upper reference in the shared action
+                        # chain buffers.  Its public processed_actions tensor
+                        # contains only the new residual, so using it here
+                        # would hide the frozen model_900 contribution.
+                        reference_joint_pos = action_term._upper_reference_actions
+                        processed_for_audit = action_term._upper_processed_actions
+                    residual = processed_for_audit - reference_joint_pos
+                    prior_contribution = getattr(
+                        action_term, "_upper_primary_contribution", torch.zeros_like(reference_joint_pos)
                     )
-                    residual = processed_actions - reference_joint_pos
+                    tracker_contribution = getattr(
+                        action_term, "_upper_coordinator_contribution", torch.zeros_like(reference_joint_pos)
+                    )
                     raw_clip = float(getattr(action_term.cfg, "raw_clip", 1.0))
                     captured["target_pos"][take] = target_pos[take]
                     captured["reference_pos"][take] = reference_pos[take]
                     captured["actual_pos"][take] = actual_pos[take]
+                    motion_ids_now = motion_cmd.motion_ids[:n]
+                    time_steps_now = motion_cmd.time_steps[:n]
+                    if motion_cmd._use_motion_library:
+                        reference_root_pos = motion_cmd.motion._body_pos_w[motion_ids_now, time_steps_now, 0]
+                    else:
+                        reference_root_pos = motion_cmd.motion._body_pos_w[time_steps_now, 0]
+                    # ``env`` is the RSL-RL vector wrapper in this loop; the
+                    # scene (and its per-environment origins) lives on the
+                    # underlying IsaacLab environment.
+                    reference_root_pos = reference_root_pos + env.unwrapped.scene.env_origins[:n]
+                    actual_root_pos = robot.data.root_pos_w[:n]
+                    captured["reference_root_pos"][take] = reference_root_pos[take]
+                    captured["actual_root_pos"][take] = actual_root_pos[take]
+                    captured["root_translation_error"][take] = torch.linalg.norm(
+                        actual_root_pos[take] - reference_root_pos[take], dim=-1
+                    )
+                    target_vel = racket_cmd.racket_target_vel_w[:n]
+                    actual_vel = racket_cmd.racket_lin_vel_w[:n]
+                    reference_vel = _reference_racket_vel_w(
+                        env.unwrapped, motion_cmd, racket_cmd, n, device
+                    )
+                    speed_actual = torch.linalg.norm(actual_vel, dim=-1)
+                    speed_target = torch.linalg.norm(target_vel, dim=-1)
+                    vel_dot = torch.sum(actual_vel * target_vel, dim=-1)
+                    vel_denom = (speed_actual * speed_target).clamp_min(1.0e-6)
+                    vel_dir = torch.rad2deg(torch.acos((vel_dot / vel_denom).clamp(-1.0, 1.0)))
+                    captured["target_vel"][take] = target_vel[take]
+                    captured["reference_vel"][take] = reference_vel[take]
+                    captured["actual_vel"][take] = actual_vel[take]
+                    captured["velocity_magnitude_error"][take] = (
+                        speed_actual - speed_target
+                    ).abs()[take]
+                    captured["velocity_direction_error_deg"][take] = vel_dir[take]
                     captured["target_reference_error"][take] = torch.linalg.norm(
                         target_pos[take] - reference_pos[take], dim=-1
                     )
@@ -433,6 +637,12 @@ def _run(cfg, simulation_app):
                     captured["raw_action_mean"][take] = raw_actions[take].abs().mean(dim=-1)
                     captured["residual_max"][take] = residual[take].abs().max(dim=-1).values
                     captured["residual_mean"][take] = residual[take].abs().mean(dim=-1)
+                    captured["prior_contribution_max"][take] = prior_contribution[take].abs().max(dim=-1).values
+                    captured["prior_contribution_mean"][take] = prior_contribution[take].abs().mean(dim=-1)
+                    captured["tracker_residual_max"][take] = tracker_contribution[take].abs().max(dim=-1).values
+                    captured["tracker_residual_mean"][take] = tracker_contribution[take].abs().mean(dim=-1)
+                    captured["prior_contribution_vector"][take] = prior_contribution[take]
+                    captured["tracker_residual_vector"][take] = tracker_contribution[take]
                     captured["residual_clip_fraction"][take] = (
                         raw_actions[take].abs() >= raw_clip - 1.0e-6
                     ).float().mean(dim=-1)
@@ -740,7 +950,14 @@ def _run(cfg, simulation_app):
         print(
             "rank,episode_id,target_xyz,reference_xyz,actual_xyz,target_minus_reference_m,"
             "reference_minus_actual_m,raw_action_max,raw_action_mean,residual_max_rad,"
-            "residual_mean_rad,residual_clip_fraction",
+            "residual_mean_rad,residual_clip_fraction,safety_projection_max_rad,"
+            "target_vel_xyz,reference_vel_xyz,actual_vel_xyz,velocity_magnitude_error_mps,"
+            "velocity_direction_error_deg,best_pos_error_m,best_pos_step,"
+            "best_pos_velocity_magnitude_error_mps,best_pos_velocity_direction_error_deg,"
+            "prior_contribution_max_rad,prior_contribution_mean_rad,"
+            "tracker_residual_max_rad,tracker_residual_mean_rad,"
+            "prior_contribution_vector_rad,tracker_residual_vector_rad,"
+            "reference_root_xyz,actual_root_xyz,root_translation_error_m",
             flush=True,
         )
         for rank, i in enumerate(sorted(range(n), key=lambda j: float(captured["target_reference_error"][j])), start=1):
@@ -758,7 +975,26 @@ def _run(cfg, simulation_app):
                 f"{float(captured['raw_action_mean'][i]):.4f},"
                 f"{float(captured['residual_max'][i]):.6f},"
                 f"{float(captured['residual_mean'][i]):.6f},"
-                f"{float(captured['residual_clip_fraction'][i]):.4f}",
+                f"{float(captured['residual_clip_fraction'][i]):.4f},"
+                f"{float(captured['safety_projection_max'][i]):.6f},"
+                f"{captured['target_vel'][i, 0].item():.4f}/{captured['target_vel'][i, 1].item():.4f}/{captured['target_vel'][i, 2].item():.4f},"
+                f"{captured['reference_vel'][i, 0].item():.4f}/{captured['reference_vel'][i, 1].item():.4f}/{captured['reference_vel'][i, 2].item():.4f},"
+                f"{captured['actual_vel'][i, 0].item():.4f}/{captured['actual_vel'][i, 1].item():.4f}/{captured['actual_vel'][i, 2].item():.4f},"
+                f"{float(captured['velocity_magnitude_error'][i]):.4f},"
+                f"{float(captured['velocity_direction_error_deg'][i]):.2f},"
+                f"{float(captured['best_pos_error'][i]):.4f},"
+                f"{int(captured['best_pos_step'][i])},"
+                f"{float(captured['best_pos_velocity_magnitude_error'][i]):.4f},"
+                f"{float(captured['best_pos_velocity_direction_error_deg'][i]):.2f},"
+                f"{float(captured['prior_contribution_max'][i]):.6f},"
+                f"{float(captured['prior_contribution_mean'][i]):.6f},"
+                f"{float(captured['tracker_residual_max'][i]):.6f},"
+                f"{float(captured['tracker_residual_mean'][i]):.6f},"
+                f"{'/'.join(f'{x:.6f}' for x in captured['prior_contribution_vector'][i].detach().cpu().tolist())},"
+                f"{'/'.join(f'{x:.6f}' for x in captured['tracker_residual_vector'][i].detach().cpu().tolist())},"
+                f"{captured['reference_root_pos'][i, 0].item():.4f}/{captured['reference_root_pos'][i, 1].item():.4f}/{captured['reference_root_pos'][i, 2].item():.4f},"
+                f"{captured['actual_root_pos'][i, 0].item():.4f}/{captured['actual_root_pos'][i, 1].item():.4f}/{captured['actual_root_pos'][i, 2].item():.4f},"
+                f"{float(captured['root_translation_error'][i]):.4f}",
                 flush=True,
             )
         finite_diag = captured["captured"] & torch.isfinite(captured["target_reference_error"])
@@ -769,9 +1005,34 @@ def _run(cfg, simulation_app):
                 f"reference-actual={float(captured['reference_actual_error'][finite_diag].mean()):.4f}m "
                 f"raw_max={float(captured['raw_action_max'][finite_diag].mean()):.4f} "
                 f"residual_max={float(captured['residual_max'][finite_diag].mean()):.6f}rad "
-                f"clip_fraction={float(captured['residual_clip_fraction'][finite_diag].mean()):.4f}",
+                f"clip_fraction={float(captured['residual_clip_fraction'][finite_diag].mean()):.4f} "
+                f"safety_projection_max={float(captured['safety_projection_max'][finite_diag].max()):.6f}rad",
                 flush=True,
             )
+            print(
+                "[INFO] recovery audit: "
+                f"physical_termination_count={int(captured['physical_terminated'][finite_diag].sum().item())}/"
+                f"{int(finite_diag.sum().item())} "
+                f"timeout_seen={int(captured['timeout_seen'][finite_diag].sum().item())}/"
+                f"{int(finite_diag.sum().item())} "
+                f"min_root_height={float(captured['min_root_height'][finite_diag].min().item()):.4f}m "
+                f"min_root_upright={float(captured['min_root_upright'][finite_diag].min().item()):.4f}",
+                flush=True,
+            )
+            print(
+                "rank,episode_id,physical_terminated,terminated_step,timeout_seen,min_root_height_m,min_root_upright",
+                flush=True,
+            )
+            for rank, i in enumerate(
+                sorted(torch.where(finite_diag)[0].detach().cpu().tolist(), key=lambda j: names[j]), start=1
+            ):
+                print(
+                    f"{rank},{names[i]},{int(captured['physical_terminated'][i].item())},"
+                    f"{int(captured['terminated_step'][i].item())},{int(captured['timeout_seen'][i].item())},"
+                    f"{float(captured['min_root_height'][i].item()):.4f},"
+                    f"{float(captured['min_root_upright'][i].item()):.4f}",
+                    flush=True,
+                )
 
     finite_rows = [r for r in rows if r[0] != float("inf")]
     if finite_rows:
@@ -786,6 +1047,34 @@ def _run(cfg, simulation_app):
         print(f"[INFO] wrist_naturalness_pass_rate={wrist_rate:.3f} ({len(finite_rows)} captured motions)", flush=True)
         print(f"[INFO] whole_cycle_pass_rate={whole_rate:.3f} ({len(finite_rows)} captured motions)", flush=True)
         _print_group_summary(rows)
+    if trace_path is not None and trace_steps:
+        out = pathlib.Path(str(trace_path)).expanduser()
+        if not out.is_absolute():
+            out = pathlib.Path.cwd() / out
+        out.parent.mkdir(parents=True, exist_ok=True)
+        import numpy as np
+
+        trace = torch.stack(trace_steps).numpy()
+        time_steps = torch.stack(trace_time_steps).numpy()
+        motion_ids = torch.stack(trace_motion_ids).numpy()
+        np.savez_compressed(
+            out,
+            trace=trace,
+            time_steps=time_steps,
+            motion_ids=motion_ids,
+            upper_joint_names=np.asarray(native_joint_names, dtype=object),
+            fields=np.asarray(
+                [
+                    "reference",
+                    "primary_contribution",
+                    "tracker_contribution",
+                    "processed_command",
+                    "safety_projection",
+                ],
+                dtype=object,
+            ),
+        )
+        print(f"[INFO] wrote action-chain trace: {out} shape={trace.shape}", flush=True)
     env.close()
 
 

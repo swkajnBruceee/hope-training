@@ -54,6 +54,16 @@ gym.register(
     },
 )
 
+gym.register(
+    id="HOPE-FixedBaseTargetAdapter-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FixedBaseTargetAdapterEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
 # Backhand-only fixed-base target-conditioned residual stage.  This is kept as
 # a separate task so the older mixed forehand/backhand fixed-base experiment
 # and its checkpoints remain reproducible.
@@ -88,6 +98,79 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": native_strike_env_cfg.A3FloatingF0EnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# P5D: generic reference-tracking PPO.  It intentionally has no historical
+# target adapter or frozen-policy dependency: a policy action is only a
+# bounded residual around the safe trajectory supplied by the manifest.
+gym.register(
+    id="HOPE-FloatingReferenceTracker-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingReferenceTrackerEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# P5D bootstrap: the same reference-preview tracker contract, initialized
+# around the verified frozen 3396/900 execution and support state machine.
+# It is separate from the pure P5D ablation above so reports can never claim
+# that a prior-guided result came from reference-only control.
+gym.register(
+    id="HOPE-FloatingPriorGuidedReferenceTracker-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingPriorGuidedReferenceTrackerEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# P5U-1 unified tracker: model_3396 is the nominal lower prior and the
+# historical model_900 upper prior is deliberately absent.  The NoAssist
+# variant additionally enables a learned lower balance residual.
+gym.register(
+    id="HOPE-FloatingUnifiedUpperReferenceTracker-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingUnifiedUpperReferenceTrackerEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# P5U unified tracker without the progressive external fall-assist wrench.
+# This keeps the historical P5U environment reproducible while providing an
+# explicit no-assistance contract for the safe augmented-bank retraining run.
+gym.register(
+    id="HOPE-FloatingUnifiedUpperReferenceTrackerNoAssist-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingUnifiedUpperReferenceTrackerNoAssistEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingUnifiedUpperReferenceTrackerB-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingUnifiedUpperReferenceTrackerGlobalPhaseEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingUnifiedUpperReferenceTrackerC-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingUnifiedUpperReferenceTrackerGroupedPhaseEnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
     },
 )
@@ -256,6 +339,114 @@ gym.register(
         "env_cfg_entry_point": (
             f"{__name__}.native_strike_env_cfg:"
             "A3FloatingJointCoordinatorV10WideStaggerRecoveryEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingJointCoordinatorV11BentReadyRecovery-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{native_strike_env_cfg.__name__}:"
+            "A3FloatingJointCoordinatorV11BentReadyRecoveryEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingTargetConditionedCoordinator-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{native_strike_env_cfg.__name__}:"
+            "A3FloatingTargetConditionedCoordinatorEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingTargetConditionedRecovery-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{native_strike_env_cfg.__name__}:"
+            "A3FloatingTargetConditionedRecoveryEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingTargetConditionedRecoveryYComp-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{native_strike_env_cfg.__name__}:"
+            "A3FloatingTargetConditionedRecoveryYCompEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingTargetConditionedRecoveryMotion0Calibrated-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{native_strike_env_cfg.__name__}:"
+            "A3FloatingTargetConditionedRecoveryMotion0CalibratedEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingTargetConditionedRecoveryMotion2Calibrated-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{native_strike_env_cfg.__name__}:"
+            "A3FloatingTargetConditionedRecoveryMotion2CalibratedEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingTargetConditionedRecoveryMotion4Calibrated-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{native_strike_env_cfg.__name__}:"
+            "A3FloatingTargetConditionedRecoveryMotion4CalibratedEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingTargetConditionedRecoveryMotion5Calibrated-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{native_strike_env_cfg.__name__}:"
+            "A3FloatingTargetConditionedRecoveryMotion5CalibratedEnvCfg"
+        ),
+    },
+)
+
+gym.register(
+    id="HOPE-FloatingTargetConditionedRecoveryMotion1Train-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{native_strike_env_cfg.__name__}:"
+            "A3FloatingTargetConditionedRecoveryMotion1TrainEnvCfg"
         ),
     },
 )

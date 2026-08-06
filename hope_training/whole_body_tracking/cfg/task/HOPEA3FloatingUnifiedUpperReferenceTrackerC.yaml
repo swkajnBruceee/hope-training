@@ -1,0 +1,15 @@
+defaults:
+  - HOPEA3FloatingUnifiedUpperReferenceTracker
+  - _self_
+
+name: HOPEA3FloatingUnifiedUpperReferenceTrackerC
+gym_task: HOPE-FloatingUnifiedUpperReferenceTrackerC-AgibotA3-v0
+experiment_name: agibot_a3_p5u1_contract_c
+
+actions:
+  phase_contract: C
+  global_phase_limit_steps: 4.0
+  shoulder_phase_limit_steps: 2.0
+  elbow_phase_limit_steps: 2.0
+  wrist_phase_limit_steps: 2.0
+  phase_lowpass_alpha: 0.25

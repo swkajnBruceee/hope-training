@@ -32,6 +32,12 @@ legacy_deterministic: true
 # asset-default yaw frame. It only transforms the Stage-A inference input.
 adapt_stage_a_obs_180: false
 record_trace: false  # write per-control-step state/action diagnostics in evaluation reports
+single_shot_report: null  # optional JSON report path for non-multi-shot audits
+zero_tracker_residual: false  # P5D-only diagnostic: send safe reference with no learned residual
+# Evaluation-only P4C upper-chain ablation. ``policy`` preserves historical
+# execution. ``reference_only`` keeps the lower stabilizer but removes the
+# frozen upper actor, coordinator upper residual and legacy target adapter.
+p4c_upper_execution_mode: policy
 # Experimental read-only support proxy: exposes a nearest archived K17 upper
 # reference to model_3396 while the current model_900 remains the plant actor.
 legacy_support_reference_proxy: false
@@ -50,9 +56,86 @@ manifest_subset_size: null
 manifest_frame_z_offset: null
 validate_stance_contract: false  # opt-in prepositioned-manifest validation
 stance_contract_mode: null       # null=allow fixed/prepositioned mixed manifests
+# Evaluation-only scene placement for a policy-invariant rigid-frame replay.
+# These values change the physical READY reset pose; they must be paired with
+# a motion manifest placed in the same versioned frame. null preserves every
+# historical checkpoint replay exactly.
+scene_root_position_w_m: null
+scene_root_quaternion_wxyz: null
 # Force one manifest entry after the physical ready-pose reset.  Intended for
 # deterministic visual replay; null preserves normal manifest sampling.
 motion_id: null
+# Forced P5U visual replays should set this false so the selected motion ID
+# changes the future reference without teleporting the robot out of its
+# configured READY stance.  True preserves legacy replay behavior.
+sync_initial_motion_state: true
+# Replay-only multiplier for the frozen lower-support model_3396 output.
+# Keep at 1.0 for ordinary evaluation; this never changes PPO training.
+replay_lower_output_scale: 1.0
+# Independent replay audit thresholds; these mirror the strict training
+# termination contract and are reported even if an older checkpoint/task was
+# launched without the new strict_fall term.
+strict_fall_max_tilt_rad: 0.785398
+strict_fall_min_height: 0.82
+strict_fall_max_torso_tilt_rad: 0.785398
+strict_fall_min_torso_height: 0.70
+strict_fall_required_steps: 2
+# Unified fall/recovery audit contract.  A motion hit is not a cycle pass:
+# keep this guard after the final reference frame and require a held physical
+# recovery state before a multi-shot replay may call begin_next_shot().
+fall_audit_post_hit_guard_steps: 75
+fall_audit_recovery_timeout_steps: 250
+fall_audit_recovery_ready_hold_steps: 15
+fall_audit_pre_reset_trace_steps: 100
+# One-shot external target conditioning audit.  Position/offset values use the
+# robot base yaw-heading frame at command receipt.  Choose exactly one input:
+#   external_target_position_b: [x, y, z]
+#   external_target_offset_b: [dx, dy, dz]
+#   target_offset_grid_cm: [1, 2, 3, 5]  # nominal plus paired +/- axes
+# Velocity, racket normal, strike time, and reference motion remain those of
+# motion_id.  target_offset_grid_cm automatically sets num_envs to the grid
+# size (25 for the default four radii).
+external_target_position_b: null
+external_target_offset_b: null
+target_offset_grid_cm: null
+# File written by the motion-capture/trajectory-prediction bridge. Its strict
+# single-shot JSON schema is {"target_position_b":[x,y,z], "hit_time_s":?}.
+# It is mutually exclusive with the direct target flags above.
+external_strike_request_path: null
+# Optional requested hit time in seconds, measured from this one-shot
+# executor's COMMIT boundary. The reference swing is unchanged; the executor
+# only extends READY before launch and rejects a request outside its limit.
+external_hit_time_s: null
+external_hit_max_added_delay_s: 0.50
+# For an absolute target position, select the closest manifest strike anchor
+# before starting the one-shot swing.  The target must be within the verified
+# local box of that anchor; otherwise the executor rejects it explicitly.
+auto_select_motion: false
+auto_select_max_anchor_distance_m: 0.04
+# Numerical comparison tolerance only (1 micrometre); this keeps an exactly
+# verified boundary from being rejected due to float32 command quantization.
+auto_select_local_range_tolerance_m: 1.0e-6
+# Per-motion [x, y, z] half-ranges in metres.  P3 validates +/-2 cm on every
+# axis except motion 3's y axis, whose reliable range remains +/-1 cm.
+auto_select_local_half_range_by_motion:
+  - [0.02, 0.02, 0.02]
+  - [0.02, 0.02, 0.02]
+  - [0.02, 0.02, 0.02]
+  - [0.02, 0.01, 0.02]
+  - [0.02, 0.02, 0.02]
+  - [0.02, 0.02, 0.02]
+target_audit_report: null
+target_audit_post_hit_steps: 15
+target_audit_max_steps: 350
+# Target grids and finite differences copy env0's complete physical
+# strike-ready state to every sibling before latching their commands.  This is
+# required because millimetre-scale target responses cannot be identified from
+# independently randomized reset states.
+target_audit_synchronize_siblings: true
+# Finite-difference controllability audits.  Each is mutually exclusive with
+# external target grids and perturbs the named raw action around policy replay.
+adapter_jacobian_step: null
+coordinator_jacobian_step: null
 # Comma-separated manifest motion IDs for no-reset multi-shot evaluation.
 # Example: "0,0" or "0,4,2,5,1".  Requires the V26 re-arm task.
 multi_shot_sequence: null
@@ -66,6 +149,16 @@ video_name: play
 # retaining thousands of full-resolution frames in host memory.
 video_start_step: 0
 max_steps: null
+
+# Read-only Planner-goal shadow.  This never changes policy observations,
+# commands or actions.  Both transforms are mandatory when a command is
+# supplied: Planner HOPE world must not be silently equated with the tracking
+# scene world.
+strike_goal_shadow_command_path: null
+strike_goal_shadow_report: null
+strike_goal_shadow_verified_pre_receipt_delay_s: 0.0
+strike_goal_shadow_hope_world_to_sim_rotation: null
+strike_goal_shadow_hope_world_to_sim_translation: null
 
 # Optional static table added to the original training scene.  null keeps the
 # pure training environment; negative X moves the table away from the A3 at

@@ -67,6 +67,25 @@ class ReferenceResidualJointPositionAction(ClampedJointPositionAction):
         for i, name in enumerate(self._joint_names):
             joint_lead[i] = float(getattr(cfg, "reference_lookahead_steps", 0)) + float(configured.get(name, 0.0))
         self._joint_reference_lookahead_steps = joint_lead
+        margin_by_joint = getattr(cfg, "soft_limit_margin_rad_by_joint", {}) or {}
+        unknown = sorted(set(margin_by_joint) - set(self._joint_names))
+        if unknown:
+            raise ValueError(
+                "soft_limit_margin_rad_by_joint contains joints outside this action contract: "
+                f"{unknown}"
+            )
+        self._soft_limit_margin_rad = torch.tensor(
+            [float(margin_by_joint.get(name, 0.0)) for name in self._joint_names],
+            dtype=torch.float32,
+            device=self.device,
+        ).unsqueeze(0)
+        if torch.any(self._soft_limit_margin_rad < 0.0):
+            raise ValueError("soft_limit_margin_rad_by_joint values must be non-negative")
+        # P5D needs an explicit reference -> processed-command audit. These
+        # tensors contain the nominal safe reference and the residual-induced
+        # safety projection for the current control step.
+        self.safe_reference_actions = torch.zeros_like(self._processed_actions)
+        self.safety_override = torch.zeros_like(self._processed_actions)
 
     def _reference_joint_pos(self, motion_cmd, time_steps: torch.Tensor) -> torch.Tensor:
         """Gather the full-motion reference in the action term's joint order."""
@@ -127,14 +146,28 @@ class ReferenceResidualJointPositionAction(ClampedJointPositionAction):
                 min=limits[..., 0] + margin_frac * span,
                 max=limits[..., 1] - margin_frac * span,
             )
+        if torch.any(self._soft_limit_margin_rad > 0.0):
+            if isinstance(self._joint_ids, slice):
+                joint_ids = torch.arange(self._asset.num_joints, device=self.device)[self._joint_ids]
+            else:
+                joint_ids = torch.as_tensor(self._joint_ids, dtype=torch.long, device=self.device)
+            limits = self._asset.data.soft_joint_pos_limits[:, joint_ids]
+            lower = limits[..., 0] + self._soft_limit_margin_rad
+            upper = limits[..., 1] - self._soft_limit_margin_rad
+            if torch.any(lower >= upper):
+                raise ValueError("configured soft-limit margin removes a joint's entire safe interval")
+            target = torch.clamp(target, min=lower, max=upper)
         return target
 
     def process_actions(self, actions: torch.Tensor):
         self._raw_actions[:] = torch.clamp(actions, -self.cfg.raw_clip, self.cfg.raw_clip)
         motion_cmd = self._env.command_manager.get_term(self.cfg.reference_command_name)
         reference_joint_pos = self._reference_joint_pos_with_joint_lead(motion_cmd, motion_cmd.time_steps)
-        self._processed_actions = reference_joint_pos + self._raw_actions * self._scale
+        self.safe_reference_actions[:] = self._apply_target_limits(reference_joint_pos)
+        pre_projection = self.safe_reference_actions + self._raw_actions * self._scale
+        self._processed_actions = pre_projection
         self._processed_actions = self._apply_target_limits(self._processed_actions)
+        self.safety_override[:] = self._processed_actions - pre_projection
 
     def apply_actions(self):
         """Apply the target, optionally interpolating reference frames per physics substep.
@@ -179,3 +212,4 @@ class ReferenceResidualJointPositionActionCfg(ClampedJointPositionActionCfg):
     reference_lookahead_steps: int = 0
     joint_reference_lookahead_steps: dict[str, float] = {}
     interpolate_reference: bool = False
+    soft_limit_margin_rad_by_joint: dict[str, float] = {}

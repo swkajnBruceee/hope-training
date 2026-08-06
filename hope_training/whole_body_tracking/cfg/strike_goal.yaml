@@ -1,0 +1,95 @@
+# P1 contract-only default.  This group is deliberately not composed into an
+# existing P9 task: behaviour must remain byte-for-byte compatible until the
+# later goal-conditioned trajectory-adapter integration is explicitly enabled.
+enabled: false
+dimension: 10
+contract_version: strike_goal_10d/ball_center_impact_v1
+# Matches msgs/RacketCommand.msg and solver_node.cpp.  This means the HOPE
+# canonical world: near-side-left table-surface origin; X opponentward, Y left
+# from P1, Z up.  A later explicit transform is required before consumption by
+# a base-frame actor.
+frame_id: world
+# These are the actual mixed semantics in the current C++ Planner.  In
+# particular, position is not a racket TCP and velocity is the ideal impact
+# plane velocity from the restitution model, not a named link-point velocity.
+position_semantics: predicted_ball_center_at_strike
+normal_semantics: desired_ideal_racket_face_normal
+linear_velocity_semantics: desired_ideal_racket_impact_velocity
+policy_racket_point: pingpang_red_Link_origin/v1
+
+# No deploy mapping is enabled.  The diagnostic proxy's 17 mm offset is only
+# qualified for that synthetic Isaac collider; it is not a hardware TCP
+# calibration.  Exact velocity transfer between separated rigid-body points
+# additionally requires angular velocity (omega cross r), which is absent from
+# the Planner's current 10-D message.
+contact_mapping:
+  enabled: false
+  face_formula: p_face_contact = p_ball_center + ball_radius * normal
+  link_formula: p_policy_link = p_face_contact - link_to_effective_face_offset * normal
+  isaac_diagnostic_proxy:
+    calibration_version: isaac_diagnostic_proxy_contact/v1
+    ball_radius_m: 0.020
+    link_to_effective_face_offset_along_normal_m: 0.003
+    resulting_ball_center_to_link_offset_along_normal_m: 0.017
+    qualification: diagnostic_proxy_only
+  imported_urdf_collision:
+    offset_along_normal_m: null
+    qualification: unresolved
+  hardware:
+    offset_along_normal_m: null
+    qualification: unresolved
+trace_enabled: false
+
+# P2 shadow is a read-only replay path.  It may calculate and log the target
+# seen by a future policy, but it is forbidden from mutating observations,
+# commands, actions, rewards, or termination state.
+shadow:
+  enabled: false
+  command_path: null
+  report_path: null
+  control_clock_domain: isaac_sim
+  verified_pre_receipt_delay_s: 0.0
+  action_effect: false
+
+# The formal match task already uses HOPE world directly.  The legacy tracking
+# motion package is authored around a robot at the opposite table end and on a
+# floor-origin scene, so its placement is a separate migration contract.  None
+# of these diagnostic hypotheses is a deploy transform.
+scene_alignment:
+  formal_match_scene:
+    status: defined
+    hope_world_to_sim_rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    hope_world_to_sim_translation_m: [0, 0, 0]
+  legacy_tracking_motion_scene:
+    status: unresolved
+    table_surface_height_translation_m: [0, 0, 0.76]
+    candidate_authored_scene_translation_m: [2.74, 0, 0.76]
+    candidate_qualification: diagnostic_only
+    full_player_mirror_status: rejected_for_current_motion_normal_contract
+
+# P3 data-only conversion.  This package removes the legacy source scene's
+# X/Y/yaw placement while preserving the original joint/body trajectory.  It
+# is explicitly not training-approved: formal-scene auditing found the six hit
+# poses on or extremely near the waist-roll hard limit, and current execution
+# evidence qualifies only five motion-specific local centres.
+motion_prior:
+  enabled: false
+  contract_version: motion_prior_base_heading_frame0/v1
+  manifest: eval_outputs/strike_goal_p3/canonical_motion_prior_v1/manifest.json
+  frame: base_heading_at_motion_frame0
+  qualification: coordinate_canonicalization_only
+  training_approved: false
+  qualified_local_motion_ids: [0, 2, 3, 4, 5]
+  unqualified_motion_ids: [1]
+  qualified_position_axis_radius_m: 0.01
+  continuous_workspace_qualified: false
+  formal_p1_dynamic_execution_qualified: false
+  waist_roll_margin_gate: required
+
+# Values are intentionally unset.  They must be derived from the verified
+# feasible workspace and frozen into a train/deploy-shared config before a
+# policy is allowed to consume normalized StrikeGoal10D observations.
+normalization:
+  position_scale_m: null
+  velocity_scale_mps: null
+  time_scale_s: null

@@ -1,0 +1,12 @@
+defaults:
+  - HOPEA3FloatingUnifiedUpperReferenceTracker
+  - _self_
+
+name: HOPEA3FloatingUnifiedUpperReferenceTrackerB
+gym_task: HOPE-FloatingUnifiedUpperReferenceTrackerB-AgibotA3-v0
+experiment_name: agibot_a3_p5u1_contract_b
+
+actions:
+  phase_contract: B
+  global_phase_limit_steps: 4.0
+  phase_lowpass_alpha: 0.25

@@ -77,13 +77,45 @@ def racket_state_w(
     mount_quat: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0),
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Return racket center position, linear velocity, and orientation in the world frame."""
+    position, linear_velocity, orientation, _ = racket_spatial_state_w(
+        env,
+        robot_cfg,
+        racket_body_name,
+        wrist_body_name,
+        mount_offset,
+        mount_quat,
+    )
+    return position, linear_velocity, orientation
+
+
+def racket_spatial_state_w(
+    env: "ManagerBasedRLEnv",
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    racket_body_name: str = A3_RACKET_BODY,
+    wrist_body_name: str = A3_WRIST_BODY,
+    mount_offset: tuple[float, float, float] = A3_MOUNT_OFFSET,
+    mount_quat: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0),
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return link-origin position, linear velocity, orientation and angular velocity.
+
+    The fallback FK uses the wrist angular velocity both to transport the
+    mount point's linear velocity and as the angular velocity of the fixed
+    racket link.  Exposing it lets contact-point diagnostics add the second
+    rigid-body point shift instead of comparing a face velocity with the link
+    origin velocity.
+    """
     robot: Articulation = env.scene[robot_cfg.name]
     fk = _resolve_racket_fk(env, robot, robot_cfg, racket_body_name, wrist_body_name, mount_offset, mount_quat)
     data = robot.data
 
     if fk["mode"] == "body":
         idx = fk["body_index"]
-        return data.body_pos_w[:, idx], data.body_lin_vel_w[:, idx], data.body_quat_w[:, idx]
+        return (
+            data.body_pos_w[:, idx],
+            data.body_lin_vel_w[:, idx],
+            data.body_quat_w[:, idx],
+            data.body_ang_vel_w[:, idx],
+        )
 
     widx = fk["wrist_index"]
     wpos = data.body_pos_w[:, widx]
@@ -91,7 +123,12 @@ def racket_state_w(
     wlin = data.body_lin_vel_w[:, widx]
     wang = data.body_ang_vel_w[:, widx]
     offset_w = quat_apply(wquat, fk["mount_offset"])
-    return wpos + offset_w, wlin + torch.cross(wang, offset_w, dim=-1), quat_mul(wquat, fk["mount_quat"])
+    return (
+        wpos + offset_w,
+        wlin + torch.cross(wang, offset_w, dim=-1),
+        quat_mul(wquat, fk["mount_quat"]),
+        wang,
+    )
 
 
 def racket_position_b(

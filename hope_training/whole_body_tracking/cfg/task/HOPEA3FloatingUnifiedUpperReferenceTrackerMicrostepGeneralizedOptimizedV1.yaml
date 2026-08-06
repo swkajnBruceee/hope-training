@@ -1,0 +1,59 @@
+# P5U-1 optimized local-generalization training, corrected for the reviewed
+# 10-second episode contract.
+#
+# Contract:
+#   12-D learned lower-body balance residual
+#   10-D learned upper-body residual
+#   4-D foot microstep residual
+#   reference-provided strike timing, velocity and racket normal
+#
+# Stage 1 learns a continuous local correction around every forehand/backhand
+# reference strike. It is deliberately local (3/5/3 cm), so this is a safe
+# first generalization stage rather than the final full-workspace bank.
+defaults:
+  - HOPEA3FloatingUnifiedUpperReferenceTrackerMicrostep
+  - _self_
+
+name: HOPEA3FloatingUnifiedUpperReferenceTrackerMicrostepGeneralizedOptimizedV1
+gym_task: HOPE-FloatingUnifiedUpperReferenceTrackerNoAssist-AgibotA3-v0
+experiment_name: agibot_a3_p5u1_microstep_generalized_local_v1
+motion_manifest: eval_outputs/upright_forehand_backhand_reference_bank_scene_placed_v4_identity_root_fixed/tracking_motion_manifest.json
+
+racket:
+  target_mode: reference_perturbed
+  # Final local half-ranges in metres: x=+/-3 cm, y=+/-5 cm, z=+/-3 cm.
+  ref_perturb_pos: [0.03, 0.05, 0.03]
+  # Keep the selected reference's velocity, normal and timing unchanged.
+  ref_perturb_vel: [0.0, 0.0, 0.0]
+  ref_perturb_normal: 0.0
+  # Open-loop widening avoids freezing at the small start range when early
+  # exact-strike success is low.  30k PPO x 24 control steps = 720k steps,
+  # so the full local range is reached before the end of training.
+  ref_perturb_curriculum_steps: 600000
+  ref_perturb_curriculum_start: 0.10
+  ref_perturb_success_gated: false
+  exact_success_decay: 0.99
+  exact_success_min_count: 50.0
+
+motion:
+  manifest_balance_strokes: true
+  reference_sampling_mode: uniform
+  sample_random_start_phase: false
+  prelude_steps: 50
+  # Keep each action in the required 10-second episode.  The reference
+  # motion plus this tail is held until the 10 s timeout unless it falls.
+  hold_last_frame_steps: 500
+
+env:
+  episode_length_s: 10.0
+  staggered_stance_half_span_m: 0.06
+  staggered_front_foot: right
+  stance_lateral_widen_per_foot_m: 0.05
+  stance_knee_flexion_rad: 0.48
+
+actions:
+  microstep_enabled: true
+  # In the current implementation this is the maximum projected microstep
+  # envelope, not a per-control-step increment.
+  microstep_step_limit_m: 0.02
+  microstep_lowpass_alpha: 0.20

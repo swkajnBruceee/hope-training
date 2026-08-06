@@ -1,0 +1,23 @@
+# P5U-1 plus a tightly bounded lower-body micro-adjustment branch.
+# The original ten upper residuals and frozen model_3396 prior remain active;
+# four additional channels provide filtered left/right sagittal/lateral intent.
+defaults:
+  - HOPEA3FloatingUnifiedUpperReferenceTracker
+  - _self_
+
+name: HOPEA3FloatingUnifiedUpperReferenceTrackerMicrostep
+gym_task: HOPE-FloatingUnifiedUpperReferenceTrackerNoAssist-AgibotA3-v0
+experiment_name: agibot_a3_p5u1_microstep_probe
+motion_manifest: eval_outputs/strike_goal_p5/p5d2_safe_backhand_augmented_v1/p5d2_safe_backhand_augmented_manifest.json
+
+env:
+  episode_length_s: 10.0
+  staggered_stance_half_span_m: 0.06
+  staggered_front_foot: right
+  stance_lateral_widen_per_foot_m: 0.05
+  stance_knee_flexion_rad: 0.48
+
+actions:
+  microstep_enabled: true
+  microstep_step_limit_m: 0.02
+  microstep_lowpass_alpha: 0.20

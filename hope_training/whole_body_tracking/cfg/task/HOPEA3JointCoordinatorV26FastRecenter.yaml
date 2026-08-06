@@ -1,0 +1,71 @@
+# Straight-READY Fast Recenter experiment.
+#
+# V26 supplies the accepted V25 support/re-arm contract.  The only task-level
+# migration is V10's appended capture-rate/recovery-gate observation, which
+# enables a zero-initialized, strictly post-hit adapter.  The arm READY pose
+# remains the V26 default; no V27/V28 bent-READY override is inherited.
+defaults:
+  - HOPEA3JointCoordinatorV26MultiShotRearm
+  - _self_
+
+name: HOPEA3JointCoordinatorV26FastRecenter
+gym_task: HOPE-FloatingJointCoordinatorV10WideStaggerRecovery-AgibotA3-v0
+experiment_name: agibot_a3_joint_coordinator_v26_fast_recenter_20260729
+
+# The deterministic V26/V27 comparison reports use this current six-motion,
+# 50 Hz strike-only package.  Its hit is at frame 30, so a 128-step natural
+# prefix rollout contains the selected post-hit recovery windows.
+motion_manifest: eval_outputs/v27_bent_ready/motion_package_b/manifest.json
+manifest_subset_size: null
+manifest_frame_z_offset: 0.76
+
+env:
+  # Keep the V26 full-cycle horizon; recovery must become READY in the same
+  # uninterrupted trajectory that produced the strike contact history.
+  episode_length_s: 6.5
+
+motion:
+  prelude_steps: 50
+  # Preserve V26's finite follow-through hold.  A positive hold is required
+  # for MotionCommand to enter its tail/return path rather than resampling the
+  # clip immediately at its last frame.
+  hold_last_frame_steps: 20
+  return_to_default_steps: 100
+  reset_to_default_pose: true
+
+rewards:
+  # Preserve V25 impact behavior as regression objectives. The V10 adapter is
+  # structurally gated off before impact, so these cannot be traded for a
+  # shorter recovery.
+  racket_position_weight: 0.50
+  racket_position_y_weight: 0.25
+  racket_position_fine_weight: 0.10
+  racket_velocity_weight: 0.05
+  racket_normal_weight: 0.05
+  racket_hit_coupled_weight: 0.05
+
+  # Fast-recenter objective, active only after hit in the underlying terms.
+  post_hit_forward_velocity_deadband_l2_weight: -20.0
+  post_hit_pitch_rate_deadband_l2_weight: -12.0
+  post_hit_capture_point_center_l2_weight: -35.0
+  post_hit_capture_point_barrier_l2_weight: -120.0
+  post_hit_capture_point_center_progress_weight: 6.0
+
+  # Existing V25/V26 full-cycle safety is retained.
+  post_strike_root_tilt_weight: -30.0
+  post_strike_recovery_progress_weight: 2.0
+  post_strike_root_linear_velocity_l2_weight: -8.0
+  post_strike_root_angular_velocity_l2_weight: -8.0
+  post_strike_root_height_deficit_weight: -50.0
+  post_strike_both_feet_contact_weight: 4.0
+  post_strike_ready_weight: 4.0
+  fall_weight: -300.0
+  alive_weight: 2.0
+
+  stagger_capture_point_margin_l2_weight: -60.0
+  stagger_lateral_capture_point_margin_l2_weight: -60.0
+  stagger_minimum_foot_load_weight: 5.0
+  stagger_sagittal_span_l2_weight: -30.0
+  stagger_lateral_span_l2_weight: -30.0
+  root_position_drift_weight: -1.0
+  feet_slip_weight: -4.0

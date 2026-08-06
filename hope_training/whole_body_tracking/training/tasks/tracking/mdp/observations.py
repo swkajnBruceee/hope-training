@@ -8,6 +8,7 @@ from isaaclab.managers import ManagerTermBase
 from isaaclab.utils.math import matrix_from_quat, quat_apply, subtract_frame_transforms
 
 from training.tasks.tracking.mdp.commands import MotionCommand
+from training.tasks.tracking.mdp.fall_state import unified_fall_state
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv
@@ -72,9 +73,109 @@ def joint_coordinator_observation(env: ManagerBasedEnv) -> torch.Tensor:
     )
 
 
+def joint_coordinator_target_conditioned_observation(
+    env: ManagerBasedEnv,
+) -> torch.Tensor:
+    """204-D coordinator contract with a private target-conditioned upper copy.
+
+    ``upper`` is reserved for the frozen model_900 actor and remains anchored.
+    ``coordinator_upper`` has the same width and ordering, but its target
+    position may carry the external command.  This preserves checkpoint
+    compatibility while keeping the two information paths independent.
+    """
+    if not hasattr(env, "observation_manager"):
+        return torch.zeros((env.num_envs, 204), device=env.device)
+    return torch.cat(
+        (
+            _observation_group_tensor(env, "stage_a"),
+            _observation_group_tensor(env, "coordinator_upper"),
+            joint_coordinator_last_action(env),
+        ),
+        dim=-1,
+    )
+
+
+class TargetConditionedRecoveryObservation(ManagerTermBase):
+    """Append a compact predictive-support state to P3's 204-D contract.
+
+    The first 204 channels are exactly the target-conditioned P3 observation.
+    The final nine channels are read only by the lower-body recovery adapter:
+    seven support/dynamics values, the selected motion id, and a phase gate.
+    The explicit motion id lets the recovery contract apply a verified
+    motion-specific brace without changing the frozen P3 arm actor.
+    """
+
+    OBS_DIM = 9
+
+    def __call__(
+        self,
+        env: ManagerBasedEnv,
+        command_name: str = "motion",
+        gate_delay_steps: int = 2,
+        gate_ramp_steps: int = 8,
+        gate_lead_steps: int = 0,
+        prelude_prepare_steps: int = 0,
+    ) -> torch.Tensor:
+        if not hasattr(env, "scene") or not hasattr(env, "observation_manager"):
+            return torch.zeros((env.num_envs, 204 + self.OBS_DIM), device=env.device)
+
+        base = joint_coordinator_target_conditioned_observation(env)
+        command = env.command_manager.get_term(command_name)
+        robot = env.scene["robot"]
+        support = stagger_support_state(env)
+        physical = unified_fall_state(env)
+        # Keep the reviewed observation width, but replace the old unsigned
+        # root tilt with the signed immutable-heading forward tilt.  The
+        # separate support margins/contact channel remain available below.
+        tilt = physical.forward_tilt_rad
+        gate = _post_hit_recovery_gate(
+            env,
+            command_name=command_name,
+            delay_steps=gate_delay_steps,
+            ramp_steps=gate_ramp_steps,
+            lead_steps=gate_lead_steps,
+            prelude_prepare_steps=prelude_prepare_steps,
+        )
+        if getattr(env, "natural_prefix_recovery_enabled", False):
+            action_mask = getattr(env, "natural_recovery_action_mask", None)
+            if action_mask is None or action_mask.shape != (env.num_envs,):
+                raise RuntimeError(
+                    "natural_prefix_recovery_enabled requires a pre-action "
+                    "natural_recovery_action_mask"
+                )
+            gate = gate * action_mask.to(device=gate.device, dtype=gate.dtype)
+
+        if command._use_motion_library:
+            motion_id = command.motion_ids.to(dtype=base.dtype)
+        else:
+            motion_id = torch.zeros(env.num_envs, dtype=base.dtype, device=env.device)
+        recovery = torch.stack(
+            (
+                support["capture_rel_support_x_b"] / 0.10,
+                robot.data.root_lin_vel_b[:, 0] / 0.50,
+                robot.data.root_ang_vel_b[:, 1] / 1.00,
+                tilt / 0.25,
+                support["capture_front_margin"] / 0.10,
+                support["capture_rear_margin"] / 0.10,
+                support["contacts"].all(dim=-1).to(dtype=base.dtype),
+                motion_id,
+                gate,
+            ),
+            dim=-1,
+        ).clamp(min=-4.0, max=4.0)
+        observation = torch.cat((base, recovery), dim=-1)
+        if observation.shape[-1] != 204 + self.OBS_DIM:
+            raise RuntimeError(
+                "Target-conditioned recovery observation width mismatch: "
+                f"{observation.shape[-1]} != {204 + self.OBS_DIM}"
+            )
+        return observation
+
+
 _STAGGER_SUPPORT_OBSERVATION_DIM = 19
 _WIDE_STAGGER_SUPPORT_OBSERVATION_DIM = 23
 _WIDE_STAGGER_RECOVERY_OBSERVATION_DIM = 2
+_BENT_READY_RECOVERY_OBSERVATION_DIM = 8
 _STAGGER_FOOT_HALF_LENGTH_M = 0.10
 _STAGGER_FOOT_HALF_WIDTH_M = 0.055
 
@@ -102,6 +203,12 @@ def stagger_support_state(env: ManagerBasedEnv) -> dict[str, torch.Tensor]:
             "foot_body_ids": foot_body_ids,
             "foot_sensor_ids": sensor_ids,
             "masses": robot.data.default_mass.to(device=env.device),
+            # Immutable initial-base-heading frame.  Do not recompute support
+            # directions from the current root yaw: that would rotate a real
+            # capture overflow back into the support polygon during a fall.
+            "initial_forward_w": torch.zeros((env.num_envs, 3), device=env.device),
+            "heading_initialized": torch.zeros(env.num_envs, dtype=torch.bool, device=env.device),
+            "last_episode_step": torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device),
         }
         env._stagger_support_state_cache = cache
 
@@ -109,8 +216,21 @@ def stagger_support_state(env: ManagerBasedEnv) -> dict[str, torch.Tensor]:
     root_quat = robot.data.root_quat_w
     local_forward = torch.zeros_like(root_pos)
     local_forward[:, 0] = 1.0
-    forward_w = quat_apply(root_quat, local_forward)
-    forward_xy = forward_w[:, :2]
+    measured_forward_w = quat_apply(root_quat, local_forward)
+    measured_forward_w[:, 2] = 0.0
+    measured_forward_w[:, :2] = measured_forward_w[:, :2] / torch.linalg.vector_norm(
+        measured_forward_w[:, :2], dim=-1, keepdim=True
+    ).clamp_min(1.0e-6)
+    episode_step = getattr(env, "episode_length_buf", None)
+    if episode_step is None:
+        episode_step = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+    rewound = episode_step < cache["last_episode_step"]
+    cache["heading_initialized"][rewound] = False
+    new_heading = ~cache["heading_initialized"]
+    cache["initial_forward_w"][new_heading] = measured_forward_w[new_heading]
+    cache["heading_initialized"][new_heading] = True
+    cache["last_episode_step"][:] = episode_step
+    forward_xy = cache["initial_forward_w"][:, :2]
     forward_xy = forward_xy / torch.linalg.vector_norm(forward_xy, dim=-1, keepdim=True).clamp_min(1.0e-6)
     lateral_xy = torch.stack((-forward_xy[:, 1], forward_xy[:, 0]), dim=-1)
 
@@ -275,8 +395,18 @@ def _post_hit_recovery_gate(
     command_name: str,
     delay_steps: int,
     ramp_steps: int,
+    lead_steps: int = 0,
+    prelude_prepare_steps: int = 0,
 ) -> torch.Tensor:
-    """Return a smooth gate that is identically zero through exact impact."""
+    """Return a smooth recovery gate, optionally beginning before impact.
+
+    ``lead_steps=0`` preserves the original strictly post-hit behavior.  A
+    positive lead gives the lower-body safety residual time to build braking
+    torque before an unstable strike reaches the support boundary.  When
+    ``prelude_prepare_steps`` is positive, the same lower-body-only branch is
+    also eased in during the final READY controls; this is needed when a
+    strike begins with the capture point already close to its support edge.
+    """
     command: MotionCommand = env.command_manager.get_term(command_name)
     if command._use_motion_library:
         hit = command.motion.hit_frame[command.motion_ids]
@@ -286,19 +416,33 @@ def _post_hit_recovery_gate(
         final = torch.full_like(command.time_steps, int(command.motion.time_step_total) - 1)
 
     physical_phase = command.time_steps + 1
-    steps_after_hit = torch.clamp(physical_phase - hit, min=0)
-    tail_after_hit = torch.clamp(final - hit, min=0) + command.tail_steps
-    steps_after_hit = torch.where(command.tail_steps > 0, tail_after_hit, steps_after_hit)
-    steps_after_hit = torch.where(
-        command.prelude_elapsed_steps >= int(command.prelude_steps),
-        steps_after_hit,
-        torch.zeros_like(steps_after_hit),
+    steps_relative_to_hit = physical_phase - hit
+    tail_relative_to_hit = torch.clamp(final - hit, min=0) + command.tail_steps
+    steps_relative_to_hit = torch.where(
+        command.tail_steps > 0,
+        tail_relative_to_hit,
+        steps_relative_to_hit,
     )
+    in_prelude = command.prelude_elapsed_steps < int(command.prelude_steps)
+    if int(prelude_prepare_steps) < 0:
+        raise ValueError("prelude_prepare_steps must be non-negative")
+    if int(prelude_prepare_steps) > 0:
+        prelude_start = int(command.prelude_steps) - int(prelude_prepare_steps)
+        prelude_progress = (
+            (command.prelude_elapsed_steps - prelude_start).float()
+            / float(max(int(prelude_prepare_steps), 1))
+        ).clamp(0.0, 1.0)
+        prelude_gate = prelude_progress * prelude_progress * (
+            3.0 - 2.0 * prelude_progress
+        )
+    else:
+        prelude_gate = torch.zeros_like(steps_relative_to_hit, dtype=torch.float)
     progress = (
-        (steps_after_hit - int(delay_steps)).float()
+        (steps_relative_to_hit + int(lead_steps) - int(delay_steps)).float()
         / float(max(int(ramp_steps), 1))
     ).clamp(0.0, 1.0)
-    return progress * progress * (3.0 - 2.0 * progress)
+    swing_gate = progress * progress * (3.0 - 2.0 * progress)
+    return torch.where(in_prelude, prelude_gate, swing_gate)
 
 
 class JointCoordinatorWideStaggerRecoveryObservation(ManagerTermBase):
@@ -362,6 +506,18 @@ class JointCoordinatorWideStaggerRecoveryObservation(ManagerTermBase):
             delay_steps=gate_delay_steps,
             ramp_steps=gate_ramp_steps,
         )
+        # Natural-prefix training must keep the frozen V22 coordinator active
+        # through its real contact trajectory while suppressing only the new
+        # recovery adapter outside a selected post-hit window.  The actor
+        # consumes this gate for both adapter mean and exploration scale.
+        if getattr(env, "natural_prefix_recovery_enabled", False):
+            action_mask = getattr(env, "natural_recovery_action_mask", None)
+            if action_mask is None or action_mask.shape != (env.num_envs,):
+                raise RuntimeError(
+                    "natural_prefix_recovery_enabled requires "
+                    "natural_recovery_action_mask"
+                )
+            gate = gate * action_mask.to(device=gate.device, dtype=gate.dtype)
         recovery = torch.stack(
             (
                 self._capture_rate / float(capture_rate_scale_mps),
@@ -380,6 +536,121 @@ class JointCoordinatorWideStaggerRecoveryObservation(ManagerTermBase):
             raise RuntimeError(
                 "Wide stagger recovery observation width mismatch: "
                 f"{observation.shape[-1]} != 229"
+            )
+        return observation
+
+
+class JointCoordinatorBentReadyRecoveryObservation(
+    JointCoordinatorWideStaggerRecoveryObservation
+):
+    """Append physical re-arm signals used only by the bent-READY adapter."""
+
+    def __init__(self, cfg, env):
+        super().__init__(cfg, env)
+        from training.robots.agibot_a3 import A3_RIGHT_ARM_JOINTS
+
+        robot = env.scene["robot"]
+        joint_ids, resolved = robot.find_joints(A3_RIGHT_ARM_JOINTS, preserve_order=True)
+        if resolved != A3_RIGHT_ARM_JOINTS:
+            raise RuntimeError(
+                "Bent-ready recovery right-arm mapping mismatch: "
+                f"expected={A3_RIGHT_ARM_JOINTS}, got={resolved}"
+            )
+        self._right_arm_joint_ids = tuple(int(index) for index in joint_ids)
+        # V29 RSI restores this finite-difference history explicitly rather
+        # than pretending a recovered state starts a fresh episode.
+        env.v28_bent_ready_recovery_observation_term = self
+
+    def export_v29_rsi_state(self, env_ids: Sequence[int]) -> dict[str, torch.Tensor]:
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device)
+        return {
+            "schema_version": torch.tensor(3, dtype=torch.int64),
+            "snapshot_phase": "post_physics_pre_observation",
+            "previous_capture_x": self._previous_capture_x[ids].detach().clone(),
+            "capture_rate": self._capture_rate[ids].detach().clone(),
+            "last_episode_step": self._last_episode_step[ids].detach().clone(),
+            "needs_reset": self._needs_reset[ids].detach().clone(),
+        }
+
+    def restore_v29_rsi_state(self, state: dict[str, torch.Tensor], env_ids: Sequence[int]) -> None:
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device)
+        required = ("previous_capture_x", "capture_rate", "last_episode_step", "needs_reset")
+        if (
+            int(state.get("schema_version", torch.tensor(-1)).item()) != 3
+            or state.get("snapshot_phase") != "post_physics_pre_observation"
+            or any(name not in state for name in required)
+        ):
+            raise ValueError("Invalid V29 recovery-observation RSI snapshot")
+        targets = {
+            "previous_capture_x": self._previous_capture_x,
+            "capture_rate": self._capture_rate,
+            "last_episode_step": self._last_episode_step,
+            "needs_reset": self._needs_reset,
+        }
+        for name, target in targets.items():
+            target[ids] = state[name].to(device=self.device, dtype=target.dtype)
+
+    def __call__(
+        self,
+        env: ManagerBasedEnv,
+        command_name: str = "motion",
+        gate_delay_steps: int = 2,
+        gate_ramp_steps: int = 8,
+        capture_rate_scale_mps: float = 1.0,
+    ) -> torch.Tensor:
+        if not hasattr(env, "scene") or not hasattr(env, "observation_manager"):
+            return torch.zeros((env.num_envs, 235), device=env.device)
+        # The parent owns the stateful capture-rate finite difference.
+        parent = super().__call__(
+            env,
+            command_name=command_name,
+            gate_delay_steps=gate_delay_steps,
+            gate_ramp_steps=gate_ramp_steps,
+            capture_rate_scale_mps=capture_rate_scale_mps,
+        )
+        base = parent[..., :227]
+        capture_rate = parent[..., 227:228]
+        gate = parent[..., 228:229]
+
+        motion: MotionCommand = env.command_manager.get_term(command_name)
+        robot = env.scene["robot"]
+        support = stagger_support_state(env)
+        arm_ids = self._right_arm_joint_ids
+        arm_position_error = torch.max(
+            torch.abs(
+                robot.data.joint_pos[:, arm_ids]
+                - motion.ready_joint_pos[:, arm_ids]
+            ),
+            dim=-1,
+        ).values
+        arm_velocity = torch.max(
+            torch.abs(robot.data.joint_vel[:, arm_ids]), dim=-1
+        ).values
+        stable_steps = getattr(env, "stage_a_sagittal_rearm_stable_steps", None)
+        if stable_steps is None:
+            stable_fraction = torch.zeros(env.num_envs, device=env.device)
+        else:
+            stable_fraction = stable_steps.to(dtype=base.dtype) / 20.0
+
+        recovery = torch.stack(
+            (
+                capture_rate.squeeze(-1),
+                support["capture_rel_support_x_b"] / 0.10,
+                robot.data.root_lin_vel_b[:, 0] / 0.50,
+                robot.data.root_ang_vel_b[:, 1] / 1.00,
+                arm_position_error / 0.20,
+                arm_velocity / 1.00,
+                stable_fraction,
+                gate.squeeze(-1),
+            ),
+            dim=-1,
+        ).clamp(min=-4.0, max=4.0)
+        observation = torch.cat((base, recovery), dim=-1)
+        expected = 227 + _BENT_READY_RECOVERY_OBSERVATION_DIM
+        if observation.shape[-1] != expected:
+            raise RuntimeError(
+                "Bent-ready recovery observation width mismatch: "
+                f"{observation.shape[-1]} != {expected}"
             )
         return observation
 

@@ -1,0 +1,15 @@
+# Read-only P3 stability audit.  The P3 target-control pilot deliberately
+# ends at 2.2 s just after impact; that horizon cannot establish whether the
+# whole body actually brakes and remains supported.  This config preserves
+# its policy/action/target contracts and extends only the evaluation horizon.
+defaults:
+  - HOPEA3FloatingTargetConditionedCoordinatorTrain
+  - _self_
+
+name: HOPEA3FloatingTargetConditionedCoordinatorLongTailAudit
+experiment_name: agibot_a3_floating_target_conditioned_p3_long_tail_audit
+
+env:
+  # P3 inherits V26's 6.5 s full-cycle plant.  Retain that duration during
+  # replay so a post-hit audit can observe braking rather than a timeout reset.
+  episode_length_s: 6.5

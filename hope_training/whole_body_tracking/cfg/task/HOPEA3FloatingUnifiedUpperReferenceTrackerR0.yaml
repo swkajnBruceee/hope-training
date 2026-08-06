@@ -1,0 +1,21 @@
+defaults:
+  - HOPEA3FloatingUnifiedUpperReferenceTracker
+  - _self_
+
+name: HOPEA3FloatingUnifiedUpperReferenceTrackerR0
+gym_task: HOPE-FloatingUnifiedUpperReferenceTracker-AgibotA3-v0
+experiment_name: agibot_a3_p5u1_reward_r0
+
+# R0: legacy tracking-dominant reward.  New canonical velocity split,
+# pass-through/stop/reverse/timing and phase-consistency terms are disabled.
+rewards:
+  racket_velocity_magnitude_weight: 0.0
+  racket_velocity_direction_weight: 0.0
+  racket_signed_velocity_weight: 0.0
+  racket_pass_through_weight: 0.0
+  racket_stop_at_target_weight: 0.0
+  racket_reverse_motion_weight: 0.0
+  racket_hit_timing_weight: 0.0
+  phase_magnitude_weight: 0.0
+  phase_rate_weight: 0.0
+  phase_group_consistency_weight: 0.0

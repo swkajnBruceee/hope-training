@@ -249,3 +249,130 @@ class WideStaggerRecoveryActorCritic(WideStaggerSupportActorCritic):
 
     def act_inference(self, observations: torch.Tensor) -> torch.Tensor:
         return self._action_mean(observations)
+
+
+class BentReadyRecoveryActorCritic(WideStaggerSupportActorCritic):
+    """Frozen V22 policy plus a bounded, post-hit bent-READY settling branch.
+
+    V23 exposed a full 22-D recovery residual and did not materially affect
+    the causal V25 failure mode.  V28 limits its new authority to sagittal
+    legs, waist pitch, and a small shoulder/elbow return correction.
+    """
+
+    BASE_OBS_DIM = 227
+    RECOVERY_OBS_DIM = 8
+    RECOVERY_ACTION_INDICES = (0, 3, 4, 6, 9, 10, 14, 15, 17, 18)
+
+    def __init__(
+        self,
+        num_actor_obs: int,
+        num_critic_obs: int,
+        num_actions: int,
+        actor_hidden_dims: list[int] = [256, 128, 64],
+        critic_hidden_dims: list[int] = [256, 128, 64],
+        activation: str = "elu",
+        init_noise_std: float = 0.03,
+        noise_std_type: str = "scalar",
+        recovery_arm_std_scale: float = 0.20,
+        **kwargs,
+    ):
+        expected_obs = self.BASE_OBS_DIM + self.RECOVERY_OBS_DIM
+        if num_actor_obs != expected_obs:
+            raise ValueError(
+                f"BentReadyRecoveryActorCritic requires {expected_obs} actor "
+                f"observations, got {num_actor_obs}"
+            )
+        super().__init__(
+            num_actor_obs=self.BASE_OBS_DIM,
+            num_critic_obs=num_critic_obs,
+            num_actions=num_actions,
+            actor_hidden_dims=actor_hidden_dims,
+            critic_hidden_dims=critic_hidden_dims,
+            activation=activation,
+            init_noise_std=init_noise_std,
+            noise_std_type=noise_std_type,
+            **kwargs,
+        )
+        self.recovery_total_obs_dim = expected_obs
+        self.recovery_action_dim = len(self.RECOVERY_ACTION_INDICES)
+        self.recovery_arm_std_scale = float(recovery_arm_std_scale)
+        if not 0.0 < self.recovery_arm_std_scale <= 1.0:
+            raise ValueError("recovery_arm_std_scale must be in (0, 1]")
+
+        recovery_input_dim = 64 + 32 + self.RECOVERY_OBS_DIM
+        self.recovery_encoder = nn.Sequential(
+            nn.Linear(recovery_input_dim, 96),
+            nn.ELU(),
+            nn.Linear(96, 64),
+            nn.ELU(),
+        )
+        self.recovery_adapter = nn.Linear(64, self.recovery_action_dim)
+        nn.init.zeros_(self.recovery_adapter.weight)
+        nn.init.zeros_(self.recovery_adapter.bias)
+
+        indices = torch.tensor(self.RECOVERY_ACTION_INDICES, dtype=torch.long)
+        # Legs, waist pitch, then shoulder pitch/yaw and elbow.  These are
+        # raw-action gains before the established V25 joint scaling.
+        action_gain = torch.tensor(
+            (0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.25, 0.15, 0.15, 0.15),
+            dtype=torch.float32,
+        )
+        std_mask = torch.zeros(num_actions, dtype=torch.float32)
+        std_mask[indices[:7]] = 1.0
+        std_mask[indices[7:]] = self.recovery_arm_std_scale
+        self.register_buffer("recovery_action_indices", indices, persistent=False)
+        self.register_buffer("recovery_action_gain", action_gain, persistent=False)
+        self.register_buffer("recovery_std_mask", std_mask, persistent=False)
+
+        for module in (
+            self.actor,
+            self.support_state_encoder,
+            self.stagger_encoder,
+            self.support_fusion,
+            self.support_adapter,
+        ):
+            for parameter in module.parameters():
+                parameter.requires_grad_(False)
+
+    def base_action_mean(self, observations: torch.Tensor) -> torch.Tensor:
+        return super()._action_mean(observations)
+
+    def _action_mean(self, observations: torch.Tensor) -> torch.Tensor:
+        if observations.shape[-1] != self.recovery_total_obs_dim:
+            raise ValueError(
+                f"Expected {self.recovery_total_obs_dim} actor observations, "
+                f"got {observations.shape[-1]}"
+            )
+        base_observation = observations[..., : self.BASE_OBS_DIM]
+        recovery_observation = observations[..., self.BASE_OBS_DIM :]
+        base = self.base_action_mean(base_observation)
+        features = torch.cat(
+            (
+                self.support_state_encoder(base_observation[..., : self.legacy_obs_dim]),
+                self.stagger_encoder(base_observation[..., self.legacy_obs_dim :]),
+                recovery_observation,
+            ),
+            dim=-1,
+        )
+        selected_delta = torch.tanh(self.recovery_adapter(self.recovery_encoder(features)))
+        selected_delta = selected_delta * self.recovery_action_gain
+        full_delta = torch.zeros_like(base)
+        full_delta[..., self.recovery_action_indices] = selected_delta
+        gate = recovery_observation[..., -1:].clamp(0.0, 1.0)
+        return base + gate * full_delta
+
+    def update_distribution(self, observations: torch.Tensor) -> None:
+        mean = self._action_mean(observations)
+        if self.noise_std_type == "scalar":
+            learned_std = self.std.clamp_min(1.0e-6)
+        elif self.noise_std_type == "log":
+            learned_std = torch.exp(self.log_std)
+        else:
+            raise ValueError(f"Unknown standard deviation type: {self.noise_std_type}")
+        gate = observations[..., -1:].clamp(0.0, 1.0)
+        active_std = learned_std * self.recovery_std_mask
+        std = 1.0e-4 + gate * active_std.unsqueeze(0)
+        self.distribution = Normal(mean, std.expand_as(mean))
+
+    def act_inference(self, observations: torch.Tensor) -> torch.Tensor:
+        return self._action_mean(observations)

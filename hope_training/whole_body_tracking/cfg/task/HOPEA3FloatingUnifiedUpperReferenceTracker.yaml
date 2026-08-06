@@ -1,0 +1,102 @@
+# P5U-1 unified upper tracker, Contract A.
+# model_3396 is frozen lower support; model_900 is disabled and must not be
+# loaded.  The public actor has a 10-D zero-initialized upper residual around
+# q_ref and receives no motion/reference/seed identifier.
+defaults:
+  - _self_
+
+name: HOPEA3FloatingUnifiedUpperReferenceTracker
+gym_task: HOPE-FloatingUnifiedUpperReferenceTracker-AgibotA3-v0
+experiment_name: agibot_a3_p5u1_unified_upper_reference_tracker
+
+# Explicit task-level contract consumed by train.py/eval_manifest_policy.py.
+# This P5D manifest is already scene-placed; the legacy +0.76 m adapter is
+# forbidden for this task.
+manifest_frame_z_offset: 0.0
+
+env:
+  # Full 10-second episodes are required for the fall audit.  A motion must
+  # not be advanced merely because its strike window has elapsed.
+  episode_length_s: 10.0
+  # Wide/deep staggered READY stance for the current right-handed setup:
+  # right foot forward, left foot backward, both feet widened, and deeper
+  # knee/hip flexion with the corresponding IK-consistent ankle/pelvis lift.
+  staggered_stance_half_span_m: 0.06
+  staggered_front_foot: right
+  stance_lateral_widen_per_foot_m: 0.05
+  stance_knee_flexion_rad: 0.48
+
+motion:
+  # P5D v1 NPZ files are already placed in the P1 scene/world frame
+  # (scene_root_anchor_w_m.z ~= 1.04).  Do not apply the legacy HOPE
+  # competition-frame +0.76 m lift a second time.
+  manifest_frame_z_offset: 0.0
+  sample_random_start_phase: false
+  prelude_steps: 50
+  hold_last_frame_steps: 0
+  return_to_default_steps: 0
+  reset_to_default_pose: true
+  pose_range: {}
+  velocity_range: {}
+  joint_position_range: [0.0, 0.0]
+  reset_perturbation_probability: 0.0
+  hard_case_probability: 0.0
+  manifest_balance_strokes: false
+  reference_sampling_mode: uniform
+
+actions:
+  raw_clip: 0.50
+  joint_reference_lookahead_steps: {}
+  joint_velocity_feedforward_mode: none
+  joint_velocity_feedforward_beta: 0.0
+  joint_velocity_feedforward_joint_names: []
+  upper_correction_scale_rad: [0.035, 0.035, 0.035, 0.035, 0.035, 0.035, 0.035, 0.035, 0.035, 0.035]
+  phase_contract: A
+  global_phase_limit_steps: 4.0
+  shoulder_phase_limit_steps: 2.0
+  elbow_phase_limit_steps: 2.0
+  wrist_phase_limit_steps: 2.0
+  phase_lowpass_alpha: 0.25
+  legacy_stage_a_checkpoint: checkpoints/frozen_priors/model_3396.pt
+  legacy_stage_a_observation_group: stage_a
+
+rewards:
+  reference_joint_position_weight: 3.0
+  reference_joint_velocity_weight: 1.5
+  racket_position_weight: 8.0
+  racket_position_fine_weight: 2.0
+  racket_velocity_weight: 3.0
+  racket_velocity_magnitude_weight: 2.0
+  racket_velocity_direction_weight: 2.0
+  racket_signed_velocity_weight: 2.0
+  racket_pass_through_weight: 3.0
+  racket_stop_at_target_weight: 2.0
+  racket_reverse_motion_weight: 2.0
+  racket_hit_timing_weight: 1.0
+  racket_normal_weight: 2.0
+  racket_hit_coupled_weight: 1.0
+  racket_hit_precision_weight: 8.0
+  action_residual_l2_weight: -0.01
+  phase_magnitude_weight: 0.02
+  phase_rate_weight: 0.05
+  phase_group_consistency_weight: 0.02
+  joint_limit_weight: -20.0
+  feet_slip_weight: -1.0
+  fall_weight: -150.0
+  alive_weight: 1.0
+
+racket:
+  target_mode: manifest
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  strike_time_std_s: 0.0
+  strike_success_pos_thresh: 0.10
+  strike_success_vel_thresh: 2.0
+  strike_success_normal_thresh_deg: 20.0
+  ref_perturb_success_gated: false
+  forehand_on_negative_y: true
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0
+
+domain_rand:
+  pd_gain_range: null

@@ -9,15 +9,88 @@ import numpy as np
 
 from isaaclab.managers import ManagerTermBase, SceneEntityCfg
 from isaaclab.sensors import ContactSensor
+import isaaclab.utils.math as math_utils
 from isaaclab.utils.math import quat_error_magnitude
 
 from training.tasks.tracking.mdp.commands import MotionCommand
+from training.tasks.tracking.mdp.fall_state import unified_fall_state
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
 _REALIZED_PHASE_REFERENCE_CACHE: dict[tuple[int, str, str], dict[str, torch.Tensor]] = {}
+
+
+def strict_fall_risk_l2(
+    env: ManagerBasedRLEnv,
+    minimum_upright: float = 0.80,
+    minimum_height: float = 0.90,
+    minimum_torso_upright: float = 0.85,
+    minimum_torso_height: float = 0.80,
+) -> torch.Tensor:
+    """Dense early warning cost for a visually developing fall.
+
+    This is deliberately separate from the terminal ``fall`` reward.  It
+    gives PPO a gradient while the robot is already leaning or dropping but
+    before the strict fall predicate has persisted for its required steps.
+    The historical threshold arguments remain accepted for config
+    compatibility; the physical values come from ``UnifiedFallState`` so the
+    reward and termination cannot disagree.
+    """
+
+    # All fall consumers share one cached physical state.  Keeping this term
+    # on the same source as the termination prevents PPO from being rewarded
+    # for a state that the done term classifies differently.
+    if hasattr(env, "scene") and hasattr(env.scene, "__getitem__"):
+        state = unified_fall_state(env)
+        env.unified_fall_risk_components = state.risk_components
+        return state.risk_score.square()
+
+    robot = env.scene["robot"]
+    upright = torch.clamp(-robot.data.projected_gravity_b[:, 2], min=-1.0, max=1.0)
+    tilt_risk = torch.square(torch.relu(float(minimum_upright) - upright))
+    height_risk = torch.square(
+        torch.relu(float(minimum_height) - robot.data.root_pos_w[:, 2])
+    )
+    torso_risk = torch.zeros_like(tilt_risk)
+    torso_height_risk = torch.zeros_like(height_risk)
+    torso_id = getattr(env, "_strict_fall_torso_body_id", None)
+    if torso_id is None:
+        try:
+            ids, names = robot.find_bodies(["torso_Link"], preserve_order=True)
+            torso_id = int(ids[0]) if names else -1
+        except Exception:
+            torso_id = -1
+        setattr(env, "_strict_fall_torso_body_id", torso_id)
+    if int(torso_id) >= 0:
+        torso_pos = robot.data.body_pos_w[:, int(torso_id)]
+        torso_quat = robot.data.body_quat_w[:, int(torso_id)]
+        gravity_w = torch.zeros_like(torso_pos)
+        gravity_w[:, 2] = -1.0
+        torso_gravity_b = math_utils.quat_rotate_inverse(torso_quat, gravity_w)
+        torso_upright = torch.clamp(-torso_gravity_b[:, 2], min=-1.0, max=1.0)
+        torso_risk = torch.square(torch.relu(float(minimum_torso_upright) - torso_upright))
+        torso_height_risk = torch.square(
+            torch.relu(float(minimum_torso_height) - torso_pos[:, 2])
+        )
+    return tilt_risk + height_risk + torso_risk + torso_height_risk
+
+
+def recovery_completion_bonus(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Bonus only after the unified recovery hold, never at ordinary timeout."""
+    state = unified_fall_state(env)
+    return state.recovery_ready.to(dtype=state.risk_score.dtype)
+
+
+def terminal_remaining_horizon_penalty(env: ManagerBasedRLEnv, horizon_steps: int = 250) -> torch.Tensor:
+    """Expose remaining-horizon cost so early termination cannot be profitable."""
+    state = unified_fall_state(env)
+    terminated = state.confirmed_fall | state.predicted_unrecoverable
+    episode_steps = getattr(env, "episode_length_buf", torch.zeros_like(state.risk_score))
+    max_steps = max(int(getattr(env, "max_episode_length", horizon_steps)), 1)
+    remaining = (max_steps - episode_steps.to(dtype=state.risk_score.dtype)).clamp_min(0.0)
+    return terminated.to(dtype=state.risk_score.dtype) * (remaining / float(max_steps))
 
 
 def _realized_phase_reference(
@@ -193,6 +266,126 @@ def post_strike_ready_score(
     return torch.where(tail_steps > 0, score, torch.zeros_like(score))
 
 
+def _return_or_ready_mask(command: MotionCommand) -> torch.Tensor:
+    """Select the smooth return and READY hold, never the follow-through hold."""
+
+    hold_steps = int(command.cfg.hold_last_frame_steps)
+    return command.tail_steps > hold_steps
+
+
+def post_strike_bent_ready_arm_score(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    position_std: float = 0.15,
+    velocity_std: float = 0.50,
+) -> torch.Tensor:
+    """Reward a quiet right arm at the task's configured READY manifold."""
+
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    robot = env.scene["robot"]
+    joint_ids = getattr(env, "_bent_ready_reward_right_arm_joint_ids", None)
+    if joint_ids is None:
+        from training.robots.agibot_a3 import A3_RIGHT_ARM_JOINTS
+
+        joint_ids, resolved = robot.find_joints(
+            A3_RIGHT_ARM_JOINTS, preserve_order=True
+        )
+        if resolved != A3_RIGHT_ARM_JOINTS:
+            raise RuntimeError(
+                "Bent-ready reward right-arm mapping mismatch: "
+                f"expected={A3_RIGHT_ARM_JOINTS}, got={resolved}"
+            )
+        joint_ids = tuple(int(index) for index in joint_ids)
+        env._bent_ready_reward_right_arm_joint_ids = joint_ids
+    position_error = torch.mean(
+        torch.square(
+            robot.data.joint_pos[:, joint_ids]
+            - command.ready_joint_pos[:, joint_ids]
+        ),
+        dim=-1,
+    )
+    velocity_error = torch.mean(
+        torch.square(robot.data.joint_vel[:, joint_ids]), dim=-1
+    )
+    score = torch.exp(-position_error / position_std**2) * torch.exp(
+        -velocity_error / velocity_std**2
+    )
+    return torch.where(_return_or_ready_mask(command), score, torch.zeros_like(score))
+
+
+class PostStrikeBentReadyProgress(ManagerTermBase):
+    """Reward return-phase reduction of body and bent-READY arm error."""
+
+    def __init__(self, cfg, env):
+        super().__init__(cfg, env)
+        self._previous = torch.zeros(env.num_envs, device=env.device)
+        self._initialized = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        from training.robots.agibot_a3 import A3_RIGHT_ARM_JOINTS
+
+        robot = env.scene["robot"]
+        joint_ids, resolved = robot.find_joints(A3_RIGHT_ARM_JOINTS, preserve_order=True)
+        if resolved != A3_RIGHT_ARM_JOINTS:
+            raise RuntimeError(
+                "Bent-ready progress right-arm mapping mismatch: "
+                f"expected={A3_RIGHT_ARM_JOINTS}, got={resolved}"
+            )
+        self._right_arm_joint_ids = tuple(int(index) for index in joint_ids)
+
+    def reset(self, env_ids=None):
+        if env_ids is None:
+            self._initialized[:] = False
+        else:
+            self._initialized[env_ids] = False
+
+    def __call__(
+        self,
+        env: ManagerBasedRLEnv,
+        command_name: str,
+        capture_scale_m: float = 0.10,
+        linear_velocity_scale: float = 0.50,
+        angular_velocity_scale: float = 0.80,
+        arm_position_scale: float = 0.20,
+        arm_velocity_scale: float = 0.60,
+    ) -> torch.Tensor:
+        from training.tasks.tracking.mdp.observations import stagger_support_state
+
+        command: MotionCommand = env.command_manager.get_term(command_name)
+        robot = env.scene["robot"]
+        arm_ids = self._right_arm_joint_ids
+        arm_position_error = torch.mean(
+            torch.square(
+                robot.data.joint_pos[:, arm_ids]
+                - command.ready_joint_pos[:, arm_ids]
+            ),
+            dim=-1,
+        )
+        arm_velocity_error = torch.mean(
+            torch.square(robot.data.joint_vel[:, arm_ids]), dim=-1
+        )
+        capture_error = torch.square(
+            stagger_support_state(env)["capture_rel_support_x_b"] / capture_scale_m
+        )
+        linear_error = torch.sum(
+            torch.square(robot.data.root_lin_vel_b / linear_velocity_scale), dim=-1
+        )
+        angular_error = torch.sum(
+            torch.square(robot.data.root_ang_vel_b / angular_velocity_scale), dim=-1
+        )
+        potential = (
+            capture_error
+            + linear_error
+            + angular_error
+            + arm_position_error / arm_position_scale**2
+            + arm_velocity_error / arm_velocity_scale**2
+        )
+        progress = (self._previous - potential) / float(env.step_dt)
+        active = _return_or_ready_mask(command)
+        progress = torch.where(self._initialized & active, progress, torch.zeros_like(progress))
+        self._previous[:] = potential
+        self._initialized[:] = True
+        return torch.where(active, torch.clamp(progress, -25.0, 25.0), torch.zeros_like(progress))
+
+
 def post_strike_root_velocity_l2(
     env: ManagerBasedRLEnv,
     command_name: str,
@@ -251,6 +444,70 @@ def post_strike_root_tilt_l2(
     gravity_b = env.scene["robot"].data.projected_gravity_b
     tilt_cost = torch.sum(torch.square(gravity_b[:, :2]), dim=-1)
     return torch.where(tail_steps > 0, tilt_cost, torch.zeros_like(tilt_cost))
+
+
+def post_strike_torso_angular_velocity_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    torso_body_name: str = "torso_Link",
+    deadband: float = 0.06,
+) -> torch.Tensor:
+    """Tail-only damping for visible torso roll/pitch sway.
+
+    The strike and follow-through are intentionally left untouched.  Once the
+    finite reference reaches its held final frame (``tail_steps > 0``), the
+    torso's body-frame roll/pitch angular velocity is penalized outside a
+    small sensor/noise deadband.  Yaw is excluded so the robot can retain the
+    intended racket-facing heading while settling.
+    """
+
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    tail_steps = getattr(command, "tail_steps", None)
+    if tail_steps is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    robot = env.scene["robot"]
+    cache_name = "_post_strike_torso_body_id"
+    torso_id = getattr(env, cache_name, None)
+    if torso_id is None:
+        ids, names = robot.find_bodies([torso_body_name], preserve_order=True)
+        if not names:
+            raise ValueError(f"Unable to resolve torso body {torso_body_name!r}")
+        torso_id = int(ids[0])
+        setattr(env, cache_name, torso_id)
+    torso_quat = robot.data.body_quat_w[:, torso_id]
+    torso_ang_vel_w = robot.data.body_ang_vel_w[:, torso_id]
+    torso_ang_vel_b = math_utils.quat_rotate_inverse(torso_quat, torso_ang_vel_w)
+    excess = torch.relu(torch.abs(torso_ang_vel_b[:, :2]) - float(deadband))
+    cost = torch.sum(torch.square(excess), dim=-1)
+    return torch.where(tail_steps > 0, cost, torch.zeros_like(cost))
+
+
+def post_strike_torso_tilt_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    torso_body_name: str = "torso_Link",
+) -> torch.Tensor:
+    """Tail-only torso upright cost, independent of the yaw heading."""
+
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    tail_steps = getattr(command, "tail_steps", None)
+    if tail_steps is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    robot = env.scene["robot"]
+    cache_name = "_post_strike_torso_body_id"
+    torso_id = getattr(env, cache_name, None)
+    if torso_id is None:
+        ids, names = robot.find_bodies([torso_body_name], preserve_order=True)
+        if not names:
+            raise ValueError(f"Unable to resolve torso body {torso_body_name!r}")
+        torso_id = int(ids[0])
+        setattr(env, cache_name, torso_id)
+    torso_quat = robot.data.body_quat_w[:, torso_id]
+    gravity_w = torch.zeros_like(robot.data.body_pos_w[:, torso_id])
+    gravity_w[:, 2] = -1.0
+    gravity_b = math_utils.quat_rotate_inverse(torso_quat, gravity_w)
+    cost = torch.sum(torch.square(gravity_b[:, :2]), dim=-1)
+    return torch.where(tail_steps > 0, cost, torch.zeros_like(cost))
 
 
 def _through_hit_mask(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
@@ -717,6 +974,22 @@ def motion_joint_position_error_exp(
     """Track reference joint positions for a selected joint subset."""
     command: MotionCommand = env.command_manager.get_term(command_name)
     error = torch.square(command.robot_joint_pos[:, asset_cfg.joint_ids] - command.joint_pos[:, asset_cfg.joint_ids])
+    return torch.exp(-error.mean(-1) / std**2)
+
+
+def motion_joint_velocity_error_exp(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    std: float,
+    asset_cfg: SceneEntityCfg,
+) -> torch.Tensor:
+    """Dense actual-vs-reference joint-velocity tracking score for P5D.
+
+    This is reference-relative rather than goal-relative, so it supplies a
+    useful signal across the full swing instead of only at the hit window.
+    """
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    error = torch.square(command.robot_joint_vel[:, asset_cfg.joint_ids] - command.joint_vel[:, asset_cfg.joint_ids])
     return torch.exp(-error.mean(-1) / std**2)
 
 

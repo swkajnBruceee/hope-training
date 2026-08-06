@@ -1,0 +1,37 @@
+# P5D bootstrap course.  Frozen model_3396, model_900 and the reviewed
+# support-state machine provide a stable execution prior; PPO learns only a
+# shared 10-D waist/right-arm residual around it from P5 safe-reference
+# previews.  Legs remain owned by the frozen support prior in this bootstrap.
+defaults:
+  - _self_
+
+name: HOPEA3FloatingPriorGuidedReferenceTrackerP5D
+gym_task: HOPE-FloatingPriorGuidedReferenceTracker-AgibotA3-v0
+experiment_name: agibot_a3_p5d_prior_guided_reference_tracker
+
+env:
+  episode_length_s: 6.5
+
+motion:
+  fixed_motion_id: 3
+  manifest_balance_strokes: false
+
+tracker:
+  # First P5D-1A authority scan; only the ten waist/right-arm residual
+  # channels see this scale. Frozen 900/3396 remain unchanged.
+  upper_correction_scale_rad: 0.10
+
+rewards:
+  reference_joint_position_weight: 3.0
+  reference_joint_velocity_weight: 1.5
+  racket_position_weight: 8.0
+  racket_position_fine_weight: 2.0
+  racket_velocity_weight: 3.0
+  racket_normal_weight: 2.0
+  racket_hit_coupled_weight: 1.0
+  racket_hit_precision_weight: 8.0
+  action_residual_l2_weight: -0.01
+  joint_limit_weight: -20.0
+  feet_slip_weight: -1.0
+  fall_weight: -150.0
+  alive_weight: 1.0

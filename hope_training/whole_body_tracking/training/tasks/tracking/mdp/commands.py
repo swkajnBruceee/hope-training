@@ -20,6 +20,7 @@ from isaaclab.utils.math import (
     quat_from_euler_xyz,
     quat_inv,
     quat_mul,
+    quat_rotate_inverse,
     sample_uniform,
     yaw_quat,
 )
@@ -75,10 +76,16 @@ class MotionLibraryLoader:
         validate_stance_contract: bool = False,
         stance_contract_mode: str | None = None,
         require_upper_momentum: bool = False,
+        expected_root_quaternion_wxyz: Sequence[float] | None = None,
+        root_quaternion_tolerance: float = 1.0e-4,
     ):
         self.manifest_file = self._resolve_path(manifest_file)
         with open(self.manifest_file, "r", encoding="utf-8") as f:
             manifest = json.load(f)
+        self._strict_payload_contract = bool(
+            manifest.get("payload_contract_strict", False)
+            or str(manifest.get("schema_version", "")).startswith("p5d3a_")
+        )
 
         if validate_stance_contract:
             validate_stance_manifest(
@@ -104,9 +111,39 @@ class MotionLibraryLoader:
         )
         self.forehand_ids = torch.where(self.stroke_ids == 0)[0]
         self.backhand_ids = torch.where(self.stroke_ids == 1)[0]
+        # Reference-conditioned P5D sampling metadata.  These fields are
+        # audit/runtime metadata only; none is exposed through actor
+        # observations.  Keep the loader generic so manifests from other
+        # tracking tasks continue to work without a p5d2_dataset block.
+        self.regions = [
+            str(e.get("p5d2_dataset", {}).get("region", e.get("region", "unknown")))
+            for e in entries
+        ]
+        self.region_to_ids = {
+            region: torch.tensor([i for i, r in enumerate(self.regions) if r == region], dtype=torch.long, device=device)
+            for region in sorted(set(self.regions))
+        }
+        raw_difficulty = []
+        for e in entries:
+            meta = e.get("p5d2_dataset", {})
+            value = meta.get("difficulty_weight", meta.get("projection_max_rad_after_reoptimization", 0.0))
+            try:
+                raw_difficulty.append(max(0.0, float(value)))
+            except (TypeError, ValueError):
+                raw_difficulty.append(0.0)
+        difficulty = torch.tensor(raw_difficulty, dtype=torch.float32, device=device)
+        self.difficulty_weights = 1.0 + difficulty / 0.01
 
         arrays: list[dict[str, np.ndarray | float | int]] = []
         motion_paths: list[str] = []
+        expected_root_q = None
+        if expected_root_quaternion_wxyz is not None:
+            expected_root_q = np.asarray(expected_root_quaternion_wxyz, dtype=np.float64).reshape(-1)
+            if expected_root_q.shape != (4,) or not np.isfinite(expected_root_q).all():
+                raise ValueError("expected_root_quaternion_wxyz must be a finite 4-vector")
+            expected_root_q /= max(float(np.linalg.norm(expected_root_q)), 1.0e-12)
+            if root_quaternion_tolerance <= 0.0:
+                raise ValueError("root_quaternion_tolerance must be positive")
         for entry in entries:
             motion_path = self._entry_motion_path(entry)
             motion_paths.append(motion_path)
@@ -116,6 +153,15 @@ class MotionLibraryLoader:
                 raise ValueError(f"{motion_path}: fps={fps}, expected {expected_fps}")
             joint_pos = np.asarray(data["joint_pos"], dtype=np.float32)
             body_pos_w = np.asarray(data["body_pos_w"], dtype=np.float32)
+            if expected_root_q is not None:
+                root_q = np.asarray(data["body_quat_w"], dtype=np.float64)[0, 0]
+                root_q /= max(float(np.linalg.norm(root_q)), 1.0e-12)
+                root_error = min(float(np.linalg.norm(root_q - expected_root_q)), float(np.linalg.norm(root_q + expected_root_q)))
+                if root_error > float(root_quaternion_tolerance):
+                    raise ValueError(
+                        f"{motion_path}: root quaternion {root_q.tolist()} disagrees with the task root "
+                        f"{expected_root_q.tolist()} (error={root_error:.3e} > tolerance={root_quaternion_tolerance:.3e})"
+                    )
             if joint_pos.shape[-1] != 31:
                 raise ValueError(f"{motion_path}: joint_pos shape {joint_pos.shape}, expected [...,31]")
             if body_pos_w.shape[-2] != 32:
@@ -125,7 +171,42 @@ class MotionLibraryLoader:
                 raise ValueError(f"{motion_path}: invalid hit_frame={hit_frame} for length={joint_pos.shape[0]}")
 
             target = entry.get("strike_target", {})
-            normal = np.asarray(target.get("racket_normal_w", [0.0, 0.0, 1.0]), dtype=np.float32)
+
+            # P5 scene-placed reference payloads carry the authoritative goal
+            # in the immutable initial-base-heading frame.  Older manifests
+            # also contain a ``strike_target`` dictionary, but for generated
+            # forehand clips that dictionary was originally authored in the
+            # source mocap scene and can be metres away from the placed robot.
+            # Prefer the canonical payload when all of its frame metadata is
+            # present; otherwise retain the legacy manifest target contract.
+            canonical_scene_goal = (
+                "canonical_goal_position_b0_m" in data.files
+                and "canonical_goal_linear_velocity_b0_mps" in data.files
+                and "canonical_goal_normal_b0" in data.files
+                and "scene_root_anchor_w_m" in data.files
+            )
+
+            def _rotate_z_np(vector: np.ndarray, heading_rad: float) -> np.ndarray:
+                c = float(np.cos(heading_rad))
+                s = float(np.sin(heading_rad))
+                x, y, z = [float(v) for v in np.asarray(vector).reshape(3)]
+                return np.asarray([c * x - s * y, s * x + c * y, z], dtype=np.float32)
+
+            if canonical_scene_goal:
+                anchor = np.asarray(data["scene_root_anchor_w_m"], dtype=np.float32).reshape(3)
+                heading = float(np.asarray(data.get("scene_root_heading_w_rad", [0.0])).reshape(-1)[0])
+                canonical_position_b = np.asarray(data["canonical_goal_position_b0_m"], dtype=np.float32).reshape(3)
+                canonical_velocity_b = np.asarray(data["canonical_goal_linear_velocity_b0_mps"], dtype=np.float32).reshape(3)
+                canonical_normal_b = np.asarray(data["canonical_goal_normal_b0"], dtype=np.float32).reshape(3)
+                strike_position = anchor + _rotate_z_np(canonical_position_b, heading)
+                strike_velocity = _rotate_z_np(canonical_velocity_b, heading)
+                strike_normal = _rotate_z_np(canonical_normal_b, heading)
+            else:
+                strike_position = np.asarray(target.get("racket_position_m", [0.0, 0.0, 0.0]), dtype=np.float32)
+                strike_velocity = np.asarray(target.get("racket_velocity_mps", [0.0, 0.0, 0.0]), dtype=np.float32)
+                strike_normal = np.asarray(target.get("racket_normal_w", [0.0, 0.0, 1.0]), dtype=np.float32)
+
+            normal = strike_normal
             n = float(np.linalg.norm(normal))
             if not np.isfinite(n) or n < 1e-6:
                 raise ValueError(f"{motion_path}: invalid racket_normal_w={normal}")
@@ -160,8 +241,8 @@ class MotionLibraryLoader:
                     "body_lin_vel_w": np.asarray(data["body_lin_vel_w"], dtype=np.float32),
                     "body_ang_vel_w": np.asarray(data["body_ang_vel_w"], dtype=np.float32),
                     "hit_frame": hit_frame,
-                    "strike_pos_w": np.asarray(target.get("racket_position_m", [0.0, 0.0, 0.0]), dtype=np.float32),
-                    "strike_vel_w": np.asarray(target.get("racket_velocity_mps", [0.0, 0.0, 0.0]), dtype=np.float32),
+                    "strike_pos_w": strike_position,
+                    "strike_vel_w": strike_velocity,
                     "strike_normal_w": normal,
                     "upper_momentum_pelvis": upper_momentum,
                     "upper_mass_kg": upper_mass,
@@ -271,13 +352,51 @@ class MotionLibraryLoader:
 
     def _entry_motion_path(self, entry: dict) -> str:
         manifest_dir = os.path.dirname(self.manifest_file)
+        # ``library_motion_npz`` used to silently win over ``motion_npz``.
+        # That made a generated-candidate manifest replay its provenance clip
+        # whenever the generator forgot to rewrite both fields.  A candidate
+        # screen can therefore look numerically plausible while testing the
+        # wrong trajectory.  If both explicit paths resolve, require them to
+        # identify the same payload and fail closed on disagreement.
+        explicit_paths: dict[str, str] = {}
         for key in ("library_motion_npz", "motion_npz"):
             value = entry.get(key)
             if value:
                 try:
-                    return self._resolve_path(value, manifest_dir=manifest_dir)
+                    explicit_paths[key] = self._resolve_path(value, manifest_dir=manifest_dir)
                 except FileNotFoundError:
-                    pass
+                    # Qualification manifests are deliberately self-contained,
+                    # but their provenance keeps the source machine's absolute
+                    # ``motion_npz`` path.  When replaying such a package on a
+                    # different host, prefer its colocated payload over the
+                    # legacy stroke/episode fallback below.  This never masks
+                    # a valid explicit path: it is considered only after that
+                    # path failed to resolve.
+                    packaged_path = os.path.join(
+                        manifest_dir,
+                        "motion_npz",
+                        os.path.basename(str(value)),
+                    )
+                    if os.path.isfile(packaged_path):
+                        explicit_paths[key] = os.path.abspath(packaged_path)
+        # Legacy packaged manifests intentionally keep a provenance
+        # ``motion_npz`` while ``library_motion_npz`` points at the colocated
+        # replay payload.  Preserve that established precedence.  Candidate
+        # manifests opt into strict mode through their schema or by carrying
+        # an explicit canonical payload field; those must never disagree.
+        strict_entry = self._strict_payload_contract or bool(entry.get("canonical_motion_npz"))
+        if len(explicit_paths) == 2 and strict_entry:
+            library_path = os.path.realpath(explicit_paths["library_motion_npz"])
+            motion_path = os.path.realpath(explicit_paths["motion_npz"])
+            if library_path != motion_path:
+                raise ValueError(
+                    "motion manifest entry has conflicting explicit payloads: "
+                    f"library_motion_npz={library_path!r} != motion_npz={motion_path!r}. "
+                    "The loader refuses to guess which trajectory is authoritative."
+                )
+        for key in ("library_motion_npz", "motion_npz"):
+            if key in explicit_paths:
+                return explicit_paths[key]
         episode_id = entry.get("episode_id")
         stroke = str(entry.get("stroke_type", "")).lower()
         if episode_id and stroke:
@@ -306,6 +425,10 @@ class MotionCommand(CommandTerm):
 
     def __init__(self, cfg: MotionCommandCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
+        # Keep an explicit environment handle for the unified next-action
+        # recovery query; IsaacLab CommandTerm versions differ in whether
+        # they expose the protected handle under the same name.
+        self._env = env
 
         self.robot: Articulation = env.scene[cfg.asset_name]
         self.robot_anchor_body_index = self.robot.body_names.index(self.cfg.anchor_body_name)
@@ -330,6 +453,8 @@ class MotionCommand(CommandTerm):
                 validate_stance_contract=self.cfg.validate_stance_contract,
                 stance_contract_mode=self.cfg.stance_contract_mode,
                 require_upper_momentum=self.cfg.require_upper_momentum,
+                expected_root_quaternion_wxyz=self.cfg.expected_root_quaternion_wxyz or None,
+                root_quaternion_tolerance=self.cfg.root_quaternion_tolerance,
             )
             self.motion_ids = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
             self._use_motion_library = True
@@ -368,6 +493,19 @@ class MotionCommand(CommandTerm):
         )
         if self._root_position_offset.shape != (3,):
             raise ValueError("root_position_offset must contain exactly three values")
+        # V27 may use a task-local bent READY without mutating the robot asset
+        # default shared by frozen V25/V26. Empty overrides preserve the exact
+        # historical reset, bridge and finite-return contract.
+        self._ready_joint_position_overrides: dict[int, float] = {}
+        for joint_name, value in dict(self.cfg.ready_joint_positions).items():
+            joint_ids, resolved = self.robot.find_joints(
+                [joint_name], preserve_order=True
+            )
+            if resolved != [joint_name]:
+                raise ValueError(
+                    f"Unknown ready_joint_positions joint: {joint_name!r}"
+                )
+            self._ready_joint_position_overrides[int(joint_ids[0])] = float(value)
         # Optional terminal hold for finite task motions.  ``time_steps`` stays
         # at the final valid reference frame until the environment resets; this
         # avoids a discontinuous wrap from the end of a strike back to its
@@ -449,6 +587,19 @@ class MotionCommand(CommandTerm):
         return torch.cat([self.joint_pos, self.joint_vel], dim=1)
 
     @property
+    def ready_joint_pos(self) -> torch.Tensor:
+        """Return the live lower-body READY plus task-local joint overrides.
+
+        The staggered-stance reset event updates ``default_joint_pos`` after
+        command construction.  Rebuilding from that live tensor preserves the
+        validated lower-body handoff while V27 replaces only named arm joints.
+        """
+        ready = self.robot.data.default_joint_pos.clone()
+        for joint_id, value in self._ready_joint_position_overrides.items():
+            ready[:, joint_id] = value
+        return ready
+
+    @property
     def joint_pos(self) -> torch.Tensor:
         if self._use_motion_library:
             reference = self.motion.joint_pos[self.motion_ids, self.time_steps]
@@ -465,14 +616,17 @@ class MotionCommand(CommandTerm):
                     self.prelude_elapsed_steps.to(dtype=reference.dtype)
                     / float(self.prelude_steps)
                 ).clamp_(0.0, 1.0).unsqueeze(-1)
-                return self.robot.data.default_joint_pos + alpha * (
-                    reference - self.robot.data.default_joint_pos
+                return self.ready_joint_pos + alpha * (
+                    reference - self.ready_joint_pos
                 )
             endpoint = self._prelude_endpoint(reference)
-            alpha, _ = self._prelude_blend(reference.dtype)
-            bridge = self.robot.data.default_joint_pos + alpha.unsqueeze(-1) * (
-                endpoint - self.robot.data.default_joint_pos
-            )
+            if self.cfg.prelude_quintic_hermite:
+                bridge, _ = self._prelude_quintic_bridge(reference.dtype)
+            else:
+                alpha, _ = self._prelude_blend(reference.dtype)
+                bridge = self.ready_joint_pos + alpha.unsqueeze(-1) * (
+                    endpoint - self.ready_joint_pos
+                )
             reference = torch.where(in_prelude.unsqueeze(-1), bridge, reference)
 
             # After the bridge reaches a zero-velocity safe anchor, blend the
@@ -507,7 +661,7 @@ class MotionCommand(CommandTerm):
             # return/ready boundaries.
             smooth_u = u * u * u * (10.0 - 15.0 * u + 6.0 * u * u)
             reference = reference + smooth_u.unsqueeze(-1) * (
-                self.robot.data.default_joint_pos - reference
+                self.ready_joint_pos - reference
             )
         return reference
 
@@ -526,8 +680,15 @@ class MotionCommand(CommandTerm):
         if self.prelude_steps > 0 and self.cfg.prelude_continuous_velocity_reference:
             in_prelude = self.prelude_elapsed_steps < self.prelude_steps
             endpoint = self._prelude_endpoint(self._initial_joint_reference())
-            _, blend_rate = self._prelude_blend(reference_vel.dtype)
-            prelude_velocity = blend_rate.unsqueeze(-1) * (endpoint - self.robot.data.default_joint_pos)
+            if self.cfg.prelude_quintic_hermite:
+                _, prelude_velocity = self._prelude_quintic_bridge(
+                    reference_vel.dtype
+                )
+            else:
+                _, blend_rate = self._prelude_blend(reference_vel.dtype)
+                prelude_velocity = blend_rate.unsqueeze(-1) * (
+                    endpoint - self.ready_joint_pos
+                )
             launch_steps = self.prelude_launch_steps
             launch_active = (
                 (~in_prelude)
@@ -560,7 +721,7 @@ class MotionCommand(CommandTerm):
             float(self.return_to_default_steps) * control_dt
         )
         return_velocity = smooth_rate.unsqueeze(-1) * (
-            self.robot.data.default_joint_pos - final_joint_pos - self._joint_position_offset
+            self.ready_joint_pos - final_joint_pos - self._joint_position_offset
         )
         in_return_or_ready = self.tail_steps > hold_steps
         return torch.where(in_return_or_ready.unsqueeze(-1), return_velocity, reference_vel)
@@ -577,6 +738,7 @@ class MotionCommand(CommandTerm):
         """Whether this task intentionally replaces the legacy linear prelude."""
         return bool(
             self.cfg.prelude_minimum_jerk
+            or self.cfg.prelude_quintic_hermite
             or self.prelude_settle_steps > 0
             or self.prelude_launch_steps > 0
             or self.cfg.prelude_waist_pitch_anchor_rad is not None
@@ -620,6 +782,69 @@ class MotionCommand(CommandTerm):
         control_dt = float(self._env.cfg.decimation * self._env.cfg.sim.dt)
         rate = 30.0 * u * u * (1.0 - u) * (1.0 - u) / (float(transition_steps) * control_dt)
         return blend, rate
+
+    def _prelude_quintic_bridge(
+        self, dtype: torch.dtype
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Match READY q/0/0 to frame-zero q/qdot/qddot analytically."""
+        if self.prelude_steps < 2:
+            raise ValueError("prelude_quintic_hermite requires at least 2 steps")
+        if self.prelude_settle_steps != 0 or self.prelude_launch_steps != 0:
+            raise ValueError(
+                "prelude_quintic_hermite owns the complete bridge; "
+                "settle/launch steps must be zero"
+            )
+        if self._use_motion_library:
+            positions = self.motion.joint_pos[self.motion_ids, :3]
+        else:
+            positions = self.motion.joint_pos[:3].unsqueeze(0).expand(
+                self.num_envs, -1, -1
+            )
+        positions = positions.to(dtype=dtype)
+        positions = positions + self._joint_position_offset.view(1, 1, -1)
+        endpoint = self._prelude_endpoint(positions[:, 0])
+        control_dt = float(self._env.cfg.decimation * self._env.cfg.sim.dt)
+        duration = float(self.prelude_steps) * control_dt
+        endpoint_velocity = (positions[:, 1] - positions[:, 0]) / control_dt
+        endpoint_acceleration = (
+            positions[:, 2] - 2.0 * positions[:, 1] + positions[:, 0]
+        ) / (control_dt * control_dt)
+
+        matrix = torch.tensor(
+            (
+                (duration**3, duration**4, duration**5),
+                (3.0 * duration**2, 4.0 * duration**3, 5.0 * duration**4),
+                (6.0 * duration, 12.0 * duration**2, 20.0 * duration**3),
+            ),
+            dtype=dtype,
+            device=self.device,
+        )
+        rhs = torch.stack(
+            (
+                endpoint - self.ready_joint_pos.to(dtype=dtype),
+                endpoint_velocity,
+                endpoint_acceleration,
+            ),
+            dim=1,
+        )
+        coefficients = torch.einsum(
+            "ij,bjk->bik", torch.linalg.inv(matrix), rhs
+        )
+        a3, a4, a5 = coefficients.unbind(dim=1)
+        elapsed = self.prelude_elapsed_steps.to(dtype=dtype) * control_dt
+        elapsed = elapsed.clamp(min=0.0, max=duration).unsqueeze(-1)
+        position = (
+            self.ready_joint_pos.to(dtype=dtype)
+            + a3 * elapsed**3
+            + a4 * elapsed**4
+            + a5 * elapsed**5
+        )
+        velocity = (
+            3.0 * a3 * elapsed**2
+            + 4.0 * a4 * elapsed**3
+            + 5.0 * a5 * elapsed**4
+        )
+        return position, velocity
 
     @property
     def body_pos_w(self) -> torch.Tensor:
@@ -834,8 +1059,61 @@ class MotionCommand(CommandTerm):
         self.metrics["sampling_top1_bin"][:] = imax.float() / self.bin_count
 
     def _sample_motion_ids(self, count: int) -> torch.Tensor:
+        fixed_motion_id = self.cfg.fixed_motion_id
         if not self._use_motion_library:
+            if fixed_motion_id not in (None, 0):
+                raise ValueError(
+                    "fixed_motion_id requires a motion manifest, or must be 0 for a single-motion command"
+                )
             return torch.zeros(count, dtype=torch.long, device=self.device)
+        if fixed_motion_id is not None:
+            motion_id = int(fixed_motion_id)
+            if not 0 <= motion_id < self.motion.num_motions:
+                raise ValueError(
+                    f"fixed_motion_id={motion_id} is outside [0, {self.motion.num_motions})"
+                )
+            return torch.full((count,), motion_id, dtype=torch.long, device=self.device)
+        mode = str(getattr(self.cfg, "reference_sampling_mode", "uniform")).strip().lower()
+        if mode not in {"uniform", "balanced_by_region", "difficulty_weighted", "curriculum"}:
+            raise ValueError(
+                "reference_sampling_mode must be one of uniform, balanced_by_region, "
+                f"difficulty_weighted, curriculum; got {mode!r}"
+            )
+        candidate_ids = torch.arange(self.motion.num_motions, device=self.device, dtype=torch.long)
+        if mode == "curriculum":
+            sizes = tuple(int(x) for x in getattr(self.cfg, "reference_curriculum_sizes", ()))
+            stage = int(getattr(self.cfg, "reference_curriculum_stage", 0))
+            if sizes:
+                if stage < 0 or stage >= len(sizes):
+                    raise ValueError(f"reference_curriculum_stage={stage} outside {len(sizes)} stages")
+                active_count = min(max(1, sizes[stage]), self.motion.num_motions)
+                candidate_ids = candidate_ids[:active_count]
+            # Curriculum stages use region balancing over the active prefix;
+            # this prevents an easy anchor prefix from monopolising Stage 1.
+            mode = "balanced_by_region"
+        if mode == "balanced_by_region":
+            active_regions = {}
+            for region, ids in self.motion.region_to_ids.items():
+                ids = ids[ids < candidate_ids.numel()]
+                if ids.numel() > 0:
+                    active_regions[region] = ids
+            if active_regions:
+                region_names = tuple(sorted(active_regions))
+                chosen_regions = torch.randint(len(region_names), (count,), device=self.device)
+                out = torch.empty(count, dtype=torch.long, device=self.device)
+                for ridx, region in enumerate(region_names):
+                    mask = chosen_regions == ridx
+                    n = int(mask.sum())
+                    if n:
+                        ids = active_regions[region]
+                        out[mask] = ids[torch.randint(ids.numel(), (n,), device=self.device)]
+                return out
+        if mode == "difficulty_weighted":
+            weights = self.motion.difficulty_weights[candidate_ids]
+            weights = weights / weights.sum().clamp(min=1.0e-6)
+            return candidate_ids[torch.multinomial(weights, count, replacement=True)]
+        if candidate_ids.numel() != self.motion.num_motions:
+            return candidate_ids[torch.randint(candidate_ids.numel(), (count,), device=self.device)]
         if (
             self.cfg.manifest_balance_strokes
             and len(self.motion.forehand_ids) > 0
@@ -849,6 +1127,74 @@ class MotionCommand(CommandTerm):
             out[~choose_fh] = self.motion.backhand_ids[bh_pick]
             return out
         return torch.randint(self.motion.num_motions, (count,), dtype=torch.long, device=self.device)
+
+    def select_nearest_strike_motion_ids(
+        self, target_position_b: torch.Tensor | Sequence[float] | Sequence[Sequence[float]]
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Choose the admitted control anchor nearest an external target.
+
+        The input is a racket position in the base-yaw frame at command
+        receipt.  Each candidate is expressed in that same frame using its
+        own reference root pose at motion step zero.  A task can add a
+        measured stabilized-plant offset and mask unsafe motions through the
+        external-control fields in :class:`MotionCommandCfg`; absent those
+        fields, this is exactly the legacy manifest-anchor selector.
+        Returns one motion id and its anchor distance per target row, plus the
+        complete ``[motion, 3]`` control-anchor table for diagnostics.
+        """
+        if not self._use_motion_library:
+            raise RuntimeError("nearest-anchor selection requires a motion manifest")
+        target = torch.as_tensor(target_position_b, dtype=torch.float32, device=self.device)
+        if target.shape == (3,):
+            target = target.unsqueeze(0)
+        if target.ndim != 2 or target.shape[1] != 3:
+            raise ValueError(
+                "target_position_b must have shape (3,) or (N, 3) for nearest-anchor selection"
+            )
+        if not torch.isfinite(target).all():
+            raise ValueError("target_position_b must contain only finite values")
+
+        root_pos = self.motion._body_pos_w[:, 0, self.motion_root_body_index]
+        root_pos = root_pos + self._root_position_offset.unsqueeze(0)
+        root_quat = self.motion._body_quat_w[:, 0, self.motion_root_body_index]
+        anchors_b = quat_rotate_inverse(
+            yaw_quat(root_quat), self.motion.strike_pos_w - root_pos
+        )
+        offsets = torch.as_tensor(
+            self.cfg.external_control_anchor_offset_b_by_motion,
+            dtype=torch.float32,
+            device=self.device,
+        )
+        if offsets.numel() > 0:
+            if offsets.shape != anchors_b.shape or not torch.isfinite(offsets).all():
+                raise ValueError(
+                    "external_control_anchor_offset_b_by_motion must have finite "
+                    "shape (num_manifest_motions, 3)"
+                )
+            anchors_b = anchors_b + offsets
+        enabled = torch.as_tensor(
+            self.cfg.external_control_anchor_enabled_by_motion,
+            dtype=torch.bool,
+            device=self.device,
+        )
+        if enabled.numel() == 0:
+            enabled = torch.ones(self.motion.num_motions, dtype=torch.bool, device=self.device)
+        elif enabled.shape != (self.motion.num_motions,):
+            raise ValueError(
+                "external_control_anchor_enabled_by_motion must have one entry "
+                "per manifest motion"
+            )
+        if not torch.any(enabled):
+            raise ValueError("external target selector has no admitted control anchors")
+        distances = torch.linalg.vector_norm(
+            target.unsqueeze(1) - anchors_b.unsqueeze(0), dim=-1
+        )
+        # An unsafe/unvalidated motion must never win an otherwise-nearest
+        # target selection.  Its unmasked anchor remains in the diagnostics
+        # table so the rejection can still be explained to callers.
+        distances[:, ~enabled] = float("inf")
+        nearest_distance, motion_ids = torch.min(distances, dim=1)
+        return motion_ids, nearest_distance, anchors_b
 
     def begin_next_shot(
         self,
@@ -901,6 +1247,66 @@ class MotionCommand(CommandTerm):
         self.prelude_elapsed_steps[env_ids_tensor] = 0
         self.shot_cycle[env_ids_tensor] += 1
 
+    def can_begin_next_shot(self, env_ids: Sequence[int] | torch.Tensor) -> torch.Tensor:
+        """Return the unified physical recovery gate for next-action admission.
+
+        This is deliberately a query separate from ``begin_next_shot`` so
+        callers can report a rejected transition without mutating command
+        timing.  Missing physical state is a hard failure rather than an
+        implicit approval.
+        """
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        if ids.numel() == 0:
+            return torch.zeros((0,), dtype=torch.bool, device=self.device)
+        from training.tasks.tracking.mdp.fall_state import unified_fall_state
+
+        state = unified_fall_state(self._env)
+        if state.recovery_ready.shape != (self.num_envs,):
+            raise RuntimeError("unified recovery gate returned an invalid shape")
+        return state.recovery_ready[ids] & (~state.confirmed_fall[ids]) & (~state.predicted_unrecoverable[ids])
+
+    def export_v29_rsi_state(self, env_ids: Sequence[int] | torch.Tensor) -> dict[str, torch.Tensor]:
+        """Export all reference-cycle state needed for a V29 recovery RSI load."""
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        fields = (
+            "motion_ids",
+            "time_steps",
+            "shot_cycle",
+            "tail_steps",
+            "prelude_elapsed_steps",
+            "last_reset_pose_offset",
+            "last_reset_velocity_offset",
+            "last_reset_hard_case",
+        )
+        return {
+            "schema_version": torch.tensor(3, dtype=torch.int64),
+            "snapshot_phase": "post_physics_pre_observation",
+            **{name: getattr(self, name)[ids].detach().clone() for name in fields},
+        }
+
+    def restore_v29_rsi_state(
+        self, state: dict[str, torch.Tensor], env_ids: Sequence[int] | torch.Tensor
+    ) -> None:
+        """Restore a V29 reference-cycle snapshot; reject incomplete contracts."""
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        required = (
+            "motion_ids", "time_steps", "shot_cycle", "tail_steps",
+            "prelude_elapsed_steps", "last_reset_pose_offset",
+            "last_reset_velocity_offset", "last_reset_hard_case",
+        )
+        missing = [name for name in required if name not in state]
+        if (
+            int(state.get("schema_version", torch.tensor(-1)).item()) != 3
+            or state.get("snapshot_phase") != "post_physics_pre_observation"
+            or missing
+        ):
+            raise ValueError(f"Invalid V29 MotionCommand RSI snapshot; missing={missing}")
+        for name in required:
+            value = state[name].to(device=self.device)
+            if value.shape[0] != ids.numel():
+                raise ValueError(f"V29 RSI field {name!r} has incompatible batch size")
+            getattr(self, name)[ids] = value
+
     def _resample_command(self, env_ids: Sequence[int]):
         if len(env_ids) == 0:
             return
@@ -941,7 +1347,7 @@ class MotionCommand(CommandTerm):
             root_ori = root_state[:, 3:7]
             root_lin_vel = root_state[:, 7:10]
             root_ang_vel = root_state[:, 10:13]
-            joint_pos = self.robot.data.default_joint_pos.clone()
+            joint_pos = self.ready_joint_pos.clone()
             joint_vel = self.robot.data.default_joint_vel.clone()
         else:
             root_pos, root_ori, root_lin_vel, root_ang_vel = self._motion_root_state_w()
@@ -1105,6 +1511,29 @@ class MotionCommandCfg(CommandTermCfg):
     manifest_subset_size: int | None = None
     manifest_expected_fps: int = 50
     manifest_balance_strokes: bool = True
+    # P5D-2 reference sampler.  This is reset-time data sampling only and is
+    # intentionally not part of the actor observation or task goal contract.
+    reference_sampling_mode: str = "uniform"
+    reference_curriculum_stage: int = 0
+    reference_curriculum_sizes: tuple[int, ...] = ()
+    # Optional fixed manifest route for focused identification or recovery
+    # training. This affects only reset-time random sampling; manual replay
+    # and external-target selection retain their own contracts.
+    fixed_motion_id: int | None = None
+    # Optional execution-time Cartesian centres for external target selection.
+    # These offsets are measured relative to the manifest strike anchors in
+    # the command-receipt yaw-heading frame.  Keeping them separate from the
+    # motion data makes it possible to select against the actual stabilized
+    # plant without rewriting reference demonstrations.
+    external_control_anchor_offset_b_by_motion: tuple[tuple[float, float, float], ...] = ()
+    # A motion must be explicitly admitted before the external-target
+    # selector may choose it.  Empty preserves legacy all-manifest selection.
+    # It is intentionally independent of a manual ``motion_id`` replay.
+    external_control_anchor_enabled_by_motion: tuple[bool, ...] = ()
+    # Per-motion verified half-ranges around the external control centres.
+    # Empty leaves the caller-level range policy unchanged; nonempty entries
+    # are an execution safety ceiling and cannot be widened by play.py.
+    external_control_local_half_range_by_motion: tuple[tuple[float, float, float], ...] = ()
     # Explicit frame adapter for using HOPE competition-frame motions in tracking scenes whose ground is z=0.
     # HOPE competition frame uses z=0 at table surface and floor at z=-0.76, so the manifest task sets +0.76.
     manifest_frame_z_offset: float = 0.0
@@ -1116,6 +1545,11 @@ class MotionCommandCfg(CommandTermCfg):
     # V19+ must fail closed when a legacy NPZ without canonical FK-derived
     # upper momentum is selected.
     require_upper_momentum: bool = False
+    # A fixed-root floating tracker must not silently mix motions authored at
+    # different headings.  When set, every manifest payload root quaternion is
+    # checked against the task READY quaternion before the first physics step.
+    expected_root_quaternion_wxyz: tuple[float, ...] = ()
+    root_quaternion_tolerance: float = 1.0e-4
     anchor_body_name: str = MISSING
     body_names: list[str] = MISSING
 
@@ -1131,11 +1565,20 @@ class MotionCommandCfg(CommandTermCfg):
     # A knee-flexed ready pose normally requires a lower pelvis reference to
     # preserve foot contact; this is scanned together with joint offsets.
     root_position_offset: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    # Task-local READY overrides. Empty preserves robot.init_state exactly.
+    # V27 uses this for a bent arm without changing V25/V26 asset defaults.
+    ready_joint_positions: dict[str, float] = {}
     sample_random_start_phase: bool = True
     # Hold a finite motion's final reference frame until the environment reset.
     # The task episode length defines the required settling-tail duration. Zero
     # preserves legacy looping behaviour.
     hold_last_frame_steps: int = 0
+    # Full-cycle admission: a motion tail is not a recovery verdict.  These
+    # values are consumed by cycle/audit tooling and are intentionally kept
+    # in the command contract so timeout/guard semantics cannot drift.
+    post_hit_guard_steps: int = 75
+    recovery_timeout_steps: int = 250
+    recovery_ready_hold_steps: int = 15
     # After ``hold_last_frame_steps`` at the final motion pose, blend the
     # complete joint reference back to ``robot.init_state`` over this many
     # control steps.  The remaining episode time holds that ready pose, so a
@@ -1150,6 +1593,7 @@ class MotionCommandCfg(CommandTermCfg):
     prelude_settle_steps: int = 0
     prelude_launch_steps: int = 0
     prelude_minimum_jerk: bool = False
+    prelude_quintic_hermite: bool = False
     prelude_continuous_velocity_reference: bool = False
     prelude_waist_pitch_anchor_rad: float | None = None
     reset_to_default_pose: bool = False

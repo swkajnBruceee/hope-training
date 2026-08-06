@@ -5,14 +5,9 @@
     0,
     4
   ],
-  "complete": false,
-  "failure": {
-    "control_step": 700,
-    "shot_index": 1,
-    "terminated": true,
-    "truncated": false
-  },
-  "control_steps": 700,
+  "complete": true,
+  "failure": null,
+  "control_steps": 704,
   "shots": [
     {
       "shot_index": 0,
@@ -21,8 +16,80 @@
       "position_error_m": 0.047368500381708145,
       "velocity_error_mps": 1.1990318298339844,
       "normal_error_deg": 6.289242744445801,
+      "start_state": {
+        "root_position_w_m": [
+          3.1500000953674316,
+          -0.3499999940395355,
+          1.0274988412857056
+        ],
+        "root_tilt_deg": 0.0,
+        "root_forward_velocity_mps": 0.0,
+        "root_pitch_rate_radps": 0.0,
+        "capture_rel_support_x_m": 0.028312206268310547,
+        "capture_front_margin_m": 0.11130866408348083,
+        "capture_rear_margin_m": 0.16793307662010193,
+        "both_feet_contact": false,
+        "stage_a_sagittal_state": 0,
+        "stage_a_sagittal_scale": 1.0,
+        "stage_a_rearm_ready": false,
+        "stage_a_rearm_stable": false,
+        "motion_id": 0,
+        "motion_frame": 0,
+        "prelude_elapsed_steps": 0,
+        "tail_steps": 0,
+        "right_arm_ready_error_max_rad": 0.0,
+        "right_arm_velocity_max_radps": 0.0
+      },
+      "hit_state": {
+        "root_position_w_m": [
+          3.1940345764160156,
+          -0.38086676597595215,
+          1.0488189458847046
+        ],
+        "root_tilt_deg": 3.1152074337005615,
+        "root_forward_velocity_mps": 0.04156117886304855,
+        "root_pitch_rate_radps": 0.04072453826665878,
+        "capture_rel_support_x_m": 0.071125328540802,
+        "capture_front_margin_m": 0.06624357402324677,
+        "capture_rear_margin_m": 0.20849423110485077,
+        "both_feet_contact": true,
+        "stage_a_sagittal_state": 0,
+        "stage_a_sagittal_scale": 1.0,
+        "stage_a_rearm_ready": false,
+        "stage_a_rearm_stable": false,
+        "motion_id": 0,
+        "motion_frame": 30,
+        "prelude_elapsed_steps": 50,
+        "tail_steps": 0,
+        "right_arm_ready_error_max_rad": 1.214550256729126,
+        "right_arm_velocity_max_radps": 0.5668951869010925
+      },
       "ready_control_step": 326,
-      "ready_hold_steps": 20
+      "ready_hold_steps": 20,
+      "ready_state": {
+        "root_position_w_m": [
+          3.175126075744629,
+          -0.375093549489975,
+          1.0512681007385254
+        ],
+        "root_tilt_deg": 1.3082081079483032,
+        "root_forward_velocity_mps": -0.006068821996450424,
+        "root_pitch_rate_radps": -0.011835243552923203,
+        "capture_rel_support_x_m": 0.008284775540232658,
+        "capture_front_margin_m": 0.1301567256450653,
+        "capture_rear_margin_m": 0.14672626554965973,
+        "both_feet_contact": true,
+        "stage_a_sagittal_state": 3,
+        "stage_a_sagittal_scale": 0.0,
+        "stage_a_rearm_ready": true,
+        "stage_a_rearm_stable": true,
+        "motion_id": 0,
+        "motion_frame": 38,
+        "prelude_elapsed_steps": 50,
+        "tail_steps": 238,
+        "right_arm_ready_error_max_rad": 0.05320650339126587,
+        "right_arm_velocity_max_radps": 0.055555738508701324
+      }
     },
     {
       "shot_index": 1,
@@ -30,7 +97,81 @@
       "hit_control_step": 406,
       "position_error_m": 0.10078808665275574,
       "velocity_error_mps": 2.1922097206115723,
-      "normal_error_deg": 9.885985374450684
+      "normal_error_deg": 9.885985374450684,
+      "start_state": {
+        "root_position_w_m": [
+          3.175126075744629,
+          -0.375093549489975,
+          1.0512681007385254
+        ],
+        "root_tilt_deg": 1.3082081079483032,
+        "root_forward_velocity_mps": -0.006068821996450424,
+        "root_pitch_rate_radps": -0.011835243552923203,
+        "capture_rel_support_x_m": 0.008284775540232658,
+        "capture_front_margin_m": 0.1301567256450653,
+        "capture_rear_margin_m": 0.14672626554965973,
+        "both_feet_contact": true,
+        "stage_a_sagittal_state": 3,
+        "stage_a_sagittal_scale": 0.0,
+        "stage_a_rearm_ready": true,
+        "stage_a_rearm_stable": true,
+        "motion_id": 4,
+        "motion_frame": 0,
+        "prelude_elapsed_steps": 0,
+        "tail_steps": 0,
+        "right_arm_ready_error_max_rad": 0.05320650339126587,
+        "right_arm_velocity_max_radps": 0.055555738508701324
+      },
+      "hit_state": {
+        "root_position_w_m": [
+          3.176332950592041,
+          -0.386591374874115,
+          1.0500637292861938
+        ],
+        "root_tilt_deg": 2.168710947036743,
+        "root_forward_velocity_mps": 0.1438995599746704,
+        "root_pitch_rate_radps": 0.12314474582672119,
+        "capture_rel_support_x_m": 0.10020924359560013,
+        "capture_front_margin_m": 0.04529485106468201,
+        "capture_rear_margin_m": 0.24571333825588226,
+        "both_feet_contact": true,
+        "stage_a_sagittal_state": 0,
+        "stage_a_sagittal_scale": 1.0,
+        "stage_a_rearm_ready": false,
+        "stage_a_rearm_stable": false,
+        "motion_id": 4,
+        "motion_frame": 30,
+        "prelude_elapsed_steps": 50,
+        "tail_steps": 0,
+        "right_arm_ready_error_max_rad": 1.474458932876587,
+        "right_arm_velocity_max_radps": 0.5868089199066162
+      },
+      "ready_control_step": 704,
+      "ready_hold_steps": 20,
+      "ready_state": {
+        "root_position_w_m": [
+          3.172919988632202,
+          -0.39275062084198,
+          1.0522205829620361
+        ],
+        "root_tilt_deg": 1.2898298501968384,
+        "root_forward_velocity_mps": -0.0029823968652635813,
+        "root_pitch_rate_radps": -0.02404870092868805,
+        "capture_rel_support_x_m": 0.008961407467722893,
+        "capture_front_margin_m": 0.1233811154961586,
+        "capture_rear_margin_m": 0.1413039267063141,
+        "both_feet_contact": true,
+        "stage_a_sagittal_state": 3,
+        "stage_a_sagittal_scale": 0.0,
+        "stage_a_rearm_ready": true,
+        "stage_a_rearm_stable": true,
+        "motion_id": 4,
+        "motion_frame": 38,
+        "prelude_elapsed_steps": 50,
+        "tail_steps": 290,
+        "right_arm_ready_error_max_rad": 0.05349785089492798,
+        "right_arm_velocity_max_radps": 0.08211039006710052
+      }
     }
   ],
   "state_transitions": [
@@ -88,6 +229,13 @@
       "shot_index": 1,
       "motion_id": 4,
       "state": 2,
+      "scale": 0.0
+    },
+    {
+      "control_step": 704,
+      "shot_index": 1,
+      "motion_id": 4,
+      "state": 3,
       "scale": 0.0
     }
   ],

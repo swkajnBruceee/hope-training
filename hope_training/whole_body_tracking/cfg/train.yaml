@@ -22,6 +22,24 @@ policy_std_max: null   # optional Recovery distribution cap, applied after every
 policy_std_min: null   # optional Recovery distribution floor
 freeze_actor_mean: false  # diagnostic: freeze actor mean after loading a Recovery checkpoint
 recovery_v23: false       # use the separately frozen v2.3 distribution-only smoke budget
+# Use the established physical fall termination during legacy continuation runs.
+# This explicitly bypasses only the newer signed D0--D6 admission gate; the
+# strict_fall/base_height/recovery_tilt terms are still verified and active.
+legacy_fall_strategy: false
+# Explicitly load the frozen V22 actor/support branch when creating a new
+# post-hit adapter with a widened observation. These are kept off by default
+# so older training entries preserve their historical initialization.
+warm_start_actor_only: false
+warm_start_support_actor_only: false
+warm_start_append_zero_policy_obs: false
+
+# V29-P0: train only on fresh-reset, natural-contact recovery transitions.
+# This path never consumes contact-active snapshots or reconstruction prefixes.
+natural_prefix_recovery: false
+natural_recovery_phase_mode: phase_balanced  # phase_balanced | all_recovery
+natural_recovery_min_post_hit_steps: 10
+natural_recovery_early_max_post_hit_steps: 30
+natural_recovery_mid_max_post_hit_steps: 80
 # Controlled feature-contract migration for the first unified forehand/backhand
 # continuation.  It resets only the semantic swing label normalizer slot and
 # its actor first-layer weights after loading a forehand-only checkpoint.

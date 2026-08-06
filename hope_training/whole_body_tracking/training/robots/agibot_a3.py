@@ -112,6 +112,16 @@ A3_RIGHT_LEG_JOINTS = [
 ]
 A3_NATIVE_STRIKE_JOINTS = A3_WAIST_JOINTS + A3_RIGHT_ARM_JOINTS
 
+# P5D reference-tracker interface. Unlike the historical Base14/upper-policy
+# split this is one ordered whole-body residual around a supplied safe strike
+# reference. Head and passive left-arm joints stay outside the tracker.
+A3_REFERENCE_TRACKER_JOINTS = (
+    A3_LEFT_LEG_JOINTS
+    + A3_RIGHT_LEG_JOINTS
+    + A3_WAIST_JOINTS
+    + A3_RIGHT_ARM_JOINTS
+)
+
 # Base Locomotion v1 contract views. The actor controls 12 legs plus bounded
 # waist roll/pitch corrections; Strike v2 owns waist yaw, supplies the waist
 # pitch feed-forward reference, and owns the right arm. These lists are exact

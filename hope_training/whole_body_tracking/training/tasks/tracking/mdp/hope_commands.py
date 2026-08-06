@@ -59,6 +59,12 @@ class RacketTargetCommand(CommandTerm):
     def __init__(self, cfg: RacketTargetCommandCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
 
+        if cfg.adapter_external_paired and self.num_envs % 7 != 0:
+            raise ValueError(
+                "adapter_external_paired requires num_envs divisible by 7 "
+                "for complete [0,+x,-x,+y,-y,+z,-z] groups"
+            )
+
         self.robot: Articulation = env.scene[cfg.asset_name]
 
         # Resolve the racket FK source: prefer the racket body if it survived the physics import,
@@ -107,8 +113,38 @@ class RacketTargetCommand(CommandTerm):
         self.racket_target_vel_w = torch.zeros(self.num_envs, 3, device=self.device)
         self.racket_target_normal_w = torch.zeros(self.num_envs, 3, device=self.device)
         self.racket_target_normal_w[:, 2] = 1.0
+        # Immutable nominal strike target used by the frozen anchor policy.
+        # Runtime external position latches update only ``racket_target_*``;
+        # this buffer remains the manifest/anchor contract seen by model_900.
+        self.racket_anchor_target_pos_w = torch.zeros(self.num_envs, 3, device=self.device)
+        self.racket_anchor_target_vel_w = torch.zeros(self.num_envs, 3, device=self.device)
+        self.racket_anchor_target_normal_w = torch.zeros(self.num_envs, 3, device=self.device)
+        self.racket_anchor_target_normal_w[:, 2] = 1.0
         self.base_target_pos_w = torch.zeros(self.num_envs, 2, device=self.device)
         self.swing_sign = torch.ones(self.num_envs, device=self.device)
+        # Runtime planner/audit override.  The position is expressed in the
+        # base yaw-heading frame at command receipt, then converted once to a
+        # fixed world point.  It therefore does not follow root motion during
+        # the swing.  The base-frame copy is retained so a reset/clip resample
+        # can rebuild the same command instead of silently restoring the
+        # manifest anchor.
+        self._external_target_position_active = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
+        self._external_target_position_b = torch.zeros(
+            self.num_envs, 3, device=self.device
+        )
+        # Optional immutable command-receipt-frame copy.  Floating-base target
+        # adapters must not reinterpret a fixed world target as the base yaws
+        # during the swing.
+        self._external_target_delta_receipt_b = torch.zeros(
+            self.num_envs, 3, device=self.device
+        )
+        # P0 paired-incremental curriculum bookkeeping.  A group is ordered
+        # ``0, +x, -x, +y, -y, +z, -z`` and shares its first environment as
+        # the physical zero-offset baseline.
+        self.adapter_pair_baseline_env = torch.arange(self.num_envs, device=self.device)
+        self.adapter_pair_active = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
 
         # Actual racket state, world frame (from FK).
         self.racket_pos_w = torch.zeros(self.num_envs, 3, device=self.device)
@@ -218,6 +254,8 @@ class RacketTargetCommand(CommandTerm):
         # Curriculum perturbation scale (reference_perturbed mode): 0 at start ramping to 1; lets you
         # watch the reachable target ball widen in logs. Stays 0 in "uniform" mode.
         self.metrics["ref_perturb_scale"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["adapter_external_target_delta_norm"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["adapter_pair_active"] = torch.zeros(self.num_envs, device=self.device)
         self._has_jpos_limits = hasattr(self.robot.data, "soft_joint_pos_limits") or hasattr(
             self.robot.data, "joint_pos_limits"
         )
@@ -271,7 +309,7 @@ class RacketTargetCommand(CommandTerm):
         return self._motion_term
 
     def _reference_body_state(
-        self, motion, step: int, body_index: int
+        self, motion, step: int, body_index: int, motion_id: int | None = None
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return full-articulation reference body state from the loaded NPZ.
 
@@ -287,6 +325,15 @@ class RacketTargetCommand(CommandTerm):
             raise AttributeError(
                 "RacketTargetCommand requires full body-state arrays in MotionLoader; "
                 f"missing: {', '.join(missing)}"
+            )
+        if isinstance(motion, MotionLibraryLoader):
+            if motion_id is None:
+                raise ValueError("manifest reference state requires an explicit motion_id")
+            return (
+                motion._body_pos_w[motion_id, step, body_index],
+                motion._body_quat_w[motion_id, step, body_index],
+                motion._body_lin_vel_w[motion_id, step, body_index],
+                motion._body_ang_vel_w[motion_id, step, body_index],
             )
         return (
             motion._body_pos_w[step, body_index],
@@ -314,8 +361,51 @@ class RacketTargetCommand(CommandTerm):
         # training; that would shift the target window for motions whose hit
         # timing differs from the legacy 0.46 convention.
         if isinstance(motion, MotionLibraryLoader):
-            motion_ids = self._motion().motion_ids
-            strike_step = int(motion.hit_frame[motion_ids[0]].item())
+            # A manifest contains independent clips with independent hit
+            # frames.  Cache the strike state for every clip; using the first
+            # environment's ID as a global time index is incorrect and can
+            # index the motion dimension with a frame number.
+            self._ref_racket_pos_rel_by_motion = []
+            self._ref_racket_vel_w_by_motion = []
+            self._ref_racket_normal_w_by_motion = []
+            self._ref_base_pos_rel_by_motion = []
+            self._ref_reach_offset_xy_by_motion = []
+            for motion_id in range(motion.num_motions):
+                strike_step = int(motion.hit_frame[motion_id].item())
+                if self._racket_mode == "body":
+                    idx = self._racket_body_index
+                    pos, quat, lin, _ang = self._reference_body_state(motion, strike_step, idx, motion_id)
+                else:
+                    widx = self._wrist_body_index
+                    wpos, wquat, wlin, wang = self._reference_body_state(motion, strike_step, widx, motion_id)
+                    offset_w = quat_apply(wquat.unsqueeze(0), self._mount_offset[0:1]).squeeze(0)
+                    pos = wpos + offset_w
+                    lin = wlin + torch.cross(wang, offset_w, dim=-1)
+                    quat = quat_mul(wquat.unsqueeze(0), self._mount_quat[0:1]).squeeze(0)
+                normal = matrix_from_quat(quat.unsqueeze(0))[0, :, self.cfg.mount_normal_axis] * self.cfg.mount_normal_sign
+                normal = normal / (torch.norm(normal) + 1e-6)
+                base_pos, _base_quat, _base_lin, _base_ang = self._reference_body_state(motion, strike_step, 0, motion_id)
+                reach = (pos[:2] - base_pos[:2]).detach().clone()
+                self._ref_racket_pos_rel_by_motion.append(pos.detach().clone())
+                self._ref_racket_vel_w_by_motion.append(lin.detach().clone())
+                self._ref_racket_normal_w_by_motion.append(normal.detach().clone())
+                self._ref_base_pos_rel_by_motion.append(base_pos.detach().clone())
+                self._ref_reach_offset_xy_by_motion.append(reach)
+            self._ref_racket_pos_rel_by_motion = torch.stack(self._ref_racket_pos_rel_by_motion)
+            self._ref_racket_vel_w_by_motion = torch.stack(self._ref_racket_vel_w_by_motion)
+            self._ref_racket_normal_w_by_motion = torch.stack(self._ref_racket_normal_w_by_motion)
+            self._ref_base_pos_rel_by_motion = torch.stack(self._ref_base_pos_rel_by_motion)
+            self._ref_reach_offset_xy_by_motion = torch.stack(self._ref_reach_offset_xy_by_motion)
+            # Keep scalar aliases for compatibility with diagnostics that use
+            # a single-motion command; multi-motion sampling indexes the bank
+            # explicitly below.
+            self._ref_racket_pos_rel = self._ref_racket_pos_rel_by_motion[0]
+            self._ref_racket_vel_w = self._ref_racket_vel_w_by_motion[0]
+            self._ref_racket_normal_w = self._ref_racket_normal_w_by_motion[0]
+            self._ref_base_pos_rel = self._ref_base_pos_rel_by_motion[0]
+            self._ref_reach_offset_xy = self._ref_reach_offset_xy_by_motion[0]
+            self._ref_strike_cached = True
+            return
         else:
             strike_step = round(self.cfg.strike_phase * (total - 1))
         if self._racket_mode == "body":
@@ -406,13 +496,23 @@ class RacketTargetCommand(CommandTerm):
         nrm_h = float(self.cfg.ref_perturb_normal) * scale
 
         dpos = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * pos_h
-        self.racket_target_pos_w[env_ids] = origins + self._ref_racket_pos_rel.unsqueeze(0) + dpos
+        motion_cmd = self._motion()
+        if hasattr(self, "_ref_racket_pos_rel_by_motion"):
+            motion_ids = motion_cmd.motion_ids[env_ids]
+            ref_pos = self._ref_racket_pos_rel_by_motion[motion_ids]
+            ref_vel = self._ref_racket_vel_w_by_motion[motion_ids]
+            ref_normal = self._ref_racket_normal_w_by_motion[motion_ids]
+        else:
+            ref_pos = self._ref_racket_pos_rel.unsqueeze(0).expand(n, -1)
+            ref_vel = self._ref_racket_vel_w.unsqueeze(0).expand(n, -1)
+            ref_normal = self._ref_racket_normal_w.unsqueeze(0).expand(n, -1)
+        self.racket_target_pos_w[env_ids] = origins + ref_pos + dpos
 
         dvel = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * vel_h
-        self.racket_target_vel_w[env_ids] = self._ref_racket_vel_w.unsqueeze(0) + dvel
+        self.racket_target_vel_w[env_ids] = ref_vel + dvel
 
         dnrm = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * nrm_h
-        normal = self._ref_racket_normal_w.unsqueeze(0) + dnrm
+        normal = ref_normal + dnrm
         self.racket_target_normal_w[env_ids] = normal / (torch.norm(normal, dim=-1, keepdim=True) + 1e-6)
 
         self.metrics["ref_perturb_scale"][env_ids] = scale
@@ -470,6 +570,31 @@ class RacketTargetCommand(CommandTerm):
         else:
             self._sample_targets_uniform(env_ids, origins, n)
 
+        # Snapshot the sampled nominal target before applying a runtime
+        # external position.  Velocity and normal are already anchor values
+        # in the first adapter stage, so keep their snapshots explicit too.
+        self.racket_anchor_target_pos_w[env_ids] = self.racket_target_pos_w[env_ids]
+        self.racket_anchor_target_vel_w[env_ids] = self.racket_target_vel_w[env_ids]
+        self.racket_anchor_target_normal_w[env_ids] = self.racket_target_normal_w[env_ids]
+
+        # P0/P1 adapter curriculum: sample the *external* command around the
+        # frozen manifest anchor only after the anchor snapshot above.  This
+        # differs intentionally from ``manifest_perturbed``: model_900 never
+        # sees this displacement, while the target adapter does.
+        self._sample_adapter_external_offset(env_ids)
+
+        # A latched external position has priority over the sampled/manifest
+        # position.  Desired velocity and face normal intentionally remain
+        # those of the selected anchor in the first target-conditioning audit.
+        self._apply_external_target_position(env_ids)
+        self._latch_external_delta_receipt(env_ids)
+        self.metrics["adapter_external_target_delta_norm"] = torch.linalg.vector_norm(
+            self.racket_target_pos_w - self.racket_anchor_target_pos_w, dim=-1
+        )
+        self.metrics["adapter_pair_active"] = self.adapter_pair_active.to(
+            dtype=self.racket_target_pos_w.dtype
+        )
+
         # Desired base XY (world): COUPLE it to the racket target so standing there keeps the racket
         # reachable by the imitated swing — base_target = racket_target_xy - (reference base->racket
         # offset). Independent sampling used to fight the arm's reach (the base_position reward pulled
@@ -505,6 +630,113 @@ class RacketTargetCommand(CommandTerm):
         # Stamp the motion phase baseline for these envs so the per-swing wrap detector in
         # _update_command does not immediately re-trigger after this (e.g. reset-time) resample.
         self._prev_motion_steps[env_ids] = self._motion().time_steps[env_ids]
+
+    def _sample_adapter_external_offset(self, env_ids: Sequence[int]) -> None:
+        half_range = torch.tensor(
+            self.cfg.adapter_external_offset_half_range, dtype=self.racket_target_pos_w.dtype, device=self.device
+        )
+        if half_range.shape != (3,) or torch.any(half_range < 0.0):
+            raise ValueError("adapter_external_offset_half_range must be three non-negative values")
+        if not torch.any(half_range > 0.0):
+            return
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        n = ids.numel()
+        delta_b = (2.0 * torch.rand(n, 3, device=self.device) - 1.0) * half_range
+        self.adapter_pair_active[ids] = False
+        self.adapter_pair_baseline_env[ids] = ids
+        if bool(self.cfg.adapter_external_paired):
+            rows = torch.zeros((7, 3), dtype=delta_b.dtype, device=self.device)
+            rows[1, 0], rows[2, 0] = half_range[0], -half_range[0]
+            rows[3, 1], rows[4, 1] = half_range[1], -half_range[1]
+            rows[5, 2], rows[6, 2] = half_range[2], -half_range[2]
+            # CommandManager may resample one completed environment at a time.
+            # Pair by stable global env id rather than by this resample batch.
+            role = torch.remainder(ids, 7)
+            delta_b[:] = rows[role]
+            self.adapter_pair_baseline_env[ids] = ids - role
+            self.adapter_pair_active[ids] = True
+        zero_probability = float(self.cfg.adapter_external_zero_probability)
+        if not 0.0 <= zero_probability <= 1.0:
+            raise ValueError("adapter_external_zero_probability must be in [0, 1]")
+        if zero_probability > 0.0 and not bool(self.cfg.adapter_external_paired):
+            delta_b[torch.rand(n, device=self.device) < zero_probability] = 0.0
+        base_yaw = yaw_quat(self.base_quat_w[env_ids])
+        self.racket_target_pos_w[env_ids] = (
+            self.racket_anchor_target_pos_w[env_ids] + quat_apply(base_yaw, delta_b)
+        )
+
+    def set_external_target_position_b(
+        self,
+        env_ids: Sequence[int] | torch.Tensor,
+        target_position_b: torch.Tensor | Sequence[float] | Sequence[Sequence[float]],
+    ) -> None:
+        """Latch a fixed racket position supplied in the command-time base-yaw frame.
+
+        ``target_position_b`` may be one ``[x, y, z]`` vector (broadcast to
+        all selected environments) or one vector per selected environment.
+        Only position is overridden; the selected motion continues to supply
+        desired velocity, face normal, timing, and reference motion.
+        """
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        if ids.numel() == 0:
+            return
+        if torch.any(ids < 0) or torch.any(ids >= self.num_envs):
+            raise IndexError(
+                f"external target env_ids outside [0, {self.num_envs - 1}]: "
+                f"{ids.detach().cpu().tolist()}"
+            )
+        target = torch.as_tensor(
+            target_position_b, dtype=self.racket_target_pos_w.dtype, device=self.device
+        )
+        if target.shape == (3,):
+            target = target.unsqueeze(0).expand(ids.numel(), -1)
+        if target.shape != (ids.numel(), 3):
+            raise ValueError(
+                "target_position_b must have shape (3,) or "
+                f"({ids.numel()}, 3), got {tuple(target.shape)}"
+            )
+        if not torch.isfinite(target).all():
+            raise ValueError("target_position_b must contain only finite values")
+
+        self._external_target_position_b[ids] = target
+        self._external_target_position_active[ids] = True
+        self._apply_external_target_position(ids)
+        self._latch_external_delta_receipt(ids)
+
+    def clear_external_target_position(
+        self, env_ids: Sequence[int] | torch.Tensor, *, resample: bool = True
+    ) -> None:
+        """Release a runtime position latch and optionally restore normal sampling."""
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        if ids.numel() == 0:
+            return
+        self._external_target_position_active[ids] = False
+        if resample:
+            self._resample_command(ids)
+
+    def _apply_external_target_position(
+        self, env_ids: Sequence[int] | torch.Tensor
+    ) -> None:
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        if ids.numel() == 0:
+            return
+        active_ids = ids[self._external_target_position_active[ids]]
+        if active_ids.numel() == 0:
+            return
+        heading = yaw_quat(self.base_quat_w[active_ids])
+        self.racket_target_pos_w[active_ids] = (
+            self.base_pos_w[active_ids]
+            + quat_apply(heading, self._external_target_position_b[active_ids])
+        )
+
+    def _latch_external_delta_receipt(self, env_ids: Sequence[int] | torch.Tensor) -> None:
+        """Store external-minus-anchor position in the receipt base-yaw frame."""
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        if ids.numel() == 0:
+            return
+        heading = yaw_quat(self.base_quat_w[ids])
+        delta_w = self.racket_target_pos_w[ids] - self.racket_anchor_target_pos_w[ids]
+        self._external_target_delta_receipt_b[ids] = quat_rotate_inverse(heading, delta_w)
 
     def _sample_targets_manifest(self, env_ids: Sequence[int], origins: torch.Tensor, n: int):
         """Target = manifest impact racket state for the selected per-env motion."""
@@ -783,6 +1015,30 @@ class RacketTargetCommand(CommandTerm):
         """Desired racket position relative to the base (yaw-heading frame). HITTER actor obs."""
         return quat_rotate_inverse(yaw_quat(self.base_quat_w), self.racket_target_pos_w - self.base_pos_w)
 
+    def racket_anchor_target_pos_b(self) -> torch.Tensor:
+        """Nominal anchor position in the current base yaw frame."""
+        return quat_rotate_inverse(
+            yaw_quat(self.base_quat_w), self.racket_anchor_target_pos_w - self.base_pos_w
+        )
+
+    def racket_anchor_target_vel_b(self) -> torch.Tensor:
+        return quat_rotate_inverse(yaw_quat(self.base_quat_w), self.racket_anchor_target_vel_w)
+
+    def racket_anchor_target_normal_b(self) -> torch.Tensor:
+        return quat_rotate_inverse(yaw_quat(self.base_quat_w), self.racket_anchor_target_normal_w)
+
+    def external_target_delta_local_b(self) -> torch.Tensor:
+        """External-minus-anchor position in the strike-local base frame.
+
+        The fixed-base P0 contract uses the base yaw frame, which is identical
+        to the anchor strike frame.  Keeping this method on the command term
+        makes the frame explicit and leaves room for a full anchor quaternion
+        in the floating-base migration.
+        """
+        if bool(getattr(self.cfg, "external_delta_receipt_frame", False)):
+            return self._external_target_delta_receipt_b
+        return self.racket_target_pos_b() - self.racket_anchor_target_pos_b()
+
     def racket_target_vel_b(self) -> torch.Tensor:
         """Desired racket linear velocity in the base yaw-heading frame."""
         return quat_rotate_inverse(yaw_quat(self.base_quat_w), self.racket_target_vel_w)
@@ -885,6 +1141,16 @@ class RacketTargetCommandCfg(CommandTermCfg):
     manifest_perturb_vel: tuple[float, float, float] = (0.0, 0.0, 0.0)
     manifest_perturb_normal: float = 0.0
     manifest_nominal_probability: float = 0.50
+
+    # Target residual adapter sampling.  Applied *after* the anchor snapshot,
+    # in the fixed-base anchor frame.  Keep this at zero outside P0/P1/P2.
+    adapter_external_offset_half_range: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    adapter_external_zero_probability: float = 0.20
+    adapter_external_paired: bool = False
+    # Floating-base replay can preserve the external delta in the base-yaw
+    # frame at command receipt.  Fixed-base tasks retain the historical
+    # current-base interpretation by default.
+    external_delta_receipt_frame: bool = False
 
     # --- conditional exact-strike success metric (logging + curriculum gating) ---
     # The logged strike_*_pass_exact / strike_composite_success_exact are a sample-weighted EMA of the

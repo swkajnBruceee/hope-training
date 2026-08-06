@@ -59,11 +59,278 @@ def racket_position_axis_tracking_exp(env: ManagerBasedRLEnv, command_name: str,
     return torch.exp(-axis_error / std**2) * cmd.strike_temporal_weight()
 
 
+def racket_incremental_position_tracking(
+    env: ManagerBasedRLEnv, command_name: str, std: float = 0.03
+) -> torch.Tensor:
+    """Train the local adapter against the requested displacement.
+
+    The residual contract is expressed relative to the frozen anchor target:
+    ``(actual - anchor) - (external - anchor)``.  Paired +/- environments can
+    replace this with a measured nominal baseline later without changing the
+    observation or action interfaces.
+    """
+    cmd = _cmd(env, command_name)
+    actual_delta = cmd.racket_pos_w - cmd.racket_anchor_target_pos_w
+    target_delta = cmd.racket_target_pos_w - cmd.racket_anchor_target_pos_w
+    error = torch.sum(torch.square(actual_delta - target_delta), dim=-1)
+    reward = torch.exp(-error / max(float(std), 1.0e-6) ** 2) * cmd.strike_temporal_weight()
+    cmd.metrics.setdefault("adapter_incremental_error", torch.zeros_like(error))
+    cmd.metrics["adapter_incremental_error"] = torch.sqrt(error)
+    return reward
+
+
+def racket_paired_incremental_position_tracking(
+    env: ManagerBasedRLEnv, command_name: str, std: float = 0.02
+) -> torch.Tensor:
+    """Paired local displacement reward used by P0.
+
+    For each ``0,+/-axis`` group, subtract the simultaneously simulated
+    zero-offset racket state before comparing it with the requested target
+    difference.  This removes the frozen anchor's absolute impact bias from
+    the primary adapter learning signal.
+    """
+    cmd = _cmd(env, command_name)
+    baseline = cmd.adapter_pair_baseline_env
+    origins = env.scene.env_origins
+    # Parallel environments have distinct world origins. Compare each racket
+    # in its own environment-relative world frame before forming the pair.
+    actual_rel = cmd.racket_pos_w - origins
+    target_rel = cmd.racket_target_pos_w - origins
+    actual_delta = actual_rel - actual_rel[baseline]
+    target_delta = target_rel - target_rel[baseline]
+    error = torch.sum(torch.square(actual_delta - target_delta), dim=-1)
+    active = cmd.adapter_pair_active & (baseline != torch.arange(cmd.num_envs, device=cmd.device))
+    reward = torch.exp(-error / max(float(std), 1.0e-6) ** 2)
+    reward = torch.where(active, reward, torch.zeros_like(reward)) * cmd.strike_temporal_weight()
+    cmd.metrics.setdefault("adapter_paired_incremental_error", torch.zeros_like(error))
+    cmd.metrics["adapter_paired_incremental_error"] = torch.sqrt(error)
+    return reward
+
+
+def racket_incremental_direction_gain(
+    env: ManagerBasedRLEnv, command_name: str, min_norm: float = 1.0e-3
+) -> torch.Tensor:
+    """Directional/gain shaping for non-zero local target offsets."""
+    cmd = _cmd(env, command_name)
+    actual = cmd.racket_pos_w - cmd.racket_anchor_target_pos_w
+    target = cmd.racket_target_pos_w - cmd.racket_anchor_target_pos_w
+    target_norm = torch.linalg.vector_norm(target, dim=-1)
+    actual_norm = torch.linalg.vector_norm(actual, dim=-1)
+    dot = torch.sum(actual * target, dim=-1)
+    cosine = dot / (actual_norm * target_norm).clamp_min(min_norm**2)
+    gain = dot / torch.square(target_norm).clamp_min(min_norm**2)
+    valid = target_norm > float(min_norm)
+    score = torch.where(
+        valid,
+        0.5 * (cosine.clamp(-1.0, 1.0) + 1.0) * torch.exp(-torch.square(gain - 1.0)),
+        torch.ones_like(target_norm),
+    )
+    return score * cmd.strike_temporal_weight()
+
+
+def racket_paired_incremental_direction_gain(
+    env: ManagerBasedRLEnv, command_name: str, min_norm: float = 1.0e-3
+) -> torch.Tensor:
+    """Paired direction/gain shaping consistent with P0's primary reward.
+
+    The inherited absolute anchor miss is much larger than P0's centimetre
+    command.  Compare every non-baseline environment with its simultaneously
+    simulated nominal sibling so direction and gain describe the incremental
+    response rather than that fixed miss.
+    """
+    cmd = _cmd(env, command_name)
+    baseline = cmd.adapter_pair_baseline_env
+    origins = env.scene.env_origins
+    actual_rel = cmd.racket_pos_w - origins
+    target_rel = cmd.racket_target_pos_w - origins
+    actual = actual_rel - actual_rel[baseline]
+    target = target_rel - target_rel[baseline]
+    target_norm = torch.linalg.vector_norm(target, dim=-1)
+    actual_norm = torch.linalg.vector_norm(actual, dim=-1)
+    dot = torch.sum(actual * target, dim=-1)
+    cosine = dot / (actual_norm * target_norm).clamp_min(min_norm**2)
+    gain = dot / torch.square(target_norm).clamp_min(min_norm**2)
+    valid = (target_norm > float(min_norm)) & cmd.adapter_pair_active
+    score = 0.5 * (cosine.clamp(-1.0, 1.0) + 1.0) * torch.exp(-torch.square(gain - 1.0))
+    return torch.where(valid, score, torch.zeros_like(score)) * cmd.strike_temporal_weight()
+
+
+def _paired_incremental_state(env: ManagerBasedRLEnv, command_name: str):
+    cmd = _cmd(env, command_name)
+    baseline = cmd.adapter_pair_baseline_env
+    origins = env.scene.env_origins
+    actual = (cmd.racket_pos_w - origins) - (cmd.racket_pos_w - origins)[baseline]
+    target = (cmd.racket_target_pos_w - origins) - (cmd.racket_target_pos_w - origins)[baseline]
+    active = cmd.adapter_pair_active & (baseline != torch.arange(cmd.num_envs, device=cmd.device))
+
+    # A paired displacement is meaningful only when both siblings are on the
+    # same reference clip and control step.  Normal operation enforces this
+    # at runner startup, but masking a group after an asynchronous reset
+    # prevents a single early termination from creating a false Cartesian
+    # reward signal.
+    motion = env.command_manager.get_term(cmd.cfg.motion_command_name)
+    phase_match = motion.time_steps == motion.time_steps[baseline]
+    motion_ids = getattr(motion, "motion_ids", None)
+    if motion_ids is not None:
+        phase_match &= motion_ids == motion_ids[baseline]
+    active &= phase_match
+    cmd.metrics["adapter_pair_phase_synced"] = phase_match.to(dtype=actual.dtype)
+    gate = getattr(env, "target_adapter_gate", None)
+    if gate is None:
+        gate = cmd.strike_temporal_weight().unsqueeze(-1)
+    return cmd, actual, target, active, gate.squeeze(-1)
+
+
+def racket_paired_incremental_dense_huber(
+    env: ManagerBasedRLEnv, command_name: str, scale_m: float = 0.01, beta: float = 1.0
+) -> torch.Tensor:
+    """Dense paired Smooth-L1 tracking along the adapter's own phase gate."""
+    cmd, actual, target, active, gate = _paired_incremental_state(env, command_name)
+    error = (actual - gate.unsqueeze(-1) * target) / max(float(scale_m), 1.0e-6)
+    abs_error = torch.abs(error)
+    loss = torch.where(abs_error < beta, 0.5 * torch.square(error) / beta, abs_error - 0.5 * beta).sum(-1)
+    cmd.metrics["adapter_dense_huber"] = loss
+    return torch.where(active, -loss * gate, torch.zeros_like(loss))
+
+
+def racket_paired_incremental_gain_loss(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    cmd, actual, target, active, gate = _paired_incremental_state(env, command_name)
+    target_norm_sq = torch.sum(torch.square(target), dim=-1).clamp_min(1.0e-8)
+    gain = torch.sum(actual * target, dim=-1) / target_norm_sq
+    loss = torch.nn.functional.smooth_l1_loss(gain, torch.ones_like(gain), reduction="none")
+    cmd.metrics["adapter_projected_gain"] = gain
+    return torch.where(active, -loss * gate, torch.zeros_like(loss))
+
+
+def racket_paired_incremental_cross_axis_loss(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    cmd, actual, target, active, gate = _paired_incremental_state(env, command_name)
+    target_norm = torch.linalg.vector_norm(target, dim=-1).clamp_min(1.0e-4)
+    unit = target / target_norm.unsqueeze(-1)
+    parallel = torch.sum(actual * unit, dim=-1, keepdim=True) * unit
+    loss = torch.linalg.vector_norm(actual - parallel, dim=-1) / target_norm
+    cmd.metrics["adapter_cross_axis_ratio"] = loss
+    return torch.where(active, -loss * gate, torch.zeros_like(loss))
+
+
+def target_adapter_zero_action_hold(env: ManagerBasedRLEnv, command_name: str, threshold_m: float = 1.0e-5) -> torch.Tensor:
+    """Keep the adapter silent for zero-offset (baseline) paired samples."""
+    cmd = _cmd(env, command_name)
+    delta = torch.linalg.vector_norm(cmd.external_target_delta_local_b(), dim=-1)
+    action = getattr(env, "target_adapter_last_action", None)
+    gate = getattr(env, "target_adapter_gate", None)
+    if action is None or gate is None:
+        return torch.zeros_like(delta)
+    loss = torch.mean(torch.square(action), dim=-1)
+    return torch.where(delta <= threshold_m, -loss * gate.squeeze(-1), torch.zeros_like(loss))
+
+
 def racket_velocity_tracking_exp(env: ManagerBasedRLEnv, command_name: str, std: float) -> torch.Tensor:
     """Track racket linear velocity near the strike time (FK actual vs desired, world frame)."""
     cmd = _cmd(env, command_name)
     error = torch.sum(torch.square(cmd.racket_lin_vel_w - cmd.racket_target_vel_w), dim=-1)
     return torch.exp(-error / std**2) * cmd.strike_temporal_weight()
+
+
+def _canonical_hit_window_weight(cmd: RacketTargetCommand, half_window_steps: int = 3) -> torch.Tensor:
+    motion = cmd._motion_term
+    if motion is None:
+        motion = cmd._env.command_manager.get_term(cmd.cfg.motion_command_name)
+    if motion._use_motion_library:
+        hit = motion.motion.hit_frame[motion.motion_ids]
+    else:
+        hit = torch.full_like(motion.time_steps, int(motion.motion.hit_frame[0]))
+    distance = torch.abs(motion.time_steps.to(torch.float32) - hit.to(torch.float32))
+    inside = distance <= float(half_window_steps)
+    weight = torch.exp(-0.5 * torch.square(distance / max(float(half_window_steps), 1.0)))
+    return torch.where(inside, weight, torch.zeros_like(weight))
+
+
+def racket_velocity_magnitude_tracking_exp(
+    env: ManagerBasedRLEnv, command_name: str, std: float = 1.0, half_window_steps: int = 3
+) -> torch.Tensor:
+    cmd = _cmd(env, command_name)
+    error = torch.abs(torch.linalg.vector_norm(cmd.racket_lin_vel_w, dim=-1) - torch.linalg.vector_norm(cmd.racket_target_vel_w, dim=-1))
+    return torch.exp(-torch.square(error) / max(float(std), 1.0e-6) ** 2) * _canonical_hit_window_weight(cmd, half_window_steps)
+
+
+def racket_velocity_direction_tracking(
+    env: ManagerBasedRLEnv, command_name: str, half_window_steps: int = 3
+) -> torch.Tensor:
+    cmd = _cmd(env, command_name)
+    actual = cmd.racket_lin_vel_w
+    target = cmd.racket_target_vel_w
+    cosine = torch.sum(actual * target, dim=-1) / (
+        torch.linalg.vector_norm(actual, dim=-1) * torch.linalg.vector_norm(target, dim=-1)
+    ).clamp_min(1.0e-6)
+    return 0.5 * (cosine.clamp(-1.0, 1.0) + 1.0) * _canonical_hit_window_weight(cmd, half_window_steps)
+
+
+def racket_signed_velocity_tracking(
+    env: ManagerBasedRLEnv, command_name: str, half_window_steps: int = 3
+) -> torch.Tensor:
+    cmd = _cmd(env, command_name)
+    target_norm = torch.linalg.vector_norm(cmd.racket_target_vel_w, dim=-1).clamp_min(1.0e-6)
+    signed = torch.sum(cmd.racket_lin_vel_w * cmd.racket_target_vel_w, dim=-1) / target_norm
+    scale = target_norm.clamp_min(1.0)
+    return (signed / scale).clamp(-1.0, 1.0) * _canonical_hit_window_weight(cmd, half_window_steps)
+
+
+def racket_pass_through_reward(
+    env: ManagerBasedRLEnv, command_name: str, position_gate: float = 0.10, minimum_speed: float = 0.5,
+    half_window_steps: int = 3,
+) -> torch.Tensor:
+    cmd = _cmd(env, command_name)
+    pos_error = torch.linalg.vector_norm(cmd.racket_pos_w - cmd.racket_target_pos_w, dim=-1)
+    speed = torch.linalg.vector_norm(cmd.racket_lin_vel_w, dim=-1)
+    target_norm = torch.linalg.vector_norm(cmd.racket_target_vel_w, dim=-1).clamp_min(1.0e-6)
+    signed = torch.sum(cmd.racket_lin_vel_w * cmd.racket_target_vel_w, dim=-1) / target_norm
+    gate = (pos_error < float(position_gate)) & (speed > float(minimum_speed)) & (signed > 0.0)
+    return gate.to(torch.float32) * _canonical_hit_window_weight(cmd, half_window_steps)
+
+
+def racket_stop_at_target_penalty(
+    env: ManagerBasedRLEnv, command_name: str, position_gate: float = 0.10, minimum_speed: float = 0.5,
+    half_window_steps: int = 3,
+) -> torch.Tensor:
+    cmd = _cmd(env, command_name)
+    pos_error = torch.linalg.vector_norm(cmd.racket_pos_w - cmd.racket_target_pos_w, dim=-1)
+    speed = torch.linalg.vector_norm(cmd.racket_lin_vel_w, dim=-1)
+    stopped = (pos_error < float(position_gate)) & (speed < float(minimum_speed))
+    return -stopped.to(torch.float32) * _canonical_hit_window_weight(cmd, half_window_steps)
+
+
+def racket_reverse_motion_penalty(
+    env: ManagerBasedRLEnv, command_name: str, half_window_steps: int = 3
+) -> torch.Tensor:
+    cmd = _cmd(env, command_name)
+    target_norm = torch.linalg.vector_norm(cmd.racket_target_vel_w, dim=-1).clamp_min(1.0e-6)
+    signed = torch.sum(cmd.racket_lin_vel_w * cmd.racket_target_vel_w, dim=-1) / target_norm
+    return -torch.relu(-signed) * _canonical_hit_window_weight(cmd, half_window_steps)
+
+
+def racket_hit_timing_kernel(env: ManagerBasedRLEnv, command_name: str, half_window_steps: int = 3) -> torch.Tensor:
+    return _canonical_hit_window_weight(_cmd(env, command_name), half_window_steps)
+
+
+def phase_magnitude_penalty(env: ManagerBasedRLEnv, action_name: str = "joint_pos") -> torch.Tensor:
+    phase = getattr(env, "p5u_phase_effective", None)
+    if phase is None or phase.shape[-1] == 0:
+        return torch.zeros(env.num_envs, device=env.device)
+    return -torch.mean(torch.abs(phase), dim=-1)
+
+
+def phase_rate_penalty(env: ManagerBasedRLEnv, action_name: str = "joint_pos") -> torch.Tensor:
+    rate = getattr(env, "p5u_phase_rate", None)
+    if rate is None or rate.shape[-1] == 0:
+        return torch.zeros(env.num_envs, device=env.device)
+    return -torch.mean(torch.square(rate), dim=-1)
+
+
+def phase_group_consistency_penalty(env: ManagerBasedRLEnv, action_name: str = "joint_pos") -> torch.Tensor:
+    phase = getattr(env, "p5u_phase_effective", None)
+    if phase is None or phase.shape[-1] < 4:
+        return torch.zeros(env.num_envs, device=env.device)
+    return -(torch.abs(phase[:, 1] - phase[:, 2]) + torch.abs(phase[:, 2] - phase[:, 3]))
 
 
 def racket_velocity_tracking_position_gated_exp(
@@ -154,6 +421,43 @@ def racket_hit_coupled_tracking_exp(
         cmd.metrics["racket_hit_coupled_vel_raw"] = r_vel
         cmd.metrics["racket_hit_coupled_normal_raw"] = r_normal
     return reward
+
+
+def racket_exact_hit_precision_tracking_exp(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    pos_std: float,
+    vel_std: float,
+    normal_std: float,
+    time_std: float,
+) -> torch.Tensor:
+    """Prioritize the canonical TCP state at the actual strike frame.
+
+    The original hit terms are intentionally active over the whole configured
+    strike window.  That is useful for early shaping, but a residual tracker
+    can then improve an average window score while moving the tagged canonical
+    frame in the wrong direction.  This term keeps position primary and uses
+    a narrow Gaussian in ``time_to_strike`` so PPO receives its strongest
+    signal at the frame used by the canonical evaluator.
+    """
+    cmd = _cmd(env, command_name)
+    target_pos = cmd.racket_target_pos_w
+    pos_error_sq = torch.sum(torch.square(cmd.racket_pos_w - target_pos), dim=-1)
+    vel_error_sq = torch.sum(torch.square(cmd.racket_lin_vel_w - cmd.racket_target_vel_w), dim=-1)
+    cos_ang = torch.sum(cmd.racket_normal_w * cmd.racket_target_normal_w, dim=-1).clamp(-1.0, 1.0)
+    normal_error = torch.acos(cos_ang)
+
+    r_pos = torch.exp(-pos_error_sq / max(float(pos_std), 1.0e-6) ** 2)
+    r_vel = torch.exp(-vel_error_sq / max(float(vel_std), 1.0e-6) ** 2)
+    r_normal = torch.exp(-torch.square(normal_error) / max(float(normal_std), 1.0e-6) ** 2)
+    time_gate = torch.exp(
+        -0.5 * torch.square(cmd.time_to_strike / max(float(time_std), 1.0e-6))
+    )
+    # Position remains the primary task.  Velocity and normal are bounded
+    # quality factors, so they cannot buy a better reward by sacrificing the
+    # canonical strike location.
+    score = r_pos * (0.50 + 0.25 * r_vel + 0.25 * r_normal) * time_gate
+    return score
 
 
 def base_position_tracking_exp(env: ManagerBasedRLEnv, command_name: str, std: float) -> torch.Tensor:

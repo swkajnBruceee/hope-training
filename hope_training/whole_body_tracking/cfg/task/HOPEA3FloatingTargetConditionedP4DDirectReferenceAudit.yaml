@@ -1,0 +1,21 @@
+# P4D audit-only execution qualification.  It preserves the P9 strike timing
+# and repaired reference while adding only deterministic measured-plant
+# safety margins discovered by the motion-0 action-chain ablation.
+defaults:
+  - HOPEA3FloatingTargetConditionedP9Motion5
+  - _self_
+
+name: HOPEA3FloatingTargetConditionedP4DDirectReferenceAudit
+experiment_name: agibot_a3_p4d_direct_reference_audit
+
+actions:
+  # The floating waist tracks about 0.08 rad outside its position target near
+  # impact.  Reserve enough inner command range throughout READY and swing.
+  waist_soft_limit_margin_rad_by_motion: [0.12, 0.12, 0.12, 0.12, 0.08, 0.12]
+  waist_soft_limit_guard_in_prelude: true
+  waist_soft_limit_enforce_inner_limit: true
+
+  # Preserve the qualified 50-step arm return, but stop shoulder roll 0.08 rad
+  # inside READY to absorb its measured recovery overshoot.
+  upper_joint_recovery_ready_offset_rad_by_motion:
+    right_shoulder_roll_joint: [-0.08, -0.08, -0.08, -0.08, -0.02, -0.08]

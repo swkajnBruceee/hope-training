@@ -1,0 +1,47 @@
+# V30-P0: V26 straight-READY Fast Recenter.
+# Fresh reset -> frozen strike -> natural post-hit recovery -> adapter PPO.
+# Snapshot/reconstruction restore is intentionally absent.
+defaults:
+  - task: HOPEA3JointCoordinatorV26FastRecenter
+  - algo: ppo_joint_coordinator
+  - _self_
+
+algo:
+  runner:
+    # 50 prelude + 30 frames to hit + a recovery window must fit in one PPO
+    # collection. A shorter rollout would produce an empty compact storage.
+    num_steps_per_env: 128
+
+headless: true
+device: cuda:0
+seed: 20260729
+
+natural_prefix_recovery: true
+natural_recovery_phase_mode: phase_balanced
+natural_recovery_min_post_hit_steps: 10
+natural_recovery_early_max_post_hit_steps: 30
+natural_recovery_mid_max_post_hit_steps: 80
+
+# Preserve the V22 actor/support behavior exactly, append the two recovery
+# features with zero normalizer statistics, and train only the gated adapter.
+warm_start_support_actor_only: true
+warm_start_append_zero_policy_obs: true
+checkpoint: /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_joint_coordinator_v22_wide_deep_stability_20260727/2026-07-27_20-39-41_v22_2d_support_from_zero_left004_wide004_knee042_256x1500/model_1499.pt
+
+num_envs: 256
+max_iterations: 300
+logger: tensorboard
+run_name: v30_p0_straight_fast_recenter
+resume: false
+motion_file: null
+motion_manifest: null
+manifest_subset_size: null
+manifest_frame_z_offset: null
+registry_name: null
+video: false
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: outputs/v30_straight_fast_recenter

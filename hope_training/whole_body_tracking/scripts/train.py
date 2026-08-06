@@ -499,6 +499,103 @@ def _set_vec3(obj, attr, val, applied, where):
     applied.append(f"{where}.{attr}={vec}")
 
 
+def _assert_strict_fall_contract(env_cfg, task_id: str) -> None:
+    """Fail fast if P5U training is composed without the strict fall contract.
+
+    The old root-height/recovery terms are intentionally retained for legacy
+    diagnostics, but they are too permissive to protect a P5U run.  A future
+    Hydra composition or stale installed package must therefore never be
+    allowed to launch a tracker run silently without both the terminal gate
+    and its dense early-warning reward.
+    """
+    if "UnifiedUpperReferenceTracker" not in str(task_id):
+        return
+    term = getattr(getattr(env_cfg, "terminations", None), "strict_fall", None)
+    risk = getattr(getattr(env_cfg, "rewards", None), "strict_fall_risk", None)
+    if term is None or risk is None:
+        raise RuntimeError(
+            "P5U strict-fall contract missing: expected terminations.strict_fall "
+            "and rewards.strict_fall_risk in the composed working-tree config."
+        )
+    term_params = dict(getattr(term, "params", {}) or {})
+    required = {
+        "max_tilt_rad": 0.785398,
+        "minimum_height": 0.82,
+        "max_torso_tilt_rad": 0.785398,
+        "minimum_torso_height": 0.70,
+        "required_steps": 2,
+    }
+    for key, expected in required.items():
+        actual = term_params.get(key)
+        if actual is None or abs(float(actual) - float(expected)) > 1.0e-5:
+            raise RuntimeError(
+                f"P5U strict-fall contract mismatch for {key}: "
+                f"expected {expected}, got {actual!r}"
+            )
+    risk_weight = float(getattr(risk, "weight", 0.0))
+    if risk_weight >= 0.0:
+        raise RuntimeError(
+            f"P5U strict_fall_risk must be a negative penalty, got weight={risk_weight}"
+        )
+    print(
+        "[train.py] strict-fall contract verified: "
+        f"tilt>{required['max_tilt_rad']:.6f} rad or height<{required['minimum_height']:.2f} m "
+        f"for {required['required_steps']} steps; dense risk weight={risk_weight:.3f}",
+        flush=True,
+    )
+
+
+def _assert_fall_recovery_admission(
+    task_id: str,
+    task_cfg_name: str | None = None,
+    *,
+    legacy_fall_strategy: bool = False,
+) -> None:
+    """Keep floating-base fall/recovery PPO closed until the full audit is signed.
+
+    A config-level strict-fall term is not sufficient evidence for the DOCX
+    admission contract.  The gate is deliberately fail-closed and requires a
+    checked-in JSON decision containing the D0--D6 and precision/recall
+    evidence flags.  This function only guards training; replay/audit tools
+    remain available while the gate is closed.
+    """
+    task_text = f"{task_id} {task_cfg_name or ''}"
+    import re
+    # Every floating-base A3 strike/tracker variant shares the same physical
+    # fall and next-action contract, not only the historical F0--F8 names.
+    # Keep fixed-base/legacy table-tennis training unaffected, but fail closed
+    # for P5D/P5U and later Floating* registrations until the signed audit is
+    # complete.
+    if not (
+        "AgibotA3" in task_text
+        and "Floating" in task_text
+    ):
+        return
+    if legacy_fall_strategy:
+        print(
+            "[train.py] legacy fall strategy enabled: using the established "
+            "strict_fall/base_height/recovery_tilt termination terms; the newer "
+            "signed D0-D6 admission gate is intentionally bypassed for this run.",
+            flush=True,
+        )
+        return
+    gate_path = Path(__file__).resolve().parents[1] / "contracts" / "fall_detection_recovery_admission_v1.json"
+    if not gate_path.is_file():
+        raise RuntimeError(
+            "Fall/recovery training admission is closed: missing "
+            f"{gate_path}. Complete the DOCX audit and sign the gate before "
+            "starting floating-base fall/recovery PPO."
+        )
+    gate = json.loads(gate_path.read_text(encoding="utf-8"))
+    status = gate.get("qualification_status", {})
+    required = ("unified_state_source", "cycle_guard", "recovery_gate", "d0_d6_physx", "metrics_precision_recall")
+    if gate.get("schema_version") != "fall_detection_recovery_admission/v1" or not all(status.get(key) is True for key in required) or status.get("training_admission") is not True:
+        raise RuntimeError(
+            "Fall/recovery training admission is closed: the signed gate does "
+            f"not prove all required audit items ({', '.join(required)})."
+        )
+
+
 def _set_reward(rewards, name, weight, std, applied):
     if weight is None and std is None:
         return  # this reward term is not overridden by the YAML -> keep code defaults
@@ -527,6 +624,7 @@ _RACKET_KEYS = (
     "ref_perturb_curriculum_steps", "ref_perturb_curriculum_start",
     "ref_perturb_success_gated", "ref_perturb_advance_threshold", "ref_perturb_advance_rate",
     "exact_success_decay", "exact_success_min_count",
+    "adapter_external_offset_half_range", "adapter_external_zero_probability", "adapter_external_paired",
 )
 
 
@@ -561,6 +659,7 @@ def _apply_task_overrides(env_cfg, task):
             env_cfg.episode_length_s = float(els)
             applied.append(f"episode_length_s={float(els)}")
         staggered_half_span = _get(env, "staggered_stance_half_span_m")
+        staggered_front_foot = _get(env, "staggered_front_foot")
         left_forward_offset = _get(env, "left_foot_forward_offset_m")
         lateral_widen_per_foot = _get(env, "stance_lateral_widen_per_foot_m")
         knee_flexion = _get(env, "stance_knee_flexion_rad")
@@ -575,6 +674,14 @@ def _apply_task_overrides(env_cfg, task):
                 "currently require staggered_stance_half_span_m"
             )
         if staggered_half_span is not None:
+            if staggered_front_foot is None:
+                staggered_front_foot = "left"
+            staggered_front_foot = str(staggered_front_foot).strip().lower()
+            _require(
+                staggered_front_foot in {"left", "right"},
+                "env.staggered_front_foot must be 'left' or 'right'",
+            )
+            front_sign = 1.0 if staggered_front_foot == "left" else -1.0
             custom_lateral_stance = lateral_widen_per_foot is not None
             custom_knee_flexion = knee_flexion is not None
             staggered_half_span = float(staggered_half_span)
@@ -640,8 +747,8 @@ def _apply_task_overrides(env_cfg, task):
                 return min(candidates, key=lambda value: abs(value - nominal_hip_pitch))
 
             nominal_x = _foot_x(nominal_hip_pitch)
-            left_hip_pitch = _hip_for_x(nominal_x + staggered_half_span)
-            right_hip_pitch = _hip_for_x(nominal_x - staggered_half_span)
+            left_hip_pitch = _hip_for_x(nominal_x + front_sign * staggered_half_span)
+            right_hip_pitch = _hip_for_x(nominal_x - front_sign * staggered_half_span)
             left_ankle_pitch = nominal_foot_pitch - left_hip_pitch - nominal_knee
             right_ankle_pitch = nominal_foot_pitch - right_hip_pitch - nominal_knee
             baseline_z = (
@@ -703,6 +810,7 @@ def _apply_task_overrides(env_cfg, task):
             applied.append(
                 "staggered_stance("
                 f"half_span={staggered_half_span:.3f}m,"
+                f"front_foot={staggered_front_foot},"
                 f"lateral_widen_per_foot={lateral_widen_per_foot:.3f}m,"
                 f"knee={nominal_knee:.6f},"
                 f"left_hip={left_hip_pitch:.6f},"
@@ -911,6 +1019,46 @@ def _apply_task_overrides(env_cfg, task):
                 "actions.joint_pos.joint_velocity_feedforward_post_hit_decay_steps="
                 f"{velocity_ff_decay_steps}"
             )
+        microstep_enabled = _get(actions, "microstep_enabled")
+        if microstep_enabled is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "microstep_enabled"),
+                "actions.joint_pos.microstep_enabled",
+            )
+            env_cfg.actions.joint_pos.microstep_enabled = bool(microstep_enabled)
+            applied.append(
+                f"actions.joint_pos.microstep_enabled={bool(microstep_enabled)}"
+            )
+        microstep_limit = _get(actions, "microstep_step_limit_m")
+        if microstep_limit is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "microstep_step_limit_m"),
+                "actions.joint_pos.microstep_step_limit_m",
+            )
+            microstep_limit = float(microstep_limit)
+            _require(
+                0.005 <= microstep_limit <= 0.02,
+                "0.005 <= actions.joint_pos.microstep_step_limit_m <= 0.02",
+            )
+            env_cfg.actions.joint_pos.microstep_step_limit_m = microstep_limit
+            applied.append(
+                f"actions.joint_pos.microstep_step_limit_m={microstep_limit}"
+            )
+        microstep_alpha = _get(actions, "microstep_lowpass_alpha")
+        if microstep_alpha is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "microstep_lowpass_alpha"),
+                "actions.joint_pos.microstep_lowpass_alpha",
+            )
+            microstep_alpha = float(microstep_alpha)
+            _require(
+                0.0 < microstep_alpha <= 1.0,
+                "0 < actions.joint_pos.microstep_lowpass_alpha <= 1",
+            )
+            env_cfg.actions.joint_pos.microstep_lowpass_alpha = microstep_alpha
+            applied.append(
+                f"actions.joint_pos.microstep_lowpass_alpha={microstep_alpha}"
+            )
         upper_prelude_release_steps = _get(actions, "upper_prelude_release_steps")
         if upper_prelude_release_steps is not None:
             _require(
@@ -939,6 +1087,7 @@ def _apply_task_overrides(env_cfg, task):
             "arm_tail_return_steps",
             "waist_soft_limit_brake_lead_steps",
             "waist_soft_limit_prediction_horizon_steps",
+            "upper_dynamic_soft_limit_prediction_horizon_steps",
             "stage_a_sagittal_exit_positive_confirm_steps",
             "stage_a_sagittal_exit_neutral_confirm_steps",
             "stage_a_sagittal_exit_decay_steps",
@@ -958,6 +1107,9 @@ def _apply_task_overrides(env_cfg, task):
             "stage_a_sagittal_exit_require_both_feet",
             "stage_a_sagittal_rearm_enabled",
             "stage_a_sagittal_rearm_require_ready_reference",
+            "anchor_observation",
+            "coordinator_external_observation",
+            "coordinator_target_feedforward_enabled",
         ):
             value = _get(actions, key)
             if value is None:
@@ -976,6 +1128,7 @@ def _apply_task_overrides(env_cfg, task):
             "stage_a_sagittal_rearm_pitch_rate_max_radps",
             "stage_a_sagittal_rearm_tilt_max_rad",
             "stage_a_sagittal_rearm_arm_error_max_rad",
+            "stage_a_sagittal_rearm_arm_velocity_max_radps",
         ):
             value = _get(actions, key)
             if value is None:
@@ -997,6 +1150,25 @@ def _apply_task_overrides(env_cfg, task):
             applied.append(
                 "actions.joint_pos.waist_soft_limit_margin_rad="
                 f"{waist_soft_limit_margin}"
+            )
+        waist_margins_by_motion = _get(
+            actions, "waist_soft_limit_margin_rad_by_motion"
+        )
+        if waist_margins_by_motion is not None:
+            _require(
+                hasattr(
+                    env_cfg.actions.joint_pos,
+                    "waist_soft_limit_margin_rad_by_motion",
+                ),
+                "actions.joint_pos.waist_soft_limit_margin_rad_by_motion",
+            )
+            values = tuple(float(item) for item in waist_margins_by_motion)
+            _require(values and all(item > 0.0 for item in values),
+                     "actions.waist_soft_limit_margin_rad_by_motion values > 0")
+            env_cfg.actions.joint_pos.waist_soft_limit_margin_rad_by_motion = values
+            applied.append(
+                "actions.joint_pos.waist_soft_limit_margin_rad_by_motion="
+                f"{values}"
             )
         waist_soft_limit_velocity_brake_gain = _get(actions, "waist_soft_limit_velocity_brake_gain")
         if waist_soft_limit_velocity_brake_gain is not None:
@@ -1020,6 +1192,120 @@ def _apply_task_overrides(env_cfg, task):
                 _require(hasattr(env_cfg.actions.joint_pos, key), f"actions.joint_pos.{key}")
                 setattr(env_cfg.actions.joint_pos, key, bool(value))
                 applied.append(f"actions.joint_pos.{key}={bool(value)}")
+        dynamic_joint_names = _get(actions, "upper_dynamic_soft_limit_joint_names")
+        dynamic_margins = _get(actions, "upper_dynamic_soft_limit_margin_rad")
+        if dynamic_joint_names is not None or dynamic_margins is not None:
+            _require(
+                dynamic_joint_names is not None and dynamic_margins is not None,
+                "actions.upper_dynamic_soft_limit_joint_names and "
+                "actions.upper_dynamic_soft_limit_margin_rad must be set together",
+            )
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "upper_dynamic_soft_limit_joint_names"),
+                "actions.joint_pos.upper_dynamic_soft_limit_joint_names",
+            )
+            names = tuple(str(item) for item in dynamic_joint_names)
+            margins = tuple(float(item) for item in dynamic_margins)
+            _require(len(names) == len(margins), "actions.dynamic guard lengths match")
+            _require(all(item > 0.0 for item in margins), "actions.dynamic margins > 0")
+            env_cfg.actions.joint_pos.upper_dynamic_soft_limit_joint_names = names
+            env_cfg.actions.joint_pos.upper_dynamic_soft_limit_margin_rad = margins
+            applied.append(
+                "actions.joint_pos.upper_dynamic_soft_limit_joint_names=" f"{names}"
+            )
+            applied.append(
+                "actions.joint_pos.upper_dynamic_soft_limit_margin_rad=" f"{margins}"
+            )
+        recovery_ready_offsets = _get(
+            actions, "upper_joint_recovery_ready_offset_rad"
+        )
+        if recovery_ready_offsets is not None:
+            _require(
+                hasattr(
+                    env_cfg.actions.joint_pos,
+                    "upper_joint_recovery_ready_offset_rad",
+                ),
+                "actions.joint_pos.upper_joint_recovery_ready_offset_rad",
+            )
+            offsets = {
+                str(name): float(value)
+                for name, value in dict(recovery_ready_offsets).items()
+            }
+            env_cfg.actions.joint_pos.upper_joint_recovery_ready_offset_rad = offsets
+            applied.append(
+                "actions.joint_pos.upper_joint_recovery_ready_offset_rad="
+                f"{offsets!r}"
+            )
+        recovery_ready_offsets_by_motion = _get(
+            actions, "upper_joint_recovery_ready_offset_rad_by_motion"
+        )
+        if recovery_ready_offsets_by_motion is not None:
+            _require(
+                hasattr(
+                    env_cfg.actions.joint_pos,
+                    "upper_joint_recovery_ready_offset_rad_by_motion",
+                ),
+                "actions.joint_pos.upper_joint_recovery_ready_offset_rad_by_motion",
+            )
+            offsets_by_motion = {
+                str(name): tuple(float(item) for item in values)
+                for name, values in dict(recovery_ready_offsets_by_motion).items()
+            }
+            _require(
+                all(values for values in offsets_by_motion.values()),
+                "actions.motion-conditioned recovery offsets must be non-empty",
+            )
+            env_cfg.actions.joint_pos.upper_joint_recovery_ready_offset_rad_by_motion = (
+                offsets_by_motion
+            )
+            applied.append(
+                "actions.joint_pos.upper_joint_recovery_ready_offset_rad_by_motion="
+                f"{offsets_by_motion!r}"
+            )
+        passive_joint_margins = _get(
+            actions, "passive_joint_soft_limit_margin_rad"
+        )
+        if passive_joint_margins is not None:
+            _require(
+                hasattr(
+                    env_cfg.actions.joint_pos,
+                    "passive_joint_soft_limit_margin_rad",
+                ),
+                "actions.joint_pos.passive_joint_soft_limit_margin_rad",
+            )
+            passive_margins = {
+                str(name): float(value)
+                for name, value in dict(passive_joint_margins).items()
+            }
+            _require(
+                passive_margins
+                and all(value > 0.0 for value in passive_margins.values()),
+                "actions.passive_joint_soft_limit_margin_rad values > 0",
+            )
+            env_cfg.actions.joint_pos.passive_joint_soft_limit_margin_rad = (
+                passive_margins
+            )
+            applied.append(
+                "actions.joint_pos.passive_joint_soft_limit_margin_rad="
+                f"{passive_margins!r}"
+            )
+        for key in (
+            "upper_dynamic_soft_limit_velocity_brake_gain",
+            "upper_dynamic_soft_limit_position_brake_gain",
+            "upper_dynamic_soft_limit_max_position_correction_rad",
+            "upper_dynamic_soft_limit_max_velocity_correction_radps",
+        ):
+            value = _get(actions, key)
+            if value is None:
+                continue
+            _require(hasattr(env_cfg.actions.joint_pos, key), f"actions.joint_pos.{key}")
+            value = float(value)
+            if key.startswith("upper_dynamic_soft_limit_max_"):
+                _require(value > 0.0, f"actions.{key} > 0")
+            else:
+                _require(value >= 0.0, f"actions.{key} >= 0")
+            setattr(env_cfg.actions.joint_pos, key, value)
+            applied.append(f"actions.joint_pos.{key}={value}")
         for key, expected_length in (
             ("coordinator_leg_correction_scale_rad", 12),
             ("coordinator_waist_correction_scale_rad", 3),
@@ -1035,6 +1321,65 @@ def _apply_task_overrides(env_cfg, task):
             _require(all(item > 0.0 for item in values), f"actions.{key} values > 0")
             setattr(env_cfg.actions.joint_pos, attr, values)
             applied.append(f"actions.joint_pos.{attr}={values}")
+        for key, expected_length in (("adapter_scale_rad", 7),):
+            value = _get(actions, key)
+            if value is None:
+                continue
+            _require(hasattr(env_cfg.actions.joint_pos, key), f"actions.joint_pos.{key}")
+            values = tuple(float(item) for item in value)
+            _require(len(values) == expected_length, f"actions.{key} length == {expected_length}")
+            _require(all(item > 0.0 for item in values), f"actions.{key} values > 0")
+            setattr(env_cfg.actions.joint_pos, key, values)
+            applied.append(f"actions.joint_pos.{key}={values}")
+        for key in (
+            "coordinator_target_feedforward_raw_clip",
+            "adapter_raw_clip",
+            "adapter_ramp_in_steps",
+            "adapter_ramp_out_steps",
+            "adapter_policy_residual_gain",
+        ):
+            value = _get(actions, key)
+            if value is None:
+                continue
+            _require(hasattr(env_cfg.actions.joint_pos, key), f"actions.joint_pos.{key}")
+            value = (
+                float(value)
+                if key in {
+                    "coordinator_target_feedforward_raw_clip",
+                    "adapter_raw_clip",
+                    "adapter_policy_residual_gain",
+                }
+                else int(value)
+            )
+            _require(value >= 0.0, f"actions.{key} >= 0")
+            setattr(env_cfg.actions.joint_pos, key, value)
+            applied.append(f"actions.joint_pos.{key}={value}")
+        coordinator_target_feedforward = _get(
+            actions, "coordinator_target_feedforward_by_motion"
+        )
+        if coordinator_target_feedforward is not None:
+            _require(
+                hasattr(env_cfg.actions.joint_pos, "coordinator_target_feedforward_by_motion"),
+                "actions.joint_pos.coordinator_target_feedforward_by_motion",
+            )
+            matrices = tuple(
+                tuple(tuple(float(value) for value in row) for row in matrix)
+                for matrix in coordinator_target_feedforward
+            )
+            _require(len(matrices) > 0, "actions.coordinator_target_feedforward_by_motion nonempty")
+            _require(
+                all(len(matrix) == 22 and all(len(row) == 3 for row in matrix) for matrix in matrices),
+                "actions.coordinator_target_feedforward_by_motion shape == (M, 22, 3)",
+            )
+            setattr(
+                env_cfg.actions.joint_pos,
+                "coordinator_target_feedforward_by_motion",
+                matrices,
+            )
+            applied.append(
+                "actions.joint_pos.coordinator_target_feedforward_by_motion="
+                f"{len(matrices)}x22x3"
+            )
         upper_checkpoint = _get(actions, "upper_checkpoint")
         if upper_checkpoint is not None:
             _require(hasattr(env_cfg.actions.joint_pos, "upper_checkpoint"), "actions.joint_pos.upper_checkpoint")
@@ -1063,11 +1408,74 @@ def _apply_task_overrides(env_cfg, task):
     rw = _get(task, "rewards")
     if rw is not None:
         R = env_cfg.rewards
+        _set_reward(
+            R,
+            "racket_incremental_position",
+            _get(rw, "racket_incremental_position_weight"),
+            _get(rw, "racket_incremental_position_std"),
+            applied,
+        )
+        _set_reward(
+            R,
+            "racket_incremental_direction",
+            _get(rw, "racket_incremental_direction_weight"),
+            None,
+            applied,
+        )
+        _set_reward(
+            R,
+            "racket_incremental_dense_huber",
+            _get(rw, "racket_incremental_dense_huber_weight"),
+            None,
+            applied,
+        )
+        _set_reward(
+            R,
+            "racket_incremental_gain",
+            _get(rw, "racket_incremental_gain_weight"),
+            None,
+            applied,
+        )
+        _set_reward(
+            R,
+            "racket_incremental_cross_axis",
+            _get(rw, "racket_incremental_cross_axis_weight"),
+            None,
+            applied,
+        )
+        _set_reward(
+            R,
+            "target_adapter_zero_hold",
+            _get(rw, "target_adapter_zero_hold_weight"),
+            None,
+            applied,
+        )
         _set_reward(R, "racket_position", _get(rw, "racket_position_weight"), _get(rw, "racket_position_std"), applied)
         _set_reward(R, "racket_position_y", _get(rw, "racket_position_y_weight"), _get(rw, "racket_position_y_std"), applied)
         _set_reward(R, "racket_position_fine", _get(rw, "racket_position_fine_weight"), _get(rw, "racket_position_fine_std"), applied)
         _set_reward(R, "racket_position_y_fine", _get(rw, "racket_position_y_fine_weight"), _get(rw, "racket_position_y_fine_std"), applied)
         _set_reward(R, "racket_velocity", _get(rw, "racket_velocity_weight"), _get(rw, "racket_velocity_std"), applied)
+        # P5U causal reward ablation terms.  These are deliberately explicit
+        # YAML overrides so R0/R1/R2/R3 can be replayed without editing the
+        # environment code or silently changing the reward contract.
+        for _name, _key in (
+            ("racket_velocity_magnitude", "racket_velocity_magnitude_weight"),
+            ("racket_velocity_direction", "racket_velocity_direction_weight"),
+            ("racket_signed_velocity", "racket_signed_velocity_weight"),
+            ("racket_pass_through", "racket_pass_through_weight"),
+            ("racket_stop_at_target", "racket_stop_at_target_weight"),
+            ("racket_reverse_motion", "racket_reverse_motion_weight"),
+            ("racket_hit_timing", "racket_hit_timing_weight"),
+            ("phase_magnitude", "phase_magnitude_weight"),
+            ("phase_rate", "phase_rate_weight"),
+            ("phase_group_consistency", "phase_group_consistency_weight"),
+        ):
+            _w = _get(rw, _key)
+            if _w is not None:
+                _require(hasattr(R, _name), f"rewards.{_name}")
+                _require(getattr(R, _name) is not None, f"rewards.{_name} (term is disabled/None)")
+                getattr(R, _name).weight = float(_w)
+                applied.append(f"rewards.{_name}.weight={float(_w)}")
         gated_velocity_weight = _get(rw, "racket_velocity_position_gated_weight")
         if gated_velocity_weight is not None:
             _require(
@@ -1103,6 +1511,15 @@ def _apply_task_overrides(env_cfg, task):
                     if val is not None:
                         R.racket_hit_coupled.params[key] = float(val)
                         applied.append(f"rewards.racket_hit_coupled.params.{key}={float(val)}")
+        _set_reward(R, "racket_hit_precision", _get(rw, "racket_hit_precision_weight"), None, applied)
+        if hasattr(R, "racket_hit_precision") and R.racket_hit_precision is not None:
+            precision = _get(rw, "racket_hit_precision")
+            if precision is not None:
+                for key in ("pos_std", "vel_std", "normal_std", "time_std"):
+                    val = _get(precision, key)
+                    if val is not None:
+                        R.racket_hit_precision.params[key] = float(val)
+                        applied.append(f"rewards.racket_hit_precision.params.{key}={float(val)}")
         _set_reward(R, "base_position", _get(rw, "base_position_weight"), _get(rw, "base_position_std"), applied)
         jt = _get(rw, "joint_torques_weight")
         if jt is not None:
@@ -1200,6 +1617,9 @@ def _apply_task_overrides(env_cfg, task):
             ("stagger_minimum_foot_load", "stagger_minimum_foot_load_weight"),
             ("stagger_sagittal_span_l2", "stagger_sagittal_span_l2_weight"),
             ("stagger_lateral_span_l2", "stagger_lateral_span_l2_weight"),
+            ("coordinator_leg_l2", "coordinator_leg_l2_weight"),
+            ("coordinator_waist_l2", "coordinator_waist_l2_weight"),
+            ("coordinator_arm_l2", "coordinator_arm_l2_weight"),
         ):
             _w = _get(rw, _key)
             if _w is not None:
@@ -1248,6 +1668,39 @@ def _apply_task_overrides(env_cfg, task):
             _set_attr(C, "ref_perturb_advance_rate", _get(rk, "ref_perturb_advance_rate"), float, applied, "racket_target")
             _set_attr(C, "exact_success_decay", _get(rk, "exact_success_decay"), float, applied, "racket_target")
             _set_attr(C, "exact_success_min_count", _get(rk, "exact_success_min_count"), float, applied, "racket_target")
+            _set_vec3(
+                C,
+                "adapter_external_offset_half_range",
+                _get(rk, "adapter_external_offset_half_range"),
+                applied,
+                "racket_target",
+            )
+            _set_attr(
+                C,
+                "adapter_external_zero_probability",
+                _get(rk, "adapter_external_zero_probability"),
+                float,
+                applied,
+                "racket_target",
+            )
+            _set_attr(
+                C,
+                "adapter_external_paired",
+                _get(rk, "adapter_external_paired"),
+                _as_bool,
+                applied,
+                "racket_target",
+            )
+
+    tracker = _get(task, "tracker")
+    if tracker is not None and hasattr(env_cfg, "actions") and hasattr(env_cfg.actions, "joint_pos"):
+        A = env_cfg.actions.joint_pos
+        scale = _get(tracker, "upper_correction_scale_rad")
+        if scale is not None and hasattr(A, "upper_correction_scale_rad"):
+            value = float(scale)
+            _require(value > 0.0, "tracker.upper_correction_scale_rad > 0")
+            A.upper_correction_scale_rad = (value,) * len(A.upper_correction_scale_rad)
+            applied.append(f"actions.joint_pos.upper_correction_scale_rad={value}")
 
     terminations = _get(task, "terminations")
     if terminations is not None:
@@ -1296,6 +1749,38 @@ def _apply_task_overrides(env_cfg, task):
     motion = _get(task, "motion")
     if motion is not None and hasattr(env_cfg, "commands") and hasattr(env_cfg.commands, "motion"):
         C = env_cfg.commands.motion
+        fixed_motion_id = _get(motion, "fixed_motion_id")
+        if fixed_motion_id is not None:
+            _require(hasattr(C, "fixed_motion_id"), "commands.motion.fixed_motion_id")
+            C.fixed_motion_id = int(fixed_motion_id)
+            _require(C.fixed_motion_id >= 0, "motion.fixed_motion_id >= 0")
+            applied.append(f"commands.motion.fixed_motion_id={C.fixed_motion_id}")
+        manifest_balance_strokes = _get(motion, "manifest_balance_strokes")
+        if manifest_balance_strokes is not None:
+            _require(hasattr(C, "manifest_balance_strokes"), "commands.motion.manifest_balance_strokes")
+            C.manifest_balance_strokes = _as_bool(manifest_balance_strokes)
+            applied.append(
+                f"commands.motion.manifest_balance_strokes={C.manifest_balance_strokes}"
+            )
+        reference_sampling_mode = _get(motion, "reference_sampling_mode")
+        if reference_sampling_mode is not None:
+            _require(hasattr(C, "reference_sampling_mode"), "commands.motion.reference_sampling_mode")
+            mode = str(reference_sampling_mode).strip().lower()
+            _require(mode in {"uniform", "balanced_by_region", "difficulty_weighted", "curriculum"}, "motion.reference_sampling_mode is valid")
+            C.reference_sampling_mode = mode
+            applied.append(f"commands.motion.reference_sampling_mode={mode}")
+        reference_curriculum_stage = _get(motion, "reference_curriculum_stage")
+        if reference_curriculum_stage is not None:
+            _require(hasattr(C, "reference_curriculum_stage"), "commands.motion.reference_curriculum_stage")
+            C.reference_curriculum_stage = int(reference_curriculum_stage)
+            _require(C.reference_curriculum_stage >= 0, "motion.reference_curriculum_stage >= 0")
+            applied.append(f"commands.motion.reference_curriculum_stage={C.reference_curriculum_stage}")
+        reference_curriculum_sizes = _get(motion, "reference_curriculum_sizes")
+        if reference_curriculum_sizes is not None:
+            _require(hasattr(C, "reference_curriculum_sizes"), "commands.motion.reference_curriculum_sizes")
+            C.reference_curriculum_sizes = tuple(int(x) for x in reference_curriculum_sizes)
+            _require(all(x > 0 for x in C.reference_curriculum_sizes), "motion.reference_curriculum_sizes > 0")
+            applied.append(f"commands.motion.reference_curriculum_sizes={C.reference_curriculum_sizes}")
         for key in ("prelude_steps", "prelude_settle_steps", "prelude_launch_steps"):
             value = _get(motion, key)
             if value is not None:
@@ -1309,6 +1794,35 @@ def _apply_task_overrides(env_cfg, task):
             _require(hasattr(C, "prelude_minimum_jerk"), "commands.motion.prelude_minimum_jerk")
             C.prelude_minimum_jerk = bool(prelude_minimum_jerk)
             applied.append(f"commands.motion.prelude_minimum_jerk={C.prelude_minimum_jerk}")
+        prelude_quintic_hermite = _get(motion, "prelude_quintic_hermite")
+        if prelude_quintic_hermite is not None:
+            _require(
+                hasattr(C, "prelude_quintic_hermite"),
+                "commands.motion.prelude_quintic_hermite",
+            )
+            C.prelude_quintic_hermite = _as_bool(prelude_quintic_hermite)
+            applied.append(
+                "commands.motion.prelude_quintic_hermite="
+                f"{C.prelude_quintic_hermite}"
+            )
+        ready_joint_positions = _get(motion, "ready_joint_positions")
+        if ready_joint_positions is not None:
+            _require(
+                hasattr(C, "ready_joint_positions"),
+                "commands.motion.ready_joint_positions",
+            )
+            C.ready_joint_positions = {
+                str(name): float(value)
+                for name, value in ready_joint_positions.items()
+            }
+            _require(
+                bool(C.ready_joint_positions),
+                "motion.ready_joint_positions must not be empty when provided",
+            )
+            applied.append(
+                "commands.motion.ready_joint_positions="
+                f"{C.ready_joint_positions}"
+            )
         prelude_continuous_velocity = _get(motion, "prelude_continuous_velocity_reference")
         if prelude_continuous_velocity is not None:
             _require(
@@ -1416,11 +1930,19 @@ def _run(cfg):
     from training.utils.a3_base_actor_init import initialize_zero_residual_actor_mean
     from training.utils.momentum_preview_actor_critic import MomentumPreviewActorCritic
     from training.utils.stagger_support_actor_critic import (
+        BentReadyRecoveryActorCritic,
         StaggerSupportActorCritic,
         WideStaggerRecoveryActorCritic,
         WideStaggerSupportActorCritic,
     )
+    from training.utils.target_conditioned_recovery_actor_critic import (
+        TargetConditionedRecoveryActorCritic,
+    )
     from training.utils.support_recovery_actor_critic import SupportRecoveryActorCritic
+    from training.utils.natural_prefix_rollout import (
+        NaturalPrefixPPO,
+        NaturalPrefixRolloutWrapper,
+    )
     from training.utils.ppo_cfg import runner_kwargs
     import rsl_rl.runners.on_policy_runner as rsl_on_policy_runner
 
@@ -1441,6 +1963,12 @@ def _run(cfg):
     _cfg_mod = sys.modules.get(type(env_cfg).__module__)
     print(f"[train.py] env cfg source: {type(env_cfg).__name__} <- {getattr(_cfg_mod, '__file__', '?')}", flush=True)
     applied = _apply_task_overrides(env_cfg, cfg.task)
+    _assert_strict_fall_contract(env_cfg, task_id)
+    _assert_fall_recovery_admission(
+        task_id,
+        _get(cfg.task, "name", task_id),
+        legacy_fall_strategy=bool(cfg.get("legacy_fall_strategy", False)),
+    )
     print(f"[train.py] applied {len(applied)} task override(s) from cfg/task/{_get(cfg.task, 'name', task_id)}.yaml:", flush=True)
     for _a in applied:
         print(f"[train.py]     {_a}", flush=True)
@@ -1484,6 +2012,35 @@ def _run(cfg):
         agent_cfg.wandb_project = str(cfg.log_project_name)
         agent_cfg.neptune_project = str(cfg.log_project_name)
     agent_cfg.resume = bool(cfg.get("resume", False))
+    natural_prefix_recovery = bool(cfg.get("natural_prefix_recovery", False))
+    if natural_prefix_recovery:
+        natural_prefix_tasks = {
+            "HOPE-FloatingJointCoordinatorV10WideStaggerRecovery-AgibotA3-v0",
+            "HOPE-FloatingJointCoordinatorV11BentReadyRecovery-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecovery-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryYComp-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion0Calibrated-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion2Calibrated-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion4Calibrated-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion5Calibrated-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion1Train-AgibotA3-v0",
+        }
+        if task_id not in natural_prefix_tasks:
+            raise ValueError(
+                "natural_prefix_recovery requires a registered post-hit recovery task"
+            )
+        rsl_on_policy_runner.NaturalPrefixPPO = NaturalPrefixPPO
+        # rsl_rl's runner uses the literal class name "PPO" to select the RL
+        # training type before evaluating the algorithm class.  Alias that
+        # resolver to the compact natural-prefix implementation so it keeps
+        # the normal PPO lifecycle while excluding masked prefix transitions.
+        rsl_on_policy_runner.PPO = NaturalPrefixPPO
+        agent_cfg.algorithm.class_name = "PPO"
+        print(
+            "[train.py] Natural-Prefix Recovery enabled: masked prefix transitions "
+            "are excluded from PPO storage",
+            flush=True,
+        )
     momentum_preview_task = task_id == "HOPE-FloatingJointCoordinatorV6MomentumPreview-AgibotA3-v0"
     support_recovery_task = (
         task_id == "HOPE-FloatingJointCoordinatorV7StaggeredRecovery-AgibotA3-v0"
@@ -1499,11 +2056,29 @@ def _run(cfg):
         task_id
         == "HOPE-FloatingJointCoordinatorV10WideStaggerRecovery-AgibotA3-v0"
     )
+    bent_ready_recovery_task = (
+        task_id
+        == "HOPE-FloatingJointCoordinatorV11BentReadyRecovery-AgibotA3-v0"
+    )
+    target_conditioned_recovery_task = (
+        task_id
+        in {
+            "HOPE-FloatingTargetConditionedRecovery-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryYComp-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion0Calibrated-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion2Calibrated-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion4Calibrated-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion5Calibrated-AgibotA3-v0",
+            "HOPE-FloatingTargetConditionedRecoveryMotion1Train-AgibotA3-v0",
+        }
+    )
     stagger_support_task = (
         legacy_stagger_support_task
         or wide_stagger_support_task
         or wide_stagger_recovery_task
+        or bent_ready_recovery_task
     )
+    gated_recovery_task = wide_stagger_recovery_task or bent_ready_recovery_task
     frozen_support_task = momentum_preview_task or support_recovery_task or stagger_support_task
     if momentum_preview_task:
         # OnPolicyRunner resolves policy classes in its own module globals.
@@ -1520,6 +2095,26 @@ def _run(cfg):
         print(
             "[train.py] V20 policy=SupportRecoveryActorCritic "
             "(legacy coordinator frozen; state adapter trains leg+waist only)",
+            flush=True,
+        )
+    elif bent_ready_recovery_task:
+        rsl_on_policy_runner.BentReadyRecoveryActorCritic = (
+            BentReadyRecoveryActorCritic
+        )
+        agent_cfg.policy.class_name = "BentReadyRecoveryActorCritic"
+        print(
+            "[train.py] V28 policy=BentReadyRecoveryActorCritic "
+            "(frozen V22; bounded post-hit bent-READY settling adapter)",
+            flush=True,
+        )
+    elif target_conditioned_recovery_task:
+        rsl_on_policy_runner.TargetConditionedRecoveryActorCritic = (
+            TargetConditionedRecoveryActorCritic
+        )
+        agent_cfg.policy.class_name = "TargetConditionedRecoveryActorCritic"
+        print(
+            "[train.py] P4 policy=TargetConditionedRecoveryActorCritic "
+            "(frozen P3 target policy; gated lower-body brace/residual adapter)",
             flush=True,
         )
     elif wide_stagger_recovery_task:
@@ -1574,6 +2169,16 @@ def _run(cfg):
         agent_cfg.load_run = str(cfg.load_run)
     if cfg.get("checkpoint", None) is not None:
         agent_cfg.load_checkpoint = str(cfg.checkpoint)
+    if (
+        cfg.get("checkpoint", None) is not None
+        and not agent_cfg.resume
+        and not actor_only_warm_start
+    ):
+        raise ValueError(
+            "checkpoint=<model_*.pt> was provided but would be ignored because "
+            "resume=false. Use resume=true for an exact checkpoint load, or an "
+            "explicit warm_start_actor_only/warm_start_support_actor_only mode."
+        )
 
     _assert_a3_base_stand_smoke_gate(
         task_id,
@@ -1611,6 +2216,16 @@ def _run(cfg):
                 if cfg.manifest_frame_z_offset is not None
                 else _get(cfg.task, "manifest_frame_z_offset")
             )
+            if (
+                task_id == "HOPE-FloatingUnifiedUpperReferenceTracker-AgibotA3-v0"
+                and frame_z_offset is not None
+                and abs(float(frame_z_offset)) > 1.0e-8
+            ):
+                raise ValueError(
+                    "P5U unified upper tracker requires manifest_frame_z_offset=0.0: "
+                    "P5D scene-placed NPZ files already contain the world z anchor; "
+                    f"received {float(frame_z_offset):.6f} m (would double-apply the lift)."
+                )
             if frame_z_offset is not None:
                 env_cfg.commands.motion.manifest_frame_z_offset = float(frame_z_offset)
             if _as_bool(cfg.get("validate_stance_contract", False)):
@@ -1667,6 +2282,18 @@ def _run(cfg):
     # 5) build env, wrap, run
     render_mode = "rgb_array" if cfg.video else None
     env = gym.make(task_id, cfg=env_cfg, render_mode=render_mode)
+    if natural_prefix_recovery:
+        env = NaturalPrefixRolloutWrapper(
+            env,
+            phase_mode=str(cfg.get("natural_recovery_phase_mode", "phase_balanced")),
+            min_post_hit_steps=int(cfg.get("natural_recovery_min_post_hit_steps", 10)),
+            early_max_post_hit_steps=int(
+                cfg.get("natural_recovery_early_max_post_hit_steps", 30)
+            ),
+            mid_max_post_hit_steps=int(
+                cfg.get("natural_recovery_mid_max_post_hit_steps", 80)
+            ),
+        )
     preview_audit_mode = str(cfg.get("preview_audit_mode", "normal"))
     if preview_audit_mode not in {"normal", "zero", "shuffle", "reverse", "scale_080", "scale_120"}:
         raise ValueError(f"Unknown preview_audit_mode={preview_audit_mode!r}")
@@ -1717,7 +2344,7 @@ def _run(cfg):
             "[train.py] V19 actor normalizer preserves canonical preview columns 204:222",
             flush=True,
         )
-    elif stagger_support_task:
+    elif stagger_support_task or target_conditioned_recovery_task:
         original_obs_normalizer_forward = runner.obs_normalizer.forward
 
         def v21_actor_observation_normalizer(observation):
@@ -1727,28 +2354,32 @@ def _run(cfg):
 
         runner.obs_normalizer.forward = v21_actor_observation_normalizer
         support_end = (
-            227
+            213
+            if target_conditioned_recovery_task
+            else 235
+            if bent_ready_recovery_task
+            else 227
             if wide_stagger_support_task or wide_stagger_recovery_task
             else 223
         )
         print(
-            "[train.py] stagger actor normalizer preserves physical support columns "
+            "[train.py] recovery/support actor normalizer preserves physical columns "
             f"204:{support_end}",
             flush=True,
         )
-        if wide_stagger_recovery_task:
+        if gated_recovery_task or target_conditioned_recovery_task:
             original_train_mode = runner.train_mode
 
             def v23_train_mode_with_frozen_actor_normalizer():
                 original_train_mode()
-                # V22 model_1499 is an immutable behavior prior. Updating its
-                # legacy observation statistics would change the frozen actor
-                # even when every network parameter stays unchanged.
+                # The inherited strike actor is an immutable behavior prior.
+                # Updating its legacy observation statistics would change the
+                # frozen actor even when every network parameter stays fixed.
                 runner.obs_normalizer.eval()
 
             runner.train_mode = v23_train_mode_with_frozen_actor_normalizer
             print(
-                "[train.py] V23 freezes the loaded V22 actor observation "
+                "[train.py] recovery freezes the loaded strike actor observation "
                 "normalizer; critic normalization remains trainable",
                 flush=True,
             )
@@ -1781,6 +2412,11 @@ def _run(cfg):
         "HOPE-FloatingJointCoordinatorV4-AgibotA3-v0",
         "HOPE-FixedBaseReferenceStrike-AgibotA3-v0",
         "HOPE-FixedBaseBackhandReferenceStrike-AgibotA3-v0",
+        "HOPE-FixedBaseTargetAdapter-AgibotA3-v0",
+        "HOPE-FloatingPriorGuidedReferenceTracker-AgibotA3-v0",
+        "HOPE-FloatingUnifiedUpperReferenceTracker-AgibotA3-v0",
+        "HOPE-FloatingUnifiedUpperReferenceTrackerB-AgibotA3-v0",
+        "HOPE-FloatingUnifiedUpperReferenceTrackerC-AgibotA3-v0",
     }
     if task_id in zero_residual_tasks and not agent_cfg.resume and not warm_start_actor_only:
         # This task controls a non-integrating residual around a passively
@@ -1798,7 +2434,14 @@ def _run(cfg):
                     "HOPE-FloatingJointCoordinatorV4-AgibotA3-v0",
                     "HOPE-FloatingJointCoordinatorV5Preview-AgibotA3-v0",
                 }
-                else 10 if task_id.startswith("HOPE-FixedBase") or task_id == "HOPE-FloatingUpperCorrection-AgibotA3-v0"
+                else 7 if task_id == "HOPE-FixedBaseTargetAdapter-AgibotA3-v0"
+                else 11 if task_id == "HOPE-FloatingUnifiedUpperReferenceTrackerB-AgibotA3-v0"
+                else 14 if str(_get(cfg.task, "name", "")).endswith("Microstep")
+                else 10 if task_id.startswith("HOPE-FixedBase") or task_id in {
+                    "HOPE-FloatingUpperCorrection-AgibotA3-v0",
+                    "HOPE-FloatingPriorGuidedReferenceTracker-AgibotA3-v0",
+                    "HOPE-FloatingUnifiedUpperReferenceTracker-AgibotA3-v0",
+                }
                 else 14
             ),
         )
@@ -1845,18 +2488,41 @@ def _run(cfg):
         runtime_state_keys = set(runner.alg.policy.state_dict())
         runtime_state = runner.alg.policy.state_dict()
         appended_obs_features = 0
-        if frozen_support_task:
+        if target_conditioned_recovery_task:
+            if not warm_start_actor_only or not warm_start_append_zero_policy_obs:
+                raise RuntimeError(
+                    "P4 target-conditioned recovery requires "
+                    "+warm_start_actor_only=true and "
+                    "+warm_start_append_zero_policy_obs=true"
+                )
+            # P3's actor remains 204-D; only the runtime normalizer widens
+            # for the private recovery suffix.  Keep P4's configured
+            # exploration scale rather than importing P3's all-action noise.
+            actor_state["std"] = runtime_state["std"].clone()
+            mismatched = [
+                name
+                for name, value in actor_state.items()
+                if name in runtime_state
+                and torch.is_tensor(value)
+                and value.shape != runtime_state[name].shape
+            ]
+            if mismatched:
+                raise RuntimeError(
+                    "P4's frozen P3 actor must retain the exact 204-D actor shape; "
+                    f"mismatched={mismatched}"
+                )
+        elif frozen_support_task:
             if support_recovery_task and warm_start_append_zero_policy_obs:
                 raise RuntimeError(
                     "V20 support recovery keeps the legacy 204-D observation contract; "
                     "do not set +warm_start_append_zero_policy_obs=true"
                 )
-            if wide_stagger_recovery_task and (
+            if gated_recovery_task and (
                 not warm_start_support_actor_only
                 or not warm_start_append_zero_policy_obs
             ):
                 raise RuntimeError(
-                    "V23 recovery requires +warm_start_support_actor_only=true and "
+                    "gated recovery requires +warm_start_support_actor_only=true and "
                     "+warm_start_append_zero_policy_obs=true"
                 )
             if not warm_start_append_zero_policy_obs and not warm_start_support_actor_only:
@@ -1907,11 +2573,18 @@ def _run(cfg):
             migrated_weight[:, : old_weight.shape[1]] = old_weight
             actor_state[input_weight_name] = migrated_weight
         expected_missing = {name for name in runtime_state_keys if name.startswith("critic.")}
-        if warm_start_support_actor_only:
+        if target_conditioned_recovery_task:
+            expected_missing.update(
+                name
+                for name in runtime_state_keys
+                if name.startswith("recovery_encoder.")
+                or name.startswith("recovery_adapter.")
+            )
+        elif warm_start_support_actor_only:
             expected_missing = {
                 name for name in runtime_state_keys if name.startswith("critic.")
             }
-            if wide_stagger_recovery_task:
+            if gated_recovery_task:
                 expected_missing.update(
                     name
                     for name in runtime_state_keys
@@ -1989,13 +2662,16 @@ def _run(cfg):
             raise RuntimeError("append-zero actor migration did not widen both actor and observation normalizer")
         runner.obs_normalizer.load_state_dict(actor_norm_state)
         equivalence_max_abs = None
-        if wide_stagger_recovery_task and warm_start_support_actor_only:
+        if (
+            (gated_recovery_task and warm_start_support_actor_only)
+            or target_conditioned_recovery_task
+        ):
             policy = runner.alg.policy
             if any(
                 torch.count_nonzero(value).item() != 0
                 for value in policy.recovery_adapter.state_dict().values()
             ):
-                raise RuntimeError("V23 recovery adapter is not exactly zero after warm start")
+                raise RuntimeError("gated recovery adapter is not exactly zero after warm start")
             with torch.no_grad():
                 probe = torch.linspace(
                     -1.0,
@@ -2003,6 +2679,12 @@ def _run(cfg):
                     steps=4 * policy.recovery_total_obs_dim,
                     device=agent_cfg.device,
                 ).reshape(4, policy.recovery_total_obs_dim)
+                if target_conditioned_recovery_task:
+                    # The motion-3 brace and P11 motion-1 bootstrap are
+                    # intentional baseline changes. Verify zero learned-
+                    # residual equivalence on an untouched P3 motion instead
+                    # of falsely treating either support prior as drift.
+                    probe[:, -2] = 0.0
                 expected_action = policy.base_action_mean(
                     probe[:, : policy.BASE_OBS_DIM]
                 )
@@ -2012,11 +2694,12 @@ def _run(cfg):
                 )
             if equivalence_max_abs >= 1.0e-6:
                 raise RuntimeError(
-                    "V23 model_1499 zero-adapter equivalence failed: "
+                    "gated recovery zero-adapter equivalence failed: "
                     f"max_abs={equivalence_max_abs:.9g}"
                 )
             print(
-                "[train.py] V23 model_1499 zero-adapter equivalence passed: "
+                "[train.py] gated recovery zero-residual equivalence passed "
+                "outside motion-1/motion-3 braces: "
                 f"max_abs={equivalence_max_abs:.3e}",
                 flush=True,
             )
@@ -2102,7 +2785,9 @@ def _run(cfg):
             "fixed_arm_exploration_std": (
                 runner.alg.policy.fixed_arm_std if frozen_support_task else None
             ),
-            "frozen_actor_observation_normalizer": wide_stagger_recovery_task,
+            "frozen_actor_observation_normalizer": (
+                gated_recovery_task or target_conditioned_recovery_task
+            ),
             "reset": ["critic", "critic_observation_normalizer", "optimizer", "iteration"],
         }
         Path(log_dir, "params", "warm_start.json").parent.mkdir(parents=True, exist_ok=True)
@@ -2306,10 +2991,10 @@ def _run(cfg):
                 "recovery_adapter, v22_support_adapter, all_coordinator, stage_a"
             )
         if recovery_center_decay_steps > 0 and (
-            not audit_policy_action or not wide_stagger_recovery_task
+            not audit_policy_action or not gated_recovery_task
         ):
             raise ValueError(
-                "audit_recovery_center_decay_steps requires a V23 policy audit"
+                "audit_recovery_center_decay_steps requires a gated recovery policy audit"
             )
         if abs(stage_a_front_gain - 1.0) > 1.0e-9 and (
             not audit_policy_action or not stagger_support_task
@@ -2325,15 +3010,15 @@ def _run(cfg):
                 "Do not combine audit_stage_a_front_gain with center-decay audits"
             )
         if abs(recovery_adapter_scale - 1.0) > 1.0e-9:
-            if not audit_policy_action or not wide_stagger_recovery_task:
+            if not audit_policy_action or not gated_recovery_task:
                 raise ValueError(
-                    "audit_recovery_adapter_scale requires a V23 policy audit"
+                    "audit_recovery_adapter_scale requires a gated recovery policy audit"
                 )
             with torch.no_grad():
                 for parameter in runner.alg.policy.recovery_adapter.parameters():
                     parameter.mul_(recovery_adapter_scale)
             print(
-                "[train.py] V23 audit-only recovery adapter scale="
+                "[train.py] gated recovery audit-only adapter scale="
                 f"{recovery_adapter_scale:g}",
                 flush=True,
             )
@@ -2425,11 +3110,17 @@ def _run(cfg):
                 flush=True,
             )
         env.reset()
-        ids = (
-            support_candidate_ids
-            if support_candidate_ids is not None
-            else torch.arange(cases, device=raw.device) % motion.motion.num_motions
-        )
+        if support_candidate_ids is not None:
+            ids = support_candidate_ids
+        elif motion.cfg.fixed_motion_id is not None:
+            # A focused recovery task must audit the same route it trains.
+            # The historical audit fan-out remains the default for ordinary
+            # multi-motion tasks.
+            ids = torch.full(
+                (cases,), int(motion.cfg.fixed_motion_id), dtype=torch.long, device=raw.device
+            )
+        else:
+            ids = torch.arange(cases, device=raw.device) % motion.motion.num_motions
         fd_variant = torch.arange(cases, device=raw.device) // motion.motion.num_motions
         fd_action_index = torch.where(
             fd_variant > 0,
@@ -2535,9 +3226,15 @@ def _run(cfg):
             "waist_roll_joint",
             "waist_pitch_joint",
             "left_hip_pitch_joint",
+            # The P11 bootstrap brace and recovery adapter have direct
+            # authority over both hip-roll joints.  Keep them in every full
+            # recovery trace: leaving them out makes a tilt failure impossible
+            # to attribute to the causal lateral-support commands.
+            "left_hip_roll_joint",
             "left_knee_joint",
             "left_ankle_pitch_joint",
             "right_hip_pitch_joint",
+            "right_hip_roll_joint",
             "right_knee_joint",
             "right_ankle_pitch_joint",
             "right_shoulder_pitch_joint",
@@ -2629,7 +3326,7 @@ def _run(cfg):
                         )
                         preview_adapter_action.zero_()
                         preview_adapter_action[:, :15] = preview_delta
-                    if wide_stagger_recovery_task:
+                    if gated_recovery_task:
                         normalized = runner.obs_normalizer(observation)
                         recovery_policy = runner.alg.policy
                         recovery_base_action = recovery_policy.base_action_mean(
@@ -3626,7 +4323,7 @@ def _run(cfg):
                         ),
                     }
                 )
-            if wide_stagger_recovery_task:
+            if gated_recovery_task:
                 row.update(
                     {
                         "recovery_center_decay_steps": recovery_center_decay_steps,
@@ -3746,7 +4443,37 @@ def _run(cfg):
         env.close()
         return
 
-    runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
+    # Natural-prefix P0 deliberately starts every environment from the formal
+    # fresh reset.  The same restriction is mandatory for paired target
+    # identification: siblings must traverse the identical motion phase, or
+    # their difference is dominated by reference-swing timing rather than the
+    # external target delta.
+    paired_target_identification = False
+    fixed_motion_recovery = False
+    if hasattr(env.unwrapped, "command_manager"):
+        try:
+            raw_command_manager = env.unwrapped.command_manager
+            paired_target_identification = bool(
+                raw_command_manager.get_term("racket_target").cfg.adapter_external_paired
+            )
+            # A fixed recovery route is a single full-trajectory contract.
+            # It must begin at the formal READY state; sampling a random
+            # internal phase would remove the very pre-hit brace that makes
+            # the tail physically reachable.
+            fixed_motion_recovery = (
+                raw_command_manager.get_term("motion").cfg.fixed_motion_id
+                is not None
+            )
+        except (KeyError, ValueError):
+            pass
+    runner.learn(
+        num_learning_iterations=agent_cfg.max_iterations,
+        init_at_random_ep_len=(
+            not natural_prefix_recovery
+            and not paired_target_identification
+            and not fixed_motion_recovery
+        ),
+    )
     env.close()
 
 

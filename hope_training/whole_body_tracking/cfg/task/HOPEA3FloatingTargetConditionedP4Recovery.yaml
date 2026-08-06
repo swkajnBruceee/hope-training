@@ -1,0 +1,44 @@
+# P4: retain P3's verified local target response and train a READY-to-tail
+# lower-body recovery residual around the audited motion-3 brace. Launch with
+# the P3 model_202 checkpoint using warm_start_actor_only +
+# warm_start_append_zero_policy_obs.
+defaults:
+  - HOPEA3FloatingTargetConditionedCoordinatorTrain
+  - _self_
+
+name: HOPEA3FloatingTargetConditionedP4Recovery
+gym_task: HOPE-FloatingTargetConditionedRecovery-AgibotA3-v0
+experiment_name: agibot_a3_floating_target_conditioned_p4_recovery
+
+env:
+  # The recovery objective needs the uninterrupted V26 tail, not P3's
+  # target-identification horizon that stopped shortly after impact.
+  episode_length_s: 6.5
+
+rewards:
+  # Keep P3's paired target terms as regression metrics.  The trainable
+  # branch is lower-body only, so P3's arm target path remains frozen while
+  # the brace can establish support before impact.
+  post_hit_forward_velocity_deadband_l2_weight: -20.0
+  post_hit_pitch_rate_deadband_l2_weight: -12.0
+  post_hit_capture_point_center_l2_weight: -35.0
+  post_hit_capture_point_barrier_l2_weight: -120.0
+  post_hit_capture_point_center_progress_weight: 6.0
+
+  post_strike_root_tilt_weight: -30.0
+  post_strike_recovery_progress_weight: 2.0
+  post_strike_root_linear_velocity_l2_weight: -8.0
+  post_strike_root_angular_velocity_l2_weight: -8.0
+  post_strike_root_height_deficit_weight: -50.0
+  post_strike_both_feet_contact_weight: 4.0
+  post_strike_ready_weight: 4.0
+  fall_weight: -300.0
+  alive_weight: 2.0
+
+  stagger_capture_point_margin_l2_weight: -60.0
+  stagger_lateral_capture_point_margin_l2_weight: -60.0
+  stagger_minimum_foot_load_weight: 5.0
+  stagger_sagittal_span_l2_weight: -30.0
+  stagger_lateral_span_l2_weight: -30.0
+  root_position_drift_weight: -1.0
+  feet_slip_weight: -4.0

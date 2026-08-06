@@ -1,0 +1,69 @@
+name: HOPEA3FixedBaseTargetAdapter
+gym_task: HOPE-FixedBaseTargetAdapter-AgibotA3-v0
+experiment_name: agibot_a3_fixed_base_target_adapter_p1_motion_conditioned
+registry_name: local:eval_outputs/v27_bent_ready/motion_package_b/manifest.json
+motion_manifest: eval_outputs/v27_bent_ready/motion_package_b/manifest.json
+manifest_subset_size: 6
+manifest_frame_z_offset: 0.76
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  episode_length_s: 2.20
+
+actions:
+  # Public PPO contract: right-arm adapter only.  The frozen anchor actor
+  # This is the exact 56-D model_900 used by the fixed-base target-response
+  # audit. It is a frozen anchor actor, not the trainable adapter.
+  upper_checkpoint: /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-24_22-00-32_backhand_strike_only_v1_shoulders_lead12_res025_clip050_3000it/model_900.pt
+  raw_clip: 1.0
+  adapter_raw_clip: 0.5
+  adapter_scale_rad: [0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10]
+  adapter_ramp_in_steps: 10
+  adapter_ramp_out_steps: 8
+  # PPO only trims the calibrated Cartesian feedforward.  Full-scale residual
+  # training previously destroyed its useful response within a few updates.
+  adapter_policy_residual_gain: 0.10
+
+rewards:
+  # Incremental target displacement is the P0 primary signal.
+  # The legacy exponential terms stay registered for comparison but are not
+  # part of P0-v6 optimization; dense normalized Smooth-L1 owns the signal.
+  racket_incremental_position_weight: 0.0
+  racket_incremental_position_std: 0.012
+  racket_incremental_direction_weight: 0.0
+  # Do not let the frozen anchor's absolute placement bias dominate P0.
+  racket_position_weight: 0.0
+  racket_position_y_weight: 0.0
+  racket_position_fine_weight: 0.0
+  racket_position_y_fine_weight: 0.0
+  racket_hit_coupled_weight: 0.0
+  racket_velocity_weight: 0.5
+  racket_normal_weight: 0.5
+  # The environment contract already demotes the inherited motion prior to 20%.
+  motion_scale: 1.0
+
+racket:
+  target_mode: manifest
+  manifest_nominal_probability: 1.0
+  adapter_external_offset_half_range: [0.01, 0.01, 0.01]
+  adapter_external_zero_probability: 0.20
+  adapter_external_paired: true
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  # Paired P0 samples share an identical impact time; otherwise their
+  # difference measures trajectory phase, not target response.
+  strike_time_std_s: 0.0
+
+motion:
+  sample_random_start_phase: false
+  hold_last_frame_steps: 20
+  return_to_default_steps: 20
+  reset_to_default_pose: false
+
+domain_rand:
+  pd_gain_range: null

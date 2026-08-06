@@ -1,0 +1,10 @@
+# Legacy 10-action P5U contract with the external fall-assist event removed.
+# This is kept separate so model_1499 checkpoints (10 action outputs) can be
+# replayed without being widened to the 14-action microstep contract.
+defaults:
+  - HOPEA3FloatingUnifiedUpperReferenceTracker
+  - _self_
+
+name: HOPEA3FloatingUnifiedUpperReferenceTrackerNoAssist
+gym_task: HOPE-FloatingUnifiedUpperReferenceTrackerNoAssist-AgibotA3-v0
+motion_manifest: eval_outputs/forehand_slow_no_stop_v1/manifest_rescaled.json

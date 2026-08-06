@@ -1,0 +1,38 @@
+# P5D low-level execution layer.  This task consumes R-class safe-reference
+# manifests and trains only reference -> actual tracking.  It neither learns
+# canonical-goal-to-trajectory generation nor activates any legacy target
+# adapter/control-anchor/motion-specific feed-forward path.
+defaults:
+  - _self_
+
+name: HOPEA3FloatingReferenceTrackerP5D
+gym_task: HOPE-FloatingReferenceTracker-AgibotA3-v0
+experiment_name: agibot_a3_p5d_reference_tracker
+
+env:
+  # Full reference swing and recovery.  The manifest is passed at launch so
+  # R data can grow without changing the tracker task contract.
+  episode_length_s: 6.5
+
+motion:
+  # The first P5D curriculum is deliberately R-only: in the current P1
+  # materialized package index 3 is the oracle-validated P5 reference.  Do
+  # not silently mix the legacy, not-yet-R-qualified motions into this stage.
+  fixed_motion_id: 3
+  manifest_balance_strokes: false
+
+rewards:
+  # Keep the dense reference terms primary; the hit terms are deliberately
+  # broad initially because the first curriculum starts outside final capture.
+  reference_joint_position_weight: 3.0
+  reference_joint_velocity_weight: 1.5
+  racket_position_weight: 8.0
+  racket_position_fine_weight: 2.0
+  racket_velocity_weight: 3.0
+  racket_normal_weight: 2.0
+  racket_hit_coupled_weight: 1.0
+  action_residual_l2_weight: -0.01
+  joint_limit_weight: -20.0
+  feet_slip_weight: -1.0
+  fall_weight: -150.0
+  alive_weight: 1.0

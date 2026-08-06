@@ -1,0 +1,44 @@
+# V29-P0 Natural-Prefix Recovery Training.
+#
+# This config does not load or restore a snapshot. It runs fresh-reset
+# natural-contact trajectories and stores only recovery-window transitions.
+defaults:
+  - task: HOPEA3JointCoordinatorV28BentReadyRecenter
+  - algo: ppo_joint_coordinator
+  - _self_
+
+# The first eligible sample is after prelude + hit + min_post_hit_steps
+# (approximately 50 + 30 + 10 control steps). Keep one complete rollout able
+# to reach recovery instead of asking PPO to update from an empty prefix.
+algo:
+  runner:
+    num_steps_per_env: 128
+
+headless: true
+device: cuda:0
+seed: 20260729
+
+natural_prefix_recovery: true
+natural_recovery_phase_mode: phase_balanced
+natural_recovery_min_post_hit_steps: 10
+natural_recovery_early_max_post_hit_steps: 30
+natural_recovery_mid_max_post_hit_steps: 80
+
+num_envs: 256
+max_iterations: 300
+logger: tensorboard
+run_name: v29_p0_natural_prefix
+resume: false
+checkpoint: null
+motion_file: null
+motion_manifest: null
+manifest_subset_size: null
+manifest_frame_z_offset: null
+registry_name: null
+video: false
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: outputs/v29_natural_prefix
