@@ -1,0 +1,29 @@
+# P5D starts as a low-noise residual tracker around safe references.  This is
+# deliberately separate from high-level goal-conditioned PPO configurations.
+name: ppo_p5d_reference_tracker
+
+runner:
+  num_steps_per_env: 64
+  max_iterations: 4000
+  save_interval: 100
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [512, 256, 128]
+  critic_hidden_dims: [512, 256, 128]
+  activation: elu
+  init_noise_std: 0.05
+
+algorithm:
+  learning_rate: 0.0003
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.001
+  num_learning_epochs: 4
+  num_mini_batches: 4
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0

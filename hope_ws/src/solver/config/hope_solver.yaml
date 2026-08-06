@@ -1,0 +1,28 @@
+solver:
+  ros__parameters:
+    ball_rigid_body_name: "pingpong_ball"
+    # Primary competition/deployment input. The planner also keeps /poses as a
+    # backwards-compatible fallback for aggregate mocap relays.
+    ball_topic: "/ball/point"
+    # ball_pose_index: fallback slot in the /poses PoseArray when using legacy aggregate input.
+    ball_pose_index: 0
+    pre_aim_strike_topic: "/ball/predicted_strike"
+    strike_adjust_topic: "/ball/post_bounce_predicted_strike"
+    x_hit: 0.0              # virtual hit plane X (m); ~0.0 = HOPE origin end of table
+    target_land_x: 2.055   # opponent half-center X (fixed by table geometry)
+    target_land_y: -0.7625 # opponent half-center Y (fixed by table geometry)
+    target_land_z: 0.0     # target point on table surface
+    delta_t_flight: 0.5    # desired return flight time (s); tune for your robot
+    decision_topic: "/target_decision"
+    hit_state_topic: "/hit/state"
+    desired_ball_speed: -1.0
+    max_ball_out_speed: -1.0
+    max_racket_speed: 6.0
+    net_clearance_margin: 0.03
+    # Current no-spin model parameters:
+    # a_drag = -drag_k * |v| * v, table bounce uses beta_table/e_table, and
+    # racket impact uses e_racket. Magnus/spin is intentionally ignored here.
+    drag_k: 0.09375
+    restitution_h: 0.649
+    restitution_v: 0.906
+    restitution_racket: 0.842

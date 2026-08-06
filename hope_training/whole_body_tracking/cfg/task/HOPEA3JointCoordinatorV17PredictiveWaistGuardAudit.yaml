@@ -1,0 +1,15 @@
+# Isolate the confirmed q/qdot waist-boundary failure before changing the
+# preview representation or restarting coordinator PPO.  The preview remains
+# present for checkpoint compatibility, but this task does not make it a
+# training claim.
+defaults:
+  - HOPEA3JointCoordinatorV16AnticipatorySupportP0
+  - _self_
+
+name: HOPEA3JointCoordinatorV17PredictiveWaistGuardAudit
+
+actions:
+  # At 50 Hz, eight control steps predict 160 ms ahead.  The guard only acts
+  # when measured q + horizon*qdot would leave the existing inner soft range.
+  waist_soft_limit_prediction_horizon_steps: 8
+  waist_soft_limit_velocity_brake_gain: 8.0

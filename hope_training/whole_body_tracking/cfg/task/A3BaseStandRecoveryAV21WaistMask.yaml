@@ -1,0 +1,17 @@
+name: A3BaseStandRecoveryAV21WaistMask
+gym_task: A3BaseStandRecoveryAV21WaistMask-v0
+experiment_name: a3_base_stand_recovery_a_v21_waist_mask
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - _self_
+
+env:
+  num_envs: 64
+  env_spacing: 2.5
+  episode_length_s: 10.0
+
+sim:
+  dt: 0.005
+  decimation: 4

@@ -1,0 +1,9 @@
+std_msgs/Header header
+geometry_msgs/Point target_land
+float64 delta_t_flight
+float64 desired_ball_speed
+float64 max_ball_out_speed
+float64 max_racket_speed
+float64 net_clearance_margin
+bool valid
+string mode

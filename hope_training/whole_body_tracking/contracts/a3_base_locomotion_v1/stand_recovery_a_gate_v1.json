@@ -1,0 +1,309 @@
+{
+  "schema_version": 1,
+  "gate_id": "a3_base_stand_recovery_a_gate_v1",
+  "date": "2026-07-21",
+  "scope": "Recovery-A reset disturbance, reward-v3, and bounded PPO eligibility",
+  "simulation_only": true,
+  "disturbance_candidate": {
+    "undisturbed_episode_fraction": 0.35,
+    "disturbed_episode_fraction": 0.65,
+    "root_roll_pitch_range_rad": [-0.035, 0.035],
+    "root_roll_pitch_angular_velocity_range_rad_s": [-0.2, 0.2],
+    "actor_observes_disturbance_mask": false,
+    "action": "Base14 non-integrating bounded residual around passive nominal",
+    "transport": "zoh"
+  },
+  "approved_recovery_envelope": {
+    "name": "B_core_only",
+    "decision_path": "contracts/a3_base_locomotion_v1/stand_recovery_envelope_decision_v1.json",
+    "decision_sha256": "d77348028f6e10efe84d6483cf1cee55906c0ac798531fbc86abaf0c77ce3183",
+    "dwell_s": 0.3,
+    "hysteresis_ratio": 1.25,
+    "hard_recovery_metrics": [
+      "abs_pelvis_roll_rad",
+      "abs_pelvis_pitch_rad",
+      "abs_root_angular_velocity_x_rad_s",
+      "abs_root_angular_velocity_y_rad_s",
+      "abs_root_linear_velocity_x_m_s",
+      "abs_root_linear_velocity_y_m_s",
+      "abs_base_height_error_m"
+    ],
+    "raw_waist_ankle_velocity_role": "quality_only",
+    "rms_200ms_waist_ankle_velocity_role": "quality_only",
+    "upper_profile_role": "diagnostic_only"
+  },
+  "evidence": {
+    "passive_baseline": {
+      "path": "artifacts/a3_base_stand/recovery_a_passive_baseline_v1.json",
+      "sha256": "0d4c4f4afefb3f6456e63cbf9cae60831f6483d304b80acc2046075f2ebf7f27"
+    },
+    "reward_v3_audit": {
+      "path": "artifacts/a3_base_stand/recovery_reward_v3_audit_v1.json",
+      "sha256": "f213e9651fff8a26e9518e24c876fbd72d58bf9af8e8e8d9149eae0535929355"
+    },
+    "paired_disturbance_trace": {
+      "path": "artifacts/a3_base_stand/recovery_disturbance_trace_v1.npz",
+      "sha256": "9b1e2084d3226d89a3bdade90263d1832e33e42f007366f77ae9555d01a99eee"
+    },
+    "paired_disturbance_trace_manifest": {
+      "path": "artifacts/a3_base_stand/recovery_disturbance_trace_v1.json",
+      "sha256": "12f27eaf84e7ef990eb585af69c249b3fd9b666e7754c92c5221bc084bd34047"
+    },
+    "runner_initialization_audit": {
+      "path": "artifacts/a3_base_stand/recovery_runner_initialization_audit_v1.json",
+      "sha256": "8889fe533dd5943eb797be285fc46f2a3d0b0a6bdfe9c19a8f91499ce39c8514"
+    },
+    "recovery_envelope_manual_decision": {
+      "path": "contracts/a3_base_locomotion_v1/stand_recovery_envelope_decision_v1.json",
+      "sha256": "d77348028f6e10efe84d6483cf1cee55906c0ac798531fbc86abaf0c77ce3183"
+    },
+    "untrained_stochastic_safety_audit": {
+      "path": "artifacts/a3_base_stand/recovery_untrained_safety_audit_v1.json",
+      "sha256": "0184d6d8a04d5f656aa5eae56ba0b0c4873fd9ef42c1f1832fae5b72a4cb00bd"
+    },
+    "windowed_untrained_stochastic_safety_audit": {
+      "path": "eval_outputs/recovery_untrained_safety_window100_std0003125_medium_pairs32_20260721.json",
+      "sha256": "9539f3a20d2d95eb437d91b3c9afa076d6f61bf23f9e55853115cfab3510434d"
+    },
+    "recovery_a_model99_causal_intervention": {
+      "path": "eval_outputs/recovery_a_causal_intervention_model99_20260721.json",
+      "sha256": "00acfca2ab0b2563024a33b2bdc63f5a707382a33cae42a0468d69533db41c10"
+    },
+    "recovery_a_v2_scale_causal_intervention": {
+      "path": "eval_outputs/recovery_a_v2_scale_causal_model99_20260721.json",
+      "sha256": "18f7f3eddcaca8b031e7cab81eaf12313f941bce1f04d552e251b6299c947454"
+    },
+    "recovery_a_v2_waist_mask_causal_intervention": {
+      "path": "eval_outputs/recovery_a_v2_waist_mask_causal_model99_20260721.json",
+      "sha256": "30bf922c5cd34331282676c3f3f889d85deb98d7f1fff7191e61aa60a22ab300"
+    },
+    "recovery_a_v21_model0_causal_intervention": {
+      "path": "eval_outputs/recovery_a_v21_model0_causal_20260721.json",
+      "sha256": "f25a7b76cffb2c27427d936277ddc9df221c5047456ac9867ee2755f141891d2"
+    },
+    "recovery_a_v21_model39_causal_intervention": {
+      "path": "eval_outputs/recovery_a_v21_model39_causal_20260721.json",
+      "sha256": "a7e800927c8f47f2de26ab012d3d65214e6e38d5b403f5db52d7a1608dffbc54"
+    }
+  },
+  "evidence_summary": {
+    "passive_timeout_success": {
+      "undisturbed": 1.0,
+      "disturbed": 1.0
+    },
+    "strict_recovery": {
+      "tilt_rad": 0.01,
+      "angular_velocity_rad_s": 0.05,
+      "disturbed_recovered_fraction": 0.85326087474823,
+      "recovery_time_median_s": 2.1599998474121094,
+      "recovery_time_mean_s": 3.0085349082946777,
+      "interpretation": "measurable recovery-time headroom exists, but the strict envelope is not yet calibrated against clean steady-state statistics"
+    },
+    "reward_v3": {
+      "clean_zero_action_term": 0.0,
+      "clean_raw_action_0_1_term": -0.0005600000149570405,
+      "progress_reset_leakage": 0.0,
+      "progress_second_step_measured": 0.00014816626207903028,
+      "progress_second_step_expected": 0.00014816626207903028
+    },
+    "runner_initialization": {
+      "full_observation_normalization_actor_mean_max_abs": 0.0,
+      "init_noise_std": 0.15,
+      "sampled_clip_fraction": 0.09508071094751358,
+      "sample_count": 200000
+    },
+    "recovery_envelope": {
+      "approved": true,
+      "name": "B_core_only",
+      "dwell_s": 0.3,
+      "hysteresis_ratio": 1.25,
+      "clean_tail_inside_fraction": 0.9965,
+      "threshold_sensitivity_material": false,
+      "difficulty_order": [
+        "candidate",
+        "medium",
+        "upper"
+      ],
+      "interpretation": "Core body recovery is approved; raw and 200 ms RMS waist/ankle velocities remain non-gating quality metrics."
+    },
+    "untrained_stochastic_safety": {
+      "verified": true,
+      "pair_count_per_profile": 32,
+      "policy_steps": 500,
+      "stochastic_steps": 100,
+      "settling_tail_steps": 400,
+      "noise_std": 0.003125,
+      "profiles": [
+        "medium"
+      ],
+      "passive_timeout_fraction": 1.0,
+      "stochastic_timeout_fraction": 1.0,
+      "stochastic_non_timeout_terminations": 0,
+      "survival_safety_verified": true,
+      "recovery_compatibility_verified": false,
+      "stochastic_b_core_transient_recovery_rate": {
+        "medium": 1.0
+      },
+      "sampled_clip_fraction": 0.0,
+      "interpretation": "Windowed stochastic residual is safe under the hard safety criteria; recovery capability remains unapproved and is not required for this gate."
+    },
+    "recovery_a_model99_causal_intervention": {
+      "verified": true,
+      "profiles": ["clean", "low", "medium"],
+      "pair_count_per_mode": 16,
+      "policy_steps": 500,
+      "full_policy_survival_fraction": 1.0,
+      "full_policy_raw_clip_fraction_range": [0.4165, 0.4261],
+      "full_policy_waist_pitch_action_mean_range": [-0.0466, -0.0395],
+      "waist_pitch_mask_survival_fraction": 1.0,
+      "interpretation": "model_99 survives but produces persistent large normalized residuals with substantial raw clipping; waist-pitch masking does not materially reduce tilt, so no causal recovery benefit is verified."
+    },
+    "recovery_a_v21_model39_causal_intervention": {
+      "verified": true,
+      "profiles": ["clean", "low", "medium"],
+      "pair_count_per_mode": 16,
+      "policy_steps": 500,
+      "medium_peak_tilt_improvement_vs_zero": 0.1727,
+      "actor_mean_clip_fraction_range": [0.0003393, 0.0055714],
+      "sampled_raw_exceed_fraction_range": [0.1152, 0.1358],
+      "interpretation": "v2.1 provides a reproducible Medium recovery signal and a clean actor mean, but the stochastic distribution is still too wide for approval."
+    },
+    "recovery_a_v22_std_continuation_audit": {
+      "verified": true,
+      "branches": ["std_0.70", "std_0.50"],
+      "source_checkpoint": "model_39",
+      "std_0.70_final_mean_std": 0.05597,
+      "std_0.50_early_mean_std": 0.03835,
+      "std_0.50_early_sampled_exceed_medium": 0.05214,
+      "std_0.50_final_sampled_exceed_medium": 0.09041,
+      "interpretation": "Reducing std helps, but continuation updates cause mean/action drift and neither tested final checkpoint meets the stochastic and execution-clip gates."
+    },
+    "recovery_a_v23_meanfreeze_std034_causal_intervention": {
+      "path": "eval_outputs/recovery_a_v23_meanfreeze_std034_model48_causal_20260721.json",
+      "sha256": "dfce5b4b802d9910415c0521773203f42f86d03137c5ffded1dbf263c631f82a",
+      "verified": true,
+      "profiles": ["clean", "low", "medium"],
+      "pair_count_per_mode": 8,
+      "policy_steps": 500,
+      "std_mean": 0.0329346,
+      "medium_sampled_exceed_fraction": 0.0098571,
+      "medium_execution_clip_fraction": 0.0020536,
+      "medium_peak_tilt_improvement_vs_zero": 0.1608,
+      "clean_post_healthy_action_rms": 0.06766,
+      "interpretation": "Mean-frozen, entropy-free, bounded-std smoke is stable and preserves the Medium recovery signal; stochastic safety passes, while the clean tail RMS remains above the ideal target."
+    },
+    "recovery_a_v23_smooth_gate_causal_intervention": {
+      "path": "eval_outputs/recovery_a_v23_gate_model48_20260721.json",
+      "sha256": "74c05bea694b2c5609209339ce588fa51a29d0273df1e16b59ff9c81ce662503",
+      "detail_path": "eval_outputs/recovery_a_v23_gate_detail_model48_20260721.json",
+      "detail_sha256": "7c1736981a96756d9c8254e386091d7711fec09c399b3192f198e2a19568f40f",
+      "verified": true,
+      "pair_count_per_mode": 8,
+      "gate_on": 1.25,
+      "gate_off": 0.90,
+      "medium_gate_active_fraction": 0.10225,
+      "medium_smooth_gate_peak_tilt_rad": 0.07462,
+      "medium_zero_peak_tilt_rad": 0.08722,
+      "clean_smooth_gate_action_rms": 0.00362,
+      "interpretation": "Observable-state smooth gating suppresses clean residual while retaining more than 10 percent Medium peak-tilt improvement; larger paired validation remains pending."
+    },
+    "recovery_a_v23_large_scale_validation": {
+      "verified": true,
+      "clean_path": "eval_outputs/recovery_a_v23_large_clean32_20260721.json",
+      "clean_sha256": "807a320ab1c08cc3c31ccb7270febba62832e9ee487e99ff177686121ef4fbdd",
+      "low_path": "eval_outputs/recovery_a_v23_large_low32_20260721.json",
+      "low_sha256": "8144e3706086505dbde7ba242b1cc3645774537f126b6bbaa0d5880f778e7bc4",
+      "medium_path": "eval_outputs/recovery_a_v23_large_medium64_detail_20260721.json",
+      "medium_sha256": "da3c52e6bd3ca320e8e179930d4d8f211b76128338c8fceab95e5ff9abddb367",
+      "counts": {"clean": 32, "low": 32, "medium": 64},
+      "clean_survival": 1.0,
+      "low_survival": 1.0,
+      "medium_survival": 1.0,
+      "medium_smooth_gate_peak_tilt_median_improvement": 0.00064,
+      "medium_smooth_gate_peak_tilt_mean_improvement": -0.00332,
+      "medium_improved_case_fraction": 0.546875,
+      "interpretation": "The frozen smooth gate passes hard safety and Clean suppression, but the Medium recovery improvement does not generalize across the full 64-case paired trace; checkpoint approval remains closed."
+    },
+    "recovery_a_v23_medium_fourway_timing": {
+      "path": "eval_outputs/recovery_a_v23_medium64_fourway_timing_20260721.json",
+      "sha256": "b312c83247fc5f41a8dfc7ede5cec0dc658d40baa80d2bb35a184fece1199875",
+      "verified": true,
+      "pairs": 64,
+      "ungated_actor_median_peak_tilt_improvement": 0.0056,
+      "smooth_gate_median_peak_tilt_improvement": 0.0006,
+      "hard_gate_median_peak_tilt_improvement": 0.0004,
+      "ungated_actor_p95_peak_tilt_improvement": 0.0753,
+      "smooth_gate_cases_with_gate_on": 56,
+      "smooth_gate_mean_lead_time_steps": 65.27,
+      "interpretation": "The ungated actor itself has no stable paired recovery benefit across the full Medium trace; gate suppression is not the sole cause of the failed generalization."
+    }
+  },
+  "pending_before_bounded_ppo": [
+    "keep bounded smoke deterministic and fail-closed",
+    "do not promote the Recovery-A checkpoint to long training or deployment"
+  ],
+  "bounded_smoke_budget": {
+    "max_iterations": 100,
+    "max_num_envs": 64,
+    "required_init_noise_std": 0.15,
+    "raw_action_clip_abs": 0.25
+  },
+  "v2_smoke_budget": {
+    "max_iterations": 100,
+    "max_num_envs": 64,
+    "required_init_noise_std": 0.075,
+    "raw_action_clip_abs": 0.125
+  },
+  "v21_smoke_budget": {
+    "max_iterations": 40,
+    "max_num_envs": 64,
+    "required_init_noise_std": 0.075,
+    "raw_action_clip_abs": 0.125,
+    "save_interval": 5
+  },
+  "v23_smoke_budget": {
+    "max_iterations": 10,
+    "max_num_envs": 64,
+    "required_init_noise_std": 0.075,
+    "raw_action_clip_abs": 0.125,
+    "save_interval": 5
+  },
+  "qualification_status": {
+    "passive_stand_plant_approved": true,
+    "recovery_a_environment_runtime_qualified": true,
+    "recovery_a_passive_baseline_measured": true,
+    "recovery_reward_v3_semantics_approved": true,
+    "recovery_disturbance_contract_approved": true,
+    "recovery_envelope_approved": true,
+    "zero_actor_initialization_implemented": true,
+    "zero_actor_initialization_runtime_verified": true,
+    "untrained_stochastic_survival_safety_verified": true,
+    "untrained_stochastic_recovery_compatibility_verified": false,
+    "untrained_stochastic_policy_safety_verified": true,
+    "recovery_a_smoke_execution_verified": true,
+    "recovery_a_v1_negative_control_archived": true,
+    "recovery_a_learning_signal_verified": false,
+    "recovery_a_v2_training_approved": true,
+    "recovery_a_v2_smoke_execution_verified": true,
+    "recovery_a_v2_learning_signal_verified": false,
+    "recovery_a_v21_training_approved": true,
+    "recovery_a_v21_actor_mean_distribution_verified": true,
+    "recovery_a_v21_learning_signal_verified": true,
+    "recovery_a_v21_stochastic_distribution_verified": false,
+    "recovery_a_v22_training_approved": true,
+    "recovery_a_v22_stochastic_distribution_verified": false,
+    "recovery_a_v23_distribution_control_approved": true,
+    "recovery_a_v23_stochastic_distribution_verified": true,
+    "recovery_a_v23_meanfreeze_smoke_verified": true,
+    "recovery_a_v23_smooth_gate_smoke_verified": true,
+    "recovery_a_v23_clean_tail_suppression_verified": true,
+    "recovery_a_v23_large_scale_validation_verified": false,
+    "recovery_a_v23_hard_safety_verified": true,
+    "recovery_a_v23_generalized_recovery_value_verified": false,
+    "bounded_recovery_smoke_approved": true,
+    "stand_recovery_policy_approved": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  }
+}

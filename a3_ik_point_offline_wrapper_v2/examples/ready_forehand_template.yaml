@@ -1,0 +1,20 @@
+schema_version: a3_ready_state/v2
+ready_id: forehand_source_seed_template
+swing_type: forehand
+verification_status: template_only_not_physx_qualified
+# The right-arm values are the accepted fixed-base forehand seed embedded in
+# ik_point_arm_source.cpp. Lower-body values mirror the Phase0 crouched stance.
+# Replace the entire vector with the exact local forehand post-settle state.
+q_sdk_31:
+  [0.0, 0.0, 0.0,
+   0.0, 0.0,
+   0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+   -1.245926, -0.354023, -1.696661, 0.875103,
+   -0.583579, 0.167723, -0.166605,
+   -0.16, 0.08, 0.0, 0.32, -0.155, 0.0,
+   -0.16, -0.08, 0.0, 0.32, -0.155, 0.0]
+dq_sdk_31:
+  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+   0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+   0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+   0.0]

@@ -1,0 +1,34 @@
+# Backhand-only fixed-base reference-residual PPO.
+# The actor mean is initialized to exact zero by scripts/train.py, so the
+# first deterministic policy is the processed reference replay.
+
+name: ppo_fixed_base_backhand_reference_v1
+
+runner:
+  num_steps_per_env: 64
+  max_iterations: 1000
+  save_interval: 50
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [256, 128, 64]
+  critic_hidden_dims: [256, 128, 64]
+  activation: elu
+  init_noise_std: 0.08
+
+algorithm:
+  # The document recommends testing 3e-3 briefly, then dropping to 1e-3 or
+  # 5e-4 if KL/clipping rises.  Start at the safer 1e-3 for this bounded
+  # 10-DOF residual contract.
+  learning_rate: 0.001
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.001
+  num_learning_epochs: 4
+  num_mini_batches: 4
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0

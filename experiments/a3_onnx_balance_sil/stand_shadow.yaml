@@ -1,0 +1,61 @@
+# Local-SIL ONNX whole-body balance shadow test.
+#
+# This file is intentionally outside the production configs.  It is consumed
+# from a3_deploy_example/dist/a3_deploy_x86_64, so all asset paths are relative
+# to that package directory.  Always use it with --probe: probe mode loads and
+# evaluates the policy but disables every command publisher.
+
+onnx:
+  mode: monolithic
+  model_path: models/model_step_098000_a3.onnx
+  backend: ort_cpu
+  intra_op_num_threads: 1
+  inter_op_num_threads: 1
+
+# Use one static standing reference only.  No walk, turn, or remote clip is
+# admitted in this first gate.
+reference_motion:
+  motion_dir: teleop_motions
+  csv_path: teleop_motions/BMD_0319_a3_filtered_20260319_164305__stand_Skeleton0.csv
+  idle_csv_path: teleop_motions/BMD_0319_a3_filtered_20260319_164305__stand_Skeleton0.csv
+  initial_index: 0
+  source_fps: 30.0
+  csv_frame_stride: 4
+  target_fps: 50.0
+  future_frame_skip: 5
+  on_end: hold_last
+
+# No external teleoperation source is used during the standing shadow gate.
+teleop:
+  enabled: false
+smpl_zmq:
+  enabled: false
+
+policy_driver:
+  policy_enabled: true
+  policy_hz: 50.0
+  phase_align_to_sync: true
+  sync_ready_offset_ms: 0.3
+  warmup_ticks: 150
+  pd_stand_ticks: 150
+  watchdog:
+    max_frame_age_ms: 50.0
+    max_unaligned_frames: 10
+  rt:
+    sched_fifo_priority: 0
+    cpu_affinity: -1
+
+backend:
+  dry_run: false
+  sync_release_margin_ms: 0.25
+  max_group_internal_skew_ms: 0.05
+  max_group_pair_skew_ms: 1.0
+
+logging:
+  # /tmp keeps generated data outside tracked project inputs.
+  dump_ticks: 100
+  dump_path: /tmp/a3_onnx_balance_stand_shadow.bin
+  debug_print_ticks: 0
+  frame_log_interval: 100
+  artificial_infer_delay_ms: 0.0
+  artificial_infer_delay_jitter_ms: 0.0

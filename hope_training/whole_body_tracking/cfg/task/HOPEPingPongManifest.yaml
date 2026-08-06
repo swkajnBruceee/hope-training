@@ -1,0 +1,61 @@
+# =============================================================================
+# HOPE ping-pong WBC task using the balanced multi-motion manifest.
+#
+# This is the deployable command-conditioned path:
+#   actor = proprioception + base-frame strike command
+#   reference motion = reward / critic teacher only
+# =============================================================================
+
+name: HOPEPingPongManifest
+gym_task: HOPE-PingPong-AgibotA3-v0
+experiment_name: agibot_a3_hope_manifest
+
+registry_name: ${oc.env:WANDB_REGISTRY_ORG,your-wandb-org}/wandb-registry-motions/hope_forehand
+motion_manifest: sample_motions/p2_fixed_competition_global_funnel_balanced20/manifest.json
+manifest_subset_size: null
+# HOPE competition frame: z=0 is the table surface, floor is z=-0.76.
+# This tracking-only scene has ground at z=0, so lift the HOPE frame by table height at runtime.
+manifest_frame_z_offset: 0.76
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  # One-strike debug/training episode. Move to 10s only after single-strike WBC is stable.
+  episode_length_s: 2.0
+
+rewards:
+  racket_position_weight: 16.0
+  racket_position_std: 0.06
+  racket_velocity_weight: 4.0
+  racket_velocity_std: 0.5
+  racket_normal_weight: 4.0
+  racket_normal_std: 0.262
+  base_position_weight: 4.0
+  base_position_std: 0.3
+
+  motion_scale: 0.8
+
+  joint_torques_weight: -0.00001
+  action_rate_weight: -0.1
+  joint_limit_weight: -10.0
+  undesired_contacts_weight: -0.1
+
+racket:
+  target_mode: manifest
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  strike_time_std_s: 0.04
+  strike_success_pos_thresh: 0.06
+  strike_success_vel_thresh: 0.8
+  strike_success_normal_thresh_deg: 20.0
+
+  # Manifest mode ignores the old box ranges and reference perturbation fields.
+  ref_perturb_success_gated: false
+
+  forehand_on_negative_y: true
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0

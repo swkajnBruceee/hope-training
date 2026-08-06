@@ -1,0 +1,14 @@
+# Diagnostic-only V10 contract: retain the frozen Stage-A leg prior through
+# the full recovery tail while the upper reference returns to ready.  This
+# isolates whether the V9 tail authority release, rather than PPO capacity,
+# causes the post-return falls.
+defaults:
+  - HOPEA3JointCoordinatorV9RecoveryProgress
+  - _self_
+
+name: HOPEA3JointCoordinatorV10TailSupportAudit
+experiment_name: agibot_a3_joint_coordinator_v10_tail_support_audit_20260727
+
+actions:
+  phase_gate_tail_release_steps: 0
+  ready_hold_residual_release_steps: 0

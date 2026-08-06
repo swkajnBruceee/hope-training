@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "gate_id": "a3_base_stand_authority_candidate_gate_v1",
+  "purpose": "one_variable_waist_pitch_authority_smoke_only",
+  "task": "A3BaseStandAuthorityCandidate-v0",
+  "simulation_only": true,
+  "authorized_max_iterations": 100,
+  "authorized_max_num_envs": 64,
+  "candidate_override": {
+    "joint_name": "waist_pitch_joint",
+    "stiffness_nm_per_rad": 350.0,
+    "damping_nms_per_rad": 7.0,
+    "source": "existing_project_blend_50_profile_and_free_base_working_point_scan"
+  },
+  "unchanged_from_stand_v0": [
+    "leg_and_waist_roll_actuators",
+    "action_scale",
+    "normalized_action_clip_abs_0.25",
+    "observations",
+    "rewards",
+    "terminations",
+    "zero_commands",
+    "no_randomization",
+    "no_strike_reference"
+  ],
+  "local_evidence": {
+    "authority_audit_path": "artifacts/a3_base_stand/stand_authority_candidate_audit_v1.json",
+    "authority_audit_sha256": "52d8180e5c5da07895af6f49233ab416f6da1b7d3877da20b9e5af1a16b6533a",
+    "waist_scan_path": "artifacts/a3_base_stand/waist_pitch_scan_kp350_kd7_v1.json",
+    "waist_scan_sha256": "624f018bc687a023112ec218f075b22c3d0b1e91dec1c60d03ac05bc01f85410"
+  },
+  "qualification_status": {
+    "stand_authority_candidate_smoke_approved": true,
+    "candidate_gain_contract_approved": false,
+    "stand_phase1_qualified": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  },
+  "promotion_rule": "compare deterministic 500-step evaluation against Stand v0 model_99; this gate cannot promote the gain or any later phase"
+}

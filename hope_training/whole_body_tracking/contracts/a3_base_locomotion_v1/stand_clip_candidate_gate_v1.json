@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "gate_id": "a3_base_stand_clip_candidate_gate_v1",
+  "purpose": "one_variable_normalized_action_authority_smoke_only",
+  "task": "A3BaseStandClipCandidate-v0",
+  "simulation_only": true,
+  "authorized_max_iterations": 100,
+  "authorized_max_num_envs": 64,
+  "candidate_override": {
+    "normalized_action_clip_abs": 0.5,
+    "previous_value": 0.25,
+    "schema_range_abs": 1.0,
+    "waist_pitch_max_residual_rad": 0.07,
+    "composer_waist_pitch_limit_rad": 0.12
+  },
+  "unchanged_from_stand_v0": [
+    "all_actuator_gains",
+    "action_scale",
+    "observations",
+    "rewards",
+    "terminations",
+    "zero_commands",
+    "no_randomization",
+    "no_strike_reference"
+  ],
+  "local_evidence": {
+    "clip_audit_path": "artifacts/a3_base_stand/stand_clip_candidate_audit_v1.json",
+    "clip_audit_sha256": "951a0f5ca33e853246878d5569da1969a7ad1091a7e199cd494d413e2aa5208c",
+    "v1_checkpoint_eval_path": "artifacts/a3_base_stand/model_99_eval_v3_action_diagnostics.json",
+    "v1_checkpoint_eval_sha256": "edade633f18726bd530ad46fc53de0eb31ba5e4c5a9eff24595578fbcb10bbed"
+  },
+  "qualification_status": {
+    "stand_clip_candidate_smoke_approved": true,
+    "candidate_action_contract_approved": false,
+    "stand_phase1_qualified": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  },
+  "promotion_rule": "compare a fresh deterministic 500-step evaluation against Stand v0 model_99; this gate cannot promote the clip or any later phase"
+}

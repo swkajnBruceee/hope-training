@@ -1,0 +1,11 @@
+# Single-variable audit: preserve the exact legacy linear prelude and enable
+# only the already-validated predictive waist guard during that phase.
+defaults:
+  - HOPEA3JointCoordinatorV17PredictiveWaistGuardAudit
+  - _self_
+
+name: HOPEA3JointCoordinatorV18LegacyPreludeGuardAudit
+
+actions:
+  waist_soft_limit_guard_in_prelude: true
+  waist_soft_limit_enforce_inner_limit: true

@@ -1,0 +1,29 @@
+{
+  "schema_version": "fall_threshold_calibration/v1",
+  "status": "PENDING_ANNOTATED_DATA_AND_INDEPENDENT_SEED",
+  "coordinate_frame": "initial_base_heading_v1",
+  "units": {
+    "tilt": "rad",
+    "angular_rate": "rad/s",
+    "height": "m",
+    "capture_margin": "m",
+    "velocity": "m/s",
+    "steps": "control steps at 50 Hz"
+  },
+  "source_trace_schema": "fall_trace_annotation/v1",
+  "required_calibration_metrics": [
+    "warning_forward_tilt",
+    "emergency_forward_tilt",
+    "hard_tilt",
+    "warning_pitch_rate",
+    "emergency_pitch_rate",
+    "relative_root_height_warning",
+    "relative_root_height_hard",
+    "capture_margin_warning",
+    "capture_margin_emergency",
+    "contact_confirmation_duration",
+    "fall_debounce_steps",
+    "recovery_ready_hold_steps"
+  ],
+  "independent_seed_required": true
+}

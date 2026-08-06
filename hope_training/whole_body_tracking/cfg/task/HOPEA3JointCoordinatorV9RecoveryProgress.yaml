@@ -1,0 +1,14 @@
+# V9 adds an outcome-only recovery-progress signal to the V8 pre-fall safety
+# contract.  It remains one 22-D joint coordinator around the two frozen
+# priors; no leg-only or upper-only training path is introduced.
+defaults:
+  - HOPEA3JointCoordinatorV8PreFall
+  - _self_
+
+name: HOPEA3JointCoordinatorV9RecoveryProgress
+experiment_name: agibot_a3_joint_coordinator_v9_recovery_progress_20260727
+
+rewards:
+  post_strike_root_tilt_weight: -12.0
+  post_strike_recovery_progress_weight: 0.75
+  fall_weight: -75.0

@@ -1,0 +1,33 @@
+# Deterministic qualification contract for the first safe full-cycle variant.
+# It preserves V12 through impact, then decouples waist recovery from arm
+# completion.  This file is intentionally audit-only until a candidate passes
+# all six motions through natural timeout.
+defaults:
+  - HOPEA3JointCoordinatorV12RecoveryCurriculumStage1
+  - _self_
+
+name: HOPEA3JointCoordinatorV15SplitPostHitContractAudit
+experiment_name: agibot_a3_joint_coordinator_v15_split_post_hit_contract_20260727
+
+actions:
+  # Keep V2/model_900's pre-hit contract exactly intact.  At impact, the
+  # frozen waist residual fades while the coordinator waist correction stays
+  # available for balance.
+  upper_policy_waist_post_hit_release_steps: 6
+
+  # Begin a continuous waist return at impact.  No position/velocity jump is
+  # introduced: both use the same quintic minimum-jerk profile.
+  waist_post_hit_settle_steps: 0
+  waist_post_hit_return_steps: 50
+  # The source hit pose exceeds the waist-pitch soft limit.  Reserve braking
+  # room before impact instead of relying on a post-impact clamp.
+  waist_soft_limit_margin_rad: 0.04
+  waist_soft_limit_brake_lead_steps: 8
+
+  # The arm is allowed to complete the final source frames, then holds only
+  # briefly before its own smooth recovery.  Frozen arm residuals retire over
+  # this same short tail interval.
+  upper_policy_tail_release_steps: 5
+  coordinator_arm_tail_release_steps: 5
+  arm_tail_hold_steps: 5
+  arm_tail_return_steps: 50

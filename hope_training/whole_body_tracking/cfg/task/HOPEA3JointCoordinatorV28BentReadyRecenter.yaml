@@ -1,0 +1,49 @@
+# Bent-READY return/recenter adaptation.  V25/V26 safety and V27's compact
+# READY bridge are retained; only a new zero-initialized post-hit adapter is
+# trainable.
+defaults:
+  - HOPEA3JointCoordinatorV27BentReady
+  - _self_
+
+name: HOPEA3JointCoordinatorV28BentReadyRecenter
+gym_task: HOPE-FloatingJointCoordinatorV11BentReadyRecovery-AgibotA3-v0
+experiment_name: agibot_a3_joint_coordinator_v28_bent_ready_recenter_20260728
+
+motion:
+  # Baseline first: no unqualified global shortening of the return trajectory.
+  return_to_default_steps: 100
+
+rewards:
+  # Protect the validated V25/V27 impact behavior.  The new V28 terms live in
+  # the return/READY phase and are defined in the V11 environment config.
+  racket_position_weight: 0.50
+  racket_position_y_weight: 0.25
+  racket_position_fine_weight: 0.10
+  racket_velocity_weight: 0.05
+  racket_normal_weight: 0.05
+  racket_hit_coupled_weight: 0.05
+
+  # Recenter and dissipate only after impact; all are symmetric so the agent
+  # cannot exchange forward fall for rearward fall.
+  post_hit_forward_velocity_deadband_l2_weight: -8.0
+  post_hit_pitch_rate_deadband_l2_weight: -6.0
+  post_hit_capture_point_center_l2_weight: -20.0
+  post_hit_capture_point_barrier_l2_weight: -60.0
+  post_hit_capture_point_center_progress_weight: 4.0
+
+  # V25 full-cycle safety terms remain active.
+  post_strike_root_tilt_weight: -30.0
+  post_strike_recovery_progress_weight: 2.0
+  post_strike_root_linear_velocity_l2_weight: -8.0
+  post_strike_root_angular_velocity_l2_weight: -8.0
+  post_strike_root_height_deficit_weight: -50.0
+  post_strike_both_feet_contact_weight: 4.0
+  post_strike_ready_weight: 4.0
+  fall_weight: -300.0
+  alive_weight: 2.0
+
+  # Keep new residuals small; arm corrections are additionally bounded in the
+  # V28 actor to 15% raw authority.
+  coordinator_leg_l2_weight: -0.020
+  coordinator_waist_l2_weight: -0.050
+  coordinator_arm_l2_weight: -0.080

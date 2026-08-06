@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "decision_id": "a3_base_stand_passive_stable_decision_v1",
+  "date": "2026-07-18",
+  "scope": "Phase 1a zero-command Stand and actuator working-point qualification",
+  "simulation_only": true,
+  "evidence_summary": {
+    "normal_gain_static_preload": {
+      "requested_waist_pitch_raw_action": -0.6922106615679151,
+      "inside_v1_clip_abs_0_25": false,
+      "inside_full_schema_abs_1_0": true,
+      "full_schema_validation_steps": 107,
+      "termination": "base_height",
+      "conclusion": "action authority was insufficient under v1 but was not the sole cause"
+    },
+    "passive_gain_ablation_original_contact": {
+      "normal_all_steps": 79,
+      "pd_waist_pitch_only_steps": 100,
+      "pd_waist_steps": 101,
+      "pd_waist_ankles_steps": 101,
+      "pd_base14_steps": 500,
+      "pd_all_steps": 500,
+      "conclusion": "all 14 Base-owned joints require the PD_STAND candidate gains for deterministic passive stability; upper-body gain replacement is unnecessary"
+    },
+    "passive_stable_candidate": {
+      "zero_action_steps": 500,
+      "zero_action_non_timeout_failures": 0,
+      "scripted_and_random_action_runtime_integrity": true,
+      "healthy_reward_per_step": 0.01993362806737423,
+      "non_timeout_termination_penalty": -2.0
+    },
+    "ppo_smokes": {
+      "v1_missing_action_magnitude_clip_fraction": 0.7787299107142858,
+      "v2_action_magnitude_clip_fraction": 0.7593482142857143,
+      "v2_model_0_clip_fraction": 0.5207924107142857,
+      "v3_zero_residual_initialization_clip_fraction": 0.5099821428571428,
+      "all_v3_deterministic_timeout_fraction": 1.0,
+      "conclusion": "zero-command PPO is underdetermined: the plant already stands, while the actor drifts or oscillates without an action-dependent recovery objective"
+    }
+  },
+  "evidence": {
+    "gain_ablation": {
+      "path": "artifacts/a3_base_stand/static_working_point_gain_ablation_original_contact_v1.json",
+      "sha256": "2376f9174f22bef0f6665ab92807ce79b7fee314c52c8d64a7cf74be23292343"
+    },
+    "deterministic_candidate_audit": {
+      "path": "artifacts/a3_base_stand/passive_stable_candidate_audit_v2.json",
+      "sha256": "6bd2cb7e0c00477379d436f5df27b09d6d8a7fc61b0c2dccce0f52fc241154a2"
+    },
+    "reward_v2_audit": {
+      "path": "artifacts/a3_base_stand/passive_stable_reward_v2_audit_v2.json",
+      "sha256": "61397d5b3565d83e5cba5b62e76db3a0b8a8c51ac57cc2d95b9f6cc5c2f0d297"
+    },
+    "v3_checkpoint_eval": {
+      "path": "artifacts/a3_base_stand/passive_stable_model_99_eval_v3.json",
+      "sha256": "155a5c2412275a37da45f4ff4fc4eebfb44f6a00cb04e8877ec575023c272171"
+    },
+    "v3_checkpoint": {
+      "path": "logs/rsl_rl/a3_base_stand_passive_stable_candidate/2026-07-18_23-58-35/model_99.pt",
+      "sha256": "b4cc322ce18bd702165a76b30282c3176046c535916a92c5d278eb8e7880aa38",
+      "accepted": false
+    }
+  },
+  "route_decision": {
+    "keep": [
+      "Base14 PD_STAND simulation candidate gains",
+      "normal upper-body gains",
+      "gain-matched per-joint action scales",
+      "zero-residual actor output initialization",
+      "reward-v2 survival and termination semantics"
+    ],
+    "stop": [
+      "additional PPO on zero-command, zero-disturbance Stand",
+      "promotion of any of the three Stand smoke checkpoints",
+      "deployment or long training"
+    ],
+    "next": [
+      "create a small-disturbance Stand Recovery task with zero velocity commands",
+      "start from exact zero actor mean and add only bounded pelvis wrench/pose perturbations",
+      "retain a non-disturbed evaluation slice to detect regression",
+      "require deterministic 10-second success and raw action clip fraction below 10 percent",
+      "verify the Base14 PD_STAND kp/kd contract is honored by the real actuator backend before deployment"
+    ]
+  },
+  "qualification_status": {
+    "passive_stand_plant_approved": true,
+    "learned_stand_policy_approved": false,
+    "additional_zero_command_ppo_approved": false,
+    "stand_recovery_task_development_approved": true,
+    "stand_recovery_training_approved": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  }
+}

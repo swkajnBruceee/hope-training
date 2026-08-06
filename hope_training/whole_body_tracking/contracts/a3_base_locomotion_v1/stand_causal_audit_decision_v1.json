@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "decision_id": "a3_base_stand_causal_audit_decision_v1",
+  "date": "2026-07-18",
+  "scope": "simulation-only Stand causality, reward, and contact audit",
+  "evidence": {
+    "baseline_causal_reward": {
+      "path": "artifacts/a3_base_stand/causal_reward_audit_baseline_v1.json",
+      "sha256": "c3f426a3a6f1924c3d87b47aa1c9ea3a4962fac166700999ae5eab534947995d",
+      "mean_completed_length_steps": 98.71794871794872,
+      "dominant_failure": "waist_pitch soft/hard-limit chain; right ankle did not reach its hard limit"
+    },
+    "gain_clip_causal_reward": {
+      "path": "artifacts/a3_base_stand/causal_reward_audit_gain_clip_v1.json",
+      "sha256": "1750093ba6711da64e6eb51e87a2d91d9ea7268f65e1799d1b9364376becefab",
+      "mean_completed_length_steps": 102.66666666666667,
+      "dominant_failure": "COM support-margin crossing followed by right ankle actual hard limit or base height"
+    },
+    "gain_clip_waist_frozen": {
+      "path": "artifacts/a3_base_stand/causal_reward_audit_gain_clip_waist_frozen_v1.json",
+      "sha256": "98c6e3bb5d5a8e7112b5d9a769972fb089bdde0a9fbaa5c2140f0c9e184edb06",
+      "mean_completed_length_steps": 100.02777777777777,
+      "conclusion": "policy waist-pitch residual is not a necessary cause of the downstream ankle/height failure"
+    },
+    "current_convex_hull_zero_action": {
+      "path": "artifacts/a3_base_stand/contact_audit_current_convex_hull_v1.json",
+      "sha256": "f8cb82e73e9f4505e0bcc17a8329a98fb9e93a6d56d8033d741d139406faa401",
+      "initial_left_right_vertical_load_fraction": [0.026965302712980695, 0.9730346972870193],
+      "recorded_policy_steps": 79
+    },
+    "conservative_sole_box_zero_action": {
+      "path": "artifacts/a3_base_stand/contact_audit_conservative_sole_box_v1.json",
+      "sha256": "47f84197a98510746173c0d71fd8ee1ee8e391fc7c0984a846f873a4796b8a13",
+      "initial_left_right_vertical_load_fraction": [0.47454737821464216, 0.5254526217853578],
+      "recorded_policy_steps": 78
+    },
+    "gain_clip_sole_box": {
+      "path": "artifacts/a3_base_stand/causal_reward_audit_gain_clip_sole_box_v1.json",
+      "sha256": "6e32f1de80507e106d5fabd829e8a957f99ddc9cea39d7f228e08d2d158e8358",
+      "mean_completed_length_steps": 103.6875,
+      "conclusion": "sole box improves initial load symmetry but does not remove the dynamic ankle/height failure"
+    },
+    "waist_pitch_350_zero_action": {
+      "path": "artifacts/a3_base_stand/zero_action_support_audit_waist350_v1.json",
+      "recorded_policy_steps": 63,
+      "termination": "joint_limit",
+      "last_sampled_waist_roll_rad": 0.3379366099834442,
+      "conclusion": "raising one waist axis moves the zero-action failure to another waist axis"
+    }
+  },
+  "classified_findings": {
+    "right_ankle_chain": "policy target oscillates and reaches its positive action clip, while actual position later diverges to the hard limit; terminal effort is about 17-20 Nm, consistent with the configured 50/2 PD error rather than the 118.2 Nm effort limit",
+    "normal_policy_gain_contract": "50/2 ankle gains match the checked-in A3 normal policy path; 500/5 belongs to PD_STAND and is not an interchangeable Base policy gain",
+    "contact_geometry": "current Isaac URDF import uses convex_hull, not raw triangle-mesh rigid contact; it produces an unexplained initial load asymmetry that a foot-only sole box removes",
+    "reward": "per-term integration matches the returned reward, but there is no explicit termination penalty; immediate auto-reset makes completed-episode return insufficient to prove a preference for 10-second survival",
+    "waist": "neither a single waist-pitch gain increase nor freezing the policy waist-pitch residual establishes a stable plant working point"
+  },
+  "route_revision": {
+    "insert_before_more_ppo": "static_working_point_qualification_v1",
+    "required_work": [
+      "select and version a contact-geometry candidate after static and dynamic symmetry checks",
+      "derive a reachable nominal pose and bounded target offsets under the deployable normal-policy gain contract",
+      "validate zero/scripted target rollouts without hard-limit migration or unexplained contact asymmetry",
+      "add and offline-test an explicit failure/termination reward candidate with Isaac dt semantics",
+      "create a new fail-closed gate before any extended smoke"
+    ],
+    "not_authorized": [
+      "copy PD_STAND gains into the Base policy contract",
+      "increase action clip",
+      "continue per-joint gain enumeration",
+      "run 500-iteration PPO",
+      "start domain randomization, strike support, locomotion, or deployment"
+    ]
+  },
+  "next_ppo_candidate": {
+    "path": "cfg/algo/ppo_a3_base_stand_low_noise_candidate.yaml",
+    "sha256": "39627bdc7ebd39e1ceb49be294e1a9ba4a423e9db67a8bbe0f4e64d58ed3fac1",
+    "init_noise_std": 0.15,
+    "approval": false,
+    "note": "Measured 53% deterministic actor-mean clipping is not attributed solely to stochastic exploration."
+  },
+  "deployment_gain_evidence": {
+    "software_path": "A3PolicyDriver -> ExpandToBackend(a3_kps,a3_kds) -> RobotCommand -> JointCommand stiffness/damping",
+    "normal_policy_kp_kd_are_serialized_to_command_messages": true,
+    "real_hardware_honors_commanded_kp_kd_verified": false,
+    "deployment_gain_contract_frozen": false
+  },
+  "qualification_status": {
+    "causal_timeline_audit_complete": true,
+    "reward_accounting_audit_complete": true,
+    "contact_issue_classified_but_unresolved": true,
+    "static_working_point_approved": false,
+    "additional_ppo_smoke_approved": false,
+    "extended_smoke_approved": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  }
+}

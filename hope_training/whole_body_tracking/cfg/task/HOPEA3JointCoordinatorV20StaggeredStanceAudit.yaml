@@ -1,0 +1,12 @@
+# Deterministic staggered-stance experiment.  This changes only the reset/
+# nominal leg pose: left foot advances and right foot retreats by the same
+# amount, preserving the pelvis work point and strike target geometry.
+defaults:
+  - HOPEA3JointCoordinatorV19MomentumPreviewFullCycleAudit
+  - _self_
+
+name: HOPEA3JointCoordinatorV20StaggeredStanceAudit
+experiment_name: agibot_a3_joint_coordinator_v20_staggered_stance_audit_20260727
+
+env:
+  staggered_stance_half_span_m: 0.08

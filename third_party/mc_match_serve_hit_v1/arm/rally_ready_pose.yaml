@@ -1,0 +1,27 @@
+# Right-arm rally idle attractor in A3 arm-topic order:
+# shoulder_pitch, shoulder_roll, shoulder_yaw, elbow,
+# wrist_roll, wrist_pitch, wrist_yaw.
+#
+# This is NOT a prerequisite for striking. A fresh 10-D racket target may
+# preempt the transition toward this pose or the recovery from the previous
+# strike. It is used only while no executable target is available.
+right_q: [-0.97846300, -0.68578300, 0.89010200, 0.61237100, 0.73252500, -0.31908600, 0.25545900]
+
+# Target sub-0.5 s idle transition after serving. Minimum-jerk peak speed is
+# checked at runtime; only an unsafe displacement may extend this duration.
+serve_to_rally_s: 0.45
+hit_to_rally_s: 0.45
+right_ready_max_velocity_rad_s: 4.5
+
+# The left arm is independent from strike admission. After the serve it returns
+# to the seven positions captured from the first valid robot state, stays fully
+# enabled, and remains held there throughout rally play. Right-arm targets do
+# not wait for this return to finish.
+left_return_s: 0.60
+left_return_max_s: 0.70
+left_return_max_velocity_rad_s: 6.0
+
+# SPACE requests the next serve. It may preempt only right-arm idle/recovery
+# motion; it never interrupts a committed strike or follow-through.
+rally_to_serve_s: 0.65
+serve_entry_hold_s: 0.15

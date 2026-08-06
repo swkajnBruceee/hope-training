@@ -1,0 +1,41 @@
+mode: sil
+publisher_manager:
+  publisher_cfg_list:
+    - name: arm_joint_state
+      topic_name: /body_drive/arm_joint_state
+      executor: arm_joint_state_publisher_thread
+      frequency: -1
+      enable_rt: true
+    - name: leg_joint_state
+      topic_name: /body_drive/leg_joint_state
+      executor: leg_joint_state_publisher_thread
+      frequency: -1
+      enable_rt: true
+    - name: waist_joint_state
+      topic_name: /body_drive/waist_joint_state
+      executor: waist_joint_state_publisher_thread
+      frequency: -1
+      enable_rt: true
+    - name: neck_joint_state
+      topic_name: /body_drive/neck_joint_state
+      executor: neck_joint_state_publisher_thread
+      frequency: -1
+      enable_rt: true
+    - name: pelvis_imu_state_ros
+      topic_name: /body_drive/pelvis_imu/data
+      executor: pelvis_imu_data_state_publisher_thread
+      frequency: -1
+    - name: torso_imu_state_ros
+      topic_name: /body_drive/torso_imu/data
+      executor: torso_imu_data_state_publisher_thread
+      frequency: -1
+subscriber_manager:
+  subscriber_cfg_list:
+    - name: arm_joint_command
+      topic_name: /body_drive/arm_joint_command
+    - name: leg_joint_command
+      topic_name: /body_drive/leg_joint_command
+    - name: waist_joint_command
+      topic_name: /body_drive/waist_joint_command
+    - name: neck_joint_command
+      topic_name: /body_drive/neck_joint_command

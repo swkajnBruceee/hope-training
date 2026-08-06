@@ -1,0 +1,15 @@
+# Deployment contract derived from deterministic causal scans.
+# Stage-A keeps sagittal support while the body moves forward, gains a small
+# bounded boost near the front support boundary, then retires over 5 steps
+# after a centered velocity zero-crossing to prevent rearward over-correction.
+defaults:
+  - HOPEA3JointCoordinatorV24StageAExitBase
+  - _self_
+
+name: HOPEA3JointCoordinatorV25AdaptiveStageASupport
+experiment_name: agibot_a3_joint_coordinator_v25_adaptive_stage_a_support_20260728
+
+actions:
+  stage_a_sagittal_front_gain: 1.25
+  stage_a_sagittal_front_margin_m: 0.07
+  stage_a_sagittal_front_velocity_mps: 0.02

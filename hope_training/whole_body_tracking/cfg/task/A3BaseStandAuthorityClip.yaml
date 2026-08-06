@@ -1,0 +1,19 @@
+# Final cell of the bounded 2x2 authority diagnostic: waist pitch 350/7 and
+# normalized action clip 0.5.  No other task field differs from Stand v0.
+name: A3BaseStandAuthorityClip
+gym_task: A3BaseStandAuthorityClipCandidate-v0
+experiment_name: a3_base_stand_authority_clip_smoke
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - _self_
+
+env:
+  num_envs: 64
+  env_spacing: 2.5
+  episode_length_s: 10.0
+
+sim:
+  dt: 0.005
+  decimation: 4

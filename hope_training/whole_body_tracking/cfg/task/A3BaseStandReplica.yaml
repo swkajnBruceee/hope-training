@@ -1,0 +1,19 @@
+# Isolated H1-flat MDP replica. It does not share Base Stand reward, observation,
+# action, experiment, normalization, or checkpoint namespaces.
+name: A3BaseStandReplica
+gym_task: A3BaseStandReplica-v0
+experiment_name: a3_base_stand_replica_h1_flat
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - _self_
+
+env:
+  num_envs: 256
+  env_spacing: 2.5
+  episode_length_s: 10.0
+
+sim:
+  dt: 0.005
+  decimation: 4

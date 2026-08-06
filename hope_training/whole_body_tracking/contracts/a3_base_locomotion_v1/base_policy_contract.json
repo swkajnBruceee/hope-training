@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "base_policy_contract_id": "a3_base_policy_v1_candidate",
+  "contract_status": "phase0_candidate_not_training_approved",
+  "training_approved": false,
+  "deployment_approved": false,
+  "robot": "agibot_a3_t2d5_pingpong",
+  "policy_rate_hz": 50.0,
+  "proprioception_history_length": 10,
+  "backend_dof": 31,
+  "policy_view_dof": 29,
+  "action_dof": 14,
+  "joint_order_sha256": "37b5a9e495152b0ac32ff84b0acedc038ad61100963b78142f9705d8d3aadd5f",
+  "policy_joint_order_sha256": "55fa81693a473a41fbb518ef96af98f5d0ef8a679709f866b03cd33f42c31e93",
+  "action_joint_order_sha256": "36f5262d3a889321fc1fd13bfcffd5cc6e7db3bff9d6fe55e52f08001492a157",
+  "command_frame": {
+    "frame_id": "a3_pelvis_heading_v1",
+    "linear_velocity_axes": "x_forward_y_lateral_pending_positive_basis_scan",
+    "yaw_axis": "positive_about_heading_frame_z",
+    "units": "SI",
+    "basis_scan_approved": false
+  },
+  "commands": [
+    "vx_mps",
+    "vy_mps",
+    "yaw_rate_radps",
+    "body_height_m",
+    "body_pitch_rad"
+  ],
+  "locomotion_only_command_mirror_sign": [1.0, -1.0, -1.0, 1.0, 1.0],
+  "context": [
+    "intervention_active",
+    "strike_phase_sin",
+    "strike_phase_cos",
+    "time_to_hit_s",
+    "future_strike_q_rad",
+    "future_strike_dq_radps",
+    "future_reference_valid_mask"
+  ],
+  "future_reference_offsets_s": [0.0, 0.1, 0.2, 0.3],
+  "actor_observation_schema": "actor_observation_schema.json",
+  "critic_observation_schema": "critic_observation_schema.json",
+  "action_schema": "action_schema.json",
+  "composer_contract": "command_composer_contract.json",
+  "normalization_status": "pending_a3_training_statistics",
+  "promotion_blockers": [
+    "positive_negative_command_basis_scan",
+    "base_action_scale_step_response_calibration",
+    "waist_pitch_residual_limit_calibration",
+    "command_rate_limit_and_timeout_calibration",
+    "actor_normalization_statistics",
+    "pelvis_imu_mass_reconciliation",
+    "foot_collision_and_friction_calibration"
+  ]
+}

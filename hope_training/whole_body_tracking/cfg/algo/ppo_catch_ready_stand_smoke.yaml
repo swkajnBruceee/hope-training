@@ -1,0 +1,29 @@
+# Receive-ready leg stabilizer smoke.  The deterministic mean starts at zero;
+# exploration is deliberately bounded and the environment masks both waist DOF.
+name: ppo_catch_ready_stand_smoke
+
+runner:
+  num_steps_per_env: 32
+  max_iterations: 300
+  save_interval: 25
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [256, 128, 64]
+  critic_hidden_dims: [256, 128, 64]
+  activation: elu
+  init_noise_std: 0.03
+
+algorithm:
+  learning_rate: 0.0003
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.001
+  num_learning_epochs: 3
+  num_mini_batches: 2
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0

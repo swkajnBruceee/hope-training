@@ -1,0 +1,35 @@
+# Formal Curriculum-0 learning-signal run:
+# - 32 parallel continuous-prefix environments
+# - policy takes over only in the final 9--19 swing frames
+# - full 3-second settling tail and real-fall termination
+# The actor starts at zero mean and receives no joint-action template.
+
+name: ppo_strike_stabilizer_a_catch_c0_32env
+
+runner:
+  num_steps_per_env: 64
+  max_iterations: 800
+  save_interval: 50
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [256, 128, 64]
+  critic_hidden_dims: [256, 128, 64]
+  activation: elu
+  # Already materially explores the bounded +/-0.25 residual space.  Do not
+  # enlarge it until clip/saturation data demonstrate that it is insufficient.
+  init_noise_std: 0.10
+
+algorithm:
+  learning_rate: 0.0003
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.002
+  num_learning_epochs: 3
+  num_mini_batches: 2
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0

@@ -1,0 +1,19 @@
+# One-variable simulation-only action-authority smoke.  This keeps the original
+# Stand v0 actuator gains and changes only normalized raw action clip 0.25 -> 0.5.
+name: A3BaseStandClip
+gym_task: A3BaseStandClipCandidate-v0
+experiment_name: a3_base_stand_clip_smoke
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - _self_
+
+env:
+  num_envs: 64
+  env_spacing: 2.5
+  episode_length_s: 10.0
+
+sim:
+  dt: 0.005
+  decimation: 4

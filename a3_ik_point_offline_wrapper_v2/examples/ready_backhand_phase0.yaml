@@ -1,0 +1,20 @@
+schema_version: a3_ready_state/v2
+ready_id: backhand_phase0_ready
+swing_type: backhand
+verification_status: replace_with_local_post_settle_state
+# A3 SDK/MuJoCo 31-DOF order. This preserves the user's Phase0-shaped
+# backhand template. Replace it with the exact local post-reset/post-settle q/dq.
+q_sdk_31:
+  [0.0, 0.0, 0.0,
+   0.0, 0.0,
+   0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+   0.122645931244, -0.226613982439, 0.206798207760,
+   0.350000000000, 0.108588472009, -0.044293794036,
+   0.045123776793,
+   -0.16, 0.08, 0.0, 0.32, -0.155, 0.0,
+   -0.16, -0.08, 0.0, 0.32, -0.155, 0.0]
+dq_sdk_31:
+  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+   0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+   0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+   0.0]

@@ -1,0 +1,20 @@
+# V25 remains the frozen single-shot safety baseline.  V26 adds only a
+# fail-closed multi-shot re-arm gate; boost/exit gains and both frozen priors
+# are unchanged.
+defaults:
+  - HOPEA3JointCoordinatorV25AdaptiveStageASupport
+  - _self_
+
+name: HOPEA3JointCoordinatorV26MultiShotRearm
+experiment_name: agibot_a3_joint_coordinator_v26_multishot_rearm_20260728
+
+actions:
+  stage_a_sagittal_rearm_enabled: true
+  stage_a_sagittal_rearm_stable_steps: 20
+  stage_a_sagittal_rearm_ramp_steps: 8
+  stage_a_sagittal_rearm_center_half_width_m: 0.05
+  stage_a_sagittal_rearm_velocity_max_mps: 0.06
+  stage_a_sagittal_rearm_pitch_rate_max_radps: 0.10
+  stage_a_sagittal_rearm_tilt_max_rad: 0.10
+  stage_a_sagittal_rearm_arm_error_max_rad: 0.15
+  stage_a_sagittal_rearm_require_ready_reference: true

@@ -1,0 +1,35 @@
+{
+  "purpose": "preserve the decision evidence before current-contract retraining",
+  "historical_model_3396_f0": {
+    "fixed_base_model900_position_error_cm": 8.10,
+    "floating_zero_position_error_cm": 16.11,
+    "floating_stage_a_position_error_cm": 12.17,
+    "stage_a_recovered_fraction_of_float_increment": 0.49,
+    "floating_zero_root_drift_cm": 20.7,
+    "floating_stage_a_root_drift_cm": 14.3,
+    "floating_zero_foot_displacement_cm": 2.0,
+    "floating_stage_a_foot_displacement_cm": 1.4,
+    "interpretation": "Historical Stage-A reduced floating-base migration error but did not remove it."
+  },
+  "old_checkpoint_under_corrected_contract": {
+    "floating_zero_position_error_cm": 105.75,
+    "floating_stage_a_position_error_cm": 91.95,
+    "floating_zero_root_drift_m": 1.26,
+    "floating_stage_a_root_drift_m": 1.07,
+    "interpretation": "This is a contract mismatch diagnostic, not evidence that model_3396 was never stable under its original contract."
+  },
+  "current_training_input": {
+    "manifest": "sample_motions/p2_data260708_backhand_strike_only_v1/manifest.json",
+    "motion_count": 6,
+    "post_hit_source_frames_kept": 0,
+    "zero_velocity_tail_frames": 8,
+    "hit_frame_is_fixed": true,
+    "target_driven_base_motion": false
+  },
+  "required_comparisons": [
+    "fixed base model_900",
+    "floating base zero leg residual",
+    "floating base retrained Stage-A",
+    "floating base F1"
+  ]
+}

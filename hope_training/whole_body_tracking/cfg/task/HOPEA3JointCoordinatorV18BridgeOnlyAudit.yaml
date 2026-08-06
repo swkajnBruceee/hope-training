@@ -1,0 +1,13 @@
+# Isolate the kinematic continuity change.  Keep V17's validated waist working
+# point and predictive guard unchanged; do not impose a new waist anchor.
+defaults:
+  - HOPEA3JointCoordinatorV17PredictiveWaistGuardAudit
+  - _self_
+
+name: HOPEA3JointCoordinatorV18BridgeOnlyAudit
+
+motion:
+  prelude_steps: 50
+  prelude_settle_steps: 10
+  prelude_launch_steps: 8
+  prelude_minimum_jerk: true

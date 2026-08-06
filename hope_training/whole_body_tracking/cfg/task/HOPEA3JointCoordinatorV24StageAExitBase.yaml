@@ -1,0 +1,16 @@
+# Same physical exit contract as V24, evaluated with the simpler V22 actor.
+defaults:
+  - HOPEA3JointCoordinatorV22WideDeepStability
+  - _self_
+
+name: HOPEA3JointCoordinatorV24StageAExitBase
+experiment_name: agibot_a3_joint_coordinator_v24_stage_a_exit_20260728
+
+actions:
+  stage_a_sagittal_exit_enabled: true
+  stage_a_sagittal_exit_center_half_width_m: 0.04
+  stage_a_sagittal_exit_velocity_deadband_mps: 0.03
+  stage_a_sagittal_exit_positive_confirm_steps: 2
+  stage_a_sagittal_exit_neutral_confirm_steps: 2
+  stage_a_sagittal_exit_decay_steps: 5
+  stage_a_sagittal_exit_require_both_feet: true

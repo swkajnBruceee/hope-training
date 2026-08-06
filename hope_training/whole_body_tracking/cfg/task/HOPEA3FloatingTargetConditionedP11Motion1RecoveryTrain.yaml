@@ -1,0 +1,17 @@
+# P11: dedicated full-tail recovery adaptation for manifest motion 1.
+# This inherits the P10 five-motion executor configuration, but the matching
+# environment pins reset-time sampling to motion 1 and keeps external target
+# perturbations inactive. Motion 1 remains disabled in the user-facing P10
+# automatic selector until a separate full-tail qualification passes.
+defaults:
+  - HOPEA3FloatingTargetConditionedP9Motion5
+  - _self_
+
+name: HOPEA3FloatingTargetConditionedP11Motion1RecoveryTrain
+gym_task: HOPE-FloatingTargetConditionedRecoveryMotion1Train-AgibotA3-v0
+experiment_name: agibot_a3_floating_target_conditioned_p11_motion1_recovery
+
+racket:
+  adapter_external_offset_half_range: [0.0, 0.0, 0.0]
+  adapter_external_zero_probability: 1.0
+  adapter_external_paired: false

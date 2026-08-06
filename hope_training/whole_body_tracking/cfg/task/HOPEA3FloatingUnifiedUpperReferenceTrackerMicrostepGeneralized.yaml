@@ -1,0 +1,50 @@
+# P5U-1 generalized target-conditioned training.
+#
+# This variant keeps the reviewed 26-D Microstep contract (12-D learned lower
+# balance residual + 10-D upper residual + 4-D foot microstep residual), but
+# trains the target-conditioned policy on a continuous neighbourhood around
+# every motion's own strike point. The reference still supplies the correct
+# strike timing, velocity and racket normal; only the target position is
+# perturbed, so the task remains physically reachable and frame-consistent.
+defaults:
+  - HOPEA3FloatingUnifiedUpperReferenceTrackerMicrostep
+  - _self_
+
+name: HOPEA3FloatingUnifiedUpperReferenceTrackerMicrostepGeneralized
+gym_task: HOPE-FloatingUnifiedUpperReferenceTrackerNoAssist-AgibotA3-v0
+experiment_name: agibot_a3_p5u1_microstep_generalized_target
+motion_manifest: eval_outputs/upright_forehand_backhand_reference_bank_scene_placed_v4_identity_root_fixed/tracking_motion_manifest.json
+
+# Continuous target-conditioned perturbation around each reference strike.
+# The curriculum starts at 10% of the final half-range and reaches the full
+# range over 300k control steps. It is open-loop deliberately: a low early
+# hit rate must not freeze the target distribution at the tiny start range.
+racket:
+  target_mode: reference_perturbed
+  ref_perturb_pos: [0.10, 0.15, 0.10]
+  ref_perturb_vel: [0.0, 0.0, 0.0]
+  ref_perturb_normal: 0.0
+  ref_perturb_curriculum_steps: 300000
+  ref_perturb_curriculum_start: 0.10
+  ref_perturb_success_gated: false
+  exact_success_decay: 0.99
+  exact_success_min_count: 50.0
+
+motion:
+  manifest_balance_strokes: true
+  reference_sampling_mode: uniform
+  sample_random_start_phase: false
+  prelude_steps: 50
+  hold_last_frame_steps: 500
+
+env:
+  episode_length_s: 10.0
+  staggered_stance_half_span_m: 0.06
+  staggered_front_foot: right
+  stance_lateral_widen_per_foot_m: 0.05
+  stance_knee_flexion_rad: 0.48
+
+actions:
+  microstep_enabled: true
+  microstep_step_limit_m: 0.02
+  microstep_lowpass_alpha: 0.20

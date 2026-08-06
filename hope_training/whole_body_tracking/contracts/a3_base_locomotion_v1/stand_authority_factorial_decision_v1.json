@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "decision_id": "a3_base_stand_authority_factorial_decision_v1",
+  "date": "2026-07-18",
+  "simulation_only": true,
+  "common_training_contract": {
+    "iterations": 100,
+    "num_envs": 64,
+    "seed": 0,
+    "initial_policy_noise_std": 0.2,
+    "deterministic_evaluation_policy_steps": 500,
+    "deterministic_evaluation_num_envs": 64
+  },
+  "cells": [
+    {
+      "cell": "baseline",
+      "waist_pitch_kp_kd": [50.0, 2.0],
+      "normalized_action_clip_abs": 0.25,
+      "mean_completed_episode_steps": 98.95737704918032,
+      "timeout_episodes": 0,
+      "primary_failure": "waist_pitch_hard_limit",
+      "evaluation_sha256": "edade633f18726bd530ad46fc53de0eb31ba5e4c5a9eff24595578fbcb10bbed"
+    },
+    {
+      "cell": "gain_only",
+      "waist_pitch_kp_kd": [350.0, 7.0],
+      "normalized_action_clip_abs": 0.25,
+      "mean_completed_episode_steps": 97.49498327759197,
+      "timeout_episodes": 0,
+      "primary_failure": "base_height_and_left_ankle_pitch_hard_limit",
+      "evaluation_sha256": "25c9ae3486e98aaf7d34d89e1bbf00c81b31f891dbb6634eedec67bb80c63a6b"
+    },
+    {
+      "cell": "clip_only",
+      "waist_pitch_kp_kd": [50.0, 2.0],
+      "normalized_action_clip_abs": 0.5,
+      "mean_completed_episode_steps": 74.60677083333333,
+      "timeout_episodes": 0,
+      "primary_failure": "left_ankle_roll_hard_limit",
+      "evaluation_sha256": "1eabac2cb6eed755cd4bc2fa2125dfeca3bc0455d67194fdd99ef6dd42802fae"
+    },
+    {
+      "cell": "gain_and_clip",
+      "waist_pitch_kp_kd": [350.0, 7.0],
+      "normalized_action_clip_abs": 0.5,
+      "mean_completed_episode_steps": 101.77737226277372,
+      "timeout_episodes": 0,
+      "primary_failure": "base_height_and_right_ankle_pitch_hard_limit",
+      "evaluation_sha256": "478122281ba9831f93ae162740924724760f72512996d4d9e395764bff4f715a"
+    }
+  ],
+  "support_audit": {
+    "initial_support_margin_approx_m": 0.09768660651010475,
+    "last_alive_support_margin_approx_m": -0.07251145973425456,
+    "zero_action_waist_pitch_reaches_upper_hard_limit_before_root_tilt": true,
+    "evidence_sha256": "827372809702398946c7c982739d34b4ba88247ead680241cc63aeadb5c338d2"
+  },
+  "decision": {
+    "authority_parameter_enumeration_complete": true,
+    "gain_and_clip_interaction_supported": true,
+    "best_cell_retained_for_diagnostic_followup": "gain_and_clip",
+    "candidate_action_contract_approved": false,
+    "candidate_gain_contract_approved": false,
+    "extended_smoke_approved": false,
+    "stand_phase1_qualified": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  },
+  "required_before_extended_smoke": [
+    "right_ankle_pitch_target_actual_torque_and_contact_load_audit",
+    "reward_component_and_termination_return_alignment_audit",
+    "explicit_review_of_hard_limit_proximity_and_contact_geometry",
+    "new_fail_closed_extended_smoke_gate"
+  ]
+}

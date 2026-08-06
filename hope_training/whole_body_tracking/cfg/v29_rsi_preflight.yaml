@@ -1,0 +1,16 @@
+defaults:
+  - task: HOPEA3JointCoordinatorV28BentReadyRecenter
+  - algo: ppo_joint_coordinator
+  - _self_
+
+headless: true
+device: cuda:0
+seed: 20260729
+v29_checkpoint: null
+v29_output: eval_outputs/v29_rsi_preflight/motion0_settled
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: outputs/v29_rsi_preflight/${now:%Y-%m-%d}/${now:%H-%M-%S}

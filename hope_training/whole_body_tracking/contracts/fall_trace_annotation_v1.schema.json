@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "A3 fall/recovery human annotation trace",
+  "type": "object",
+  "required": ["schema_version", "trace_id", "frames", "annotation"],
+  "properties": {
+    "schema_version": {"const": "fall_trace_annotation/v1"},
+    "trace_id": {"type": "string"},
+    "checkpoint": {"type": "string"},
+    "seed": {"type": "integer"},
+    "coordinate_frame": {"const": "initial_base_heading_v1"},
+    "frames": {"type": "array", "items": {"type": "object"}},
+    "annotation": {
+      "type": "object",
+      "required": ["label", "first_visually_at_risk_step", "first_clearly_falling_step", "physical_contact_fall_step", "recovery_ready_step"],
+      "properties": {
+        "label": {"enum": ["STABLE", "NEAR_MISS", "RECOVERABLE", "EMERGENCY", "UNRECOVERABLE", "PHYSICAL_CONTACT", "FOOT_SLIP", "LATE_POST_HIT_FALL"]},
+        "first_visually_at_risk_step": {"type": ["integer", "null"]},
+        "first_clearly_falling_step": {"type": ["integer", "null"]},
+        "physical_contact_fall_step": {"type": ["integer", "null"]},
+        "recovery_ready_step": {"type": ["integer", "null"]},
+        "annotator": {"type": "string"},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

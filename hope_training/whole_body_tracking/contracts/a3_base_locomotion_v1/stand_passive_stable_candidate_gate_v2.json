@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "gate_id": "a3_base_stand_passive_stable_candidate_gate_v2",
+  "task": "A3BaseStandPassiveStableCandidate-v0",
+  "purpose": "one_variable_action_magnitude_followup_smoke",
+  "simulation_only": true,
+  "authorized_max_iterations": 100,
+  "authorized_max_num_envs": 64,
+  "candidate_contract": {
+    "base_joint_gains": "PD_STAND for the 14 Base-owned joints only",
+    "upper_body_gains": "normal policy/deployment starter gains",
+    "action_scale": "per joint 0.25 * effort_limit / candidate_kp",
+    "raw_action_clip_abs": 0.25,
+    "init_noise_std": 0.15,
+    "termination_penalty_weight": -100.0,
+    "termination_penalty_integrated_at_policy_dt": -2.0,
+    "joint_posture_reduction": "mean_over_14_dof",
+    "action_magnitude_weight": -0.05,
+    "action_magnitude_input": "ActionManager pre-term, pre-clip action"
+  },
+  "v1_rejection": {
+    "stability": "64 of 64 deterministic episodes reached the 10-second timeout",
+    "raw_action_clip_fraction": 0.7787299107142858,
+    "decision": "reject v1 checkpoint; constant saturated commands exploit missing action-magnitude cost"
+  },
+  "local_evidence": {
+    "gain_ablation": {
+      "path": "artifacts/a3_base_stand/static_working_point_gain_ablation_original_contact_v1.json",
+      "sha256": "2376f9174f22bef0f6665ab92807ce79b7fee314c52c8d64a7cf74be23292343"
+    },
+    "deterministic_audit": {
+      "path": "artifacts/a3_base_stand/passive_stable_candidate_audit_v2.json",
+      "sha256": "6bd2cb7e0c00477379d436f5df27b09d6d8a7fc61b0c2dccce0f52fc241154a2"
+    },
+    "reward_v2_audit": {
+      "path": "artifacts/a3_base_stand/passive_stable_reward_v2_audit_v2.json",
+      "sha256": "61397d5b3565d83e5cba5b62e76db3a0b8a8c51ac57cc2d95b9f6cc5c2f0d297"
+    },
+    "rejected_v1_checkpoint_eval": {
+      "path": "artifacts/a3_base_stand/passive_stable_model_99_eval_v1.json",
+      "sha256": "d8780155ae06ea850d4fe2be9d887841274c33709dd7605c33fc1f02e0cd71e5"
+    },
+    "ppo_candidate": {
+      "path": "cfg/algo/ppo_a3_base_stand_low_noise_candidate.yaml",
+      "sha256": "39627bdc7ebd39e1ceb49be294e1a9ba4a423e9db67a8bbe0f4e64d58ed3fac1"
+    },
+    "environment_source": {
+      "path": "training/tasks/base_locomotion/config/a3/stand_env_cfg.py",
+      "sha256": "8792ccc038f14485cd48d9ac29aa6755c2b8bfd7875c4c67e59f26744e97c30a"
+    }
+  },
+  "qualification_status": {
+    "deterministic_candidate_audit_approved": true,
+    "reward_v2_audit_approved": true,
+    "v1_checkpoint_rejected_for_action_clipping": true,
+    "bounded_100_iteration_smoke_approved": true,
+    "candidate_gain_contract_approved": false,
+    "stand_long_training_approved": false,
+    "locomotion_command_approved": false,
+    "deployment_approved": false
+  },
+  "promotion_rule": "The v2 checkpoint must retain 100% 10-second deterministic timeout success and reduce raw action clip fraction below 10%; otherwise no further PPO is authorized."
+}

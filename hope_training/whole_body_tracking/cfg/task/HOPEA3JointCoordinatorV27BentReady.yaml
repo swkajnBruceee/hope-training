@@ -1,0 +1,39 @@
+# V27 changes only the upper READY manifold and its deterministic bridges.
+# V25 adaptive Stage-A support and V26 fail-closed re-arm remain inherited.
+defaults:
+  - HOPEA3JointCoordinatorV26MultiShotRearm
+  - _self_
+
+name: HOPEA3JointCoordinatorV27BentReady
+experiment_name: agibot_a3_joint_coordinator_v27_bent_ready_20260728
+
+motion_manifest: eval_outputs/v27_bent_ready/motion_package_b/manifest.json
+manifest_subset_size: null
+
+motion:
+  # Candidate B_r0.15_e0.35. The physical right elbow inner angle is
+  # approximately 118.8 degrees (61.2 degrees flexed from straight).
+  ready_joint_positions:
+    right_shoulder_pitch_joint: 0.122645931244
+    right_shoulder_roll_joint: -0.226613982439
+    right_shoulder_yaw_joint: 0.206798207760
+    right_elbow_joint: 0.350000000000
+    right_wrist_roll_joint: 0.108588472009
+    right_wrist_pitch_joint: -0.044293794036
+    right_wrist_yaw_joint: 0.045123776793
+  prelude_steps: 50
+  prelude_settle_steps: 0
+  prelude_launch_steps: 0
+  # The frozen V25 coordinator was qualified with a linear, zero-velocity
+  # bridge.  A quintic bridge plus velocity reference changed its launch
+  # dynamics and increased exact-hit error to 11.53 cm.  Keep the V25 bridge
+  # contract while evaluating the bent READY manifold.
+  prelude_minimum_jerk: false
+  prelude_quintic_hermite: false
+  prelude_continuous_velocity_reference: false
+  reset_to_default_pose: true
+
+actions:
+  # V26 already checks the right arm against motion.ready_joint_pos. V27 adds
+  # a velocity gate so READY cannot latch while the bent arm is still moving.
+  stage_a_sagittal_rearm_arm_velocity_max_radps: 0.15

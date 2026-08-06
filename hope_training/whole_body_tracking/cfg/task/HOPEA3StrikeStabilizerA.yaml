@@ -1,0 +1,67 @@
+# Stage-A: upper body and waist replay the plant-consistent teacher reference;
+# only the 12 leg channels of the public Base14 action are effective.
+name: HOPEA3StrikeStabilizerA
+gym_task: HOPE-StrikeStabilizerA-AgibotA3-v0
+experiment_name: agibot_a3_strike_stabilizer_a
+
+motion_manifest: sample_motions/p2_fixed_forehand_combined_gate_v1/native_zero_residual_manifest.json
+manifest_subset_size: null
+# This is the control reference.  The realized floating-base trace is retained
+# separately as a phase-state reward/evaluation reference; it must not be used
+# to reset or command the simulator because it omits contact-solver history.
+manifest_frame_z_offset: 0.76
+realized_phase_reference_bank: eval_outputs/strike_rsi_bank_v1/floating_base_prefix_bank_v4
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  # Curriculum 1: 50-frame physical ready-to-strike bridge + 79 reference
+  # frames (1.58 s) + 150-frame (3 s) final-pose hold.  The policy is active
+  # from swing start; only arm return is deferred until it has learned to
+  # absorb the primary swing momentum without falling.
+  episode_length_s: 5.58
+
+actions:
+  raw_clip: 0.25
+
+# Stage-A uses phase-reference stability rewards inherited from the task.
+# Racket terms are structurally disabled by A3StrikeStabilizerAEnvCfg and are
+# retained only for paired regression monitoring.
+rewards:
+  motion_scale: 1.0
+  joint_torques_weight: -0.000001
+  action_rate_weight: -0.03
+  # During the first catch curriculum, falling must be much worse than using
+  # a bounded leg residual.  This is only a weak smoothness regularizer, not a
+  # preferred knee/hip/ankle motion target.
+  action_residual_weight: -0.05
+  joint_limit_weight: -15.0
+
+racket:
+  target_mode: manifest
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  strike_time_std_s: 0.04
+  ref_perturb_success_gated: false
+  forehand_on_negative_y: true
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0
+
+domain_rand:
+  pd_gain_range: null
+
+motion:
+  sample_random_start_phase: false
+  prelude_steps: 50
+  reset_to_default_pose: true
+  hold_last_frame_steps: 150
+  return_to_default_steps: 0
+  # Filled by the strike-ready scan.  This shifts the leg reference itself,
+  # therefore reset, zero action, and learned residuals share one working
+  # point.  It is not an actor action template.
+  joint_position_offset: {}
+  root_position_offset: [0.0, 0.0, 0.0]

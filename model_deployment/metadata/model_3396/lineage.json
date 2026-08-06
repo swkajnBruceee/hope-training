@@ -1,0 +1,57 @@
+{
+  "archive": "/workspace/hopetmp/reproducibility_archives/model_3396_lineage_20260725",
+  "final_checkpoint": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it/model_3396.pt",
+  "direct_weight_lineage": [
+    {
+      "stage": "fresh_stage_a",
+      "checkpoint": "model_1000.pt",
+      "run": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a/2026-07-22_16-15-09_swing_hold_smooth_c2_128env_fresh",
+      "iterations": 1000,
+      "purpose": "floating-base leg stabilization during upper-body swing"
+    },
+    {
+      "stage": "return_c1",
+      "checkpoint": "model_1599.pt",
+      "run": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_return/2026-07-22_17-48-59_return_c1_128env_from_model1000",
+      "parent": "model_1000.pt",
+      "iterations": 600,
+      "purpose": "smooth post-swing return-to-ready"
+    },
+    {
+      "stage": "robust_b",
+      "checkpoint": "model_1898.pt",
+      "run": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_return_robust_b/2026-07-22_18-52-50_robust_b_128env_from_model1599",
+      "parent": "model_1599.pt",
+      "iterations": 300,
+      "purpose": "reset perturbation and hard-case robustness"
+    },
+    {
+      "stage": "unified_k8",
+      "checkpoint": "model_2897.pt",
+      "run": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_20-44-53_unified_k8_128env_from_robust_b_model1898_semantic",
+      "parent": "model_1898.pt",
+      "iterations": 1000,
+      "purpose": "semantic K8 motion-library continuation"
+    },
+    {
+      "stage": "k17_continuation",
+      "checkpoint": "model_3396.pt",
+      "run": "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it",
+      "parent": "model_2897.pt",
+      "iterations": 500,
+      "purpose": "K17 motion-library continuation"
+    }
+  ],
+  "not_in_lineage": [
+    "/workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_return_robust_a/2026-07-22_18-42-54_robust_a_128env_from_model1599"
+  ],
+  "historical_contract": {
+    "fix_base": false,
+    "root_position": [0.0, 0.0, 1.04],
+    "root_quaternion_xyzw": [1.0, 0.0, 0.0, 0.0],
+    "first_manifest": "p2_fixed_forehand_combined_gate_v1/native_zero_residual_manifest.json",
+    "unified_manifest": "p2_fixed_balanced_k8_torso_control_v2_nativecal_20260716/manifest.json",
+    "final_manifest": "p2_strike_stabilizer_library_k17_v1/tracking_motion_manifest.json"
+  },
+  "current_retraining_policy": "Do not load model_3396; use the current-contract Fresh Stage-A checkpoint chain."
+}

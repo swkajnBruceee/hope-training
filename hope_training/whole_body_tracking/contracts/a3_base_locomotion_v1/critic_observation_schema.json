@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "critic_observation_schema_version": "a3_base_critic_obs_v1_candidate",
+  "actor_observation_dimension": 925,
+  "privileged_fields": [
+    {"name": "true_base_linear_velocity_mps", "dimension": 3},
+    {"name": "foot_contact_force_xyz_n", "dimension": 6},
+    {"name": "foot_contact_state", "dimension": 2},
+    {"name": "foot_slip_velocity_xyz_mps", "dimension": 6},
+    {"name": "ground_friction", "dimension": 1},
+    {"name": "robot_mass_scale", "dimension": 1},
+    {"name": "com_offset_xyz_m", "dimension": 3},
+    {"name": "base_actuator_strength_scale", "dimension": 14},
+    {"name": "external_wrench", "dimension": 6},
+    {"name": "action_delay_s", "dimension": 1},
+    {"name": "state_delay_s", "dimension": 1},
+    {"name": "simulation_dt_scale", "dimension": 1}
+  ],
+  "privileged_dimension": 45,
+  "total_dimension": 970,
+  "required_equal_across_tasks": [
+    "A3BaseStand-v0",
+    "A3BaseStrikeSupport-v0",
+    "A3BaseLocomotion-v0"
+  ]
+}

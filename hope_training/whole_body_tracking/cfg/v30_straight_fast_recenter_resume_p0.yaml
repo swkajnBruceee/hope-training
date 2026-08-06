@@ -1,0 +1,16 @@
+# Continue V30-P0 from its 100-iteration checkpoint without reapplying the
+# V22-only warm-start migration.  The recovery adapter and optimizer state are
+# part of this resume.  RSL-RL adds max_iterations to the restored iteration
+# count, so 200 new iterations take the prior 100-iteration P0 to 300 total.
+defaults:
+  - v30_straight_fast_recenter
+  - _self_
+
+checkpoint: /home/bruce/桌面/HOPETableTennis/hope_training/whole_body_tracking/logs/rsl_rl/agibot_a3_joint_coordinator_v26_fast_recenter_20260729/2026-07-29_13-44-13_v30_p0_straight_fast_recenter_100/model_99.pt
+resume: true
+warm_start_actor_only: false
+warm_start_support_actor_only: false
+warm_start_append_zero_policy_obs: false
+
+max_iterations: 200
+run_name: v30_p0_straight_fast_recenter_resume_to300

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ros_prefix="${HOPE_ROS_PREFIX:-/opt/ros/humble}"
+export ROS_DISTRO="${ROS_DISTRO:-humble}"
+export ROS_VERSION="${ROS_VERSION:-2}"
+export ROS_PYTHON_VERSION="${ROS_PYTHON_VERSION:-3}"
+pythonpath_parts=(
+  "${ros_prefix}/lib/python3.10/site-packages"
+  "${ros_prefix}/local/lib/python3.10/dist-packages"
+)
+
+for part in "${pythonpath_parts[@]}"; do
+  if [[ -d "${part}" ]]; then
+    if [[ -n "${PYTHONPATH:-}" ]]; then
+      export PYTHONPATH="${part}:${PYTHONPATH}"
+    else
+      export PYTHONPATH="${part}"
+    fi
+  fi
+done
+
+exec /usr/bin/python3 "$@"

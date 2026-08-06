@@ -1,0 +1,102 @@
+# Full-cycle, unified recovery curriculum.  It retains the qualified strike
+# execution contract and both frozen priors, then gives the single 22-D
+# coordinator a dense signal to arrest a recovery-tail lean before a fall.
+name: HOPEA3JointCoordinatorV6Recovery
+gym_task: HOPE-FloatingJointCoordinatorV2-AgibotA3-v0
+experiment_name: agibot_a3_joint_coordinator_v6_recovery_20260727
+
+motion_manifest: sample_motions/p2_data260708_backhand_strike_only_v1/manifest.json
+manifest_subset_size: null
+manifest_frame_z_offset: 0.76
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  - /base/randomization_base@_here_
+  - _self_
+
+env:
+  episode_length_s: 5.5
+
+actions:
+  raw_clip: 1.0
+  native_residual_scale: 0.25
+  reference_lookahead_steps: 0
+  joint_reference_lookahead_steps:
+    right_shoulder_pitch_joint: 12.0
+    right_shoulder_yaw_joint: 12.0
+  upper_prelude_release_steps: 12
+  joint_velocity_feedforward_mode: task_phase
+  joint_velocity_feedforward_beta: 0.75
+  joint_velocity_feedforward_joint_names:
+    - right_shoulder_pitch_joint
+    - right_shoulder_yaw_joint
+  joint_velocity_feedforward_post_hit_decay_steps: 6
+  # Exact Stage-A finite-cycle authority handoff, restored for the frozen
+  # lower prior before the coordinator begins recovery adaptation.
+  phase_gate_tail_release_steps: 50
+  ready_hold_residual_release_steps: 50
+  coordinator_leg_correction_scale_rad: [0.024, 0.070, 0.092, 0.020, 0.030, 0.014, 0.024, 0.070, 0.092, 0.020, 0.030, 0.014]
+  coordinator_waist_correction_scale_rad: [0.020, 0.020, 0.025]
+  coordinator_arm_correction_scale_rad: [0.050, 0.040, 0.050, 0.045, 0.025, 0.025, 0.025]
+  upper_checkpoint: /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/2026-07-24_22-00-32_backhand_strike_only_v1_shoulders_lead12_res025_clip050_3000it/model_900.pt
+  legacy_stage_a_checkpoint: /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/2026-07-22_23-12-10_k17_96env_from_model2897_500it/model_3396.pt
+
+rewards:
+  # Preserve the best observed impact contract; do not trade accuracy for
+  # recovery.  The new terms below are tail-only inside their reward funcs.
+  racket_position_weight: 6.0
+  racket_position_std: 0.14
+  racket_position_y_weight: 3.0
+  racket_position_y_std: 0.14
+  racket_position_fine_weight: 2.0
+  racket_position_fine_std: 0.06
+  racket_velocity_weight: 0.75
+  racket_velocity_std: 0.75
+  racket_normal_weight: 0.75
+  racket_normal_std: 0.35
+  racket_hit_coupled_weight: 0.75
+  racket_hit_coupled:
+    pos_std: 0.14
+  # Recovery terms: tilt is the missing early signal.  Velocity, height,
+  # drift and slip are strengthened only enough to prevent a 1 m slide from
+  # being preferable to a controlled recovery.
+  post_strike_root_tilt_weight: -8.0
+  post_strike_root_linear_velocity_l2_weight: -1.0
+  post_strike_root_angular_velocity_l2_weight: -1.0
+  post_strike_root_height_deficit_weight: -20.0
+  post_strike_both_feet_contact_weight: 1.5
+  post_strike_ready_weight: 2.0
+  fall_weight: -50.0
+  root_position_drift_weight: -1.5
+  feet_slip_weight: -1.0
+  action_execution_gap_weight: -0.15
+  action_residual_weight: -0.01
+  joint_limit_weight: -15.0
+
+racket:
+  target_mode: manifest
+  strike_phase: 0.46
+  strike_window_s: 0.12
+  strike_time_std_s: 0.04
+  strike_success_pos_thresh: 0.10
+  strike_success_vel_thresh: 2.0
+  strike_success_normal_thresh_deg: 20.0
+  forehand_on_negative_y: false
+  mount_normal_axis: 1
+  mount_normal_sign: 1.0
+
+domain_rand:
+  pd_gain_range: null
+
+motion:
+  sample_random_start_phase: false
+  prelude_steps: 50
+  reset_to_default_pose: true
+  hold_last_frame_steps: 25
+  return_to_default_steps: 50
+  pose_range: {}
+  velocity_range: {}
+  joint_position_range: [0.0, 0.0]
+  reset_perturbation_probability: 0.0
+  hard_case_probability: 0.0

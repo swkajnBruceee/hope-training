@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "command_composer_contract_id": "a3_base_strike_composer_v1_candidate",
+  "contract_status": "phase0_candidate_not_training_approved",
+  "training_approved": false,
+  "deployment_approved": false,
+  "backend_joint_names": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "head_yaw_joint",
+    "head_pitch_joint",
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "left_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "left_wrist_yaw_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint",
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint"
+  ],
+  "joint_order_sha256": "37b5a9e495152b0ac32ff84b0acedc038ad61100963b78142f9705d8d3aadd5f",
+  "policy_joint_names": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "left_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "left_wrist_yaw_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint",
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint"
+  ],
+  "policy_joint_order_sha256": "55fa81693a473a41fbb518ef96af98f5d0ef8a679709f866b03cd33f42c31e93",
+  "base_action_joint_names": [
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint"
+  ],
+  "base_action_joint_order_sha256": "36f5262d3a889321fc1fd13bfcffd5cc6e7db3bff9d6fe55e52f08001492a157",
+  "strike_reference_joint_names": [
+    "waist_yaw_joint",
+    "waist_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "strike_reference_joint_order_sha256": "c339f65a76bbdac078b4c45b59cc5b5336ef5b86713bb6fb11013e29893a9402",
+  "ownership_by_backend_joint": [
+    "strike",
+    "base",
+    "strike_plus_bounded_base_residual",
+    "head_baseline",
+    "head_baseline",
+    "left_arm_baseline",
+    "left_arm_baseline",
+    "left_arm_baseline",
+    "left_arm_baseline",
+    "left_arm_baseline",
+    "left_arm_baseline",
+    "left_arm_baseline",
+    "strike",
+    "strike",
+    "strike",
+    "strike",
+    "strike",
+    "strike",
+    "strike",
+    "base",
+    "base",
+    "base",
+    "base",
+    "base",
+    "base",
+    "base",
+    "base",
+    "base",
+    "base",
+    "base",
+    "base"
+  ],
+  "nominal_q_rad": [
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.3, 0.12, 0.0, 0.8, 0.0, 0.0, 0.0,
+    0.3, -0.12, 0.0, 0.8, 0.0, 0.0, 0.0,
+    -0.1311, 0.0056, -0.0348, 0.2468, -0.1204, -0.0078,
+    -0.1311, -0.0056, 0.0348, 0.2468, -0.1204, 0.0078
+  ],
+  "kp": [
+    85.0, 50.0, 50.0, 40.0, 40.0,
+    40.0, 40.0, 30.0, 30.0, 30.0, 20.0, 20.0,
+    40.0, 40.0, 30.0, 30.0, 30.0, 20.0, 20.0,
+    80.0, 120.0, 80.0, 250.0, 50.0, 50.0,
+    80.0, 120.0, 80.0, 250.0, 50.0, 50.0
+  ],
+  "kd": [
+    3.0, 2.0, 2.0, 2.0, 2.0,
+    3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+    3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+    3.0, 4.0, 3.0, 8.0, 2.0, 2.0,
+    3.0, 4.0, 3.0, 8.0, 2.0, 2.0
+  ],
+  "joint_lower_rad": [
+    -2.6179938779914944, -0.3490658503988659, -0.4886921905584123,
+    -1.0471975511965976, -0.4363323129985824,
+    -2.8797932657906435, -0.08726646259971647, -2.792526803190927,
+    -0.9599310885968813, -2.792526803190927, -1.6231562043547265,
+    -1.6231562043547265, -2.8797932657906404, -2.6179938779914944,
+    -2.792526803190927, -0.9599310885968813, -2.792526803190927,
+    -1.6231562043547265, -1.6231562043547265,
+    -2.5132741228718345, -0.5235987755982988, -2.722713633111154,
+    -0.12217304763960307, -0.9075712110370514, -0.3490658503988659,
+    -2.5132741228718345, -1.6057029118347832, -2.722713633111154,
+    -0.12217304763960307, -0.9075712110370514, -0.3490658503988659
+  ],
+  "joint_upper_rad": [
+    2.6179938779914944, 0.3490658503988659, 0.4188790204786391,
+    1.0471975511965976, 0.2617993877991494,
+    2.8797932657906435, 2.6179938779914944, 2.792526803190927,
+    1.7453292519943295, 2.792526803190927, 1.6231562043547265,
+    1.6231562043547265, 2.8797932657906435, 0.08726646259971647,
+    2.792526803190927, 1.7453292519943295, 2.792526803190927,
+    1.6231562043547265, 1.6231562043547265,
+    2.9321531433504737, 1.6057029118347832, 2.722713633111154,
+    2.4958208303518914, 0.5235987755982988, 0.3490658503988659,
+    2.9321531433504737, 0.5235987755982988, 2.722713633111154,
+    2.4958208303518914, 0.5235987755982988, 0.3490658503988659
+  ],
+  "base_action_scale_rad": [
+    0.6875, 0.4583333333333333, 0.6875, 0.32, 0.591, 0.27375,
+    0.6875, 0.4583333333333333, 0.6875, 0.32, 0.591, 0.27375,
+    0.12, 0.14
+  ],
+  "waist_pitch_residual_limit_rad": 0.12,
+  "normalized_action_clip": [-1.0, 1.0],
+  "q_des_final_clip": "urdf_joint_limits",
+  "dq_des": "zero_v1",
+  "tau_ff": "zero_v1",
+  "policy_rate_hz": 50.0,
+  "substep_behavior": "hold_or_interpolate_pending_phase0_calibration",
+  "timeout_behavior": "pending_phase0_calibration",
+  "source_assets": {
+    "prepared_isaac_urdf": {
+      "path": "hope_training/whole_body_tracking/training/assets/agibot_a3/urdf/model.urdf",
+      "sha256": "828025a15467fc0e37d5801ac3245f27facb86783245a0e525469e0360bb3f06"
+    },
+    "agibot_source_urdf": {
+      "path": "agibot/URDF/A3T2.5-URDF-std-pingpang/urdf/URDF-JOINT-LINK.urdf",
+      "sha256": "0d83529cf808e2e68036f8168bd8b7a1c9a97d9c536eb9a14981ea4105d6b9ae"
+    },
+    "official_mujoco_xml": {
+      "path": "agibot/A3_MuJoCo_Sim/aimrt_mujoco_sim/src/models/bin/cfg/model/a3_pingpong/a3_pingpong.xml",
+      "sha256": "2ab1cd31bffaaef979b4d9f35699bf1e6bec3a127be96c9266af131eee3feb97"
+    },
+    "isaac_tracking_timing_cfg": {
+      "path": "hope_training/whole_body_tracking/training/tasks/tracking/tracking_env_cfg.py",
+      "sha256": "09ea10f30322f135055acef07afe93c3691a4afea51d64befd5245774f997f61"
+    },
+    "isaac_reference_action_transport": {
+      "path": "hope_training/whole_body_tracking/training/tasks/tracking/mdp/actions.py",
+      "sha256": "5a35ea365abd160632d29652a5a7225a528b45783eb47d670a35632128eb748c"
+    },
+    "a3_training_robot_cfg": {
+      "path": "hope_training/whole_body_tracking/training/robots/agibot_a3.py",
+      "sha256": "be05282d6f8742a21c9d732100152a4794071127744da4e97174557d37a05c16"
+    },
+    "a3_runtime_cfg": {
+      "path": "a3_deploy_example/src/a3/a3_deploy_onnx_ref/config/a3_runtime_config.yaml",
+      "sha256": "712f26c37ce6f309600258fdd0fd10bc76dbafbf9d955a7112a27ee04b543a33"
+    },
+    "a3_deploy_policy_parameters": {
+      "path": "a3_deploy_example/src/a3/a3_deploy_onnx_ref/include/a3_policy_parameters.hpp",
+      "sha256": "df73e3f6aea1a0c2817afa97ac6a0d1a0639d31797b711fb94ca395634b5c8d8"
+    },
+    "a3_backend_layout": {
+      "path": "a3_deploy_example/src/a3/a3_deploy_onnx_ref/src/robot_io/a3_layout_extra.cpp",
+      "sha256": "572eba85d315d4e24c28c9fdc2798812766fa92eec8d6a601e13a46a794b4f75"
+    }
+  },
+  "promotion_blockers": [
+    "base_action_scale_step_response_calibration",
+    "waist_pitch_residual_limit_calibration",
+    "substep_hold_or_interpolation_decision",
+    "command_timeout_and_safe_blend_decision",
+    "cxx_composer_golden_parity",
+    "pelvis_imu_mass_reconciliation",
+    "foot_collision_and_friction_calibration"
+  ]
+}

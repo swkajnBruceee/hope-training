@@ -1,0 +1,20 @@
+# =============================================================================
+# Fixed-base A3 table-tennis curriculum stage 1.
+#
+# Selected with `task=HitFixedBaseTouch`. This easier pure-RL task teaches the
+# racket to reliably reach the incoming ball before the stricter return-speed
+# objective used by `HitFixedBase`.
+# =============================================================================
+
+name: HitFixedBaseTouch
+gym_task: HOPE-TableTennis-AgibotA3-HitFixedBaseTouch-v0
+experiment_name: agibot_a3_hit_fixed_base_touch
+
+defaults:
+  - /base/env_base@_here_
+  - _self_
+
+env:
+  num_envs: 64
+  env_spacing: 6.0
+  episode_length_s: 3.0

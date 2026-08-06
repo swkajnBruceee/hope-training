@@ -1,0 +1,9 @@
+std_msgs/Header header
+string state
+string reason
+geometry_msgs/Point strike_position
+geometry_msgs/Vector3 strike_velocity
+float64 strike_time
+float64 time_to_strike
+int32 predicted_bounces
+bool valid

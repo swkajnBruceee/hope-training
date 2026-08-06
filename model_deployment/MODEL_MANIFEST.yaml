@@ -1,0 +1,81 @@
+schema_version: 1
+package_name: hope-a3-upper-lower-policy-deployment
+generated_at: "2026-07-27"
+repository: "https://github.com/swkajnBruceee/hope-training"
+repository_commit_at_packaging: "1acd8e1adea54efe615229c2d22ec324971426e1"
+
+delivery_status:
+  pytorch_checkpoints: ready_for_transfer
+  model_3396_onnx: existing_export_included
+  model_900_onnx: not_exported_in_this_package
+  true_robot_qualification: not_claimed
+
+policies:
+  upper:
+    id: model_900
+    file: weights/model_900_upper_fixed_base.pt
+    role: frozen_fixed_base_backhand_upper_prior
+    controls: [waist, right_arm_strike]
+    source_checkpoint: model_900.pt
+    source_run: >-
+      /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_native_strike_manifest/
+      2026-07-24_22-00-32_backhand_strike_only_v1_shoulders_lead12_res025_clip050_3000it/model_900.pt
+    training_date: "2026-07-24"
+    iteration: 900
+    network:
+      actor_observation_dim: 56
+      critic_observation_dim: 110
+      action_dim: 10
+      actor_hidden_dims: [512, 256, 128]
+      activation: elu
+      observation_normalizer_count: 5535744.0
+    sha256: 3d62f620b61b0da3b2e884983597a8542c988b668848f7c54857cb411850e9e0
+    metadata:
+      agent: metadata/model_900/training_agent.yaml
+      environment: metadata/model_900/training_env.yaml
+    evidence:
+      - evidence/model_900_fixed_base_audit.json
+      - evidence/model_900_ready_stance_audit.json
+
+  lower:
+    id: model_3396
+    file: weights/model_3396_lower_stage_a.pt
+    onnx_file: weights/model_3396_lower_stage_a_policy.onnx
+    role: historical_floating_base_stage_a_leg_support_prior
+    controls: [leg_support]
+    source_checkpoint: model_3396.pt
+    source_run: >-
+      /workspace/hopetmp/whole_body_tracking_logs/rsl_rl/agibot_a3_strike_stabilizer_a_unified_k8/
+      2026-07-22_23-12-10_k17_96env_from_model2897_500it/model_3396.pt
+    training_date: "2026-07-22"
+    iteration: 3396
+    training_lineage: metadata/model_3396/lineage.json
+    network:
+      actor_observation_dim: 126
+      critic_observation_dim: 177
+      action_dim: 14
+      actor_hidden_dims: [256, 128, 64]
+      activation: elu
+      observation_normalizer_count: 26836992.0
+      public_base_action_dim: 14
+      effective_leg_channels_in_current_f1: 12
+    sha256: cd26e285a120f43df8d651c14b4611f5e0e0d7e7b159185108cc9bc790068f47
+    onnx_sha256: d27030dde47eab0797d8a3ced3265d1d0686d41ff7c93b757dab62fe24f0d23c
+    metadata:
+      agent: metadata/model_3396/training_agent.yaml
+      environment: metadata/model_3396/training_env.yaml
+    evidence:
+      - evidence/model_3396_k17_nominal17_audit.json
+      - evidence/model_3396_exact_nominal_trace_20260726.json
+
+contracts:
+  joint_coordinator_config: hope_training/whole_body_tracking/cfg/task/HOPEA3JointCoordinator.yaml
+  upper_policy: frozen fixed-base model_900 with 12-frame shoulder pitch/yaw lookahead
+  lower_policy: historical floating-base model_3396 Stage-A prior
+  current_f1_warning: >-
+    Do not use historical model_3396 as a warm start for current-contract
+    retraining; its root, observation and data contract is different.
+  deployment_warning: >-
+    These are two sub-policies, not the official monolithic A3 action[29] ONNX
+    interface. A deployment wrapper must implement observations, normalizers,
+    action scaling, joint mapping, timing and safety gates.

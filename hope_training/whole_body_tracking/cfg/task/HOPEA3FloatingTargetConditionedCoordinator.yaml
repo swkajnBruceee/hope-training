@@ -1,0 +1,32 @@
+# P3 replay integration: V30 floating coordinator plus the calibrated
+# seven-joint target feedforward.  The public policy remains V30's 22-D
+# coordinator; target motion is injected internally with no PPO residual.
+defaults:
+  - HOPEA3JointCoordinatorV26FastRecenter
+  - _self_
+
+name: HOPEA3FloatingTargetConditionedCoordinator
+gym_task: HOPE-FloatingTargetConditionedCoordinator-AgibotA3-v0
+experiment_name: agibot_a3_floating_target_conditioned_p3_replay
+
+motion_manifest: eval_outputs/v27_bent_ready/motion_package_b/manifest.json
+manifest_subset_size: 6
+manifest_frame_z_offset: 0.76
+
+env:
+  episode_length_s: 6.5
+
+motion:
+  prelude_steps: 50
+  hold_last_frame_steps: 20
+  return_to_default_steps: 100
+  reset_to_default_pose: true
+
+racket:
+  racket_target:
+    target_mode: manifest
+    manifest_nominal_probability: 1.0
+    strike_time_std_s: 0.0
+    adapter_external_offset_half_range: [0.02, 0.02, 0.02]
+    adapter_external_zero_probability: 0.0
+    adapter_external_paired: false

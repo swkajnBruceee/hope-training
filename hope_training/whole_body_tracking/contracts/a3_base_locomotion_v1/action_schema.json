@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "action_schema_version": "a3_base_action_v1_candidate",
+  "semantics": "non_integrating_normalized_joint_position_target",
+  "normalized_range": [-1.0, 1.0],
+  "action_joint_names": [
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint"
+  ],
+  "action_joint_order_sha256": "36f5262d3a889321fc1fd13bfcffd5cc6e7db3bff9d6fe55e52f08001492a157",
+  "candidate_action_scale_rad": [
+    0.6875,
+    0.4583333333333333,
+    0.6875,
+    0.32,
+    0.591,
+    0.27375,
+    0.6875,
+    0.4583333333333333,
+    0.6875,
+    0.32,
+    0.591,
+    0.27375,
+    0.12,
+    0.14
+  ],
+  "waist_pitch_residual_limit_rad": 0.12,
+  "locomotion_only_mirror": {
+    "valid_when": "intervention_active_is_false",
+    "source_index_for_output": [6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13],
+    "sign_for_output": [1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0],
+    "strike_context_note": "right_hand_racket_strike_context_is_not_a_left_right_mirror_augmentation"
+  },
+  "calibration_status": "candidate_values_not_training_approved",
+  "source": {
+    "leg_scales": "0.25_times_effort_limit_divided_by_stiffness",
+    "waist_scales": "conservative_native_strike_candidate_pending_step_response"
+  }
+}

@@ -1,0 +1,52 @@
+# Stagger-specific support adaptation. The support center is unchanged:
+# left foot +4 cm, right foot -4 cm in the body-forward direction.
+defaults:
+  - HOPEA3JointCoordinatorV20StaggeredStability
+  - _self_
+
+name: HOPEA3JointCoordinatorV21StaggerSupport
+gym_task: HOPE-FloatingJointCoordinatorV8StaggerSupport-AgibotA3-v0
+experiment_name: agibot_a3_joint_coordinator_v21_stagger_support_20260727
+
+env:
+  episode_length_s: 6.5
+  staggered_stance_half_span_m: 0.04
+
+rewards:
+  # Stability is the primary objective. The frozen arm actor still receives
+  # enough strike reward to expose regressions caused by support corrections.
+  racket_position_weight: 1.5
+  racket_position_y_weight: 0.75
+  racket_position_fine_weight: 0.25
+  racket_velocity_weight: 0.15
+  racket_normal_weight: 0.15
+  racket_hit_coupled_weight: 0.15
+
+  # Dynamic support objectives designed for a fore-aft stance. They do not
+  # prescribe a fixed 50/50 split: load may transfer as long as both feet keep
+  # a minimum useful load and the capture point stays inside the support span.
+  stagger_capture_point_margin_l2_weight: -40.0
+  stagger_minimum_foot_load_weight: 3.0
+  stagger_sagittal_span_l2_weight: -20.0
+
+  pre_hit_root_tilt_weight: -2.0
+  pre_hit_root_angular_velocity_l2_weight: -4.0
+  pre_hit_root_forward_velocity_l2_weight: -10.0
+  strike_approach_pitch_rate_deadband_l2_weight: -8.0
+  strike_approach_forward_velocity_deadband_l2_weight: -16.0
+  exact_strike_pitch_rate_deadband_l2_weight: -5.0
+  exact_strike_forward_velocity_deadband_l2_weight: -10.0
+
+  post_strike_root_tilt_weight: -18.0
+  post_strike_recovery_progress_weight: 1.0
+  post_strike_root_linear_velocity_l2_weight: -4.0
+  post_strike_root_angular_velocity_l2_weight: -4.0
+  post_strike_root_height_deficit_weight: -35.0
+  post_strike_both_feet_contact_weight: 2.0
+  post_strike_ready_weight: 3.0
+  fall_weight: -150.0
+
+  # Do not force the pelvis to remain at one world point while it performs a
+  # legitimate fore-aft load transfer.
+  root_position_drift_weight: -0.5
+  feet_slip_weight: -2.0

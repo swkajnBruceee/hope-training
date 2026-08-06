@@ -1,0 +1,56 @@
+# Stability-first adaptation for the validated left-forward, wide, deeper stance.
+defaults:
+  - HOPEA3JointCoordinatorV21StaggerSupport
+  - _self_
+
+name: HOPEA3JointCoordinatorV22WideDeepStability
+gym_task: HOPE-FloatingJointCoordinatorV9WideStaggerSupport-AgibotA3-v0
+experiment_name: agibot_a3_joint_coordinator_v22_wide_deep_stability_20260727
+
+env:
+  episode_length_s: 6.5
+  staggered_stance_half_span_m: 0.04
+  stance_lateral_widen_per_foot_m: 0.04
+  stance_knee_flexion_rad: 0.42
+
+rewards:
+  # The frozen upper prior preserves the strike. During this phase strike terms
+  # are regression guards, not the optimization priority.
+  racket_position_weight: 0.50
+  racket_position_y_weight: 0.25
+  racket_position_fine_weight: 0.10
+  racket_velocity_weight: 0.05
+  racket_normal_weight: 0.05
+  racket_hit_coupled_weight: 0.05
+
+  # Preserve the enlarged two-dimensional support polygon and useful loading
+  # of both feet while allowing continuous load transfer.
+  stagger_capture_point_margin_l2_weight: -60.0
+  stagger_lateral_capture_point_margin_l2_weight: -60.0
+  stagger_minimum_foot_load_weight: 5.0
+  stagger_sagittal_span_l2_weight: -30.0
+  stagger_lateral_span_l2_weight: -30.0
+
+  # Dense pre-hit momentum control remains symmetric, preventing the policy
+  # from replacing a forward fall with an equally unsafe backward fall.
+  pre_hit_root_tilt_weight: -3.0
+  pre_hit_root_angular_velocity_l2_weight: -6.0
+  pre_hit_root_forward_velocity_l2_weight: -14.0
+  strike_approach_pitch_rate_deadband_l2_weight: -12.0
+  strike_approach_forward_velocity_deadband_l2_weight: -24.0
+  exact_strike_pitch_rate_deadband_l2_weight: -8.0
+  exact_strike_forward_velocity_deadband_l2_weight: -16.0
+
+  # Full-cycle survival is the hard objective for V22.
+  post_strike_root_tilt_weight: -30.0
+  post_strike_recovery_progress_weight: 2.0
+  post_strike_root_linear_velocity_l2_weight: -8.0
+  post_strike_root_angular_velocity_l2_weight: -8.0
+  post_strike_root_height_deficit_weight: -50.0
+  post_strike_both_feet_contact_weight: 4.0
+  post_strike_ready_weight: 4.0
+  alive_weight: 2.0
+  fall_weight: -300.0
+
+  root_position_drift_weight: -1.0
+  feet_slip_weight: -4.0

@@ -1,0 +1,107 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.env
+.env.*
+!.env.example
+agibot_a3_aimdk/password.md
+.venv/
+venv/
+build/
+dist/
+.codex-tmp/
+.vscode/
+
+# ROS 2 workspace outputs.
+hope_ws/build/
+hope_ws/install/
+hope_ws/log/
+hope_ws/src/*/build/
+hope_ws/src/*/install/
+hope_ws/src/*/log/
+/log/
+
+# Isaac/training outputs.
+hope_training/whole_body_tracking/logs/
+hope_training/whole_body_tracking/outputs/
+hope_training/whole_body_tracking/output/
+hope_training/whole_body_tracking/runs/
+hope_training/whole_body_tracking/videos/
+hope_training/whole_body_tracking/recordings/
+hope_training/whole_body_tracking/wandb/
+hope_training/whole_body_tracking/.neptune/
+hope_training/whole_body_tracking/artifacts/
+hope_training/whole_body_tracking/sample_motions/*.npz
+
+# Generated local Isaac asset derived from agibot/URDF.
+hope_training/whole_body_tracking/training/assets/agibot_a3/
+
+# Local machine paths.
+hope_training/whole_body_tracking/setup_train_env.local.sh
+*.local.yaml
+*.local.yml
+*.local.json
+
+# Local-only assets and external reference repos. These are not pinned public
+# starter dependencies.
+external_repos/
+vendor_assets/
+
+# Agibot A3 MuJoCo/AimRT build outputs (regenerable locally).
+agibot/A3_MuJoCo_Sim/**/build*/
+agibot/A3_MuJoCo_Sim/**/install*/
+agibot/A3_MuJoCo_Sim/**/*.so
+agibot/A3_MuJoCo_Sim/**/*.a
+agibot/A3_MuJoCo_Sim/**/CMakeCache.txt
+agibot/A3_MuJoCo_Sim/**/CMakeFiles/
+agibot/A3_MuJoCo_Sim/**/Makefile
+agibot/A3_MuJoCo_Sim/**/cmake_install.cmake
+agibot/A3_MuJoCo_Sim/**/CMakeRuleHashes.txt
+agibot/A3_MuJoCo_Sim/**/CPack*.cmake
+agibot/A3_MuJoCo_Sim/**/compiler_depend*
+agibot/A3_MuJoCo_Sim/**/generated/
+
+hope_ws/src/vrpn_mocap/
+
+# Model artifacts and generated datasets.
+data/DATA260703/
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.rknn
+*.engine
+*.trt
+*.npz
+*.zarr
+*.pkl
+*.csv
+*.tmp
+
+# Checked-in deployment model bundle.
+!model_deployment/weights/
+!model_deployment/weights/*.pt
+!model_deployment/weights/*.onnx
+*.log
+
+# Source authoring spreadsheets outside agibot/ are not part of the public starter
+# runtime.
+*.xlsx
+
+# Agibot-provided A3 materials under agibot/ are tracked as public reference
+# assets/examples, including their source tooling and small runtime examples.
+!agibot/**/*.csv
+!agibot/**/*.xlsx
+!agibot/**/*.onnx
+!agibot/**/*.rknn
+!agibot/**/*.engine
+!agibot/**/*.trt
+!agibot/**/*.npz
+!agibot/**/*.pkl
+
+# Track project datasets under the table-tennis data workspace.
+!DATA_PingPang/**/Csv/**/*.csv
+!DATA_PingPang/**/CSV/**/*.csv
+!data/analysis/mocap_cleaning_outputs/**/*.npz

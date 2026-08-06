@@ -1,0 +1,9 @@
+# P4-D is an opt-in, motion-3-only Cartesian pre-compensation experiment.
+# It deliberately preserves P4-C as the deployment fallback.
+defaults:
+  - HOPEA3FloatingTargetConditionedP4Recovery
+  - _self_
+
+name: HOPEA3FloatingTargetConditionedP4DYComp
+gym_task: HOPE-FloatingTargetConditionedRecoveryYComp-AgibotA3-v0
+experiment_name: agibot_a3_floating_target_conditioned_p4d_ycomp
