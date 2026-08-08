@@ -39,6 +39,13 @@ DEFAULT_DEST = (
 SOURCE_URDF = "URDF-JOINT-LINK.urdf"
 DEST_URDF = "model.urdf"
 RACKET_FACE_COLLISION_MESH = "right_racket_face_collision.STL"
+# PhysX can merge zero-mass fixed racket links into the wrist and drop a thin
+# child-link mesh during URDF import.  Keep the mesh for visual/reference
+# compatibility, but add an explicit wrist collision primitive with the same
+# audited face envelope so ball contact is observable on the real runtime body.
+RACKET_FACE_COLLISION_BOX_MARKER = "hope_racket_face_physx_box"
+RACKET_MOUNT_ORIGIN = "0.21021 0.032078 0.032036"
+RACKET_FACE_BOX_SIZE = "0.16204 0.01400 0.16204"
 REQUIRED_MESHES = (
     "pelvis_link.STL",
     "torso_Link.STL",
@@ -123,6 +130,36 @@ def _patch_racket_collision(text: str) -> str:
             count=1,
             flags=re.DOTALL,
         )
+    # Attach a stable primitive to the actual wrist rigid body.  The fixed
+    # pingpang_red_Link has zero mass and may not survive as a separate
+    # PhysX body; this primitive therefore lives on right_wrist_yaw_Link and
+    # is exactly co-located with the racket reference-point mount.
+    def _add_wrist_fixture(match: re.Match) -> str:
+        block = match.group(0)
+        if RACKET_FACE_COLLISION_BOX_MARKER in block:
+            return block
+        # Keep the wrist visual/inertial data, but replace its collision list
+        # with one explicit paddle-face primitive.  Isaac's URDF importer can
+        # silently retain only the first collision geometry on a merged fixed
+        # body; making the fixture the sole collision removes that ambiguity.
+        block = re.sub(r"\n    <collision(?:\s+[^>]*)?>.*?</collision>", "", block, flags=re.DOTALL)
+        fixture = (
+            "\n    <collision>\n"
+            f"      <origin xyz=\"{RACKET_MOUNT_ORIGIN}\" rpy=\"0 0 0\"/>\n"
+            "      <geometry>\n"
+            f"        <box size=\"{RACKET_FACE_BOX_SIZE}\"/>\n"
+            "      </geometry>\n"
+            "    </collision>"
+        )
+        return block.replace("</link>", fixture + "\n  </link>", 1)
+
+    text = re.sub(
+        r'<link name="right_wrist_yaw_Link">.*?</link>',
+        _add_wrist_fixture,
+        text,
+        count=1,
+        flags=re.DOTALL,
+    )
     return text
 
 

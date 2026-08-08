@@ -24,6 +24,7 @@ from training.tasks.base_locomotion.mdp import (
     A3F0UpperBaseCompositePositionActionCfg,
     A3FrozenStageAJointCoordinatorActionCfg,
     A3UnifiedUpperReferenceTrackerActionCfg,
+    A3ReferenceFreeTargetConditionedPositionActionCfg,
     A3TargetConditionedJointCoordinatorActionCfg,
     A3FrozenStageAUpperCorrectionActionCfg,
     A3FrozenAnchorArmAdapterPositionActionCfg,
@@ -48,13 +49,37 @@ from training.tasks.tracking.config.agibot_a3.hope_env_cfg import (
     HOPEEventCfg,
     HOPEPingPongAgibotA3EnvCfg,
 )
-from training.tasks.tracking.tracking_env_cfg import ActionsCfg, ObservationsCfg, RewardsCfg, TerminationsCfg
+from training.tasks.tracking.tracking_env_cfg import CommandsCfg, ActionsCfg, ObservationsCfg, RewardsCfg, TerminationsCfg
+from training.utils.v13b_ready_stance import V13B_RIGHT_FRONT_READY
 
 
 def _scale_gain_map(value, scale: float):
     if isinstance(value, dict):
         return {k: float(v) * scale for k, v in value.items()}
     return float(value) * scale
+
+
+V13B_READY_JOINT_POSITIONS = dict(V13B_RIGHT_FRONT_READY.joint_positions)
+
+
+def _apply_v13b_right_front_ready(env_cfg) -> None:
+    """Apply the one V1.3B READY contract to the PhysX reset state."""
+    joint_pos = env_cfg.scene.robot.init_state.joint_pos
+    for pattern in (
+        ".*_hip_pitch_joint",
+        ".*_hip_roll_joint",
+        ".*_knee_joint",
+        ".*_ankle_pitch_joint",
+        ".*_ankle_roll_joint",
+    ):
+        joint_pos.pop(pattern, None)
+    joint_pos.update(V13B_READY_JOINT_POSITIONS)
+    root_x, root_y, root_z = env_cfg.scene.robot.init_state.pos
+    env_cfg.scene.robot.init_state.pos = (
+        root_x,
+        root_y,
+        root_z + V13B_RIGHT_FRONT_READY.root_height_delta_m,
+    )
 
 
 @configclass
@@ -2339,6 +2364,362 @@ class A3FloatingUnifiedUpperReferenceTrackerNoAssistEnvCfg(
         action_dim = 12 + len(self.actions.joint_pos.upper_joint_names)
         self.rewards.raw_action_excess.params["action_indices"] = tuple(range(action_dim))
         self.rewards.action_execution_gap.params["action_indices"] = tuple(range(action_dim))
+
+
+@configclass
+class A3ReferenceFreeCommandsCfg(HOPECommandsCfg):
+    """Command set with no motion/manifest term at runtime."""
+
+    # Temporary construction placeholder: the inherited A3 cfg post-init
+    # touches these fields.  V1.3B sets it back to ``None`` before the
+    # ManagerBasedRLEnv is built, so no motion command is active at runtime.
+    motion = HOPECommandsCfg().motion
+    racket_target = mdp.ReferenceFreeRacketTargetCommandCfg(
+        asset_name="robot",
+        debug_vis=False,
+        racket_body_name="__force_wrist_offset_racket_fk__",
+        wrist_body_name="right_wrist_yaw_Link",
+        racket_fk_mode="wrist_offset",
+        target_mode="reference_free_global",
+        strike_window_s=0.06,
+        strike_time_std_s=0.05,
+    )
+
+
+@configclass
+class A3AnnealedPriorCommandsCfg(A3ReferenceFreeCommandsCfg):
+    """Training-only command set retaining a private motion source.
+
+    The public policy group remains reference-free.  The motion term exists
+    only so the frozen model_3396 prior can receive its private 126-D stage-A
+    observation during the annealing run; the final V1.3B task removes it.
+    """
+
+    motion = HOPECommandsCfg().motion
+    # This command is private to the frozen 3396/900 historical observation
+    # contracts.  Its manifest target remains coherent with ``motion`` while
+    # the public ``racket_target`` samples the independent V1.3B 10-D goal.
+    # It is deliberately never named by the deployable 98-D observation or a
+    # reward term.
+    teacher_racket_target = HOPECommandsCfg().racket_target
+
+
+@configclass
+class A3ReferenceFreeTargetActionsCfg(ActionsCfg):
+    """Action manager wrapper exposing the 26-D V1.3B term."""
+
+    joint_pos = A3ReferenceFreeTargetConditionedPositionActionCfg(
+        asset_name="robot",
+        base_joint_names=tuple(A3_BASE_ACTION_JOINTS),
+        backend_joint_names=tuple(A3_BACKEND_JOINTS),
+        strike_joint_names=tuple(A3_STRIKE_V2_REFERENCE_JOINTS),
+        upper_joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        joint_names=tuple(A3_NATIVE_STRIKE_JOINTS),
+        action_scale_rad=A3_PD_STAND_BASE_ACTION_SCALE_RAD,
+        action_mask=(1.0,) * 14,
+        scale=dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE),
+        direct_lower_scale_rad=(0.24,) * 12,
+        direct_upper_scale_rad=(0.55,) * 10,
+        direct_scale_config_path="cfg/target_conditioned/direct_action_scale_v13b.yaml",
+        clip_to_soft_joint_limits=True,
+        raw_clip=1.0,
+        smooth_raw_bound=True,
+        microstep_enabled=True,
+    )
+
+
+@configclass
+class A3ReferenceFreeTargetObservationsCfg(ObservationsCfg):
+    """Deployable robot state + exactly one canonical 10-D target."""
+
+    @configclass
+    class PolicyCfg(ObservationsCfg.PolicyCfg):
+        command = None
+        motion_anchor_pos_b = None
+        motion_anchor_ori_b = None
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.10, n_max=0.10))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.20, n_max=0.20))
+        projected_gravity = ObsTerm(func=mdp.projected_gravity, noise=Unoise(n_min=-0.05, n_max=0.05))
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)},
+            noise=Unoise(n_min=-0.01, n_max=0.01),
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)},
+            noise=Unoise(n_min=-0.50, n_max=0.50),
+        )
+        racket_pos_b = ObsTerm(func=mdp.racket_pos_b, params={"command_name": "racket_target"})
+        racket_lin_vel_b = ObsTerm(func=mdp.racket_lin_vel_b, params={"command_name": "racket_target"})
+        racket_normal_b = ObsTerm(func=mdp.racket_normal_b, params={"command_name": "racket_target"})
+        # One and only one canonical 10-D goal: [position, velocity, normal, signed time].
+        strike_goal_10d = ObsTerm(func=mdp.racket_target_goal_10d_b, params={"command_name": "racket_target"})
+        swing_type = None
+        actions = ObsTerm(func=mdp.last_action, params={"action_name": "joint_pos"})
+
+    @configclass
+    class CriticCfg(ObservationsCfg.PrivilegedCfg):
+        command = None
+        motion_anchor_pos_b = None
+        motion_anchor_ori_b = None
+        body_pos = None
+        body_ori = None
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel)
+        projected_gravity = ObsTerm(func=mdp.projected_gravity)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)})
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)})
+        racket_pos_b = ObsTerm(func=mdp.racket_pos_b, params={"command_name": "racket_target"})
+        racket_lin_vel_w = ObsTerm(func=mdp.racket_lin_vel_w, params={"command_name": "racket_target"})
+        racket_normal_w = ObsTerm(func=mdp.racket_normal_w, params={"command_name": "racket_target"})
+        strike_goal_10d = ObsTerm(func=mdp.racket_target_goal_10d_b, params={"command_name": "racket_target"})
+        actions = ObsTerm(func=mdp.last_action, params={"action_name": "joint_pos"})
+        episode_time_left = ObsTerm(func=mdp.episode_time_left)
+
+    policy: PolicyCfg = PolicyCfg()
+    critic: CriticCfg = CriticCfg()
+
+
+@configclass
+class A3AnnealedPriorTargetObservationsCfg(A3ReferenceFreeTargetObservationsCfg):
+    """Reference-free actor plus private 3396 and model_900 observations."""
+
+    # Exact 56-D historical model_900 observation contract.  This group is
+    # only queried while the upper prior alpha is nonzero.
+    upper: A3F0ObservationsCfg.PolicyCfg = A3F0ObservationsCfg.PolicyCfg()
+    stage_a: A3UpperCorrectionObservationsCfg.StageACfg = (
+        A3UpperCorrectionObservationsCfg.StageACfg()
+    )
+
+
+@configclass
+class A3ReferenceFreeTargetRewardsCfg(RewardsCfg):
+    """Goal/event rewards with no motion imitation or teacher dependency."""
+
+    motion_global_anchor_pos = None
+    motion_global_anchor_ori = None
+    motion_body_pos = None
+    motion_body_ori = None
+    motion_body_lin_vel = None
+    motion_body_ang_vel = None
+
+    racket_position = RewTerm(func=mdp.racket_position_tracking_exp, weight=4.0, params={"command_name": "racket_target", "std": 0.04})
+    # Impact speed and face orientation are first-class objectives.  Position
+    # remains primary, but these weights are intentionally strong enough that
+    # the policy cannot obtain a good strike score while merely arriving at
+    # the right point with the wrong racket velocity/normal.
+    racket_velocity = RewTerm(func=mdp.racket_velocity_tracking_exp, weight=2.5, params={"command_name": "racket_target", "std": 0.50})
+    racket_normal = RewTerm(func=mdp.racket_normal_tracking_exp, weight=3.0, params={"command_name": "racket_target", "std": 0.1745329})
+    racket_hit_precision = RewTerm(
+        func=mdp.racket_exact_hit_precision_tracking_exp,
+        weight=4.0,
+        params={
+            "command_name": "racket_target",
+            "pos_std": 0.04,
+            "vel_std": 0.50,
+            "normal_std": 0.1745329,
+            "time_std": 0.05,
+            "pos_coeff": 0.40,
+            "velocity_coeff": 0.30,
+            "normal_coeff": 0.30,
+        },
+    )
+    pre_hit_progress = RewTerm(func=mdp.racket_target_progress, weight=0.25, params={"command_name": "racket_target", "scale_m": 0.10})
+    # One 10-second V1.3B episode contains one strike opportunity.  Preserve
+    # the first 150 ms of follow-through, then make a continued torso sway or
+    # forward surge costly.  The gate uses only public signed time-to-hit;
+    # private motion/model priors never enter these rewards.
+    post_hit_torso_angular_velocity = RewTerm(
+        func=mdp.post_hit_goal_torso_angular_velocity_l2,
+        weight=-0.20,
+        params={
+            "command_name": "racket_target",
+            "torso_body_name": "torso_Link",
+            "deadband": 0.06,
+            "follow_through_s": 0.15,
+            "ramp_s": 0.35,
+        },
+    )
+    post_hit_torso_tilt = RewTerm(
+        func=mdp.post_hit_goal_torso_tilt_l2,
+        weight=-0.15,
+        params={
+            "command_name": "racket_target",
+            "torso_body_name": "torso_Link",
+            "follow_through_s": 0.15,
+            "ramp_s": 0.35,
+        },
+    )
+    post_hit_forward_velocity = RewTerm(
+        func=mdp.post_hit_goal_forward_velocity_deadband_l2,
+        weight=-0.05,
+        params={
+            "command_name": "racket_target",
+            "deadband": 0.08,
+            "follow_through_s": 0.15,
+            "ramp_s": 0.35,
+        },
+    )
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.05)
+    action_residual_l2 = RewTerm(func=mdp.action_raw_l2, weight=-0.01, params={"action_name": "joint_pos"})
+    joint_limit = RewTerm(func=mdp.joint_pos_limits, weight=-10.0, params={"asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)})
+    joint_torques = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-6, params={"asset_cfg": SceneEntityCfg("robot", joint_names=A3_REFERENCE_TRACKER_JOINTS, preserve_order=True)})
+    feet_slip = RewTerm(func=mdp.feet_slip_l2, weight=-1.0, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=A3_FEET_BODIES), "threshold": 10.0})
+    strict_fall_risk = RewTerm(func=mdp.strict_fall_risk_l2, weight=-25.0, params={"minimum_upright": 0.80, "minimum_height": 0.90, "minimum_torso_upright": 0.85, "minimum_torso_height": 0.80})
+    fall = RewTerm(func=mdp.is_terminated, weight=-150.0)
+    alive = RewTerm(func=mdp.is_alive, weight=1.0)
+    # Compatibility placeholders used by the inherited A3 post-init; kept at
+    # zero so the reference-free reward bundle has no hidden legacy term.
+    raw_action_excess = RewTerm(func=mdp.action_unbounded_excess_l2, weight=0.0, params={"action_name": "joint_pos", "action_indices": tuple(range(26))})
+    action_execution_gap = RewTerm(func=mdp.action_execution_gap_l2, weight=0.0, params={"action_name": "joint_pos", "action_indices": tuple(range(26))})
+
+
+@configclass
+class A3FloatingTargetConditionedReferenceFreeV13BEnvCfg(A3FloatingUnifiedUpperReferenceTrackerEnvCfg):
+    """V1.3B: reference-free student, direct 26-D action, global 10-D goal."""
+
+    commands: A3ReferenceFreeCommandsCfg = A3ReferenceFreeCommandsCfg()
+    actions: A3ReferenceFreeTargetActionsCfg = A3ReferenceFreeTargetActionsCfg()
+    observations: A3ReferenceFreeTargetObservationsCfg = A3ReferenceFreeTargetObservationsCfg()
+    rewards: A3ReferenceFreeTargetRewardsCfg = A3ReferenceFreeTargetRewardsCfg()
+    terminations: A3StrikeStabilizerATerminationsCfg = A3StrikeStabilizerATerminationsCfg()
+    events: HOPEEventCfg = HOPEEventCfg()
+    reference_free_mode: bool = True
+    teacher_alpha_initial: float = 0.0
+    target_global_probability_final: float = 1.0
+    policy_goal_contract_version: str = "policy_strike_goal_10d/racket_contact_v1"
+
+    def __post_init__(self):
+        # Run the established A3 floating plant setup, then replace the
+        # reference-bearing managers before ManagerBasedRLEnv construction.
+        super().__post_init__()
+        self.commands.motion = None
+        self.commands.racket_target.target_mode = "reference_free_global"
+        self.commands.racket_target.strike_time_std_s = 0.05
+        self.commands.racket_target.racket_body_name = "__force_wrist_offset_racket_fk__"
+        self.actions.joint_pos.base_joint_names = tuple(A3_BASE_ACTION_JOINTS)
+        self.actions.joint_pos.backend_joint_names = tuple(A3_BACKEND_JOINTS)
+        self.actions.joint_pos.strike_joint_names = tuple(A3_STRIKE_V2_REFERENCE_JOINTS)
+        self.actions.joint_pos.upper_joint_names = tuple(A3_NATIVE_STRIKE_JOINTS)
+        self.actions.joint_pos.joint_names = tuple(A3_NATIVE_STRIKE_JOINTS)
+        self.actions.joint_pos.scale = dict(AGIBOT_A3_NATIVE_STRIKE_ACTION_SCALE)
+        self.actions.joint_pos.action_scale_rad = A3_PD_STAND_BASE_ACTION_SCALE_RAD
+        self.actions.joint_pos.action_mask = (1.0,) * 14
+        self.actions.joint_pos.ready_joint_positions = dict(V13B_READY_JOINT_POSITIONS)
+        self.scene.robot.spawn.fix_base = False
+        self.scene.robot.init_state.pos = (-0.5000, -0.7625, 1.0400)
+        self.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        _apply_v13b_right_front_ready(self)
+        # train.py may receive the same stance parameters through task YAML.
+        # Mark the unshifted root reference so that override application
+        # replaces this contract rather than adding the pelvis correction a
+        # second time.
+        self.v13b_right_front_ready_contract = True
+        self.v13b_ready_root_reference_z = 1.0400
+        self.events.sample_leg_policy_handoff = None
+        self.v13b_policy_progress = 0.0
+        self.rewards.undesired_contacts = None
+        self.terminations.anchor_pos = None
+        self.terminations.anchor_ori = None
+        self.terminations.ee_body_pos = None
+        if self.commands.motion is not None:
+            raise RuntimeError("V1.3B reference-free contract failed: motion command still active")
+        if self.observations.policy.swing_type is not None:
+            raise RuntimeError("V1.3B actor contract failed: swing_type is still exposed")
+        if len(self.actions.joint_pos.direct_lower_scale_rad) != 12:
+            raise RuntimeError("V1.3B direct lower action scale must be 12-D")
+
+
+@configclass
+class A3FloatingTargetConditionedReferenceFreeV13BAnnealedPriorEnvCfg(
+    A3FloatingTargetConditionedReferenceFreeV13BEnvCfg
+):
+    """Training-only complete priors, with a reference-free public actor."""
+
+    commands: A3AnnealedPriorCommandsCfg = A3AnnealedPriorCommandsCfg()
+    observations: A3AnnealedPriorTargetObservationsCfg = A3AnnealedPriorTargetObservationsCfg()
+    training_only_annealed_prior: bool = True
+
+    def __post_init__(self):
+        super().__post_init__()
+        # The parent intentionally disables motion for final deployment.  This
+        # private branch restores it only for the frozen stage-A prior.
+        self.commands.motion = HOPECommandsCfg().motion
+        # Replacing the dataclass instance above also replaces the assignments
+        # made by the inherited A3 flat/tracker setup.  The private stage-A
+        # observation group still needs the same canonical anchor and tracked
+        # body list as model_3396's original 126-D contract.
+        self.commands.motion.anchor_body_name = "torso_Link"
+        self.commands.motion.body_names = [
+            "torso_Link",
+            "right_shoulder_roll_Link",
+            "right_elbow_Link",
+            "right_wrist_yaw_Link",
+        ]
+        self.commands.motion.expected_root_quaternion_wxyz = (1.0, 0.0, 0.0, 0.0)
+        self.commands.motion.sample_random_start_phase = False
+        self.commands.motion.prelude_steps = 50
+        self.commands.motion.hold_last_frame_steps = 500
+        self.commands.motion.return_to_default_steps = 0
+        self.commands.motion.reset_to_default_pose = True
+        private_target = self.commands.teacher_racket_target
+        private_target.motion_command_name = "motion"
+        private_target.target_mode = "manifest"
+        private_target.racket_body_name = "__force_wrist_offset_racket_fk__"
+        private_target.wrist_body_name = "right_wrist_yaw_Link"
+        private_target.racket_fk_mode = "wrist_offset"
+        # Random 10-D targets are independent of the private teacher motion
+        # from iteration zero.  Keep the motion *name* available solely for
+        # the private historical 56-D/126-D teacher observations (their
+        # explicit stroke label and READY prelude timing); it is never used to
+        # generate the racket target and never enters the public 98-D actor.
+        self.commands.racket_target.motion_command_name = "motion"
+        self.commands.racket_target.target_mode = "reference_free_global"
+        # Preserve the exact historical teacher inputs.  In particular, the
+        # frozen priors must never see the public random target: that target
+        # is intentionally not tied to their private reference motion.
+        for group_name in ("upper", "stage_a"):
+            group = getattr(self.observations, group_name)
+            for term_name in (
+                "racket_target_pos_b",
+                "racket_target_vel_b",
+                "racket_target_normal_b",
+                "time_to_strike",
+                "swing_type",
+            ):
+                term = getattr(group, term_name, None)
+                if term is not None:
+                    term.params = {**dict(term.params), "command_name": "teacher_racket_target"}
+        self.actions.joint_pos.annealed_3396_prior_enabled = True
+        self.actions.joint_pos.annealed_3396_prior_checkpoint = (
+            "checkpoints/frozen_priors/model_3396.pt"
+        )
+        self.actions.joint_pos.direct_scale_config_path = (
+            "cfg/target_conditioned/direct_action_scale_v13b_annealed_prior.yaml"
+        )
+        self.actions.joint_pos.annealed_3396_prior_observation_group = "stage_a"
+        self.actions.joint_pos.annealed_3396_prior_alpha_start = 0.80
+        self.actions.joint_pos.annealed_3396_prior_alpha_zero_progress = 0.60
+        self.actions.joint_pos.annealed_900_upper_prior_enabled = True
+        self.actions.joint_pos.annealed_900_upper_prior_checkpoint = (
+            "checkpoints/frozen_priors/model_900.pt"
+        )
+        self.actions.joint_pos.annealed_900_upper_prior_observation_group = "upper"
+        self.actions.joint_pos.annealed_900_upper_prior_reference_command = "motion"
+        self.actions.joint_pos.annealed_900_upper_prior_raw_clip = 0.50
+        # Reproduce the reviewed model_900 reference composition while it is
+        # active.  These channels are never exposed to the public actor.
+        self.actions.joint_pos.joint_reference_lookahead_steps = {
+            "right_shoulder_pitch_joint": 12.0,
+            "right_shoulder_yaw_joint": 12.0,
+        }
+        self.actions.joint_pos.joint_velocity_feedforward_mode = "task_phase"
+        self.actions.joint_pos.joint_velocity_feedforward_beta = 0.75
+        self.actions.joint_pos.joint_velocity_feedforward_joint_names = (
+            "right_shoulder_pitch_joint",
+            "right_shoulder_yaw_joint",
+        )
 
 
 @configclass

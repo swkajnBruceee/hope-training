@@ -1,0 +1,188 @@
+main_executor: motion_control_work_thread
+enable_hds: true
+PublisherManager:
+  publisher_cfg_list:
+    - name: pub_arm_joint_command
+      topic: /body_drive/arm_joint_command
+      enable: true
+      frequency: 500
+      frequency_sim: 1000
+      executor: pub_arm_joint_command_thread
+      print_interval: 0
+    - name: pub_leg_joint_command
+      topic: /body_drive/leg_joint_command
+      enable: true
+      frequency: 500
+      frequency_sim: 1000
+      executor: pub_leg_joint_command_thread
+      print_interval: 0
+    - name: pub_waist_joint_command
+      topic: /body_drive/waist_joint_command
+      enable: true
+      frequency: 500
+      frequency_sim: 1000
+      executor: pub_waist_joint_command_thread
+      print_interval: 0
+    - name: pub_hand_joint_command
+      topic: /body_drive/hand_joint_command
+      enable: true
+      frequency: 100
+      executor: pub_common_command_thread
+      print_interval: 0
+    - name: pub_neck_joint_command
+      topic: /body_drive/neck_joint_command
+      enable: true
+      frequency: 100
+      executor: pub_common_command_thread
+      print_interval: 0
+    - name: pub_leg_joint_state
+      topic: /motion/control/leg_joint_state
+      enable: true
+      frequency: 100
+      executor: pub_common_command_thread
+      print_interval: 0
+    - name: pub_arm_joint_state
+      topic: /motion/control/arm_joint_state
+      enable: true
+      frequency: 100
+      executor: pub_common_command_thread
+      print_interval: 0
+    - name: pub_neck_joint_state
+      topic: /motion/control/neck_joint_state
+      enable: true
+      frequency: 100
+      executor: pub_common_command_thread
+      print_interval: 0
+    - name: pub_waist_joint_state
+      topic: /motion/control/waist_joint_state
+      enable: true
+      frequency: 100
+      executor: pub_common_command_thread
+      print_interval: 0
+    - name: pub_hand_joint_state
+      topic: /motion/control/hand_joint_state
+      enable: true
+      frequency: 100
+      executor: pub_common_command_thread
+      print_interval: 0
+    - name: pub_action_info
+      topic: /mc/state/action_info
+      enable: true
+      frequency: 20
+      executor: pub_common_command_thread
+      print_interval: 0
+    - name: pub_motion_info
+      topic: /mc/state/motion_info
+      enable: true
+      frequency: 20
+      executor: pub_common_command_thread
+      print_interval: 0
+    - name: pub_mc_robot_posture_state
+      topic: /mc/state/robot_posture_state
+      enable: true
+      frequency: 20
+      executor: pub_common_command_thread
+      print_interval: 0
+SubscriberManager:
+  subscriber_cfg_list:
+    - name: sub_arm_joint_state
+      topic: /body_drive/arm_joint_state
+      enable: true
+      executor: sub_arm_joint_state_thread
+      wait_ready: true
+      print_interval: 0
+    - name: sub_leg_joint_state
+      topic: /body_drive/leg_joint_state
+      enable: true
+      executor: sub_leg_joint_state_thread
+      wait_ready: true
+      print_interval: 0
+    - name: sub_waist_joint_state
+      topic: /body_drive/waist_joint_state
+      enable: true
+      executor: sub_waist_joint_state_thread
+      wait_ready: true
+      print_interval: 0
+    - name: sub_pelvis_imu_state_ros
+      topic: /body_drive/pelvis_imu/data
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: true
+      print_interval: 0
+    - name: sub_torso_imu_state_ros
+      topic: /body_drive/torso_imu/data
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: true
+      print_interval: 0
+    - name: sub_hand_joint_state
+      topic: /body_drive/hand_joint_state
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: false
+      print_interval: 0
+    - name: sub_neck_joint_state
+      topic: /body_drive/neck_joint_state
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: false
+      print_interval: 0
+    - name: sub_locomotion_velocity
+      topic: /motion/control/locomotion_velocity
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: false
+      print_interval: 0
+    - name: sub_leg_joint_command
+      topic: /motion/control/leg_joint_command
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: false
+      print_interval: 0
+    - name: sub_arm_joint_command
+      topic: /motion/control/arm_joint_command
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: false
+      print_interval: 0
+    - name: sub_waist_joint_command
+      topic: /motion/control/waist_joint_command
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: false
+      print_interval: 0
+    - name: sub_neck_joint_command
+      topic: /motion/control/neck_joint_command
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: false
+      print_interval: 0
+    - name: sub_hand_joint_command
+      topic: /motion/control/hand_joint_command
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: false
+      print_interval: 0
+    - name: sub_bms_data
+      topic: /aima/bms/data
+      enable: true
+      executor: sub_common_state_thread
+      wait_ready: false
+      print_interval: 0
+ServiceManager:
+  service_cfg_list:
+    - name: mc_action_service
+      enable: true
+      executor: service_server_thread
+      debug_print: true
+    - name: mc_joint_service
+      enable: true
+      executor: service_server_thread
+    - name: mc_motion_service
+      enable: true
+      executor: service_server_thread
+      debug_print: true
+MotionControlCfg:
+  config_path: /home/bruce/桌面/HOPETableTennis/third_party/aimsim_official/motion_control_humble/bin/../config/motion_control/configuration
+  resource_path: /home/bruce/桌面/HOPETableTennis/third_party/aimsim_official/motion_control_humble/bin/../share/robot_model/models
+  robot_name: a3_t2d5

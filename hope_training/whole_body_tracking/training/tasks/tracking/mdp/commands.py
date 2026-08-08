@@ -124,6 +124,7 @@ class MotionLibraryLoader:
             for region in sorted(set(self.regions))
         }
         raw_difficulty = []
+        raw_sample_weights = []
         for e in entries:
             meta = e.get("p5d2_dataset", {})
             value = meta.get("difficulty_weight", meta.get("projection_max_rad_after_reoptimization", 0.0))
@@ -131,8 +132,19 @@ class MotionLibraryLoader:
                 raw_difficulty.append(max(0.0, float(value)))
             except (TypeError, ValueError):
                 raw_difficulty.append(0.0)
+            sample_weight = e.get("sample_weight", 1.0)
+            try:
+                sample_weight = float(sample_weight)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"invalid sample_weight={sample_weight!r} in motion manifest entry") from exc
+            if not np.isfinite(sample_weight) or sample_weight < 0.0:
+                raise ValueError(f"sample_weight must be finite and non-negative, got {sample_weight!r}")
+            raw_sample_weights.append(sample_weight)
         difficulty = torch.tensor(raw_difficulty, dtype=torch.float32, device=device)
         self.difficulty_weights = 1.0 + difficulty / 0.01
+        self.sample_weights = torch.tensor(raw_sample_weights, dtype=torch.float32, device=device)
+        if not torch.any(self.sample_weights > 0.0):
+            raise ValueError(f"{self.manifest_file}: all motion sample_weight values are zero")
 
         arrays: list[dict[str, np.ndarray | float | int]] = []
         motion_paths: list[str] = []
@@ -185,12 +197,29 @@ class MotionLibraryLoader:
                 and "canonical_goal_normal_b0" in data.files
                 and "scene_root_anchor_w_m" in data.files
             )
+            # The dense A3 candidate bank uses the newer compact contract:
+            # canonical_* are expressed in the initial root-heading frame,
+            # while body_pos_w/body_quat_w contain the reference root pose.
+            # Keep this separate from the older scene-placed canonical_goal_*
+            # contract; falling through to the manifest's raw strike_target
+            # would incorrectly interpret a root-relative point as world data.
+            canonical_root_goal = (
+                "canonical_position" in data.files
+                and "canonical_velocity" in data.files
+                and "canonical_normal" in data.files
+            )
 
             def _rotate_z_np(vector: np.ndarray, heading_rad: float) -> np.ndarray:
                 c = float(np.cos(heading_rad))
                 s = float(np.sin(heading_rad))
                 x, y, z = [float(v) for v in np.asarray(vector).reshape(3)]
                 return np.asarray([c * x - s * y, s * x + c * y, z], dtype=np.float32)
+
+            def _yaw_from_quat_wxyz(quaternion: np.ndarray) -> float:
+                w, x, y, z = [float(v) for v in np.asarray(quaternion).reshape(4)]
+                denominator = 1.0 - 2.0 * (y * y + z * z)
+                numerator = 2.0 * (w * z + x * y)
+                return float(np.arctan2(numerator, denominator))
 
             if canonical_scene_goal:
                 anchor = np.asarray(data["scene_root_anchor_w_m"], dtype=np.float32).reshape(3)
@@ -201,10 +230,28 @@ class MotionLibraryLoader:
                 strike_position = anchor + _rotate_z_np(canonical_position_b, heading)
                 strike_velocity = _rotate_z_np(canonical_velocity_b, heading)
                 strike_normal = _rotate_z_np(canonical_normal_b, heading)
+                strike_position_b0 = np.zeros(3, dtype=np.float32)
+                strike_velocity_b0 = np.zeros(3, dtype=np.float32)
+                strike_normal_b0 = np.zeros(3, dtype=np.float32)
+                strike_target_is_root_relative = False
+            elif canonical_root_goal:
+                root_anchor = np.asarray(body_pos_w[0, 0], dtype=np.float32).reshape(3)
+                root_heading = _yaw_from_quat_wxyz(np.asarray(data["body_quat_w"])[0, 0])
+                strike_position_b0 = np.asarray(data["canonical_position"], dtype=np.float32).reshape(3)
+                strike_velocity_b0 = np.asarray(data["canonical_velocity"], dtype=np.float32).reshape(3)
+                strike_normal_b0 = np.asarray(data["canonical_normal"], dtype=np.float32).reshape(3)
+                strike_position = root_anchor + _rotate_z_np(strike_position_b0, root_heading)
+                strike_velocity = _rotate_z_np(strike_velocity_b0, root_heading)
+                strike_normal = _rotate_z_np(strike_normal_b0, root_heading)
+                strike_target_is_root_relative = True
             else:
                 strike_position = np.asarray(target.get("racket_position_m", [0.0, 0.0, 0.0]), dtype=np.float32)
                 strike_velocity = np.asarray(target.get("racket_velocity_mps", [0.0, 0.0, 0.0]), dtype=np.float32)
                 strike_normal = np.asarray(target.get("racket_normal_w", [0.0, 0.0, 1.0]), dtype=np.float32)
+                strike_position_b0 = np.zeros(3, dtype=np.float32)
+                strike_velocity_b0 = np.zeros(3, dtype=np.float32)
+                strike_normal_b0 = np.zeros(3, dtype=np.float32)
+                strike_target_is_root_relative = False
 
             normal = strike_normal
             n = float(np.linalg.norm(normal))
@@ -244,6 +291,10 @@ class MotionLibraryLoader:
                     "strike_pos_w": strike_position,
                     "strike_vel_w": strike_velocity,
                     "strike_normal_w": normal,
+                    "strike_pos_b0": strike_position_b0,
+                    "strike_vel_b0": strike_velocity_b0,
+                    "strike_normal_b0": strike_normal_b0,
+                    "strike_target_is_root_relative": strike_target_is_root_relative,
                     "upper_momentum_pelvis": upper_momentum,
                     "upper_mass_kg": upper_mass,
                     "upper_length_scale_m": upper_length_scale,
@@ -302,6 +353,20 @@ class MotionLibraryLoader:
         self.strike_vel_w = torch.tensor(np.stack([a["strike_vel_w"] for a in arrays]), dtype=torch.float32, device=device)
         self.strike_normal_w = torch.tensor(
             np.stack([a["strike_normal_w"] for a in arrays]), dtype=torch.float32, device=device
+        )
+        self.strike_pos_b0 = torch.tensor(
+            np.stack([a["strike_pos_b0"] for a in arrays]), dtype=torch.float32, device=device
+        )
+        self.strike_vel_b0 = torch.tensor(
+            np.stack([a["strike_vel_b0"] for a in arrays]), dtype=torch.float32, device=device
+        )
+        self.strike_normal_b0 = torch.tensor(
+            np.stack([a["strike_normal_b0"] for a in arrays]), dtype=torch.float32, device=device
+        )
+        self.strike_target_is_root_relative = torch.tensor(
+            [a["strike_target_is_root_relative"] for a in arrays],
+            dtype=torch.bool,
+            device=device,
         )
 
     @staticmethod
@@ -1073,6 +1138,19 @@ class MotionCommand(CommandTerm):
                     f"fixed_motion_id={motion_id} is outside [0, {self.motion.num_motions})"
                 )
             return torch.full((count,), motion_id, dtype=torch.long, device=self.device)
+
+        def weighted_pick(candidate_ids: torch.Tensor, pick_count: int, extra_weights: torch.Tensor | None = None):
+            if pick_count <= 0:
+                return torch.empty(0, dtype=torch.long, device=self.device)
+            if candidate_ids.numel() == 0:
+                raise RuntimeError("cannot sample a motion from an empty candidate set")
+            weights = self.motion.sample_weights[candidate_ids]
+            if extra_weights is not None:
+                weights = weights * extra_weights
+            if not torch.isfinite(weights).all() or not torch.any(weights > 0.0):
+                return candidate_ids[torch.randint(candidate_ids.numel(), (pick_count,), device=self.device)]
+            return candidate_ids[torch.multinomial(weights, pick_count, replacement=True)]
+
         mode = str(getattr(self.cfg, "reference_sampling_mode", "uniform")).strip().lower()
         if mode not in {"uniform", "balanced_by_region", "difficulty_weighted", "curriculum"}:
             raise ValueError(
@@ -1106,14 +1184,12 @@ class MotionCommand(CommandTerm):
                     n = int(mask.sum())
                     if n:
                         ids = active_regions[region]
-                        out[mask] = ids[torch.randint(ids.numel(), (n,), device=self.device)]
+                        out[mask] = weighted_pick(ids, n)
                 return out
         if mode == "difficulty_weighted":
-            weights = self.motion.difficulty_weights[candidate_ids]
-            weights = weights / weights.sum().clamp(min=1.0e-6)
-            return candidate_ids[torch.multinomial(weights, count, replacement=True)]
+            return weighted_pick(candidate_ids, count, self.motion.difficulty_weights[candidate_ids])
         if candidate_ids.numel() != self.motion.num_motions:
-            return candidate_ids[torch.randint(candidate_ids.numel(), (count,), device=self.device)]
+            return weighted_pick(candidate_ids, count)
         if (
             self.cfg.manifest_balance_strokes
             and len(self.motion.forehand_ids) > 0
@@ -1121,12 +1197,10 @@ class MotionCommand(CommandTerm):
         ):
             choose_fh = torch.rand(count, device=self.device) < 0.5
             out = torch.empty(count, dtype=torch.long, device=self.device)
-            fh_pick = torch.randint(len(self.motion.forehand_ids), (int(choose_fh.sum()),), device=self.device)
-            bh_pick = torch.randint(len(self.motion.backhand_ids), (int((~choose_fh).sum()),), device=self.device)
-            out[choose_fh] = self.motion.forehand_ids[fh_pick]
-            out[~choose_fh] = self.motion.backhand_ids[bh_pick]
+            out[choose_fh] = weighted_pick(self.motion.forehand_ids, int(choose_fh.sum()))
+            out[~choose_fh] = weighted_pick(self.motion.backhand_ids, int((~choose_fh).sum()))
             return out
-        return torch.randint(self.motion.num_motions, (count,), dtype=torch.long, device=self.device)
+        return weighted_pick(candidate_ids, count)
 
     def select_nearest_strike_motion_ids(
         self, target_position_b: torch.Tensor | Sequence[float] | Sequence[Sequence[float]]

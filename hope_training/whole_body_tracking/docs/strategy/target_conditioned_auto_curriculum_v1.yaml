@@ -1,0 +1,288 @@
+# Target-conditioned policy V1.2 — review specification
+#
+# This file is a design/contract file for review.  It is intentionally NOT a
+# runnable Hydra task yet: the observation adapter, target sampler, reference
+# dropout, reward schedule and checkpoint migration must be implemented and
+# audited before this file is composed into cfg/task.
+#
+# Goal: migrate the existing P5U policy from a reference follower toward a
+# target-conditioned controller without changing the 26-D action contract.
+
+strategy:
+  name: target_conditioned_auto_curriculum_v1_2
+  version: 1.2
+  status: review_only
+  base_task: HOPEA3FloatingUnifiedUpperReferenceTrackerMicrostep
+  base_checkpoint_contract: p5u_26d_microstep
+  training_not_started_by_this_file: true
+
+# ---------------------------------------------------------------------------
+# Policy contract
+# ---------------------------------------------------------------------------
+policy:
+  action:
+    dimension: 26
+    preserve_existing_contract: true
+    channels:
+      lower_balance_residual: 12
+      upper_residual: 10
+      microstep_residual: 4
+    change_action_representation: false
+
+  # The actor receives the existing state/reference observations plus one
+  # normalized goal vector and a validity mask.  signed_time_to_hit is already
+  # the tenth goal component; it must NOT be appended a second time.
+  observation_suffix:
+    goal_dimension: 10
+    goal_order:
+      - target_position_local_xyz
+      - target_linear_velocity_local_xyz
+      - target_normal_local_xyz
+      - signed_time_to_hit
+    goal_frame: pelvis_root_local_at_observation
+    normal_unit_length_required: true
+    reference_mask_dimension: 1
+    keep_existing_reference_observation_initially: true
+    duplicate_time_to_hit_observation: false
+
+  critic:
+    use_same_goal_contract: true
+    privileged_actual_racket_state_allowed: true
+
+# ---------------------------------------------------------------------------
+# Goal normalization and sampling
+# ---------------------------------------------------------------------------
+goal:
+  # The existing planner contract is ball-center based.  V1.2 converts it
+  # offline into a policy-goal contract whose ten values are all racket-side.
+  source_contract_version: strike_goal_10d/ball_center_impact_v1
+  policy_contract_version: strike_goal_10d/racket_sweet_spot_impact_v1
+  source_frame: hope_world
+  policy_frame: pelvis_root_local_at_observation
+  transform_required: true
+  transform_must_be_shared_by: [sampler, observation, reward, replay]
+
+  normalization:
+    mode: fixed_goal_distribution_stats
+    statistics_source: audited_feasible_goal_samples
+    statistics_file: eval_outputs/target_conditioned/goal_distribution_stats_v1.json
+    running_update: false
+    clip: 5.0
+    normal_passthrough: true
+    mask_passthrough: true
+    fail_closed_if_unresolved: true
+
+  curriculum:
+    progress_source: policy_updates
+    env_count_invariant: true
+    iteration_counter: global_learning_iteration
+    progress_clip: [0.0, 1.0]
+    warmup_progress: 0.10
+    ramp_end_progress: 1.00
+    total_ramp_updates: bind_to_training.max_iterations
+    interpolation_formula: "alpha=clip((progress-warmup_progress)/(ramp_end_progress-warmup_progress),0,1)"
+    initial_ranges:
+      position_half_range_m: [0.01, 0.01, 0.01]
+      velocity_fraction: 0.03
+      normal_half_angle_deg: 2.0
+      time_half_range_s: 0.02
+    final_ranges:
+      position_half_range_m: [0.08, 0.08, 0.08]
+      velocity_fraction: 0.20
+      normal_half_angle_deg: 12.0
+      time_half_range_s: 0.10
+    interpolation: linear
+    success_gated: false
+
+  # Samples outside this envelope are rejected before entering PPO.  A goal
+  # that fails any check is resampled, never converted into a forced failure.
+  feasibility:
+    enabled: true
+    max_resample_attempts: 32
+    on_resample_exhausted: resample_reference_and_goal
+    log_acceptance_statistics: true
+    log_metrics:
+      - goal_acceptance_rate
+      - resample_attempts_mean
+      - resample_exhausted_rate
+    checks:
+      - racket_workspace
+      - coarse_ik_reachability
+      - joint_limit_margin
+      - time_to_hit_minimum
+      - racket_speed_limit
+      - self_collision
+      - microstep_reachability
+    minimum_time_to_hit_s: 0.10
+    reject_unqualified_manifest_targets: true
+
+  semantics:
+    target_position_semantics: racket_sweet_spot_center_at_strike
+    reward_position_semantics: racket_sweet_spot_center_at_strike
+    target_velocity_semantics: racket_sweet_spot_linear_velocity_at_strike
+    target_normal_semantics: desired_racket_face_normal
+    normal_sign_convention: points_toward_outgoing_ball_direction
+    contact_mapping_required_at_runtime: false
+    offline_source_to_policy_goal_conversion_required: true
+    sweet_spot_calibration_version: required_and_frozen
+
+  offline_goal_conversion:
+    input_semantics: ball_center_at_strike
+    output_semantics: racket_sweet_spot_center_and_velocity_at_strike
+    required_fields: [ball_radius_m, face_offset_m, racket_mount_calibration]
+    fail_closed_if_unresolved: true
+
+  transforms:
+    position_local: "p_l = R_root^T * (p_w - p_root)"
+    normal_local: "n_l = R_root^T * n_w"
+    velocity_local: "v_l = R_root^T * v_w"
+    velocity_is_root_relative: false
+    signed_time_to_hit: "tau = clip(t_hit - t_now, -0.5, 0.5)"
+    frame_transform_must_be_shared_by: [sampler, observation, reward, replay]
+
+# ---------------------------------------------------------------------------
+# Reference annealing
+# ---------------------------------------------------------------------------
+reference_annealing:
+  reference_mask_required: true
+  dropout:
+    start_probability: 0.0
+    final_probability: 0.70
+    schedule: linear_with_progress
+    start_progress: 0.15
+    end_progress: 1.0
+    apply_after_observation_normalization: true
+    zero_all_reference_channels: true
+    expose_reference_mask: true
+  tracking_reward:
+    start_multiplier: 1.0
+    final_multiplier: 0.10
+    schedule: linear_with_progress
+    start_progress: 0.15
+    end_progress: 1.0
+    apply_reference_mask_per_environment: true
+    masked_reward_formula: "mask * multiplier * reference_tracking_reward"
+    global_multiplier_never_zero: true
+  target_reward_must_dominate_at_end: true
+  reference_dropout_is_training_only: true
+
+# ---------------------------------------------------------------------------
+# Reward contract
+# ---------------------------------------------------------------------------
+rewards:
+  event_window:
+    enabled: true
+    hit_time_is_highest_weight: true
+    half_window_s: 0.06
+    derive_half_window_steps_from_control_dt: true
+  target:
+    position_at_strike:
+      weight: 4.0
+      sigma_m: 0.04
+      kernel: gaussian
+    velocity_at_strike:
+      weight: 1.5
+      sigma_mps: 0.5
+      kernel: gaussian
+    normal_at_strike:
+      weight: 2.0
+      sigma_deg: 10.0
+      kernel: gaussian
+    timing:
+      weight: 1.0
+      sigma_s: 0.05
+      kernel: gaussian
+  shaping:
+    pre_hit_distance_progress: enabled
+    progress_reward_must_be_lower_than_hit_reward: true
+    pre_hit_distance_progress_weight: 0.25
+  safety:
+    balance: 1.5
+    alive: 0.2
+    strict_fall: -15.0
+    joint_limit: -0.5
+    torque: -1.0e-5
+    acceleration: -0.05
+    action_rate: -0.05
+  reference_weight_schedule: reference_annealing.tracking_reward
+
+# ---------------------------------------------------------------------------
+# Warm-start migration
+# ---------------------------------------------------------------------------
+checkpoint_migration:
+  source: existing_p5u_26d_checkpoint
+  action_head: copy_exactly
+  hidden_layers: copy_exactly
+  observation_first_layer:
+    old_input_columns: copy_exactly
+    new_goal_columns: initialize_zero
+    new_reference_mask_column: initialize_zero
+    bias: copy_exactly
+  observation_normalizer:
+    old_statistics: copy_exactly
+    new_goal_statistics: load_fixed_goal_distribution_stats
+    new_mask_statistics: fixed_binary_statistics
+  reference_dropout_order:
+    normalize_reference_features_first: true
+    then_zero_reference_features_when_mask_zero: true
+  optimizer:
+    load_existing_state: false
+    restart_lr_schedule: true
+    reset_reason: changed_goal_conditioning_and_reward_distribution
+  fail_if_action_dimension_changes: true
+
+# ---------------------------------------------------------------------------
+# Required audits before long training
+# ---------------------------------------------------------------------------
+preflight:
+  max_envs: 128
+  max_iterations: 100
+  checks:
+    - observation_dimension_matches_migrated_policy
+    - goal_frame_transform_round_trip
+    - normal_is_unit_length
+    - target_and_reward_share_same_hit_frame
+    - reference_mask_changes_observation
+    - normalized_reference_is_zeroed_after_normalization_when_mask_is_zero
+    - reference_reward_is_zero_when_mask_is_zero
+    - old_checkpoint_action_parity_at_zero_goal_weights
+    - feasibility_filter_rejects_unreachable_goals
+    - exact_10_second_episode_contract
+
+validation:
+  required_sets:
+    - seen_targets
+    - interpolation_targets
+    - held_out_workspace_region
+    - held_out_goal_combinations
+    - reference_mask_zero
+    - reference_target_mismatch
+  metrics:
+    - strike_position_error_m
+    - strike_velocity_error_mps
+    - strike_normal_angle_deg
+    - strike_time_error_s
+    - strike_success_3cm
+    - strike_success_5cm
+    - strike_success_10cm
+    - strict_fall_rate
+    - ten_second_survival_rate
+  decisive_ablation:
+    reference_mask: 0
+    expected_behavior:
+      - target_position_change_moves_strike_position
+      - target_normal_change_moves_racket_normal
+      - target_velocity_change_moves_racket_velocity
+
+evaluation:
+  stochastic_reference_dropout: false
+  allow_reference_mask_override: true
+  forced_reference_mask_values: [0, 1]
+  signed_time_to_hit_must_remain_active_after_strike: true
+
+# Explicit non-goals for V1.
+non_goals:
+  - direct_10d_action_output
+  - replacing_ik_or_actuator_controller
+  - changing_lower_body_action_dimension
+  - claiming_arbitrary_unreachable_goal_success

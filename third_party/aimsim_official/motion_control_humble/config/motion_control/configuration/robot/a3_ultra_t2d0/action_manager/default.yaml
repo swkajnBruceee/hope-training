@@ -1,0 +1,93 @@
+allow_action_indirect_transition: false
+
+gamepad_key_enable: true
+#      [LT]                                                       [RT]
+#      [LB]*                                                      [RB]*
+#                     [BACK]*   (LOGITECH)    [START]*
+#
+#       [UP]                                                     (Y)*
+#  [LEFT]   [RIGHT]                                          (X)*    (B)*
+#      [DOWN]                                                    (A)*
+#
+#
+#                 (LS)                              (RS)
+#
+action_map:
+  PASSIVE:
+    gamepad_keys: [LB, RB]
+    commands: [MotionControlAction_PASSIVE]
+    next_actions:
+      - DAMPING
+      - PD_STAND
+      # - DEBUG_ACTION
+      - GET_UP
+      - PACKAGE_GET_UP
+
+  DAMPING:
+    gamepad_keys: []
+    commands: [MotionControlAction_DAMPING]
+    next_actions:
+      - PASSIVE
+      - GET_UP
+      - PACKAGE_GET_UP
+
+  # DEBUG_ACTION:
+  #   gamepad_keys: [START, BACK]
+  #   commands: [MotionControlAction_DEBUG_ACTION]
+  #   next_actions:
+  #     - PD_STAND
+  #   priority_action: PD_STAND
+
+  PD_STAND:
+    gamepad_keys: [LB, A]
+    commands: [MotionControlAction_PD_STAND]
+    next_actions:
+      - PASSIVE
+      - MOTION
+      # - DANCE
+      - LIE_DOWN
+      - PACKAGE_LIE_DOWN
+
+  MOTION:
+    gamepad_keys: [LB, B]
+    commands: [MotionControlAction_MOTION]
+    next_actions:
+      - PD_STAND
+      # - DANCE
+      - LIE_DOWN
+      - DAMPING
+      - PACKAGE_LIE_DOWN
+
+  # DANCE:
+  #   gamepad_keys: []
+  #   commands: [MotionControlAction_DANCE]
+  #   next_actions:
+  #     - PD_STAND
+  #     - LOCOMOTION
+  #     - DAMPING
+
+
+  GET_UP:
+    gamepad_keys: [LB, Y]
+    commands: [MotionControlAction_GET_UP]
+    next_actions:
+      - MOTION
+
+  LIE_DOWN:
+    gamepad_keys: [LB, X]
+    commands: [MotionControlAction_LIE_DOWN]
+    next_actions:
+      - PASSIVE
+
+  PACKAGE_GET_UP:
+    gamepad_keys: [RB, Y]
+    commands: [MotionControlAction_PACKAGE_GET_UP]
+    next_actions:
+      - MOTION
+      - DAMPING
+
+  PACKAGE_LIE_DOWN:
+    gamepad_keys: [RB, X]
+    commands: [MotionControlAction_PACKAGE_LIE_DOWN]
+    next_actions:
+      - PASSIVE

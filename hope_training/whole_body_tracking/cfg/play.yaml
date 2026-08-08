@@ -34,6 +34,12 @@ adapt_stage_a_obs_180: false
 record_trace: false  # write per-control-step state/action diagnostics in evaluation reports
 single_shot_report: null  # optional JSON report path for non-multi-shot audits
 zero_tracker_residual: false  # P5D-only diagnostic: send safe reference with no learned residual
+# V1.3B complete-prior admission-only controls.  These attributes are set on
+# the replay env, never serialized into a training task.  They permit the
+# mandatory zero/lower-only/upper-only ordered smoke tests.
+force_zero_action: false
+v13b_force_lower_prior_alpha: null
+v13b_force_upper_prior_alpha: null
 # Evaluation-only P4C upper-chain ablation. ``policy`` preserves historical
 # execution. ``reference_only`` keeps the lower stabilizer but removes the
 # frozen upper actor, coordinator upper residual and legacy target adapter.
@@ -183,8 +189,11 @@ ball_pre_bounce_time: 0.30
 
 # Optional live/video camera override. These values frame the fixed-base A3
 # native strike scene around the robot at x~=3.15, y~=-0.34.
-camera_eye: [5.0, -2.5, 2.2]
-camera_lookat: [3.15, -0.34, 1.05]
+# Current floating-base A3 replay scene is centered near the robot root
+# x=-0.5, y=-0.76.  The previous x=3.15 view belonged to the old fixed-base
+# native-strike placement and clipped the robot out of dense-bank videos.
+camera_eye: [2.2, -3.2, 2.0]
+camera_lookat: [-0.5, -0.76, 1.05]
 
 hydra:
   job:

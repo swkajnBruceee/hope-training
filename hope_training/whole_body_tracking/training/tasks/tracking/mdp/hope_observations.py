@@ -79,6 +79,33 @@ def racket_target_normal_b(env: ManagerBasedRLEnv, command_name: str) -> torch.T
     return command.racket_target_normal_b()
 
 
+def racket_target_goal_10d_b(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    position_mean: tuple[float, float, float] = (0.42, -0.18, 0.18),
+    position_std: tuple[float, float, float] = (0.12, 0.12, 0.12),
+    velocity_mean: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    velocity_std: tuple[float, float, float] = (2.0, 2.0, 2.0),
+    time_std: float = 0.25,
+) -> torch.Tensor:
+    """Return exactly one normalized policy goal in ``[p, v, n, signed_tau]`` order.
+
+    Statistics are fixed config values, never running estimates.  Position and
+    velocity use the existing base-yaw frame; velocity is only rotated, not
+    made relative to base linear velocity.
+    """
+    command = _cmd(env, command_name)
+    p = command.racket_target_pos_b()
+    v = command.racket_target_vel_b()
+    n = command.racket_target_normal_b()
+    p_mean = torch.as_tensor(position_mean, device=p.device, dtype=p.dtype)
+    p_std = torch.as_tensor(position_std, device=p.device, dtype=p.dtype).clamp_min(1.0e-6)
+    v_mean = torch.as_tensor(velocity_mean, device=p.device, dtype=p.dtype)
+    v_std = torch.as_tensor(velocity_std, device=p.device, dtype=p.dtype).clamp_min(1.0e-6)
+    tau = command.time_to_strike.clamp(-0.5, 0.5).unsqueeze(-1) / max(float(time_std), 1.0e-6)
+    return torch.cat(((p - p_mean) / p_std, (v - v_mean) / v_std, n, tau), dim=-1).clamp(-5.0, 5.0)
+
+
 def racket_anchor_target_pos_b(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
     """Nominal manifest/anchor target, excluding any external position latch."""
     return _cmd(env, command_name).racket_anchor_target_pos_b()

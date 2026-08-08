@@ -10,6 +10,33 @@ from isaaclab_rl.rsl_rl import export_policy_as_onnx
 from training.utils.exporter import attach_onnx_metadata, export_motion_policy_as_onnx
 
 
+def _set_v13b_progress(runner: OnPolicyRunner, iteration: int) -> None:
+    env = runner.env.unwrapped
+    if not hasattr(env, "v13b_policy_progress"):
+        if not getattr(runner, "_v13b_progress_missing_reported", False):
+            print("[V1.3B] curriculum progress target env attribute is missing", flush=True)
+            runner._v13b_progress_missing_reported = True
+        return
+    # A diagnostic preflight may deliberately run only 20/100 updates while
+    # checking the first portion of a 50k-update curriculum.  Keep the
+    # curriculum clock independent from the requested diagnostic length so a
+    # short run never silently fast-forwards the annealed priors to zero.
+    schedule_total = int(
+        getattr(env, "v13b_schedule_total_iterations", runner._v13b_max_iterations)
+    )
+    progress = min(1.0, max(0.0, iteration / max(schedule_total - 1, 1)))
+    env.v13b_policy_progress = progress
+    try:
+        command = env.command_manager.get_term("racket_target")
+        command._v13b_policy_progress = progress
+        if "v13b_curriculum_progress" in command.metrics:
+            command.metrics["v13b_curriculum_progress"].fill_(progress)
+    except (AttributeError, KeyError, ValueError) as exc:
+        if not getattr(runner, "_v13b_progress_error_reported", False):
+            print(f"[V1.3B] curriculum command progress hook unavailable: {type(exc).__name__}: {exc}", flush=True)
+            runner._v13b_progress_error_reported = True
+
+
 def _install_paired_common_exploration_noise(runner: OnPolicyRunner) -> None:
     """Share PPO exploration noise inside each seven-environment target pair.
 
@@ -61,7 +88,53 @@ def _install_paired_common_exploration_noise(runner: OnPolicyRunner) -> None:
 class MyOnPolicyRunner(OnPolicyRunner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        train_cfg = args[1] if len(args) > 1 else kwargs.get("train_cfg", {})
+        self._v13b_max_iterations = int(train_cfg.get("max_iterations", 1)) if isinstance(train_cfg, dict) else 1
+        print(
+            f"[V1.3B] MyOnPolicyRunner active; run max_iterations={self._v13b_max_iterations}",
+            flush=True,
+        )
         _install_paired_common_exploration_noise(self)
+
+    def log(self, locs: dict, width: int = 80, pad: int = 35) -> None:
+        # V1.3B has no motion command, so train.py selects this runner rather
+        # than MotionOnPolicyRunner.  Keep curriculum progress on the actual
+        # PPO-update path instead of relying on logging side effects elsewhere.
+        _set_v13b_progress(self, int(locs.get("it", getattr(self, "current_learning_iteration", 0))))
+        super().log(locs, width, pad)
+        if self.disable_logs or self.writer is None:
+            return
+        self._log_v13b_metrics(int(locs.get("it", 0)))
+
+    def _log_v13b_metrics(self, step: int) -> None:
+        """Record the annealed-prior contract on every PPO update.
+
+        These are diagnostics only: a fall is a learning signal, never a
+        V1.3B admission rejection.  They make it possible to verify that the
+        student remains active while the two private priors are withdrawn.
+        """
+        env = self.env.unwrapped
+
+        def mean(name: str):
+            value = getattr(env, name, None)
+            if isinstance(value, torch.Tensor) and value.numel():
+                return value.detach().float().mean().item()
+            if isinstance(value, (float, int)):
+                return float(value)
+            return None
+
+        values = {
+            "V13B/curriculum_progress": mean("v13b_policy_progress"),
+            "V13B/alpha_lower": mean("v13b_annealed_prior_alpha"),
+            "V13B/alpha_upper": mean("v13b_annealed_upper_prior_alpha"),
+            "V13B/lower_prior_rms": mean("v13b_annealed_prior_prior_rms"),
+            "V13B/lower_student_rms": mean("v13b_annealed_prior_student_rms"),
+            "V13B/upper_prior_rms": mean("v13b_annealed_upper_prior_prior_rms"),
+            "V13B/upper_student_rms": mean("v13b_annealed_upper_prior_student_rms"),
+        }
+        for tag, value in values.items():
+            if value is not None and math.isfinite(value):
+                self.writer.add_scalar(tag, value, step)
 
     def save(self, path: str, infos=None):
         """Save the model and training information."""
@@ -87,6 +160,7 @@ class MotionOnPolicyRunner(OnPolicyRunner):
     ):
         super().__init__(env, train_cfg, log_dir, device)
         self.registry_name = registry_name
+        self._v13b_max_iterations = int(train_cfg.get("max_iterations", 1)) if isinstance(train_cfg, dict) else 1
         _install_paired_common_exploration_noise(self)
 
     def save(self, path: str, infos=None):
@@ -115,6 +189,7 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 self.registry_name = None
 
     def log(self, locs: dict, width: int = 80, pad: int = 35) -> None:
+        _set_v13b_progress(self, int(locs.get("it", getattr(self, "current_learning_iteration", 0))))
         super().log(locs, width=width, pad=pad)
         if self.disable_logs or self.writer is None:
             return
@@ -252,6 +327,21 @@ class MotionOnPolicyRunner(OnPolicyRunner):
 
         self._log_scalar("Live/Env/episode_length", self._mean_tensor(env.episode_length_buf), step)
         self._log_scalar("Live/Env/common_step_counter", float(getattr(env, "common_step_counter", 0)), step)
+
+        # V1.3B has a private motion command during training, therefore it is
+        # routed through MotionOnPolicyRunner even though its public actor is
+        # reference-free.  Keep the annealed-prior audit here (rather than in
+        # MyOnPolicyRunner only) so the values are present in every V1.3B run.
+        for tag, attr in (
+            ("V13B/curriculum_progress", "v13b_policy_progress"),
+            ("V13B/alpha_lower", "v13b_annealed_prior_alpha"),
+            ("V13B/alpha_upper", "v13b_annealed_upper_prior_alpha"),
+            ("V13B/lower_prior_rms", "v13b_annealed_prior_prior_rms"),
+            ("V13B/lower_student_rms", "v13b_annealed_prior_student_rms"),
+            ("V13B/upper_prior_rms", "v13b_annealed_upper_prior_prior_rms"),
+            ("V13B/upper_student_rms", "v13b_annealed_upper_prior_student_rms"),
+        ):
+            self._log_scalar(tag, self._mean_tensor(getattr(env, attr, None)), step)
 
     @staticmethod
     def _mean_tensor(value):

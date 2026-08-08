@@ -1,0 +1,14 @@
+# Mujoco Simulator Configuration for Raise A2 T2D0 Ultra
+
+# 机器人模型信息文件路径
+robot_model_info_path: "${ROOT_DIR}/mujoco_simulator/app/cfg/${ROBOT}/robot_model_info.yaml"
+
+# 模型路径
+xml_path: "${ROOT_DIR}/mujoco_simulator/resources/${ROBOT}/mjcf/${ROBOT}.xml"
+
+# AIMRT路径（可选）
+aimrt_path: "${MUJOCO_APP_CFG_ROOT}/${ROBOT}/mujoco_simulator_cfg_${SIM_MODE}.yaml"
+
+# 仿真模式: "sil" 或 "pv" (从环境变量SIM_MODE读取)
+sim_mode: "${SIM_MODE}"
+

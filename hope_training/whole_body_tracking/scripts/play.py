@@ -790,6 +790,20 @@ def _run_play(cfg, simulation_app):
                 viewer_cfg.origin_type = "world"
     render_mode = "rgb_array" if cfg.video else None
     env = gym.make(task_id, cfg=env_cfg, render_mode=render_mode)
+    # Ordered V1.3B admission smokes use these *evaluation-only* switches to
+    # isolate zero-action/lower-prior/upper-prior paths.  They are runtime
+    # attributes, never task configuration, and are ignored by normal PPO.
+    for prior_name in ("lower", "upper"):
+        value = cfg.get(f"v13b_force_{prior_name}_prior_alpha", None)
+        if value is None:
+            continue
+        value = float(value)
+        if not torch.isfinite(torch.tensor(value)) or not 0.0 <= value <= 1.0:
+            raise ValueError(
+                f"v13b_force_{prior_name}_prior_alpha must be finite and in [0, 1]"
+            )
+        setattr(env.unwrapped, f"v13b_force_{prior_name}_prior_alpha", value)
+        print(f"[V1.3B][smoke] forced {prior_name} prior alpha={value:.3f}", flush=True)
     p4c_upper_execution_mode = str(
         cfg.get("p4c_upper_execution_mode", "policy")
     )
@@ -919,7 +933,38 @@ def _run_play(cfg, simulation_app):
             f"204:{support_end}",
             flush=True,
         )
-    ppo_runner.load(resume_path)
+    # A semantic P5U -> V1.3B warm-start deliberately contains actor weights
+    # only: critic and optimizer are fresh by contract.  RSL's generic
+    # ``load`` is strict and would reject that valid admission-test artifact,
+    # so load only the actor/actor-normalizer in this narrow replay case.
+    checkpoint_payload = torch.load(resume_path, map_location="cpu", weights_only=False)
+    if bool(checkpoint_payload.get("v13b_migrated_from_p5u", False)):
+        if "ReferenceFreeV13B" not in task_id:
+            raise ValueError("V1.3B migrated warm-start may only be replayed by a V1.3B task")
+        migrated_state = checkpoint_payload["model_state_dict"]
+        expected_state = ppo_runner.alg.policy.state_dict()
+        unexpected = tuple(key for key in migrated_state if key not in expected_state)
+        missing = tuple(
+            key
+            for key in expected_state
+            if key not in migrated_state and not key.startswith("critic.")
+        )
+        if unexpected or missing:
+            raise RuntimeError(
+                "V1.3B migrated warm-start actor contract mismatch: "
+                f"missing={missing}, unexpected={unexpected}"
+            )
+        # IsaacLab's ActorCritic override returns a boolean rather than
+        # PyTorch's IncompatibleKeys object, hence the explicit key audit
+        # above and no reliance on a return value here.
+        ppo_runner.alg.policy.load_state_dict(migrated_state, strict=False)
+        ppo_runner.obs_normalizer.load_state_dict(checkpoint_payload["obs_norm_state_dict"])
+        print(
+            "[V1.3B] replay loaded semantic actor warm-start; critic remains fresh by contract",
+            flush=True,
+        )
+    else:
+        ppo_runner.load(resume_path)
     policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
 
     forced_motion_id = (
@@ -1648,6 +1693,14 @@ def _run_play(cfg, simulation_app):
     # (imageio-ffmpeg). Avoids gym RecordVideo's vec-env / flush quirks and reports exactly
     # how many frames were captured so a black/empty render is obvious instead of silent.
     frames = []
+    # Optional diagnostic mode: keep the last pre-step frame when a vector
+    # environment auto-resets a terminated row.  The normal replay preserves
+    # its historical post-step capture behavior; this mode is used when the
+    # user needs to see the actual fall rather than the reset pose.
+    video_stop_on_termination = bool(cfg.get("video_stop_on_termination", False))
+    video_capture_pre_step_on_termination = bool(
+        cfg.get("video_capture_pre_step_on_termination", False)
+    )
     def _overlay_fall_audit(frame, raw_env):
         """Annotate replay frames with the same unified physical audit state."""
         if frame is None:
@@ -2647,6 +2700,20 @@ def _run_play(cfg, simulation_app):
     # Single-shot interactive/video playback retains the normal Kit lifetime.
     while simulation_app.is_running() or multi_shot_sequence is not None:
         with torch.inference_mode():
+            pre_step_video_frame = None
+            if (
+                cfg.video
+                and video_stop_on_termination
+                and video_capture_pre_step_on_termination
+            ):
+                # Render before env.step().  IsaacLab may reset a terminated
+                # vector row inside env.step(), so a post-step render would
+                # show READY rather than the terminal physical state.
+                pre_step_video_frame = env.unwrapped.render()
+                if pre_step_video_frame is not None:
+                    pre_step_video_frame = _overlay_fall_audit(
+                        pre_step_video_frame, env.unwrapped
+                    )
             # The unified A3 fall contract is only valid for motion tasks with
             # the configured torso/foot/contact scene.  Do not make generic
             # play.py tasks fail merely because they do not expose a motion
@@ -2713,6 +2780,8 @@ def _run_play(cfg, simulation_app):
                 )
             policy_observation = obs.detach().clone()
             actions = policy(obs)
+            if _as_bool(cfg.get("force_zero_action", False)):
+                actions = torch.zeros_like(actions)
             # P5D baseline: replay the exact same safe-reference trajectory
             # with a zero tracker residual.  This is not a policy result; it
             # isolates reference -> safety -> actual before attributing any
@@ -3398,6 +3467,16 @@ def _run_play(cfg, simulation_app):
                         if name.startswith(("racket_", "strike_", "exact_", "action_", "joint_")):
                             command_metric_sums[name] = command_metric_sums.get(name, 0.0) + float(value.mean().item())
                     command_metric_count += 1
+            if (
+                cfg.video
+                and video_stop_on_termination
+                and bool(torch.any(done_tensor).item())
+            ):
+                if pre_step_video_frame is not None:
+                    frames.append(pre_step_video_frame)
+                # Do not append the ordinary post-step frame: the environment
+                # has already auto-reset the terminated row at this point.
+                break
             if has_ball:
                 ball = env.unwrapped.scene["ball"]
                 racket_pos_w, _, _ = racket_state_w(env.unwrapped)

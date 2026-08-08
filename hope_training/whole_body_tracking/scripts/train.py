@@ -545,6 +545,30 @@ def _assert_strict_fall_contract(env_cfg, task_id: str) -> None:
     )
 
 
+def _assert_v13b_env_contract(env_cfg, task_id: str) -> None:
+    """Fail fast on accidental reference reintroduction in V1.3B."""
+    if "ReferenceFreeV13B" not in str(task_id):
+        return
+    if not bool(getattr(env_cfg, "reference_free_mode", False)):
+        raise RuntimeError("V1.3B requires reference_free_mode=true")
+    training_only_prior = bool(getattr(env_cfg, "training_only_annealed_prior", False))
+    if getattr(env_cfg.commands, "motion", None) is not None and not training_only_prior:
+        raise RuntimeError("V1.3B runtime command manager still contains motion")
+    term = env_cfg.actions.joint_pos
+    if not isinstance(getattr(term, "direct_lower_scale_rad", None), tuple) or len(term.direct_lower_scale_rad) != 12:
+        raise RuntimeError("V1.3B direct lower action scale is not 12-D")
+    if str(getattr(env_cfg, "policy_goal_contract_version", "")) != "policy_strike_goal_10d/racket_contact_v1":
+        raise RuntimeError("V1.3B policy goal contract version mismatch")
+    if training_only_prior:
+        print(
+            "[train.py] V1.3B training-only prior contract verified: public actor is reference-free; "
+            "private motion/stage-A source is restricted to annealed model_3396 execution",
+            flush=True,
+        )
+    else:
+        print("[train.py] V1.3B contract verified: runtime reference-free, direct 26-D action, canonical 10-D goal", flush=True)
+
+
 def _assert_fall_recovery_admission(
     task_id: str,
     task_cfg_name: str | None = None,
@@ -561,6 +585,15 @@ def _assert_fall_recovery_admission(
     """
     task_text = f"{task_id} {task_cfg_name or ''}"
     import re
+    if "ReferenceFreeV13B" in task_text:
+        # V1.3B has its own reference-free kill-test/preflight admission and
+        # does not depend on the historical signed P5U recovery gate.
+        print(
+            "[train.py] V1.3B admission selected: runtime motion/model-prior "
+            "dependency audit is enforced by the V1.3B preflight.",
+            flush=True,
+        )
+        return
     # Every floating-base A3 strike/tracker variant shares the same physical
     # fall and next-action contract, not only the historical F0--F8 names.
     # Keep fixed-base/legacy table-tennis training unaffected, but fail closed
@@ -802,11 +835,36 @@ def _apply_task_overrides(env_cfg, task):
                 }
             )
             root_x, root_y, root_z = env_cfg.scene.robot.init_state.pos
+            # V1.3B already installs a right-front READY during env-class
+            # construction.  Task YAML may restate the same contract (or a
+            # reviewed variant), so use its immutable unshifted root height
+            # rather than applying the pelvis correction twice.
+            if bool(getattr(env_cfg, "v13b_right_front_ready_contract", False)):
+                root_z = float(getattr(env_cfg, "v13b_ready_root_reference_z", root_z))
             env_cfg.scene.robot.init_state.pos = (
                 root_x,
                 root_y,
                 root_z + pelvis_height_delta,
             )
+            # The direct V1.3B action term is centred on q_ready.  Updating
+            # only the PhysX reset would create an immediate pull-back to the
+            # old symmetric pose on the first control step.
+            ready_positions = getattr(env_cfg.actions.joint_pos, "ready_joint_positions", None)
+            if ready_positions is not None:
+                ready_positions.update(
+                    {
+                        "left_hip_pitch_joint": left_hip_pitch,
+                        "right_hip_pitch_joint": right_hip_pitch,
+                        "left_knee_joint": nominal_knee,
+                        "right_knee_joint": nominal_knee,
+                        "left_ankle_pitch_joint": left_ankle_pitch,
+                        "right_ankle_pitch_joint": right_ankle_pitch,
+                        "left_hip_roll_joint": hip_roll_abs,
+                        "right_hip_roll_joint": -hip_roll_abs,
+                        "left_ankle_roll_joint": left_ankle_roll,
+                        "right_ankle_roll_joint": right_ankle_roll,
+                    }
+                )
             applied.append(
                 "staggered_stance("
                 f"half_span={staggered_half_span:.3f}m,"
@@ -1102,6 +1160,7 @@ def _apply_task_overrides(env_cfg, task):
             _require(value >= 0, f"actions.{key} >= 0")
             setattr(env_cfg.actions.joint_pos, key, value)
             applied.append(f"actions.joint_pos.{key}={value}")
+
         for key in (
             "stage_a_sagittal_exit_enabled",
             "stage_a_sagittal_exit_require_both_feet",
@@ -1404,6 +1463,43 @@ def _apply_task_overrides(env_cfg, task):
                 _require(name in scale, f"actions.joint_pos.scale['{name}']")
                 scale[name] = float(scale[name]) * float(multiplier)
                 applied.append(f"actions.joint_pos.scale[{name}]*={float(multiplier)}")
+
+    # V1.3B goal curriculum is an execution contract, not merely YAML
+    # documentation.  Apply the audited 10-D ranges explicitly so Hydra
+    # cannot silently leave the command sampler at an old default.
+    goal = _get(task, "goal")
+    if goal is not None and hasattr(env_cfg, "commands") and hasattr(env_cfg.commands, "racket_target"):
+        curriculum = _get(goal, "curriculum")
+        if curriculum is not None:
+            command = env_cfg.commands.racket_target
+            goal_key_map = {
+                "warmup_progress": "curriculum_warmup_progress",
+                "ramp_end_progress": "curriculum_ramp_end_progress",
+                "initial_position_half_range_m": "initial_position_half_range_m",
+                "final_position_half_range_m": "final_position_half_range_m",
+                "initial_speed_fraction": "initial_speed_fraction",
+                "final_speed_fraction": "final_speed_fraction",
+                "initial_normal_half_angle_deg": "initial_normal_half_angle_deg",
+                "final_normal_half_angle_deg": "final_normal_half_angle_deg",
+                "initial_time_half_range_s": "initial_time_half_range_s",
+                "final_time_half_range_s": "final_time_half_range_s",
+            }
+            for yaml_key, command_key in goal_key_map.items():
+                value = _get(curriculum, yaml_key)
+                if value is None:
+                    continue
+                _require(hasattr(command, command_key), f"commands.racket_target.{command_key}")
+                # Hydra preserves YAML vectors as ListConfig rather than a
+                # builtin list.  Treat every sequence as a vector so the
+                # V1.3B xyz curriculum cannot silently fall through to
+                # ``float(ListConfig)`` at environment construction.
+                value = (
+                    tuple(float(v) for v in value)
+                    if isinstance(value, (list, tuple)) or OmegaConf.is_list(value)
+                    else float(value)
+                )
+                setattr(command, command_key, value)
+                applied.append(f"commands.racket_target.{command_key}={value}")
 
     rw = _get(task, "rewards")
     if rw is not None:
@@ -1964,6 +2060,7 @@ def _run(cfg):
     print(f"[train.py] env cfg source: {type(env_cfg).__name__} <- {getattr(_cfg_mod, '__file__', '?')}", flush=True)
     applied = _apply_task_overrides(env_cfg, cfg.task)
     _assert_strict_fall_contract(env_cfg, task_id)
+    _assert_v13b_env_contract(env_cfg, task_id)
     _assert_fall_recovery_admission(
         task_id,
         _get(cfg.task, "name", task_id),
@@ -1995,7 +2092,11 @@ def _run(cfg):
               f"strike_window_s={_C.strike_window_s} strike_time_std_s={_C.strike_time_std_s}", flush=True)
     env_cfg.seed = int(cfg.seed)
     env_cfg.sim.device = str(cfg.device)
-    has_motion_command = hasattr(env_cfg.commands, "motion")
+    # V1.3B deliberately keeps a construction-time placeholder on the cfg so
+    # legacy post-init code can run, then nulls it before ManagerBasedRLEnv
+    # construction.  Presence is therefore not enough to declare a runtime
+    # motion dependency.
+    has_motion_command = getattr(env_cfg.commands, "motion", None) is not None
 
     # 2) PPO runner cfg from cfg.algo
     algo = OmegaConf.to_container(cfg.algo, resolve=True)
@@ -2173,6 +2274,7 @@ def _run(cfg):
         cfg.get("checkpoint", None) is not None
         and not agent_cfg.resume
         and not actor_only_warm_start
+        and not bool(cfg.get("v13b_migrated_warm_start", False))
     ):
         raise ValueError(
             "checkpoint=<model_*.pt> was provided but would be ignored because "
@@ -2282,6 +2384,22 @@ def _run(cfg):
     # 5) build env, wrap, run
     render_mode = "rgb_array" if cfg.video else None
     env = gym.make(task_id, cfg=env_cfg, render_mode=render_mode)
+    if "ReferenceFreeV13B" in task_id:
+        # The cfg object is copied into ManagerBasedRLEnv; arbitrary cfg
+        # attributes are not automatically promoted to runtime state.  Seed
+        # the explicit update-driven curriculum clock before the first reset.
+        env.unwrapped.v13b_policy_progress = 0.0
+        schedule_total = int(
+            _get(_get(cfg.task, "training", {}), "schedule_total_iterations", cfg.get("v13b_schedule_total_iterations", agent_cfg.max_iterations))
+        )
+        if schedule_total < 2:
+            raise ValueError(f"V1.3B schedule_total_iterations must be >= 2, got {schedule_total}")
+        env.unwrapped.v13b_schedule_total_iterations = schedule_total
+        print(
+            "[train.py] V1.3B curriculum clock initialized at progress=0.0 "
+            f"(schedule_total_iterations={schedule_total})",
+            flush=True,
+        )
     if natural_prefix_recovery:
         env = NaturalPrefixRolloutWrapper(
             env,
@@ -2805,6 +2923,58 @@ def _run(cfg):
             + (" with support std reset; " if frozen_support_task else "/std; ")
             +
             "critic, critic normalizer, optimizer, and iteration reset",
+            flush=True,
+        )
+    elif bool(cfg.get("v13b_migrated_warm_start", False)):
+        if "ReferenceFreeV13B" not in task_id:
+            raise ValueError("v13b_migrated_warm_start is only valid for a V1.3B task")
+        direct_checkpoint = Path(str(agent_cfg.load_checkpoint)).expanduser()
+        if not direct_checkpoint.is_file():
+            raise FileNotFoundError(f"V1.3B migrated checkpoint does not exist: {direct_checkpoint}")
+        migrated = torch.load(direct_checkpoint, map_location="cpu", weights_only=False)
+        if not bool(migrated.get("v13b_migrated_from_p5u", False)):
+            raise RuntimeError(
+                "v13b_migrated_warm_start requires a checkpoint produced by "
+                "tools/migrate_v13b_checkpoint_from_p5u.py"
+            )
+        print(
+            f"[train.py] V1.3B semantic warm start from migrated P5U checkpoint: {direct_checkpoint}",
+            flush=True,
+        )
+        # Load only the migrated actor/std.  The P5U critic observes a
+        # different privileged contract and is intentionally reinitialized;
+        # likewise keep the new critic normalizer and Adam state fresh.
+        migrated_model = migrated.get("model_state_dict", {})
+        actor_state = {
+            name: value for name, value in migrated_model.items()
+            if name == "std" or name.startswith("actor.")
+        }
+        runtime_state = runner.alg.policy.state_dict()
+        actor_missing = {
+            name for name in runtime_state
+            if (name == "std" or name.startswith("actor.")) and name not in actor_state
+        }
+        actor_unexpected = set(actor_state) - {
+            name for name in runtime_state if name == "std" or name.startswith("actor.")
+        }
+        if actor_missing or actor_unexpected:
+            raise RuntimeError(
+                "V1.3B migrated actor state mismatch: "
+                f"missing={sorted(actor_missing)}, unexpected={sorted(actor_unexpected)}"
+            )
+        runner.alg.policy.load_state_dict(actor_state, strict=False)
+        actor_norm_state = migrated.get("obs_norm_state_dict")
+        if not isinstance(actor_norm_state, dict):
+            raise RuntimeError("V1.3B migrated checkpoint has no actor observation normalizer")
+        runner.obs_normalizer.load_state_dict(actor_norm_state)
+        runner.current_learning_iteration = 0
+        Path(log_dir, "params").mkdir(parents=True, exist_ok=True)
+        Path(log_dir, "params", "v13b_migration.json").write_text(
+            json.dumps(migrated.get("infos", {}), indent=2) + "\n", encoding="utf-8"
+        )
+        print(
+            "[train.py] V1.3B migration loaded: actor/std + mapped actor normalizer; "
+            "critic, critic normalizer, optimizer, LR schedule, and iteration reset",
             flush=True,
         )
     elif agent_cfg.resume:

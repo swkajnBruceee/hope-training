@@ -1,0 +1,13 @@
+# 话题数据有效性校测
+topic_list: [SubLocomotionVelocity, SubArmJointState, SubLegJointState, SubWaistJointState, 
+             SubArmJointCommand, SubLegJointCommand, SubWaistCommand, SubNeckJointCommand]
+expiration: [500, 2000, 2000, 2000, 
+             500, 2000, 2000, 2000] # unit: ms
+
+fall_check:
+  enable: true
+  orientation_threshold: 0.8 
+  angular_vel_threshold: 2 # unit: rad/s
+  com_z_velocity_threshold: 0.2 # unit m/s
+  joint_velocity_threshold: 12 # unit rad/s
+  fall_count: 5

@@ -1,0 +1,398 @@
+aimrt:
+  main_thread:
+    name: mc
+    # thread_sched_policy: SCHED_RR:50 # SCHED_OTHER | SCHED_FIFO:xx | SCHED_RR:xx
+    thread_bind_cpu: [4] # cpu index
+  configurator:
+    temp_cfg_path: ../config/motion_control/tmp # 生成的临时模块配置文件存放路径
+  plugin:
+    plugins:
+      - name: net_plugin
+        path: libaimrt_net_plugin.so
+        options:
+          thread_num: 4
+          http_options:
+            listen_ip: 0.0.0.0
+            listen_port: 56322
+          udp_options:
+            listen_ip: 0.0.0.0
+            listen_port: 50041
+            max_pkg_size: 1024
+          # tcp_options:
+          #   listen_ip: 0.0.0.0
+          #   listen_port: 50322
+      - name: ros2_plugin
+        path: libaimrt_ros2_plugin.so
+        options:
+          node_name: aimrt_motion_control_node
+          executor_type: MultiThreaded # SingleThreaded/StaticSingleThreaded/MultiThreaded
+          executor_thread_num: 2
+      - name: iceoryx_plugin
+        path: libaimrt_iceoryx_plugin.so
+  log: # log配置
+    core_lvl: Info # 内核日志等级，可选项：Trace/Debug/Info/Warn/Error/Fatal/Off，不区分大小写
+    default_module_lvl: Info # 模块默认日志等级
+    backends: # 日志backends
+      - type: console # 控制台日志
+        options:
+          color: true # 是否彩色打印
+      - type: rotate_file # 文件日志
+        options:
+          path: ${LOG_PATH} # 日志文件路径
+          filename: motion_control.log # 日志文件名称
+          max_file_size_m: 100 # 日志文件最大尺寸，单位m
+          max_file_num: 50 # 最大日志文件数量，0代表无限
+  executor: # 执行器配置
+    executors: # 当前先支持thread型，未来可根据加载的网络模块提供更多类型
+      - name: motion_control_work_thread # 线程池
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 1
+          thread_bind_cpu: [4] # cpu index
+
+      - name: pub_arm_joint_command_thread
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 1
+          # thread_sched_policy: SCHED_RR:50 # SCHED_OTHER | SCHED_FIFO:xx | SCHED_RR:xx
+          thread_bind_cpu: [5] # cpu index
+      - name: pub_leg_joint_command_thread
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 1
+          # thread_sched_policy: SCHED_FIFO:71 # SCHED_OTHER | SCHED_FIFO:xx | SCHED_RR:xx
+          thread_bind_cpu: [4] # cpu index
+      - name: pub_waist_joint_command_thread
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 1
+          # thread_sched_policy: SCHED_RR:50 # SCHED_OTHER | SCHED_FIFO:xx | SCHED_RR:xx
+          thread_bind_cpu: [5] # cpu index
+      - name: pub_common_command_thread
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 1
+          thread_bind_cpu: [5] # cpu index
+
+      - name: sub_arm_joint_state_thread
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 1
+          #thread_sched_policy: SCHED_RR:50 # SCHED_OTHER | SCHED_FIFO:xx | SCHED_RR:xx
+          thread_bind_cpu: [5] # cpu index
+      - name: sub_leg_joint_state_thread
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 1
+          # thread_sched_policy: SCHED_FIFO:70 # SCHED_OTHER | SCHED_FIFO:xx | SCHED_RR:xx
+          thread_bind_cpu: [4] # cpu index
+      - name: sub_waist_joint_state_thread
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 1
+          # thread_sched_policy: SCHED_RR:50 # SCHED_OTHER | SCHED_FIFO:xx | SCHED_RR:xx
+          thread_bind_cpu: [5] # cpu index
+      - name: sub_common_state_thread
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 1
+          thread_bind_cpu: [5] # cpu index
+
+      - name: service_server_thread
+        type: asio_thread # 类型为线程型
+        options:
+          thread_num: 4
+          thread_bind_cpu: [4] # cpu index
+
+  channel: # 消息队列相关配置
+    pub_topics_options:
+      - topic_name: /body_drive/hand_joint_command
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/arm_joint_command
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/leg_joint_command
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/waist_joint_command
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/neck_joint_command
+        enable_backends: [iceoryx]
+
+      - topic_name: /motion/control/leg_joint_state
+        enable_backends: [ros2]
+      - topic_name: /motion/control/arm_joint_state
+        enable_backends: [ros2]
+      - topic_name: /motion/control/neck_joint_state
+        enable_backends: [ros2]
+      - topic_name: /motion/control/hand_joint_state
+        enable_backends: [ros2]
+      - topic_name: /motion/control/waist_joint_state
+        enable_backends: [ros2]
+
+      - topic_name: /mc/state/action_info
+        enable_backends: [iceoryx,ros2]
+      - topic_name: /mc/state/motion_info
+        enable_backends: [iceoryx,ros2]
+
+      - topic_name: /mc/state/robot_posture_state
+        enable_backends: [iceoryx,ros2]
+
+    sub_topics_options:
+      - topic_name: /body_drive/arm_joint_state
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/leg_joint_state
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/waist_joint_state
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/pelvis_imu/data
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/torso_imu/data
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/neck_joint_state
+        enable_backends: [iceoryx]
+      - topic_name: /body_drive/hand_joint_state
+        enable_backends: [iceoryx]
+
+      - topic_name: /motion/control/locomotion_velocity
+        enable_backends: [ros2, http]
+
+      - topic_name: /motion/control/leg_joint_command
+        enable_backends: [ros2, http]
+      - topic_name: /motion/control/arm_joint_command
+        enable_backends: [ros2, http]
+      - topic_name: /motion/control/neck_joint_command
+        enable_backends: [ros2, http]
+      - topic_name: /motion/control/hand_joint_command
+        enable_backends: [ros2, http]
+      - topic_name: /motion/control/waist_joint_command
+        enable_backends: [ros2, http]
+
+      - topic_name: /aima/bms/data
+        enable_backends: [ros2]
+
+
+    backends: # 消息队列后端配置
+      - type: iceoryx
+        options:
+          listener_thread_name: "iox_listener_executor"
+          listener_thread_sched_policy: "SCHED_FIFO:79"
+          listener_thread_bind_cpu: [5]                 # 通信监听绑核
+      - type: udp
+      - type: http
+      - type: ros2
+
+  rpc: # rpc相关配置
+    servers_options:
+      - func_name: "(.*)"
+        enable_backends: [http]
+    backends: # rpc后端配置
+      - type: http # http rpc后端
+      - type: ros2
+  module: # 模块配置
+    # pkgs: # 要加载的动态库配置
+    #   - path: libmotion_control_pkg.so # so/dll地址
+    #     disable_module: [] # 此动态库中要屏蔽的模块名称。默认全部加载
+    # # "MotionControlModule",
+
+    modules: # 模块
+      - name: MotionControlModule # 模块Name接口返回的名称
+        log_lvl: Info # 模块日志级别
+
+MotionControlModule:
+  main_executor: motion_control_work_thread
+  enable_hds: true
+
+  PublisherManager:
+    publisher_cfg_list:
+      - name: pub_arm_joint_command
+        topic: /body_drive/arm_joint_command
+        enable: true
+        frequency: 500
+        frequency_sim: 1000
+        executor: pub_arm_joint_command_thread # joint_command_publisher_thread
+        print_interval: 0
+      - name: pub_leg_joint_command
+        topic: /body_drive/leg_joint_command
+        enable: true
+        frequency: 500
+        frequency_sim: 1000
+        executor: pub_leg_joint_command_thread
+        print_interval: 0
+      - name: pub_waist_joint_command
+        topic: /body_drive/waist_joint_command
+        enable: true
+        frequency: 500
+        frequency_sim: 1000
+        executor: pub_waist_joint_command_thread
+        print_interval: 0
+      - name: pub_hand_joint_command
+        topic: /body_drive/hand_joint_command
+        enable: true
+        frequency: 100
+        executor: pub_common_command_thread
+        print_interval: 0
+      - name: pub_neck_joint_command
+        topic: /body_drive/neck_joint_command
+        enable: true
+        frequency: 100
+        executor: pub_common_command_thread
+        print_interval: 0
+
+      - name: pub_leg_joint_state
+        topic: /motion/control/leg_joint_state
+        enable: true
+        frequency: 100
+        executor: pub_common_command_thread
+        print_interval: 0
+      - name: pub_arm_joint_state
+        topic: /motion/control/arm_joint_state
+        enable: true
+        frequency: 100
+        executor: pub_common_command_thread
+        print_interval: 0
+      - name: pub_neck_joint_state
+        topic: /motion/control/neck_joint_state
+        enable: true
+        frequency: 100
+        executor: pub_common_command_thread
+        print_interval: 0
+      - name: pub_waist_joint_state
+        topic: /motion/control/waist_joint_state
+        enable: true
+        frequency: 100
+        executor: pub_common_command_thread
+        print_interval: 0
+      - name: pub_hand_joint_state
+        topic: /motion/control/hand_joint_state
+        enable: true
+        frequency: 100
+        executor: pub_common_command_thread
+        print_interval: 0
+
+      - name: pub_action_info
+        topic: /mc/state/action_info
+        enable: true
+        frequency: 20
+        executor: pub_common_command_thread
+        print_interval: 0
+      - name: pub_motion_info
+        topic: /mc/state/motion_info
+        enable: true
+        frequency: 20
+        executor: pub_common_command_thread
+        print_interval: 0
+
+      - name: pub_mc_robot_posture_state
+        topic: /mc/state/robot_posture_state
+        enable: true
+        frequency: 20
+        executor: pub_common_command_thread
+        print_interval: 0
+
+  SubscriberManager:
+    subscriber_cfg_list:
+      - name: sub_arm_joint_state
+        topic: /body_drive/arm_joint_state
+        enable: true
+        executor: sub_arm_joint_state_thread
+        wait_ready: true
+        print_interval: 0
+      - name: sub_leg_joint_state
+        topic: /body_drive/leg_joint_state
+        enable: true
+        executor: sub_leg_joint_state_thread
+        wait_ready: true
+        print_interval: 0
+      - name: sub_waist_joint_state
+        topic: /body_drive/waist_joint_state
+        enable: true
+        executor: sub_waist_joint_state_thread
+        wait_ready: true
+        print_interval: 0
+      - name: sub_pelvis_imu_state_ros
+        topic: /body_drive/pelvis_imu/data
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: true
+        print_interval: 0
+      - name: sub_torso_imu_state_ros
+        topic: /body_drive/torso_imu/data
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: true
+        print_interval: 0
+      - name: sub_hand_joint_state
+        topic: /body_drive/hand_joint_state
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: false
+        print_interval: 0
+      - name: sub_neck_joint_state
+        topic: /body_drive/neck_joint_state
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: false
+        print_interval: 0
+
+      - name: sub_locomotion_velocity
+        topic: /motion/control/locomotion_velocity
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: false
+        print_interval: 0
+
+      - name: sub_leg_joint_command
+        topic: /motion/control/leg_joint_command
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: false
+        print_interval: 0
+      - name: sub_arm_joint_command
+        topic: /motion/control/arm_joint_command
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: false
+        print_interval: 0
+      - name: sub_waist_joint_command
+        topic: /motion/control/waist_joint_command
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: false
+        print_interval: 0
+      - name: sub_neck_joint_command
+        topic: /motion/control/neck_joint_command
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: false
+        print_interval: 0
+      - name: sub_hand_joint_command
+        topic: /motion/control/hand_joint_command
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: false
+        print_interval: 0
+
+      - name: sub_bms_data
+        topic: /aima/bms/data
+        enable: true
+        executor: sub_common_state_thread
+        wait_ready: false
+        print_interval: 0
+
+  ServiceManager:
+    service_cfg_list:
+      - name: mc_action_service
+        enable: true
+        executor: service_server_thread
+        debug_print: true
+      - name: mc_joint_service
+        enable: true
+        executor: service_server_thread
+      - name: mc_motion_service
+        enable: true
+        executor: service_server_thread
+        debug_print: true
+
+  MotionControlCfg:
+    config_path: ${PWD}/../config/motion_control/configuration
+    resource_path: ${PWD}/../share/robot_model/models
+    robot_name: a3_ultra_t2d5

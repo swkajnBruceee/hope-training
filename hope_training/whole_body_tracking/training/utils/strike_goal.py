@@ -30,6 +30,7 @@ POLICY_RACKET_LINK_POINT_V1 = "pingpang_red_Link_origin/v1"
 # Y left from P1, Z up), not an arbitrary simulator world.
 HOPE_WORLD_FRAME = "world"
 BASE_HEADING_RECEIPT_FRAME_V1 = "base_heading_receipt/v1"
+POLICY_GOAL_CONTRACT_VERSION = "policy_strike_goal_10d/racket_contact_v1"
 StrikeGoalSource = Literal["planner", "synthetic", "replay"]
 
 
@@ -283,6 +284,79 @@ class AxialRacketContactCalibration:
             policy_link_point_id=self.policy_link_point_id,
             calibration_version=self.calibration_version,
             qualified_domain=self.qualified_domain,
+        )
+
+
+@dataclass(frozen=True)
+class PolicyStrikeGoal:
+    """Canonical target-conditioned policy goal.
+
+    This is deliberately separate from :class:`StrikeGoal10D`: the planner
+    source keeps its historical ``[position, normal, velocity, time]`` wire
+    order and ball-centre semantics, while the policy consumes a racket
+    reference/contact point in ``[position, velocity, normal, signed_time]``
+    order.  No guessed contact offset is allowed; callers must provide a
+    domain-qualified calibration.
+    """
+
+    racket_position_w: tuple[float, float, float]
+    racket_velocity_w: tuple[float, float, float]
+    racket_normal_w: tuple[float, float, float]
+    signed_time_to_hit_s: float
+    frame_id: str
+    calibration_version: str
+    qualified_domain: str
+    contract_version: str = POLICY_GOAL_CONTRACT_VERSION
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "racket_position_w", _vector3(self.racket_position_w, "racket_position_w"))
+        object.__setattr__(self, "racket_velocity_w", _vector3(self.racket_velocity_w, "racket_velocity_w"))
+        normal = _vector3(self.racket_normal_w, "racket_normal_w")
+        length = _norm(normal)
+        if length <= 1.0e-8:
+            raise StrikeGoalValidationError("racket_normal_w must be non-zero")
+        object.__setattr__(self, "racket_normal_w", tuple(v / length for v in normal))
+        if not math.isfinite(float(self.signed_time_to_hit_s)):
+            raise StrikeGoalValidationError("signed_time_to_hit_s must be finite")
+        if not self.frame_id or not self.calibration_version or not self.qualified_domain:
+            raise StrikeGoalValidationError("policy goal frame/calibration fields must be non-empty")
+        if self.contract_version != POLICY_GOAL_CONTRACT_VERSION:
+            raise StrikeGoalValidationError("policy goal contract version mismatch")
+
+    def to_vector(self) -> tuple[float, ...]:
+        """Canonical policy order: position, velocity, normal, signed time."""
+        return (*self.racket_position_w, *self.racket_velocity_w, *self.racket_normal_w, self.signed_time_to_hit_s)
+
+
+@dataclass(frozen=True)
+class PolicyStrikeGoalAdapter:
+    """Convert a planner ball-centre goal into a policy racket goal.
+
+    The planner's velocity is already the ideal racket-impact velocity; it is
+    intentionally copied without an outgoing-ball inverse model.  Position is
+    converted through the audited axial contact calibration only.
+    """
+
+    calibration: AxialRacketContactCalibration
+    target_frame: str = HOPE_WORLD_FRAME
+
+    def adapt(self, goal: StrikeGoal10D, *, elapsed_s: float = 0.0) -> PolicyStrikeGoal:
+        if goal.frame_id != self.target_frame:
+            raise StrikeGoalValidationError(
+                f"policy adapter expects frame {self.target_frame!r}, got {goal.frame_id!r}"
+            )
+        contact = self.calibration.resolve(goal)
+        tau = float(goal.time_to_hit_s) - float(elapsed_s)
+        if not math.isfinite(tau):
+            raise StrikeGoalValidationError("elapsed_s produced non-finite signed time")
+        return PolicyStrikeGoal(
+            racket_position_w=contact.link_origin_position,
+            racket_velocity_w=contact.face_linear_velocity,
+            racket_normal_w=contact.face_normal,
+            signed_time_to_hit_s=tau,
+            frame_id=goal.frame_id,
+            calibration_version=contact.calibration_version,
+            qualified_domain=contact.qualified_domain,
         )
 
 

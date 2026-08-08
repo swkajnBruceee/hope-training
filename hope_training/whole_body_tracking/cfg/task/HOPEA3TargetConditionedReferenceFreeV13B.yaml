@@ -1,0 +1,45 @@
+# V1.3B: true reference-free target-conditioned student.
+# No motion manifest is consumed by this task at runtime.  The 10-D goal is
+# one normalized [racket position, racket velocity, face normal, signed tau].
+defaults:
+  - _self_
+
+name: HOPEA3TargetConditionedReferenceFreeV13B
+gym_task: HOPE-FloatingTargetConditionedReferenceFreeV13B-AgibotA3-v0
+experiment_name: agibot_a3_target_conditioned_reference_free_v13b
+motion_manifest: null
+
+env:
+  episode_length_s: 10.0
+
+actions:
+  microstep_enabled: true
+  microstep_step_limit_m: 0.02
+  microstep_lowpass_alpha: 0.20
+
+goal:
+  contract_version: policy_strike_goal_10d/racket_contact_v1
+  canonical_order: [position_xyz, velocity_xyz, normal_xyz, signed_time_to_hit]
+  target_position_semantics: racket_reference_point_at_strike
+  target_velocity_semantics: ideal_racket_impact_velocity
+  target_normal_semantics: desired_racket_face_normal
+  reference_free_from_update: 0
+  strict_reference_free_final_fraction: 0.30
+  curriculum:
+    progress_source: policy_updates
+    warmup_progress: 0.10
+    ramp_end_progress: 0.70
+    initial_position_half_range_m: [0.01, 0.01, 0.01]
+    final_position_half_range_m: [0.08, 0.08, 0.08]
+    initial_speed_fraction: 0.03
+    final_speed_fraction: 0.20
+    initial_normal_half_angle_deg: 2.0
+    final_normal_half_angle_deg: 12.0
+    initial_time_half_range_s: 0.02
+    final_time_half_range_s: 0.10
+
+training:
+  preflight_required: true
+  preflight_num_envs: 128
+  preflight_iterations: 100
+  long_training_blocked_until_preflight: true

@@ -1,0 +1,28 @@
+{
+  "label": "a3_fast",
+  "target_platform": "rk3588",
+  "do_quantization": false,
+  "source_onnx": "ckpts/ckpt_from_tianli/ckpt/sonic_fast_from_scratch_98k/exported/model_step_098000_a3_fast.onnx",
+  "source_onnx_sha256": "a594ee7d7d8a37a9346f88f73298c8258b8eb674ea7d1e3cf2ecf5b1c53b91b2",
+  "rknn": "assets/a3_runtime/rknn_models/model_step_098000_a3_fast.rknn",
+  "rknn_sha256": "bd3b32e5676d49b60cc6a794d18b1fe33960ed3e54454e199cb7225aa70be7c8",
+  "schema": {
+    "input_name": "obs_dict",
+    "input_shape": [
+      1,
+      1570
+    ],
+    "output_name": "action",
+    "output_shape": [
+      1,
+      29
+    ],
+    "opset": [
+      {
+        "domain": "ai.onnx",
+        "version": 13
+      }
+    ],
+    "ir_version": 7
+  }
+}

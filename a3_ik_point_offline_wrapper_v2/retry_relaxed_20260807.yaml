@@ -1,0 +1,33 @@
+# Retry-only planner profile for previously rejected offline goals.
+# This file deliberately does not replace arm/hit_ik_point.yaml.
+random_targets: false
+alternate_swings: false
+first_swing: backhand
+target_interval_s: 5.0
+strike_time_s: 1.20
+external_min_strike_time_s: 0.0
+follow_through_s: 0.32
+follow_through_distance_m: 0.12
+max_joint_velocity_rad_s: 8.0
+random_seed: 3396
+
+# Use the wider safe workspace declared by the planner implementation.
+forehand_position_min_b_m: [0.38, -0.80, -0.08]
+forehand_position_max_b_m: [0.65, -0.38, 0.20]
+backhand_position_min_b_m: [0.36, -0.55, -0.12]
+backhand_position_max_b_m: [0.68, 0.40, 0.20]
+
+forehand_velocity_b_mps: [1.50, 0.00, 0.48]
+backhand_velocity_b_mps: [1.35, -0.04, 0.42]
+random_velocity_jitter_mps: [0.18, 0.10, 0.12]
+random_normal_yaw_deg: 10.0
+forehand_normal_pitch_min_deg: 5.0
+forehand_normal_pitch_max_deg: 35.0
+backhand_normal_pitch_min_deg: -30.0
+backhand_normal_pitch_max_deg: 10.0
+
+position_b_m: [0.48, -0.20, 0.12]
+normal_b: [1.0, 0.0, 0.0]
+linear_velocity_b_mps: [1.20, 0.00, 0.42]
+time_to_strike_s: 1.00
+swing_type: auto

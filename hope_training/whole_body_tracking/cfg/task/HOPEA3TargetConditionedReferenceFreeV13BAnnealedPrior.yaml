@@ -1,0 +1,56 @@
+# V1.3B training-only additive model_3396 prior.
+# The actor remains 98-D reference-free; motion/stage-A exists only inside the
+# action term and is removed by the final deployment task.
+defaults:
+  - _self_
+
+name: HOPEA3TargetConditionedReferenceFreeV13BAnnealedPrior
+gym_task: HOPE-FloatingTargetConditionedReferenceFreeV13BAnnealedPrior-AgibotA3-v0
+experiment_name: agibot_a3_target_conditioned_reference_free_v13b_annealed_prior
+# Latest merged 10-D reference bank.  The public actor remains reference-free;
+# this manifest is consumed only by the training-only model_3396 prior and by
+# the manifest-centered target sampler.  Validation is kept as a separate
+# evaluation artifact and is not mixed into PPO rollouts.
+motion_manifest: /home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/training_manifest.json
+validation_manifest: /home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/validation_manifest.json
+v13b_migrated_warm_start: false
+
+env:
+  episode_length_s: 10.0
+
+actions:
+  microstep_enabled: true
+  microstep_step_limit_m: 0.02
+  microstep_lowpass_alpha: 0.20
+
+goal:
+  contract_version: policy_strike_goal_10d/racket_contact_v1
+  canonical_order: [position_xyz, velocity_xyz, normal_xyz, signed_time_to_hit]
+  target_position_semantics: racket_reference_point_at_strike
+  target_velocity_semantics: ideal_racket_impact_velocity
+  target_normal_semantics: desired_racket_face_normal
+  curriculum:
+    progress_source: policy_updates
+    warmup_progress: 0.10
+    ramp_end_progress: 0.70
+    initial_position_half_range_m: [0.01, 0.01, 0.01]
+    final_position_half_range_m: [0.08, 0.08, 0.08]
+    initial_speed_fraction: 0.03
+    final_speed_fraction: 0.20
+    initial_normal_half_angle_deg: 2.0
+    final_normal_half_angle_deg: 12.0
+    initial_time_half_range_s: 0.02
+    final_time_half_range_s: 0.10
+
+training:
+  annealed_prior: true
+  prior_checkpoint: checkpoints/frozen_priors/model_3396.pt
+  migrated_warm_start_checkpoint: checkpoints/v13b/model_18900_p5u_migrated.pt
+  v13b_migrated_warm_start: false
+  prior_alpha_start: 0.80
+  prior_alpha_zero_progress: 0.60
+  public_actor_reference_free: true
+  preflight_required: true
+  preflight_num_envs: 128
+  preflight_iterations: 100
+  long_training_blocked_until_preflight: true

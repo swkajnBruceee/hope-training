@@ -1,0 +1,23 @@
+all_enabled: false
+enabled_list:
+  - pb:/aimdk.protocol.MotionControlActionService/GetAction
+  - pb:/aimdk.protocol.MotionControlActionService/SetAction
+  - pb:/aimdk.protocol.MotionControlActionService/GetNextActions
+  - pb:/aimdk.protocol.MotionControlActionService/GetAvailableActions
+
+  - pb:/aimdk.protocol.MotionControlJointService/GetLegJointState
+  - pb:/aimdk.protocol.MotionControlJointService/GetArmJointState
+  - pb:/aimdk.protocol.MotionControlJointService/GetWaistJointState
+  - pb:/aimdk.protocol.MotionControlJointService/GetNeckJointState
+  - pb:/aimdk.protocol.MotionControlJointService/GetHandJointState
+  - pb:/aimdk.protocol.MotionControlJointService/SetLegJointCommand
+  - pb:/aimdk.protocol.MotionControlJointService/SetArmJointCommand
+  - pb:/aimdk.protocol.MotionControlJointService/SetWaistJointCommand
+  - pb:/aimdk.protocol.MotionControlJointService/SetNeckJointCommand
+  - pb:/aimdk.protocol.MotionControlJointService/SetHandJointCommand
+  
+  - pb:/aimdk.protocol.MotionControlMotionService/SelectDanceType
+  - pb:/aimdk.protocol.MotionControlMotionService/GetDanceTypeList
+  - pb:/aimdk.protocol.MotionControlMotionService/SetLocomotionGait
+  - pb:/aimdk.protocol.MotionControlMotionService/GetLocomotionGait
+  - pb:/aimdk.protocol.MotionControlMotionService/GetVelocityLimitValue

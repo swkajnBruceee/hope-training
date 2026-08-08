@@ -1,0 +1,158 @@
+RESIDENT_SETTING:
+  ###########################################################################################################################
+  action_manager:
+    runner:
+      - name: 'action_manager'
+        enable: True
+        debug_info: True
+    period: 0.01
+    priority: 0 #50
+    cpu_affinity: 64 # CPU 6
+    start_delay: 0
+
+  runner_monitor:
+    runner:
+      - name: 'runner_monitor'
+        enable: True
+        debug_info: True
+    period: 0.01
+    priority: 0 #50
+    cpu_affinity: 64 # CPU 6
+    start_delay: 0
+
+  ros2_runner:
+    runner:
+      - name: 'ros2_runner'
+        enable: True          # 调试时自行打开，默认设为false，避免占用cpu资源
+        debug_info: True
+    period: 0.01
+    priority: 0
+    cpu_affinity: 64 # CPU 6
+    start_delay: 0
+
+  security_guard:
+    runner:
+      - name: 'security_monitor'
+        enable: True
+        debug_info: True
+      - name: 'security_handler'
+        enable: True
+        debug_info: True
+    period: 0.1
+    priority: 0
+    cpu_affinity: 64 # CPU 6
+    start_delay: 0
+
+  fusion:
+    runner:
+      - name: 'fusion'
+        enable: True
+        debug_info: True
+    period: 0.01
+    priority: 0
+    cpu_affinity: 64 # CPU 6
+    start_delay: 0
+
+  ###########################################################################################################################
+
+ACTION_SETTING:
+  ###########################################################################################################################
+  PASSIVE:
+    TASK1:
+      runner:
+        - name: 'zero_torque'
+          enable: True
+          debug_info: True
+      period: 0.005
+      priority: 0
+      cpu_affinity: 64 # CPU 6
+
+  DAMPING:
+    TASK1:
+      runner:
+        - name: 'damping'
+          enable: True
+          debug_info: True
+      period: 0.005
+      priority: 0
+      cpu_affinity: 64 # CPU 6
+
+  # DEBUG_ACTION:
+  #   TASK1:
+  #     runner:
+  #       - name: 'debug_runner'
+  #         enable: True
+  #         debug_info: True
+  #     period: 0.005
+  #     priority: 10
+  #     cpu_affinity: 64 # CPU 6
+
+  PD_STAND:
+    TASK1:
+      runner:
+        - name: 'pd_stand'
+          enable: True
+          debug_info: True
+      period: 0.001
+      priority: 20
+      cpu_affinity: 64 # CPU 6
+
+  MOTION:
+    TASK1:
+      runner:
+        - name: 'locomotion'
+          enable: True
+          debug_info: True
+      period: 0.002
+      priority: 80
+      cpu_affinity: 64 # CPU 6
+
+  # DANCE:
+  #   TASK1:
+  #     runner:
+  #       - name: 'dance'
+  #         enable: True
+  #         debug_info: True
+  #     period: 0.005
+  #     priority: 80
+  #     cpu_affinity: 64 # CPU 6
+
+  GET_UP:
+    TASK1:
+      runner:
+        - name: 'get_up'
+          enable: True
+          debug_info: True
+      period: 0.005
+      priority: 80
+      cpu_affinity: 64 # CPU 6
+
+  LIE_DOWN:
+    TASK1:
+      runner:
+        - name: 'lie_down'
+          enable: True
+          debug_info: True
+      period: 0.005
+      priority: 80
+      cpu_affinity: 64 # CPU 6
+
+  PACKAGE_GET_UP:
+    TASK1:
+      runner:
+        - name: 'package_get_up'
+          enable: True
+          debug_info: True
+      period: 0.005
+      priority: 80
+      cpu_affinity: 64 # CPU 6
+
+  PACKAGE_LIE_DOWN:
+    TASK1:
+      runner:
+        - name: 'package_lie_down'
+          enable: True
+          debug_info: True
+      period: 0.005
+      priority: 80
+      cpu_affinity: 64 # CPU 6

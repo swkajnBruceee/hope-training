@@ -1,0 +1,190 @@
+{
+  "schema_version": "a3_data_processing_status/v1",
+  "status": "gap_fill_floating_base_replay_complete_not_qualified",
+  "generalization_candidate_bank": {
+    "total": 661,
+    "fixed_base_pass": 603,
+    "soft_limit_boundary": 58,
+    "hard_fail": 0,
+    "training": 517,
+    "validation": 144,
+    "floating_base_pending": true
+  },
+  "merged_training_bank": {
+    "status": "admitted_to_merged_manifest",
+    "training_manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/training_manifest.json",
+    "validation_manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/validation_manifest.json",
+    "training_count": 23118,
+    "validation_count": 2619,
+    "added_total": 661,
+    "payload_audit": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/payload_contract_audit.json"
+  },
+  "failed_retry": {
+    "original_failed": 173,
+    "retry_attempted": 173,
+    "retry_success": 0,
+    "persistent_reject": 173,
+    "by_stroke": {
+      "backhand": 154,
+      "forehand": 19
+    },
+    "by_reason": {
+      "none": 164,
+      "joint_limits_or_speed": 8,
+      "impact_transition": 1
+    },
+    "retry_config": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/retry_relaxed_20260807.yaml",
+    "summary": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/retry_relaxed_20260807/raw_ik/generation_summary.json",
+    "original_total_attempts": 848,
+    "decision": "abandon_and_exclude_173_persistent_rejects"
+  },
+  "decision": "exclude_persistent_rejects_from_candidate_bank",
+  "next_data_stage": "floating_base_replay_or_manual_goal_retargeting",
+  "artifacts": {
+    "audited_manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/generalization_candidate_bank_20260807/audited_fixed_base_20260807/manifest.json",
+    "classification_report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/generalization_candidate_bank_20260807/audit_classification_report.json"
+  },
+  "coverage_scan": {
+    "status": "completed",
+    "loaded_count": 26494,
+    "unique_target_count": 25833,
+    "report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_hole_report_20260807.json",
+    "priority_order": [
+      {
+        "stroke": "forehand",
+        "dimensions": [
+          "velocity_x_mps",
+          "velocity_y_mps",
+          "velocity_z_mps",
+          "normal_y",
+          "time_to_hit_s"
+        ],
+        "reason": "highest marginal sparsity and pairwise empty-bin counts"
+      },
+      {
+        "stroke": "backhand",
+        "dimensions": [
+          "time_to_hit_s",
+          "velocity_z_mps",
+          "normal_z"
+        ],
+        "reason": "sparse upper-time/high-vertical-speed boundary"
+      }
+    ]
+  },
+  "gap_fill_20260807": {
+    "requested_goals": 60,
+    "ik_success": 30,
+    "ik_failed_excluded": 30,
+    "backhand_success": 13,
+    "forehand_success": 17,
+    "fixed_base_pass": 18,
+    "soft_limit_boundary": 12,
+    "hard_fail": 0,
+    "training_admission": false,
+    "fk_materialization": "completed_30_of_30",
+    "fk_manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_20260807/full_bank_v3/manifest.json",
+    "fk_payload_audit": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_20260807/full_bank_v3/payload_audit.json",
+    "fk_shape_audit": "30/30 valid; 31 joints, 32 bodies, finite payloads, variable frames 56-128",
+    "screened_manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_20260807/screened_manifest.json",
+    "coverage_after_gap_fill": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_20260807/coverage_after_fk.json",
+    "coverage_loaded_count": 26524,
+    "coverage_unique_target_count": 25863,
+    "materialization_note": "Isaac Sim dependency was repaired, FK materialization completed, and floating-base replay completed without qualification."
+    ,"floating_base_replay": {
+      "status": "completed_not_qualified",
+      "report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_20260807/floating_base_replay.json",
+      "total": 30,
+      "pass": 0,
+      "warning": 0,
+      "fail": 30,
+      "main_observation": "All 30 remained finite, but floating-base tracking exceeded configured tilt/limit gates; minimum root height reached 0.115 m, maximum root tilt 92.8 deg, and minimum hard-limit margin -0.0123 rad.",
+      "training_admission": false
+      ,"planned_for_training_candidate_pool": true
+      ,"floating_base_failure_does_not_remove_from_plan": true
+    }
+  },
+  "gap_fill_round2_20260807": {
+    "requested_goals": 54,
+    "ik_success": 29,
+    "ik_failed_excluded": 25,
+    "backhand_success": 10,
+    "forehand_success": 19,
+    "fixed_base_pass": 17,
+    "soft_limit_boundary": 12,
+    "hard_fail": 0,
+    "fk_materialization": "completed_29_of_29_on_cpu_physx",
+    "manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round2_20260807/full_bank/manifest.json",
+    "coverage_report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round2_20260807/coverage_after_round2.json",
+    "coverage_loaded_count": 26553,
+    "coverage_unique_target_count": 25892,
+    "training_admission": false
+  },
+  "gap_fill_round3_20260807": {
+    "requested_goals": 48,
+    "ik_success": 28,
+    "ik_failed_excluded": 20,
+    "backhand_success": 11,
+    "forehand_success": 17,
+    "fixed_base_pass": 15,
+    "soft_limit_boundary": 13,
+    "hard_fail": 0,
+    "fk_materialization": "completed_28_of_28_on_cpu_physx",
+    "manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round3_20260807/full_bank/manifest.json",
+    "coverage_report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round3_20260807/coverage_after_round3.json",
+    "coverage_loaded_count": 26581,
+    "coverage_unique_target_count": 25918,
+    "training_admission": false
+  },
+  "gap_fill_round4_20260807": {
+    "requested_goals": 26,
+    "ik_success": 10,
+    "ik_failed_excluded": 16,
+    "backhand_success": 3,
+    "forehand_success": 7,
+    "fixed_base_pass": 6,
+    "soft_limit_boundary": 4,
+    "hard_fail": 0,
+    "fk_materialization": "completed_10_of_10_on_cpu_physx",
+    "manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round4_20260807/full_bank/manifest.json",
+    "coverage_report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round4_20260807/coverage_after_round4.json",
+    "coverage_loaded_count": 26591,
+    "coverage_unique_target_count": 25928,
+    "training_admission": false
+  },
+  "gap_fill_round5_20260807": {
+    "requested_goals": 33,
+    "ik_success": 18,
+    "ik_failed_excluded": 15,
+    "backhand_success": 4,
+    "forehand_success": 14,
+    "fixed_base_pass": 12,
+    "soft_limit_boundary": 6,
+    "hard_fail": 0,
+    "fk_materialization": "completed_18_of_18_in_two_cpu_batches",
+    "fk_manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round5_20260807/full_bank_merged/manifest.json",
+    "payload_audit": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round5_20260807/full_bank_merged/payload_audit.json",
+    "fixed_base_audit": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round5_20260807/physx_fixed_base_audit.json",
+    "coverage_report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round5_20260807/coverage_after_round5.json",
+    "coverage_loaded_count": 26609,
+    "coverage_unique_target_count": 25946,
+    "training_admission": false
+  },
+  "gap_fill_round6_20260807": {
+    "requested_goals": 22,
+    "ik_success": 9,
+    "ik_failed_excluded": 13,
+    "backhand_success": 0,
+    "forehand_success": 9,
+    "fixed_base_pass": 5,
+    "soft_limit_boundary": 4,
+    "hard_fail": 0,
+    "fk_materialization": "completed_9_of_9_on_cpu_physx",
+    "manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round6_20260807/full_bank/manifest.json",
+    "payload_audit": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round6_20260807/payload_audit.json",
+    "coverage_report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round6_20260807/coverage_after_round6.json",
+    "coverage_loaded_count": 26618,
+    "coverage_unique_target_count": 25955,
+    "training_admission": false
+  }
+}

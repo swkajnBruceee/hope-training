@@ -1,0 +1,78 @@
+common:
+  # policy_path: "a3t2_tangping_version1_1.onnx"
+  # dataset_file: "a3_tangping_t2.npz"
+  # policy_path: "2026-03-18_14-15-37_tangping_29dof_train1.onnx"
+  # dataset_file: "a3_tangping_t2_29dof.npz"
+  policy_path: "2026-04-02_14-01-08_a3t2d5_tangping_29dof_head_extended_train1_27000pt_sim效果很不错.onnx"
+  dataset_file: "a3_tangping_t2_29dof_head_extended.npz"
+  use_imu_list: [1] # 0 means torso imu ; 1 means waist imu; [0, 1] means both imu enable
+  decimation: 4
+
+command:
+  stop_frame: 600 ### tangping: 661 ### qishen: 506 # wushu: 707 # locking: 1207 # webster : 3 # weibosite: 5 # choushe   3
+  cycle_time: 1.0
+  stance_vel_treshold: -0.1
+  alpha_cmd_vel: [0.1, 0.1, 0.2]
+  alpha_cmd_vel_nav: [0.1, 0.1, 0.2]
+  cmd_vel_limit: [[-0.5, -0.6, -0.7], 
+                  [1.0, 0.6, 0.7]]
+  cmd_vel_offset: [0.0, -0.0, -0.0]
+
+  kp_limb: [[165, 165, 165, 260, 80, 80], 
+            [165, 165, 165, 260, 80, 80], 
+            [165, 60, 60],
+            [50, 50, 40, 40, 40, 15, 15], 
+            [50, 50, 40, 40, 40, 15, 15]]
+
+  kd_limb: [[5.5, 5.5, 5.5, 8.5, 2, 2], 
+            [5.5, 5.5, 5.5, 8.5, 2, 2], 
+            [5.5, 2, 2],
+            [2, 2, 1.5, 1.5, 1.5, 1, 1], 
+            [2, 2, 1.5, 1.5, 1.5, 1, 1]]
+
+  torques_limit: [[220, 220, 220, 320, 110, 45], 
+                  [220, 220, 220, 320, 110, 45], 
+                  [220, 45, 110],
+                  [60, 60, 24, 24, 24, 6, 6], 
+                  [60, 60, 24, 24, 24, 6, 6]]
+
+obs:
+  num_obs: 151
+  num_obs_history: 1
+  cmd_heading_scale: 0
+  cmd_vel_scale: [1.0, 1.0, 1.0]
+  dof_pos_scale: [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 
+                  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 
+                  [1.0, 1.0, 1.0],
+                  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 
+                  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
+  dof_vel_scale: [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 
+                  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 
+                  [1.0, 1.0, 1.0],
+                  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 
+                  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
+  ang_vel_scale: [1.0, 1.0, 1.0]
+  quat_scale: [1.0, 1.0, 1.0]
+  obs_limit: 18
+  # last_action (12), q_result_torso (2), q_result_arm (4), cpg_q (4)
+
+actions:
+  num_actions: 29
+  action_limit: 10
+  action_scale: [[0.5, 0.5, 0.5, 0.5, 0.5, 0.5], 
+                 [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], 
+                 [0.5, 0.5, 0.5],
+                 [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5], 
+                 [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]]
+
+  default_joint_angles:   [[-0.1311, 0.0056, -0.0348, 0.2468, -0.1204, -0.0078], # first used value
+                           [-0.1311, -0.0056, 0.0348, 0.2468, -0.1204, 0.0078],
+                           [0, 0, 0],
+                           [0.3, 0.12, 0.0, 0.8, 0, 0, 0], 
+                           [0.3, -0.12, 0.0, 0.8, 0, 0, 0]]
+
+  compensate_joint_angles: [[0.0, 0.0, 0.0, -0.0, 0.0, 0.0], 
+                            [-0.0, 0.0, 0.0, -0.0, 0.0, 0.0], 
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 
+                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]

@@ -36,7 +36,7 @@ def racket_position_tracking_exp(env: ManagerBasedRLEnv, command_name: str, std:
     The legacy sampled modes keep the old swing-through target for compatibility.
     """
     cmd = _cmd(env, command_name)
-    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed"):
+    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed", "reference_free_global"):
         target_pos_now = cmd.racket_target_pos_w
     else:
         target_pos_now = cmd.racket_target_pos_w - cmd.racket_target_vel_w * cmd.time_to_strike.unsqueeze(-1)
@@ -51,7 +51,7 @@ def racket_position_axis_tracking_exp(env: ManagerBasedRLEnv, command_name: str,
     stubborn axis from being hidden by a broad 3D position kernel.
     """
     cmd = _cmd(env, command_name)
-    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed"):
+    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed", "reference_free_global"):
         target_pos_now = cmd.racket_target_pos_w
     else:
         target_pos_now = cmd.racket_target_pos_w - cmd.racket_target_vel_w * cmd.time_to_strike.unsqueeze(-1)
@@ -77,6 +77,21 @@ def racket_incremental_position_tracking(
     cmd.metrics.setdefault("adapter_incremental_error", torch.zeros_like(error))
     cmd.metrics["adapter_incremental_error"] = torch.sqrt(error)
     return reward
+
+
+def racket_target_progress(env: ManagerBasedRLEnv, command_name: str, scale_m: float = 0.10) -> torch.Tensor:
+    """Dense pre-hit approach reward: previous distance minus current distance."""
+    cmd = _cmd(env, command_name)
+    actual = cmd.racket_pos_w
+    target = cmd.racket_target_pos_w
+    distance = torch.linalg.vector_norm(actual - target, dim=-1)
+    previous = getattr(cmd, "_v13b_previous_distance", None)
+    if previous is None:
+        previous = distance.detach().clone()
+        cmd._v13b_previous_distance = previous
+    progress = (previous - distance) / max(float(scale_m), 1.0e-6)
+    cmd._v13b_previous_distance = distance.detach()
+    return torch.where(cmd.pre_strike, progress, torch.zeros_like(progress)).clamp(-1.0, 1.0)
 
 
 def racket_paired_incremental_position_tracking(
@@ -347,7 +362,7 @@ def racket_velocity_tracking_position_gated_exp(
     placement radius, then rapidly fades as placement moves outside it.
     """
     cmd = _cmd(env, command_name)
-    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed"):
+    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed", "reference_free_global"):
         target_pos_now = cmd.racket_target_pos_w
     else:
         target_pos_now = cmd.racket_target_pos_w - cmd.racket_target_vel_w * cmd.time_to_strike.unsqueeze(-1)
@@ -399,7 +414,7 @@ def racket_hit_coupled_tracking_exp(
     hard sparse gate.
     """
     cmd = _cmd(env, command_name)
-    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed"):
+    if cmd.cfg.target_mode in ("manifest", "manifest_perturbed", "reference_free_global"):
         target_pos_now = cmd.racket_target_pos_w
     else:
         target_pos_now = cmd.racket_target_pos_w - cmd.racket_target_vel_w * cmd.time_to_strike.unsqueeze(-1)
@@ -430,6 +445,9 @@ def racket_exact_hit_precision_tracking_exp(
     vel_std: float,
     normal_std: float,
     time_std: float,
+    pos_coeff: float = 0.40,
+    velocity_coeff: float = 0.30,
+    normal_coeff: float = 0.30,
 ) -> torch.Tensor:
     """Prioritize the canonical TCP state at the actual strike frame.
 
@@ -455,8 +473,13 @@ def racket_exact_hit_precision_tracking_exp(
     )
     # Position remains the primary task.  Velocity and normal are bounded
     # quality factors, so they cannot buy a better reward by sacrificing the
-    # canonical strike location.
-    score = r_pos * (0.50 + 0.25 * r_vel + 0.25 * r_normal) * time_gate
+    # canonical strike location.  The coefficients are explicit so the
+    # training contract can deliberately emphasize impact speed and face
+    # orientation without changing the 26-D action contract.
+    coeff_sum = max(float(pos_coeff) + float(velocity_coeff) + float(normal_coeff), 1.0e-6)
+    score = r_pos * (
+        float(pos_coeff) + float(velocity_coeff) * r_vel + float(normal_coeff) * r_normal
+    ) / coeff_sum * time_gate
     return score
 
 

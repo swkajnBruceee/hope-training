@@ -510,6 +510,103 @@ def post_strike_torso_tilt_l2(
     return torch.where(tail_steps > 0, cost, torch.zeros_like(cost))
 
 
+def _reference_free_post_hit_gate(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    follow_through_s: float = 0.15,
+    ramp_s: float = 0.35,
+) -> torch.Tensor:
+    """Smooth recovery-only gate from a signed public time-to-hit command.
+
+    V1.3B has exactly one target and does not expose a motion phase to its
+    actor.  The command's signed ``time_to_strike`` is nevertheless a valid
+    *environment-internal* event clock: it is positive before impact and
+    stays negative afterwards.  This leaves the first 150 ms of natural
+    follow-through unpenalized, then ramps recovery shaping to full strength
+    over the next 350 ms.  No private motion/reference state is consulted.
+    """
+
+    command = env.command_manager.get_term(command_name)
+    tau = getattr(command, "time_to_strike", None)
+    if tau is None:
+        raise ValueError(
+            f"post-hit reference-free reward requires signed time_to_strike on {command_name!r}"
+        )
+    elapsed = torch.relu(-tau)
+    u = ((elapsed - float(follow_through_s)) / max(float(ramp_s), 1.0e-6)).clamp(0.0, 1.0)
+    return u * u * (3.0 - 2.0 * u)
+
+
+def post_hit_goal_torso_angular_velocity_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    torso_body_name: str = "torso_Link",
+    deadband: float = 0.06,
+    follow_through_s: float = 0.15,
+    ramp_s: float = 0.35,
+) -> torch.Tensor:
+    """After follow-through, damp torso roll/pitch motion without braking yaw."""
+
+    robot = env.scene["robot"]
+    cache_name = "_v13b_post_hit_torso_body_id"
+    torso_id = getattr(env, cache_name, None)
+    if torso_id is None:
+        ids, names = robot.find_bodies([torso_body_name], preserve_order=True)
+        if names != [torso_body_name]:
+            raise ValueError(f"Unable to resolve torso body {torso_body_name!r}")
+        torso_id = int(ids[0])
+        setattr(env, cache_name, torso_id)
+    torso_ang_vel_b = math_utils.quat_rotate_inverse(
+        robot.data.body_quat_w[:, torso_id], robot.data.body_ang_vel_w[:, torso_id]
+    )
+    excess = torch.relu(torch.abs(torso_ang_vel_b[:, :2]) - float(deadband))
+    return _reference_free_post_hit_gate(
+        env, command_name, follow_through_s, ramp_s
+    ) * torch.sum(torch.square(excess), dim=-1)
+
+
+def post_hit_goal_torso_tilt_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    torso_body_name: str = "torso_Link",
+    follow_through_s: float = 0.15,
+    ramp_s: float = 0.35,
+) -> torch.Tensor:
+    """After follow-through, restore torso roll/pitch uprightness, not yaw."""
+
+    robot = env.scene["robot"]
+    cache_name = "_v13b_post_hit_torso_body_id"
+    torso_id = getattr(env, cache_name, None)
+    if torso_id is None:
+        ids, names = robot.find_bodies([torso_body_name], preserve_order=True)
+        if names != [torso_body_name]:
+            raise ValueError(f"Unable to resolve torso body {torso_body_name!r}")
+        torso_id = int(ids[0])
+        setattr(env, cache_name, torso_id)
+    gravity_w = torch.zeros_like(robot.data.body_pos_w[:, torso_id])
+    gravity_w[:, 2] = -1.0
+    gravity_b = math_utils.quat_rotate_inverse(robot.data.body_quat_w[:, torso_id], gravity_w)
+    return _reference_free_post_hit_gate(
+        env, command_name, follow_through_s, ramp_s
+    ) * torch.sum(torch.square(gravity_b[:, :2]), dim=-1)
+
+
+def post_hit_goal_forward_velocity_deadband_l2(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    deadband: float = 0.08,
+    follow_through_s: float = 0.15,
+    ramp_s: float = 0.35,
+) -> torch.Tensor:
+    """After follow-through, discourage sustained fore-aft body drift only."""
+
+    speed = torch.abs(env.scene["robot"].data.root_lin_vel_b[:, 0])
+    excess = torch.relu(speed - float(deadband))
+    return _reference_free_post_hit_gate(
+        env, command_name, follow_through_s, ramp_s
+    ) * torch.square(excess)
+
+
 def _through_hit_mask(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
     """Select prelude and strike states through the exact hit frame."""
     command: MotionCommand = env.command_manager.get_term(command_name)

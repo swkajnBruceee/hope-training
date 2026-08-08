@@ -72,7 +72,22 @@ class RacketTargetCommand(CommandTerm):
         # NOTE: Articulation.find_bodies() RAISES (resolve_matching_names) when a name matches no
         # body — it does not return []. So gate on body_names membership before calling it, or the
         # wrist-offset fallback below becomes unreachable.
-        if cfg.racket_body_name in self.robot.body_names:
+        requested_fk_mode = str(getattr(cfg, "racket_fk_mode", "auto"))
+        if requested_fk_mode not in ("auto", "body", "wrist_offset"):
+            raise ValueError(f"unsupported racket_fk_mode={requested_fk_mode!r}")
+        if requested_fk_mode == "body" and cfg.racket_body_name not in self.robot.body_names:
+            raise RuntimeError(
+                f"V1.3B requested body FK but body {cfg.racket_body_name!r} is absent; refusing wrist fallback"
+            )
+        if requested_fk_mode == "wrist_offset":
+            if cfg.wrist_body_name not in self.robot.body_names:
+                raise RuntimeError(
+                    f"V1.3B requested wrist-offset FK but wrist body {cfg.wrist_body_name!r} is absent"
+                )
+            self._racket_mode = "wrist_offset"
+            self._racket_body_index = -1
+            self._wrist_body_index = self.robot.find_bodies(cfg.wrist_body_name, preserve_order=True)[0][0]
+        elif cfg.racket_body_name in self.robot.body_names:
             self._racket_mode = "body"
             self._racket_body_index = self.robot.find_bodies(cfg.racket_body_name, preserve_order=True)[0][0]
             self._wrist_body_index = -1
@@ -497,16 +512,49 @@ class RacketTargetCommand(CommandTerm):
 
         dpos = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * pos_h
         motion_cmd = self._motion()
+        root_relative = None
         if hasattr(self, "_ref_racket_pos_rel_by_motion"):
             motion_ids = motion_cmd.motion_ids[env_ids]
             ref_pos = self._ref_racket_pos_rel_by_motion[motion_ids]
             ref_vel = self._ref_racket_vel_w_by_motion[motion_ids]
             ref_normal = self._ref_racket_normal_w_by_motion[motion_ids]
+            # Dense A3 candidate clips store their canonical target in the
+            # immutable initial-root-heading frame.  The raw body arrays are
+            # still world poses with the source root anchor (normally z=1.0684),
+            # so using them directly here and adding ``origins`` double-counts
+            # the root anchor.  Convert the canonical root-relative state into
+            # the live robot frame exactly as the manifest target path does.
+            motion = motion_cmd.motion
+            if isinstance(motion, MotionLibraryLoader):
+                root_relative = motion.strike_target_is_root_relative[motion_ids]
+                if torch.any(root_relative):
+                    heading = yaw_quat(self.base_quat_w[env_ids])
+                    root_pos = self.base_pos_w[env_ids]
+                    canonical_pos = quat_apply(heading, motion.strike_pos_b0[motion_ids])
+                    canonical_vel = quat_apply(heading, motion.strike_vel_b0[motion_ids])
+                    canonical_normal = quat_apply(heading, motion.strike_normal_b0[motion_ids])
+                    ref_pos = torch.where(
+                        root_relative.unsqueeze(-1), root_pos + canonical_pos, ref_pos
+                    )
+                    ref_vel = torch.where(
+                        root_relative.unsqueeze(-1), canonical_vel, ref_vel
+                    )
+                    ref_normal = torch.where(
+                        root_relative.unsqueeze(-1), canonical_normal, ref_normal
+                    )
         else:
             ref_pos = self._ref_racket_pos_rel.unsqueeze(0).expand(n, -1)
             ref_vel = self._ref_racket_vel_w.unsqueeze(0).expand(n, -1)
             ref_normal = self._ref_racket_normal_w.unsqueeze(0).expand(n, -1)
-        self.racket_target_pos_w[env_ids] = origins + ref_pos + dpos
+        # Legacy reference clips store body positions relative to the
+        # environment origin; dense candidate clips use the live root pose for
+        # root-relative canonical targets.  Do not add ``origins`` twice for
+        # the latter.
+        if root_relative is None:
+            target_pos = origins + ref_pos
+        else:
+            target_pos = torch.where(root_relative.unsqueeze(-1), ref_pos, origins + ref_pos)
+        self.racket_target_pos_w[env_ids] = target_pos + dpos
 
         dvel = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * vel_h
         self.racket_target_vel_w[env_ids] = ref_vel + dvel
@@ -541,15 +589,30 @@ class RacketTargetCommand(CommandTerm):
         nominal = torch.rand(n, device=dev) < float(self.cfg.manifest_nominal_probability)
         dpos = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * pos_h
         dpos[nominal] = 0.0
-        self.racket_target_pos_w[env_ids] = origins + motion.strike_pos_w[motion_ids] + dpos
+        root_relative = motion.strike_target_is_root_relative[motion_ids]
+        heading = yaw_quat(self.base_quat_w[env_ids])
+        root_relative_pos = self.base_pos_w[env_ids] + quat_apply(
+            heading, motion.strike_pos_b0[motion_ids]
+        )
+        world_pos = origins + motion.strike_pos_w[motion_ids]
+        self.racket_target_pos_w[env_ids] = torch.where(
+            root_relative.unsqueeze(-1), root_relative_pos, world_pos
+        ) + dpos
 
         dvel = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * vel_h
         dvel[nominal] = 0.0
-        self.racket_target_vel_w[env_ids] = motion.strike_vel_w[motion_ids] + dvel
+        root_relative_vel = quat_apply(heading, motion.strike_vel_b0[motion_ids])
+        self.racket_target_vel_w[env_ids] = torch.where(
+            root_relative.unsqueeze(-1), root_relative_vel, motion.strike_vel_w[motion_ids]
+        ) + dvel
 
         dnrm = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * nrm_h
         dnrm[nominal] = 0.0
-        normal = motion.strike_normal_w[motion_ids] + dnrm
+        root_relative_normal = quat_apply(heading, motion.strike_normal_b0[motion_ids])
+        nominal_normal = torch.where(
+            root_relative.unsqueeze(-1), root_relative_normal, motion.strike_normal_w[motion_ids]
+        )
+        normal = nominal_normal + dnrm
         self.racket_target_normal_w[env_ids] = normal / (torch.norm(normal, dim=-1, keepdim=True) + 1e-6)
         self.metrics["ref_perturb_scale"][env_ids] = scale
 
@@ -607,7 +670,25 @@ class RacketTargetCommand(CommandTerm):
                 base_xy = origins[:, :2].clone() + self._manifest_base_target_xy(env_ids)
         elif self.cfg.target_mode == "reference_perturbed":
             self._ensure_reference_strike_state()
-            base_xy = self.racket_target_pos_w[env_ids][:, :2] - self._ref_reach_offset_xy.unsqueeze(0)
+            # Use the selected motion's reach offset.  The old scalar alias
+            # pointed at motion 0, which silently coupled every sampled clip
+            # to the first reference in a multi-motion bank.  For root-relative
+            # candidate clips, rotate the canonical offset into the live base
+            # yaw frame; legacy world-frame clips retain their cached offset.
+            motion_cmd = self._motion()
+            motion_ids = motion_cmd.motion_ids[env_ids]
+            if hasattr(self, "_ref_reach_offset_xy_by_motion"):
+                reach = self._ref_reach_offset_xy_by_motion[motion_ids]
+                motion = motion_cmd.motion
+                if isinstance(motion, MotionLibraryLoader):
+                    root_relative = motion.strike_target_is_root_relative[motion_ids]
+                    if torch.any(root_relative):
+                        heading = yaw_quat(self.base_quat_w[env_ids])
+                        canonical_reach = quat_apply(heading, motion.strike_pos_b0[motion_ids])[:, :2]
+                        reach = torch.where(root_relative.unsqueeze(-1), canonical_reach, reach)
+            else:
+                reach = self._ref_reach_offset_xy.unsqueeze(0).expand(n, -1)
+            base_xy = self.racket_target_pos_w[env_ids][:, :2] - reach
         elif self.cfg.target_mode == "manifest_perturbed":
             # Fixed-base training has no base-position objective.  Keep the
             # command well-defined without coupling a multi-motion batch to
@@ -745,15 +826,36 @@ class RacketTargetCommand(CommandTerm):
         if not isinstance(motion, MotionLibraryLoader):
             raise RuntimeError("target_mode='manifest' requires MotionCommandCfg.motion_manifest")
         motion_ids = motion_cmd.motion_ids[env_ids]
+        root_relative = motion.strike_target_is_root_relative[motion_ids]
         if self.cfg.manifest_base_aligned:
             hit_steps = motion.hit_frame[motion_ids]
             ref_base_pos = motion._body_pos_w[motion_ids, hit_steps, 0]
             ref_reach = motion.strike_pos_w[motion_ids] - ref_base_pos
             self.racket_target_pos_w[env_ids] = self.base_pos_w[env_ids] + ref_reach
+        elif bool(root_relative.any().item()):
+            # Dense candidate-bank targets are root-relative.  Convert them
+            # once from the current floating-base heading frame into world
+            # coordinates.  World-frame scene-placed manifests continue to
+            # use the legacy branch below, so mixed manifests remain safe.
+            heading = yaw_quat(self.base_quat_w[env_ids])
+            root_relative_pos = self.base_pos_w[env_ids] + quat_apply(
+                heading, motion.strike_pos_b0[motion_ids]
+            )
+            world_pos = origins + motion.strike_pos_w[motion_ids]
+            self.racket_target_pos_w[env_ids] = torch.where(
+                root_relative.unsqueeze(-1), root_relative_pos, world_pos
+            )
         else:
             self.racket_target_pos_w[env_ids] = origins + motion.strike_pos_w[motion_ids]
-        self.racket_target_vel_w[env_ids] = motion.strike_vel_w[motion_ids]
-        self.racket_target_normal_w[env_ids] = motion.strike_normal_w[motion_ids]
+        heading = yaw_quat(self.base_quat_w[env_ids])
+        root_relative_vel = quat_apply(heading, motion.strike_vel_b0[motion_ids])
+        root_relative_normal = quat_apply(heading, motion.strike_normal_b0[motion_ids])
+        self.racket_target_vel_w[env_ids] = torch.where(
+            root_relative.unsqueeze(-1), root_relative_vel, motion.strike_vel_w[motion_ids]
+        )
+        self.racket_target_normal_w[env_ids] = torch.where(
+            root_relative.unsqueeze(-1), root_relative_normal, motion.strike_normal_w[motion_ids]
+        )
         self.metrics["ref_perturb_scale"][env_ids] = 0.0
 
     def _manifest_base_target_xy(self, env_ids: Sequence[int]) -> torch.Tensor:
@@ -946,6 +1048,8 @@ class RacketTargetCommand(CommandTerm):
         self.metrics["strike_success"] = torch.where(
             in_win, (pos_err < self.cfg.strike_success_pos_thresh).float(), self.metrics["strike_success"]
         )
+
+
         # Base target is tracked before the strike, so log that error during the pre-strike phase.
         self.metrics["base_pos_error_pre_strike"] = torch.where(
             self.pre_strike, base_err, self.metrics["base_pos_error_pre_strike"]
@@ -1070,6 +1174,254 @@ class RacketTargetCommand(CommandTerm):
         pass
 
 
+class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
+    """Reference-free global target sampler for V1.3B."""
+
+    cfg: "ReferenceFreeRacketTargetCommandCfg"
+
+    def __init__(self, cfg: "ReferenceFreeRacketTargetCommandCfg", env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self._goal_clock = torch.zeros(self.num_envs, device=self.device)
+        self._hit_time = torch.zeros(self.num_envs, device=self.device)
+        self._v13b_previous_distance = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_goal_resample_exhausted"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_goal_fallback_nominal"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_curriculum_progress"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_goal_acceptance_rate"] = torch.ones(self.num_envs, device=self.device)
+        self.metrics["v13b_reference_free"] = torch.ones(self.num_envs, device=self.device)
+        # Post-hit recovery diagnostics are deliberately environment-side
+        # metrics.  They use the public signed time-to-hit, never expose a
+        # phase or recovery state to the 98-D actor, and let long training
+        # distinguish one clean strike from a persistent oscillation.
+        self.metrics["v13b_post_hit_gate"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_post_hit_torso_ang_vel_rms"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_post_hit_torso_tilt_deg"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_post_hit_root_forward_speed"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_post_hit_recovered"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_post_hit_time_to_recover_s"] = torch.zeros(self.num_envs, device=self.device)
+        self._v13b_recovery_stable_steps = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
+        self._v13b_recovery_latched = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
+        self._v13b_recovery_time_s = torch.zeros(self.num_envs, device=self.device)
+        self._v13b_torso_body_id: int | None = None
+
+    def _progress(self) -> float:
+        override = getattr(self, "_v13b_policy_progress", None)
+        if override is not None:
+            return float(max(0.0, min(1.0, override)))
+        value = getattr(self._env, "v13b_policy_progress", None)
+        if value is None:
+            value = getattr(getattr(self._env, "unwrapped", None), "v13b_policy_progress", None)
+        return 0.0 if value is None else float(max(0.0, min(1.0, value)))
+
+    def _sample_reference_free_goal(self, ids: torch.Tensor) -> None:
+        n = ids.numel()
+        p = self._progress()
+        warm = float(self.cfg.curriculum_warmup_progress)
+        ramp = float(self.cfg.curriculum_ramp_end_progress)
+        alpha = 0.0 if p <= warm else min(1.0, (p - warm) / max(ramp - warm, 1.0e-6))
+        self.metrics["v13b_curriculum_progress"][ids] = p
+        initial = torch.tensor(self.cfg.initial_position_half_range_m, device=self.device)
+        final = torch.tensor(self.cfg.final_position_half_range_m, device=self.device)
+        pos_half = (initial + alpha * (final - initial)).unsqueeze(0).expand(n, -1)
+        normal_deg = float(self.cfg.initial_normal_half_angle_deg) + alpha * (
+            float(self.cfg.final_normal_half_angle_deg) - float(self.cfg.initial_normal_half_angle_deg)
+        )
+        base_yaw = yaw_quat(self.base_quat_w[ids])
+        base_pos = self.base_pos_w[ids]
+        local_pos = (torch.rand(n, 3, device=self.device) * 2.0 - 1.0) * pos_half
+        local_pos += torch.tensor(self.cfg.nominal_target_local_xyz, device=self.device)
+        # Cheap fail-closed workspace filter.  Detailed IK/collision probes
+        # remain an offline admission gate; no rejected sample is reported as
+        # a PPO failure.  Boundary values are resampled up to the configured
+        # attempt count.  Exhaustion falls back to the fixed nominal target,
+        # never to an unchecked/clamped boundary point.
+        local_min = torch.tensor(self.cfg.workspace_local_min_xyz, device=self.device)
+        local_max = torch.tensor(self.cfg.workspace_local_max_xyz, device=self.device)
+        accepted = (local_pos >= local_min) & (local_pos <= local_max)
+        accepted = accepted.all(dim=-1)
+        attempts = 1
+        while not bool(torch.all(accepted)) and attempts < int(self.cfg.max_resample_attempts):
+            bad = ~accepted
+            replacement = (torch.rand(int(bad.sum()), 3, device=self.device) * 2.0 - 1.0) * pos_half[bad]
+            replacement += torch.tensor(self.cfg.nominal_target_local_xyz, device=self.device)
+            local_pos[bad] = replacement
+            accepted = ((local_pos >= local_min) & (local_pos <= local_max)).all(dim=-1)
+            attempts += 1
+        exhausted = ~accepted
+        if torch.any(exhausted):
+            nominal = torch.tensor(self.cfg.nominal_target_local_xyz, device=self.device)
+            local_pos[exhausted] = nominal
+        self.metrics["v13b_goal_resample_exhausted"][ids] = exhausted.to(dtype=self.racket_target_pos_w.dtype)
+        self.metrics["v13b_goal_fallback_nominal"][ids] = exhausted.to(dtype=self.racket_target_pos_w.dtype)
+        self.metrics["v13b_goal_acceptance_rate"][ids] = (~exhausted).to(dtype=self.racket_target_pos_w.dtype)
+        self.racket_target_pos_w[ids] = base_pos + quat_apply(base_yaw, local_pos)
+        # Uniformly sample a disk in the tangent plane so the normal angular
+        # deviation is bounded by (rather than independently exceeded by)
+        # the configured half-angle.
+        angle_limit = math.sin(math.radians(normal_deg))
+        tangent_dir = torch.randn(n, 2, device=self.device)
+        tangent_dir = tangent_dir / torch.linalg.vector_norm(tangent_dir, dim=-1, keepdim=True).clamp_min(1.0e-6)
+        tangent_radius = torch.sqrt(torch.rand(n, device=self.device)) * angle_limit
+        tangent = tangent_dir * tangent_radius.unsqueeze(-1)
+        normal_local = torch.zeros(n, 3, device=self.device)
+        normal_local[:, 0] = torch.sqrt(torch.clamp(1.0 - torch.sum(tangent * tangent, dim=-1), min=1.0e-6))
+        normal_local[:, 1:] = tangent
+        normal_local = normal_local / torch.linalg.vector_norm(normal_local, dim=-1, keepdim=True).clamp_min(1.0e-6)
+        self.racket_target_normal_w[ids] = quat_apply(base_yaw, normal_local)
+        speed_fraction = float(self.cfg.initial_speed_fraction) + alpha * (
+            float(self.cfg.final_speed_fraction) - float(self.cfg.initial_speed_fraction)
+        )
+        speed = float(self.cfg.nominal_speed_mps) * (
+            1.0 + sample_uniform(-speed_fraction, speed_fraction, (n,), self.device)
+        )
+        speed = speed.clamp(min=float(self.cfg.speed_range_mps[0]), max=float(self.cfg.speed_range_mps[1]))
+        self.racket_target_vel_w[ids] = self.racket_target_normal_w[ids] * speed.unsqueeze(-1)
+        self.base_target_pos_w[ids] = base_pos[:, :2]
+        self.swing_sign[ids] = torch.where(local_pos[:, 1] <= 0.0, 1.0, -1.0)
+        time_half_range = float(self.cfg.initial_time_half_range_s) + alpha * (
+            float(self.cfg.final_time_half_range_s) - float(self.cfg.initial_time_half_range_s)
+        )
+        hit_time = float(self.cfg.nominal_time_to_hit_s) + sample_uniform(
+            -time_half_range, time_half_range, (n,), self.device
+        )
+        self._hit_time[ids] = hit_time.clamp(
+            min=float(self.cfg.time_to_hit_range_s[0]), max=float(self.cfg.time_to_hit_range_s[1])
+        )
+        self._goal_clock[ids] = 0.0
+        self._reset_post_hit_recovery_metrics(ids)
+        self._compute_strike_timing()
+        self.racket_anchor_target_pos_w[ids] = self.racket_target_pos_w[ids]
+        self.racket_anchor_target_vel_w[ids] = self.racket_target_vel_w[ids]
+        self.racket_anchor_target_normal_w[ids] = self.racket_target_normal_w[ids]
+        self._v13b_previous_distance[ids] = torch.linalg.vector_norm(
+            self.racket_pos_w[ids] - self.racket_target_pos_w[ids], dim=-1
+        ).detach()
+
+    def _reset_post_hit_recovery_metrics(self, ids: torch.Tensor) -> None:
+        self._v13b_recovery_stable_steps[ids] = 0
+        self._v13b_recovery_latched[ids] = False
+        self._v13b_recovery_time_s[ids] = 0.0
+        for name in (
+            "v13b_post_hit_gate",
+            "v13b_post_hit_torso_ang_vel_rms",
+            "v13b_post_hit_torso_tilt_deg",
+            "v13b_post_hit_root_forward_speed",
+            "v13b_post_hit_recovered",
+            "v13b_post_hit_time_to_recover_s",
+        ):
+            self.metrics[name][ids] = 0.0
+
+    def _update_post_hit_recovery_metrics(self) -> None:
+        """Log physical settling after the one public V1.3B hit event."""
+
+        robot = self.robot
+        if self._v13b_torso_body_id is None:
+            ids, names = robot.find_bodies(["torso_Link"], preserve_order=True)
+            if names != ["torso_Link"]:
+                raise ValueError("V1.3B recovery metric cannot resolve torso_Link")
+            self._v13b_torso_body_id = int(ids[0])
+        torso_id = self._v13b_torso_body_id
+        torso_quat_w = robot.data.body_quat_w[:, torso_id]
+        torso_ang_vel_b = quat_rotate_inverse(
+            torso_quat_w, robot.data.body_ang_vel_w[:, torso_id]
+        )
+        torso_rms = torch.linalg.vector_norm(torso_ang_vel_b[:, :2], dim=-1) / math.sqrt(2.0)
+        gravity_w = torch.zeros_like(robot.data.body_pos_w[:, torso_id])
+        gravity_w[:, 2] = -1.0
+        gravity_b = quat_rotate_inverse(torso_quat_w, gravity_w)
+        tilt_rad = torch.atan2(
+            torch.linalg.vector_norm(gravity_b[:, :2], dim=-1),
+            (-gravity_b[:, 2]).clamp_min(1.0e-6),
+        )
+        forward_speed = torch.abs(robot.data.root_lin_vel_b[:, 0])
+        elapsed = torch.relu(-self.time_to_strike)
+        gate_u = ((elapsed - 0.15) / 0.35).clamp(0.0, 1.0)
+        gate = gate_u * gate_u * (3.0 - 2.0 * gate_u)
+        post_hit = self.time_to_strike < 0.0
+        self.metrics["v13b_post_hit_gate"][:] = gate
+        self.metrics["v13b_post_hit_torso_ang_vel_rms"][:] = torch.where(
+            post_hit, torso_rms, torch.zeros_like(torso_rms)
+        )
+        self.metrics["v13b_post_hit_torso_tilt_deg"][:] = torch.where(
+            post_hit, torch.rad2deg(tilt_rad), torch.zeros_like(tilt_rad)
+        )
+        self.metrics["v13b_post_hit_root_forward_speed"][:] = torch.where(
+            post_hit, forward_speed, torch.zeros_like(forward_speed)
+        )
+
+        # "Recovered" means a clean torso/velocity state continuously held
+        # for 0.5 s after the follow-through window.  This is a logged audit
+        # quantity, not an observation or a termination condition.
+        stable = (
+            post_hit
+            & (elapsed >= 0.50)
+            & (torso_rms <= 0.12)
+            & (tilt_rad <= math.radians(5.0))
+            & (forward_speed <= 0.12)
+        )
+        required_steps = max(1, int(round(0.50 / float(self._env.step_dt))))
+        active = ~self._v13b_recovery_latched
+        self._v13b_recovery_stable_steps[:] = torch.where(
+            active & stable,
+            self._v13b_recovery_stable_steps + 1,
+            torch.where(active, torch.zeros_like(self._v13b_recovery_stable_steps), self._v13b_recovery_stable_steps),
+        )
+        newly_recovered = active & (self._v13b_recovery_stable_steps >= required_steps)
+        self._v13b_recovery_time_s[newly_recovered] = elapsed[newly_recovered]
+        self._v13b_recovery_latched |= newly_recovered
+        self.metrics["v13b_post_hit_recovered"][:] = self._v13b_recovery_latched.float()
+        self.metrics["v13b_post_hit_time_to_recover_s"][:] = torch.where(
+            self._v13b_recovery_latched,
+            self._v13b_recovery_time_s,
+            torch.zeros_like(self._v13b_recovery_time_s),
+        )
+
+    def _resample_command(self, env_ids: Sequence[int]):
+        # In the training-only V1.3B branch the latest manifest supplies the
+        # canonical racket-at-strike goal.  Delegate manifest modes to the
+        # base command so root-frame conversion and per-motion velocity/normal
+        # are preserved; otherwise the global sampler would silently replace
+        # the dataset target.
+        if self.cfg.target_mode in ("manifest", "manifest_perturbed"):
+            super()._resample_command(env_ids)
+            ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+            if ids.numel():
+                self.metrics["v13b_goal_resample_exhausted"][ids] = 0.0
+                self.metrics["v13b_goal_fallback_nominal"][ids] = 0.0
+                self.metrics["v13b_goal_acceptance_rate"][ids] = 1.0
+                self.metrics["v13b_reference_free"][ids] = 1.0
+                self._reset_post_hit_recovery_metrics(ids)
+            self.metrics["v13b_curriculum_progress"].fill_(self._progress())
+            return
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        if ids.numel():
+            self._sample_reference_free_goal(ids)
+
+    def _compute_strike_timing(self):
+        self.time_to_strike = self._hit_time - self._goal_clock
+        self.pre_strike = self.time_to_strike > 0.0
+        self.strike_window = torch.abs(self.time_to_strike) <= float(self.cfg.strike_window_s)
+
+    def _update_command(self):
+        if self.cfg.target_mode in ("manifest", "manifest_perturbed"):
+            super()._update_command()
+            self.metrics["v13b_curriculum_progress"].fill_(self._progress())
+            self.metrics["v13b_reference_free"].fill_(1.0)
+            self._update_post_hit_recovery_metrics()
+            return
+        self._goal_clock += float(self._env.step_dt)
+        self._compute_strike_timing()
+        self._update_post_hit_recovery_metrics()
+        self.metrics["v13b_curriculum_progress"].fill_(self._progress())
+        # This command is intentionally independent from the private motion
+        # command used only by the training-time priors.
+        self.metrics["v13b_reference_free"].fill_(1.0)
+
+
 @configclass
 class RacketTargetCommandCfg(CommandTermCfg):
     """Configuration for :class:`RacketTargetCommand`."""
@@ -1093,6 +1445,7 @@ class RacketTargetCommandCfg(CommandTermCfg):
     mount_quat: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
     mount_normal_axis: int = 1  # racket-local +Y is the face normal (red/hitting face)
     mount_normal_sign: float = 1.0  # +1 = red/forehand face; -1 = black/backhand face
+    racket_fk_mode: str = "auto"  # auto, body, or explicit wrist_offset
 
     # --- strike timing (fraction of the reference clip where the paddle meets the ball) ---
     strike_phase: float = 0.46  # HITTER clip: strike at frame 43/94 ≈ 0.46
@@ -1183,3 +1536,35 @@ class RacketTargetCommandCfg(CommandTermCfg):
 
     # --- swing-type convention ---
     forehand_on_negative_y: bool = True  # right arm holds the paddle: target on -Y side -> forehand (+1)
+
+
+@configclass
+class ReferenceFreeRacketTargetCommandCfg(RacketTargetCommandCfg):
+    """Config for a global target-conditioned command without motion data."""
+
+    class_type: type[CommandTerm] = ReferenceFreeRacketTargetCommand
+    target_mode: str = "reference_free_global"
+    motion_command_name: str = "__disabled_motion__"
+    nominal_target_local_xyz: tuple[float, float, float] = (0.42, -0.18, 0.18)
+    initial_position_half_range_m: tuple[float, float, float] = (0.01, 0.01, 0.01)
+    final_position_half_range_m: tuple[float, float, float] = (0.08, 0.08, 0.08)
+    initial_normal_half_angle_deg: float = 2.0
+    final_normal_half_angle_deg: float = 12.0
+    nominal_speed_mps: float = 2.5
+    initial_speed_fraction: float = 0.03
+    final_speed_fraction: float = 0.20
+    speed_range_mps: tuple[float, float] = (1.0, 4.0)
+    nominal_time_to_hit_s: float = 0.40
+    initial_time_half_range_s: float = 0.02
+    final_time_half_range_s: float = 0.10
+    time_to_hit_range_s: tuple[float, float] = (0.20, 0.60)
+    curriculum_warmup_progress: float = 0.10
+    # Finish the automatic target curriculum early enough to leave a stable
+    # final-distribution plateau for the last 30% of PPO updates.
+    curriculum_ramp_end_progress: float = 0.70
+    # Bounds are in the same base-heading local frame as
+    # ``nominal_target_local_xyz``.  They are deliberately not world-height
+    # bounds: the runtime target is formed as ``base_pos_w + R_yaw * local``.
+    workspace_local_min_xyz: tuple[float, float, float] = (0.18, -0.65, 0.05)
+    workspace_local_max_xyz: tuple[float, float, float] = (0.72, 0.35, 0.45)
+    max_resample_attempts: int = 32

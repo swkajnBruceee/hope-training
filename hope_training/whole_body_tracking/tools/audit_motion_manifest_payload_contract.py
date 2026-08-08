@@ -36,7 +36,7 @@ def audit_manifest(path: Path) -> dict:
     for entry in entries:
         explicit = {}
         missing = []
-        for key in ("motion_npz", "library_motion_npz", "canonical_motion_npz"):
+        for key in ("motion_npz", "library_motion_npz"):
             value = entry.get(key)
             if not value:
                 continue
@@ -45,6 +45,16 @@ def audit_manifest(path: Path) -> dict:
                 missing.append(key)
             else:
                 explicit[key] = str(resolved)
+        # ``canonical_motion_npz`` is a boolean marker in the A3 candidate
+        # bank, not a third path.  Older manifests may use it as an explicit
+        # filename, so only resolve it when the value is a non-empty string.
+        canonical_value = entry.get("canonical_motion_npz")
+        if isinstance(canonical_value, str) and canonical_value:
+            resolved = resolve(canonical_value, path.parent)
+            if resolved is None:
+                missing.append("canonical_motion_npz")
+            else:
+                explicit["canonical_motion_npz"] = str(resolved)
         payload_values = {v for k, v in explicit.items() if k in {"motion_npz", "library_motion_npz"}}
         strict_entry = strict_manifest or bool(entry.get("canonical_motion_npz"))
         conflict = len(payload_values) > 1 and strict_entry

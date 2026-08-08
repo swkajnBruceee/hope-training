@@ -155,6 +155,43 @@ gym.register(
     },
 )
 
+# V1.3B: true reference-free target-conditioned student.  This registration
+# is additive; all historical P5U reference tasks remain reproducible.
+gym.register(
+    id="HOPE-FloatingTargetConditionedReferenceFreeV13B-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingTargetConditionedReferenceFreeV13BEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# V1.3B training-only bridge: the actor remains reference-free, while a private
+# stage-A observation feeds the additive model_3396 prior until alpha reaches 0.
+gym.register(
+    id="HOPE-FloatingTargetConditionedReferenceFreeV13BAnnealedPrior-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingTargetConditionedReferenceFreeV13BAnnealedPriorEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
+# V1.3B final training chain: private 3396 lower and complete model_900 upper
+# priors are additive only during the scheduled bootstrap, while the public
+# actor remains the same deployable 98-D reference-free policy.
+gym.register(
+    id="HOPE-FloatingTargetConditionedReferenceFreeV13BCompletePriors-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingTargetConditionedReferenceFreeV13BAnnealedPriorEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
 gym.register(
     id="HOPE-FloatingUnifiedUpperReferenceTrackerB-AgibotA3-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",

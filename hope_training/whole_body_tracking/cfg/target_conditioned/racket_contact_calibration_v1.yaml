@@ -1,0 +1,24 @@
+# Formal V1.3B contact calibration.  This file is intentionally fail-closed:
+# the old +17 mm Isaac diagnostic proxy is not promoted to the training
+# contract.  Fill these values only after the URDF/PhysX collision probe passes.
+contract_version: racket_contact_calibration_v1
+status: pending_probe
+qualified_domain: null
+training_gate: false
+deployment_gate: true
+required_for:
+  reference_free_training: false
+  planner_deployment: true
+notes: >-
+  The V1.3B policy is trained directly in racket-target space.  Ball-center to
+  racket-face conversion remains unqualified and is required only by the
+  Planner/deployment adapter; the legacy +17 mm proxy is not promoted.
+policy_link_point_id: pingpang_red_Link_origin/v1
+ball_radius_m: null
+link_origin_to_effective_face_along_normal_m: null
+normal_sign: null
+probe_requirements:
+  - frontal_ball_center_to_face_is_normal_aligned
+  - measured_offset_matches_collision_geometry
+  - wrist_offset_fk_and_body_pose_agree
+  - runtime_body_index_is_logged_and_stable

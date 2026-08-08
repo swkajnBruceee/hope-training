@@ -1,0 +1,47 @@
+{
+  "schema_version": "a3_training_motion_library_plan/v1",
+  "status": "planned_candidate_not_training_started",
+  "training_started": false,
+  "floating_base_failures_policy": "ignored_for_candidate_planning_only",
+  "libraries": {
+    "primary_reference": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_20260806/manifest.json",
+    "generalization_candidate": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/generalization_candidate_bank_20260807/audited_fixed_base_20260807/manifest.json",
+    "gap_fill_candidate": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_20260807/full_bank_v3/manifest.json",
+    "gap_fill_round2_candidate": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round2_20260807/full_bank/manifest.json"
+    ,"gap_fill_round3_candidate": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round3_20260807/full_bank/manifest.json"
+    ,"gap_fill_round4_candidate": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round4_20260807/full_bank/manifest.json"
+    ,"gap_fill_round5_candidate": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round5_20260807/full_bank_merged/manifest.json"
+    ,"gap_fill_round6_candidate": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_round6_20260807/full_bank/manifest.json"
+    ,"merged_training_reference": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/training_manifest.json"
+    ,"merged_validation_reference": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/validation_manifest.json"
+  },
+  "gap_fill_plan": {
+    "count": 30,
+    "backhand": 13,
+    "forehand": 17,
+    "floating_base_replay_failures_included_as_plan_candidates": true,
+    "formal_training_admission": false,
+    "round2_count": 29,
+    "round2_floating_base_failures_ignored_for_plan": true
+    ,"round3_count": 28
+    ,"round3_floating_base_failures_ignored_for_plan": true
+    ,"round4_count": 10
+    ,"round4_floating_base_failures_ignored_for_plan": true
+    ,"round5_count": 18
+    ,"round5_floating_base_failures_ignored_for_plan": true
+    ,"round6_count": 9
+    ,"round6_floating_base_failures_ignored_for_plan": true
+  },
+  "merged_training_bank": {
+    "status": "admitted_to_merged_manifest",
+    "original_training_count": 22601,
+    "generalization_added_training_count": 517,
+    "merged_training_count": 23118,
+    "generalization_added_validation_count": 144,
+    "merged_validation_count": 2619,
+    "floating_base_failures_policy": "ignored_as_requested"
+  },
+  "scan_report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/motion_libraries_scan_20260807.json",
+  "payload_report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/motion_libraries_payload_audit_20260807.json",
+  "coverage_report": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/whole_space_gap_fill_20260807/coverage_after_fk.json"
+}

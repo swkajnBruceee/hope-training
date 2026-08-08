@@ -90,6 +90,39 @@ data/DATA260703/
 # runtime.
 *.xlsx
 
+# Local datasets, experiment archives, and machine/vendor packages. These
+# contain many gigabytes of raw captures, checkpoints, logs, and SDK bundles;
+# keep them outside the GitHub source repository.
+DATA_PingPang/
+TTMD6/
+data/
+analysis/mocap_cleaning_outputs/
+outputs/
+hope_training/whole_body_tracking/checkpoints/
+hope_training/whole_body_tracking/eval_inputs/
+hope_training/whole_body_tracking/eval_outputs/
+hope_training/whole_body_tracking/replay_logs/
+hope_training/whole_body_tracking/reproducibility_archives/
+hope_training/whole_body_tracking/sample_motions/
+hope_training/whole_body_tracking/exported/
+hope_training/whole_body_tracking/**/*.onnx
+hope_training/whole_body_tracking/**/*.pt
+hope_training/whole_body_tracking/**/*.pth
+hope_training/whole_body_tracking/**/*.ckpt
+a3_ik_point_offline_wrapper_v2/*/
+!a3_ik_point_offline_wrapper_v2/scripts/
+!a3_ik_point_offline_wrapper_v2/scripts/**
+!a3_ik_point_offline_wrapper_v2/*.json
+!a3_ik_point_offline_wrapper_v2/*.yaml
+!a3_ik_point_offline_wrapper_v2/*.md
+a3_ik_point_offline_wrapper_v2.zip
+AimSim/*.tar
+AimSim/*.whl
+a3_deploy_example/thirdparty/
+third_party/**/bin/
+third_party/**/deps/
+third_party/**/thirdparty/
+
 # Agibot-provided A3 materials under agibot/ are tracked as public reference
 # assets/examples, including their source tooling and small runtime examples.
 !agibot/**/*.csv

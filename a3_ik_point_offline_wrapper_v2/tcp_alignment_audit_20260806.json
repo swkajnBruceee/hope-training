@@ -1,0 +1,56 @@
+{
+  "schema_version": "a3_candidate_tcp_alignment_audit/v1",
+  "status": "completed",
+  "manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_20260806/manifest.json",
+  "evaluated_count": 25076,
+  "error_count": 0,
+  "source_target_mismatch_count": 0,
+  "coordinate_contract": {
+    "target_frame": "initial_base_heading/root-relative",
+    "root_body_index": 0,
+    "root_body_name": "pelvis_link",
+    "tcp_body_index": 31,
+    "tcp_body_name": "right_wrist_yaw_Link",
+    "tcp_definition": "right_wrist_yaw_Link pose plus A3_MOUNT_OFFSET",
+    "mount_offset_m": [
+      0.210211399202899,
+      0.0320784994676765,
+      0.0320358706296689
+    ],
+    "quaternion_order": "wxyz",
+    "comparison": "inverse(root_quat) * (tcp_world - root_position) vs target"
+  },
+  "relative_root_error_m": {
+    "max": 0.0009988513450877512,
+    "mean": 0.00017749687006669393,
+    "p50": 8.06977860604025e-05,
+    "p95": 0.000729150056720009,
+    "p99": 0.0009415811764978333,
+    "count_gt_0.03": 0,
+    "count_gt_0.30": 0,
+    "count_gt_0.60": 0
+  },
+  "wrong_world_frame_error_m": {
+    "max": 1.0693748350324024,
+    "mean": 1.068471331560753,
+    "p50": 1.0684169223104352,
+    "p95": 1.0687835416081444,
+    "note": "This is intentionally the wrong comparison for these root-relative targets."
+  },
+  "root_position_range_w_m": {
+    "min": [
+      1.7462298274040222e-10,
+      -6.548361852765083e-11,
+      1.0684000253677368
+    ],
+    "max": [
+      1.7462298274040222e-10,
+      -6.548361852765083e-11,
+      1.0684000253677368
+    ]
+  },
+  "root_quaternion_norm_error_max": 0.0,
+  "errors": [],
+  "source_target_mismatches": [],
+  "suspicious_rows": []
+}

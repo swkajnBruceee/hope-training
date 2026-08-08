@@ -1,0 +1,30 @@
+name: ppo_v13b_reference_free
+
+runner:
+  num_steps_per_env: 24
+  max_iterations: 30000
+  save_interval: 100
+  # Normalize the complete deployable 98-D observation, including physical
+  # state and previous action.  The goal has fixed pre-normalization before
+  # entering this full-observation normalizer.
+  empirical_normalization: true
+
+policy:
+  actor_hidden_dims: [512, 256, 128]
+  critic_hidden_dims: [512, 256, 128]
+  activation: elu
+  init_noise_std: 0.25
+
+algorithm:
+  learning_rate: 0.0003
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.004
+  num_learning_epochs: 5
+  num_mini_batches: 4
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0

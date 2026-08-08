@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import MISSING
+import math
+import os
 from pathlib import Path
 
 import torch
+import yaml
+from training.utils.v13b_contract import lower_prior_alpha, upper_prior_alpha
 
 from stage_a_compat import adapt_stage_a_observation_legacy_yaw_pi
 
@@ -1217,6 +1221,23 @@ class A3F1FrozenUpperBaseCompositePositionAction(A3F0UpperBaseCompositePositionA
             raise TypeError(f"Observation group {name!r} did not return a tensor")
         return value
 
+    def _prior_alpha_for_smoke(self, name: str, scheduled: float) -> float:
+        """Return a schedule value, with an explicit smoke-only override.
+
+        The override lives on the runtime environment rather than the task
+        contract.  It is used exclusively by the ordered one-environment
+        admission tests to isolate each additive branch; normal PPO training
+        has no such attribute and therefore always follows the global update
+        schedule.
+        """
+        override = getattr(self._env, f"v13b_force_{name}_prior_alpha", None)
+        if override is None:
+            return scheduled
+        override = float(override)
+        if not math.isfinite(override) or not 0.0 <= override <= 1.0:
+            raise ValueError(f"V1.3B smoke override {name!r} alpha must be in [0, 1]")
+        return override
+
     def process_actions(self, actions: torch.Tensor):
         upper_obs = self._compute_observation_group(self._upper_observation_group)
         self._upper_last_observation[:] = upper_obs
@@ -1230,6 +1251,420 @@ class A3F1FrozenUpperBaseCompositePositionActionCfg(A3F0UpperBaseCompositePositi
     class_type: type[ActionTerm] = A3F1FrozenUpperBaseCompositePositionAction
     upper_checkpoint: str = ""
     upper_observation_group: str = "upper"
+
+
+class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePositionAction):
+    """Direct 26-D target-conditioned A3 action with no runtime reference.
+
+    The twelve leg channels and ten waist/right-arm channels are absolute
+    bounded offsets from one fixed audited READY pose.  The final four
+    channels are the existing bounded microstep projection.  This class is
+    intentionally separate from ``A3UnifiedUpperReferenceTrackerAction``:
+    it never queries a motion command, manifest, or frozen checkpoint.
+    """
+
+    cfg: "A3ReferenceFreeTargetConditionedPositionActionCfg"
+
+    @property
+    def action_dim(self) -> int:
+        return 26
+
+    def __init__(self, cfg: "A3ReferenceFreeTargetConditionedPositionActionCfg", env):
+        super().__init__(cfg, env)
+        lower_scale, upper_scale, scale_status = self._load_direct_scale_contract(cfg)
+        if len(lower_scale) != 12:
+            raise ValueError("direct_lower_scale_rad must contain 12 leg scales")
+        if len(upper_scale) != len(cfg.upper_joint_names):
+            raise ValueError("direct_upper_scale_rad must contain one value per upper joint")
+        if len(cfg.microstep_scale_rad) != 12:
+            raise ValueError("microstep_scale_rad must contain 12 values")
+        self._lower_scale_direct = torch.tensor(lower_scale, dtype=torch.float, device=self.device).unsqueeze(0)
+        self._upper_scale_direct = torch.tensor(upper_scale, dtype=torch.float, device=self.device).unsqueeze(0)
+        self._microstep_scale = torch.tensor(cfg.microstep_scale_rad, dtype=torch.float, device=self.device).unsqueeze(0)
+        self._ready_full = self._asset.data.default_joint_pos.clone()
+        for name, value in dict(cfg.ready_joint_positions).items():
+            ids, resolved = self._asset.find_joints([name], preserve_order=True)
+            if resolved != [name]:
+                raise ValueError(f"reference-free READY joint not resolved exactly: {name!r} -> {resolved!r}")
+            self._ready_full[:, int(ids[0])] = float(value)
+        self._lower_leg_ids_tensor = self._base_joint_ids_tensor[:12]
+        self._microstep_state = torch.zeros((self.num_envs, 4), device=self.device)
+        self._microstep_joint_delta = torch.zeros((self.num_envs, 12), device=self.device)
+        self._annealed_prior_enabled = bool(getattr(cfg, "annealed_3396_prior_enabled", False))
+        self._annealed_prior_policy = None
+        self._annealed_prior_observation_group = str(
+            getattr(cfg, "annealed_3396_prior_observation_group", "stage_a")
+        )
+        self._annealed_prior_raw_clip = float(getattr(cfg, "annealed_3396_prior_raw_clip", 0.50))
+        if self._annealed_prior_enabled:
+            prior_path = str(getattr(cfg, "annealed_3396_prior_checkpoint", "") or "").strip()
+            if not prior_path:
+                raise ValueError("annealed_3396_prior_enabled requires annealed_3396_prior_checkpoint")
+            self._annealed_prior_policy = _FrozenCheckpointActor(prior_path, self.device)
+            if self._annealed_prior_policy.obs_dim != 126 or self._annealed_prior_policy.action_dim != 14:
+                raise RuntimeError(
+                    "annealed 3396 prior contract mismatch: expected (obs=126, action=14), "
+                    f"got ({self._annealed_prior_policy.obs_dim}, {self._annealed_prior_policy.action_dim})"
+                )
+        self._annealed_prior_delta = torch.zeros((self.num_envs, 12), device=self.device)
+        self._annealed_prior_alpha = torch.zeros(self.num_envs, device=self.device)
+        self._annealed_prior_student_rms = torch.zeros(self.num_envs, device=self.device)
+        self._annealed_prior_prior_rms = torch.zeros(self.num_envs, device=self.device)
+        # Training-only complete strike prior.  Unlike the lower 3396 branch,
+        # model_900 emits a residual around a private motion reference.  We
+        # reconstruct its full physical upper target before expressing it as a
+        # delta from the one V1.3B READY pose.
+        self._annealed_upper_prior_enabled = bool(
+            getattr(cfg, "annealed_900_upper_prior_enabled", False)
+        )
+        self._annealed_upper_prior_policy = None
+        self._annealed_upper_prior_observation_group = str(
+            getattr(cfg, "annealed_900_upper_prior_observation_group", "upper")
+        )
+        self._annealed_upper_prior_reference_command = str(
+            getattr(cfg, "annealed_900_upper_prior_reference_command", "motion")
+        )
+        self._annealed_upper_prior_raw_clip = float(
+            getattr(cfg, "annealed_900_upper_prior_raw_clip", 0.50)
+        )
+        if self._annealed_upper_prior_enabled:
+            prior_path = str(
+                getattr(cfg, "annealed_900_upper_prior_checkpoint", "") or ""
+            ).strip()
+            if not prior_path:
+                raise ValueError(
+                    "annealed_900_upper_prior_enabled requires annealed_900_upper_prior_checkpoint"
+                )
+            self._annealed_upper_prior_policy = _FrozenCheckpointActor(prior_path, self.device)
+            expected_upper_dim = len(cfg.upper_joint_names)
+            if (
+                self._annealed_upper_prior_policy.obs_dim != 56
+                or self._annealed_upper_prior_policy.action_dim != expected_upper_dim
+            ):
+                raise RuntimeError(
+                    "annealed model_900 upper prior contract mismatch: expected "
+                    f"(obs=56, action={expected_upper_dim}), got "
+                    f"({self._annealed_upper_prior_policy.obs_dim}, "
+                    f"{self._annealed_upper_prior_policy.action_dim})"
+                )
+        self._annealed_upper_prior_delta = torch.zeros(
+            (self.num_envs, len(cfg.upper_joint_names)), device=self.device
+        )
+        self._annealed_upper_prior_target = torch.zeros_like(
+            self._annealed_upper_prior_delta
+        )
+        self._annealed_upper_prior_alpha = torch.zeros(self.num_envs, device=self.device)
+        self._annealed_upper_prior_student_rms = torch.zeros(self.num_envs, device=self.device)
+        self._annealed_upper_prior_prior_rms = torch.zeros(self.num_envs, device=self.device)
+        self._annealed_upper_prior_last_observation = torch.zeros(
+            (self.num_envs, 56), device=self.device
+        )
+        env.v13b_annealed_prior_enabled = self._annealed_prior_enabled
+        env.v13b_annealed_prior_delta = self._annealed_prior_delta
+        env.v13b_annealed_prior_alpha = self._annealed_prior_alpha
+        env.v13b_annealed_prior_student_rms = self._annealed_prior_student_rms
+        env.v13b_annealed_prior_prior_rms = self._annealed_prior_prior_rms
+        env.v13b_annealed_upper_prior_enabled = self._annealed_upper_prior_enabled
+        env.v13b_annealed_upper_prior_delta = self._annealed_upper_prior_delta
+        env.v13b_annealed_upper_prior_target = self._annealed_upper_prior_target
+        env.v13b_annealed_upper_prior_alpha = self._annealed_upper_prior_alpha
+        env.v13b_annealed_upper_prior_student_rms = self._annealed_upper_prior_student_rms
+        env.v13b_annealed_upper_prior_prior_rms = self._annealed_upper_prior_prior_rms
+        env.v13b_annealed_upper_prior_last_observation = self._annealed_upper_prior_last_observation
+        env.v13b_teacher_alpha = torch.zeros(self.num_envs, device=self.device)
+        env.v13b_teacher_joint_targets = None
+        env.v13b_teacher_disagreement = torch.zeros(self.num_envs, device=self.device)
+        env.v13b_direct_action = self._raw_actions
+        env.v13b_ready_joint_targets = self._ready_full
+        env.v13b_microstep_joint_delta = self._microstep_joint_delta
+        env.v13b_direct_scale_status = scale_status
+        self._v13b_debug_action_printed = False
+        print(
+            "[V1.3B] direct action scales loaded: "
+            f"status={scale_status} lower={tuple(round(v, 5) for v in lower_scale)} "
+            f"upper={tuple(round(v, 5) for v in upper_scale)}",
+            flush=True,
+        )
+        if self._annealed_prior_enabled:
+            print(
+                "[V1.3B] annealed additive model_3396 prior enabled: "
+                f"checkpoint={self._annealed_prior_policy.path} "
+                f"observation_group={self._annealed_prior_observation_group}",
+                flush=True,
+            )
+        if self._annealed_upper_prior_enabled:
+            print(
+                "[V1.3B] annealed complete model_900 upper prior enabled: "
+                f"checkpoint={self._annealed_upper_prior_policy.path} "
+                f"observation_group={self._annealed_upper_prior_observation_group}",
+                flush=True,
+            )
+
+    @staticmethod
+    def _load_direct_scale_contract(cfg):
+        """Load the frozen offline envelope when explicitly configured.
+
+        The file is an input contract, not a runtime reference trajectory.  A
+        provisional file is allowed for smoke tests but its status is exposed
+        on the environment so long-training admission can reject it.
+        """
+        lower = tuple(float(v) for v in cfg.direct_lower_scale_rad)
+        upper = tuple(float(v) for v in cfg.direct_upper_scale_rad)
+        status = "inline_default"
+        path_value = str(getattr(cfg, "direct_scale_config_path", "") or "").strip()
+        if path_value:
+            path = Path(path_value)
+            if not path.is_absolute():
+                path = Path(__file__).resolve().parents[4] / path
+            if not path.is_file():
+                raise FileNotFoundError(f"V1.3B direct-scale contract not found: {path}")
+            payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            status = str(payload.get("status", "unspecified"))
+            if "lower_scale_rad" in payload and "upper_scale_rad" in payload:
+                lower = tuple(float(v) for v in payload["lower_scale_rad"])
+                upper = tuple(float(v) for v in payload["upper_scale_rad"])
+            elif "scale_rad" in payload:
+                combined = tuple(float(v) for v in payload["scale_rad"])
+                lower, upper = combined[:12], combined[12:22]
+            else:
+                raise ValueError(f"V1.3B direct-scale contract has no scale fields: {path}")
+            contract_version = str(payload.get("contract_version", ""))
+            accepted_versions = {
+                "v13b_direct_action_scale_v1",
+                "v13b_direct_action_scale_v1_annealed_prior",
+            }
+            if contract_version not in accepted_versions:
+                raise ValueError(f"V1.3B direct-scale contract version mismatch: {path}")
+        if any(v <= 0.0 for v in (*lower, *upper)):
+            raise ValueError("V1.3B direct action scales must be positive")
+        return lower, upper, status
+
+    def _microstep_projection(self, values: torch.Tensor) -> None:
+        self._microstep_joint_delta.zero_()
+        if not self.cfg.microstep_enabled:
+            self._microstep_state.zero_()
+            return
+        alpha = float(self.cfg.microstep_lowpass_alpha)
+        self._microstep_state[:] = (1.0 - alpha) * self._microstep_state + alpha * values
+        s = float(self.cfg.microstep_step_limit_m) / 0.02
+        left_x, left_y, right_x, right_y = self._microstep_state.unbind(dim=-1)
+        self._microstep_joint_delta[:, 0] = -0.055 * s * left_x
+        self._microstep_joint_delta[:, 3] = 0.025 * s * left_x
+        self._microstep_joint_delta[:, 4] = 0.030 * s * left_x
+        self._microstep_joint_delta[:, 1] = 0.045 * s * left_y
+        self._microstep_joint_delta[:, 5] = -0.040 * s * left_y
+        self._microstep_joint_delta[:, 6] = -0.055 * s * right_x
+        self._microstep_joint_delta[:, 9] = 0.025 * s * right_x
+        self._microstep_joint_delta[:, 10] = 0.030 * s * right_x
+        self._microstep_joint_delta[:, 7] = 0.045 * s * right_y
+        self._microstep_joint_delta[:, 11] = -0.040 * s * right_y
+        self._microstep_joint_delta[:] = self._microstep_joint_delta * self._microstep_scale
+
+    def _compute_observation_group(self, name: str) -> torch.Tensor:
+        value = self._env.observation_manager.compute_group(name)
+        if isinstance(value, tuple):
+            value = value[0]
+        if isinstance(value, dict):
+            value = value.get(name, next(iter(value.values())))
+        if not isinstance(value, torch.Tensor):
+            raise TypeError(f"Observation group {name!r} did not return a tensor")
+        return value
+
+    def _prior_alpha_for_smoke(self, name: str, scheduled: float) -> float:
+        """Return a schedule value, with an explicit smoke-only override.
+
+        The override lives on the runtime environment rather than the task
+        contract.  It isolates the ordered one-environment admission tests;
+        normal PPO has no such attribute and follows the global schedule.
+        """
+        override = getattr(self._env, f"v13b_force_{name}_prior_alpha", None)
+        if override is None:
+            return scheduled
+        override = float(override)
+        if not math.isfinite(override) or not 0.0 <= override <= 1.0:
+            raise ValueError(f"V1.3B smoke override {name!r} alpha must be in [0, 1]")
+        return override
+
+    def process_actions(self, actions: torch.Tensor):
+        if actions.shape != self._raw_actions.shape or not torch.isfinite(actions).all():
+            raise ValueError(f"Expected finite V1.3B action shape {self._raw_actions.shape}")
+        bounded = self._bound_actions(actions)
+        if os.environ.get("V13B_DEBUG_FIRST_ACTION", "0") == "1" and not self._v13b_debug_action_printed:
+            self._v13b_debug_action_printed = True
+            print(
+                "[V1.3B][debug] first action "
+                f"raw_mean={float(actions.mean().detach().cpu()):.6f} "
+                f"raw_abs_max={float(actions.abs().max().detach().cpu()):.6f} "
+                f"bounded_abs_max={float(bounded.abs().max().detach().cpu()):.6f} "
+                f"lower_delta_max={float((bounded[:, :12] * self._lower_scale_direct).abs().max().detach().cpu()):.6f} "
+                f"upper_delta_max={float((bounded[:, 12:22] * self._upper_scale_direct).abs().max().detach().cpu()):.6f}",
+                flush=True,
+            )
+        self._unbounded_actions[:] = actions
+        self._raw_actions[:] = bounded
+        lower = bounded[:, :12] * self._lower_scale_direct
+        upper_start = 12
+        upper_end = upper_start + len(self.cfg.upper_joint_names)
+        upper = bounded[:, upper_start:upper_end] * self._upper_scale_direct
+        micro = bounded[:, upper_end:upper_end + 4]
+        self._microstep_projection(micro)
+
+        # Training-only additive lower prior.  The student action remains a
+        # full-strength direct action; alpha scales only the 3396 baseline.
+        # The legacy policy's physical target is first reconstructed around
+        # its old default READY, then represented as a residual that can be
+        # added to the new right-front staggered V1.3B READY.
+        self._annealed_prior_delta.zero_()
+        self._annealed_prior_alpha.zero_()
+        alpha = torch.zeros(self.num_envs, device=self.device)
+        if self._annealed_prior_enabled:
+            progress = float(getattr(self._env, "v13b_policy_progress", 0.0))
+            alpha_value = self._prior_alpha_for_smoke(
+                "lower", lower_prior_alpha(progress)
+            )
+            if alpha_value > 0.0:
+                alpha = torch.full((self.num_envs,), alpha_value, device=self.device)
+                prior_obs = self._compute_observation_group(self._annealed_prior_observation_group)
+                prior_raw = self._annealed_prior_policy(prior_obs)[:, :12]
+                clip = max(self._annealed_prior_raw_clip, 1.0e-6)
+                prior_bounded = clip * torch.tanh(prior_raw / clip)
+                legacy_ready = self._asset.data.default_joint_pos[:, self._lower_leg_ids_tensor]
+                legacy_target = legacy_ready + prior_bounded * self._scale[:, :12]
+                # model_3396 was trained around ``legacy_ready``.  Recover
+                # that old *physical* target first, then re-express it around
+                # the single right-front V1.3B READY.  Subtracting only
+                # ``legacy_ready`` would add an old residual onto a different
+                # nominal pose and is exactly the stance-conflict failure the
+                # admission smoke is designed to expose.
+                prior_delta = legacy_target - self._ready_full[:, self._lower_leg_ids_tensor]
+                self._annealed_prior_delta[:] = prior_delta
+                self._annealed_prior_alpha[:] = alpha
+                self._annealed_prior_prior_rms[:] = torch.linalg.vector_norm(prior_delta, dim=-1) / math.sqrt(12.0)
+            self._annealed_prior_student_rms[:] = torch.linalg.vector_norm(lower, dim=-1) / math.sqrt(12.0)
+
+        # Complete training-only upper strike prior.  model_900 is not used as
+        # a bare residual: recover the historical full command
+        # q_reference + scale * a_900 first, then convert it to a delta around
+        # the V1.3B READY.  At alpha==0 the expensive model/reference branch
+        # is not queried at all, leaving the exact deployment path.
+        self._annealed_upper_prior_delta.zero_()
+        self._annealed_upper_prior_target.zero_()
+        self._annealed_upper_prior_alpha.zero_()
+        upper_prior_alpha_value = 0.0
+        if self._annealed_upper_prior_enabled:
+            progress = float(getattr(self._env, "v13b_policy_progress", 0.0))
+            upper_prior_alpha_value = self._prior_alpha_for_smoke(
+                "upper", upper_prior_alpha(progress)
+            )
+            if upper_prior_alpha_value > 0.0:
+                motion = self._env.command_manager.get_term(
+                    self._annealed_upper_prior_reference_command
+                )
+                upper_obs = self._compute_observation_group(
+                    self._annealed_upper_prior_observation_group
+                )
+                self._annealed_upper_prior_last_observation[:] = upper_obs
+                prior_raw = self._annealed_upper_prior_policy(upper_obs)
+                prior_raw = prior_raw.clamp(
+                    -self._annealed_upper_prior_raw_clip,
+                    self._annealed_upper_prior_raw_clip,
+                )
+                release_steps = int(getattr(self.cfg, "upper_prelude_release_steps", 0))
+                if release_steps > 0:
+                    release = (motion.time_steps.float() / float(release_steps)).clamp(0.0, 1.0)
+                    gate = release.unsqueeze(-1)
+                else:
+                    gate = torch.ones((self.num_envs, 1), device=self.device)
+                in_prelude = motion.prelude_elapsed_steps < int(motion.prelude_steps)
+                gate = torch.where(in_prelude.unsqueeze(-1), torch.zeros_like(gate), gate)
+                reference = self._upper_reference(motion, motion.time_steps)
+                teacher_target = reference + gate * prior_raw * self._upper_scale
+                ready_upper = self._ready_full[:, self._upper_joint_ids_tensor]
+                prior_delta = teacher_target - ready_upper
+                upper_alpha = torch.full(
+                    (self.num_envs,), upper_prior_alpha_value, device=self.device
+                )
+                self._annealed_upper_prior_target[:] = teacher_target
+                self._annealed_upper_prior_delta[:] = prior_delta
+                self._annealed_upper_prior_alpha[:] = upper_alpha
+                self._annealed_upper_prior_prior_rms[:] = (
+                    torch.linalg.vector_norm(prior_delta, dim=-1) / math.sqrt(prior_delta.shape[-1])
+                )
+                # This buffer is private to the upper teacher observation and
+                # never enters the public 98-D actor observation.
+                self._env.f0_upper_last_action[:] = prior_raw
+            self._annealed_upper_prior_student_rms[:] = (
+                torch.linalg.vector_norm(upper, dim=-1) / math.sqrt(upper.shape[-1])
+            )
+
+        self._full_joint_targets[:] = self._ready_full
+        self._full_joint_velocity_targets.zero_()
+        self._full_joint_targets[:, self._lower_leg_ids_tensor] = (
+            self._ready_full[:, self._lower_leg_ids_tensor]
+            + alpha.unsqueeze(-1) * self._annealed_prior_delta
+            + lower
+            + self._microstep_joint_delta
+        )
+        self._full_joint_targets[:, self._upper_joint_ids_tensor] = (
+            self._ready_full[:, self._upper_joint_ids_tensor]
+            + self._annealed_upper_prior_alpha.unsqueeze(-1) * self._annealed_upper_prior_delta
+            + upper
+        )
+        # Optional training-only bridge.  The final V1.3B task leaves alpha at
+        # zero and therefore never constructs or queries a teacher.  If a
+        # separate training harness supplies a full teacher target, blend it
+        # continuously and audit the disagreement; missing teacher data is a
+        # hard error rather than an implicit fallback.
+        teacher_alpha = getattr(self._env, "v13b_teacher_alpha", None)
+        teacher_targets = getattr(self._env, "v13b_teacher_joint_targets", None)
+        if teacher_alpha is not None and torch.any(teacher_alpha > 0.0):
+            if teacher_targets is None or teacher_targets.shape != self._full_joint_targets.shape:
+                raise RuntimeError("V1.3B teacher_alpha>0 but no full teacher joint target was supplied")
+            alpha = teacher_alpha.to(dtype=self._full_joint_targets.dtype).clamp(0.0, 1.0).unsqueeze(-1)
+            self._env.v13b_teacher_disagreement[:] = torch.linalg.vector_norm(
+                self._full_joint_targets - teacher_targets, dim=-1
+            )
+            self._full_joint_targets[:] = alpha * teacher_targets + (1.0 - alpha) * self._full_joint_targets
+        elif hasattr(self._env, "v13b_teacher_disagreement"):
+            self._env.v13b_teacher_disagreement.zero_()
+        if self.cfg.clip_to_soft_joint_limits:
+            limits = self._asset.data.soft_joint_pos_limits
+            self._full_joint_targets[:] = torch.clamp(self._full_joint_targets, min=limits[..., 0], max=limits[..., 1])
+        self._processed_actions[:] = bounded
+        self._upper_processed_actions[:] = self._full_joint_targets[:, self._upper_joint_ids_tensor]
+        self._env.v13b_direct_action[:] = bounded
+
+
+@configclass
+class A3ReferenceFreeTargetConditionedPositionActionCfg(A3F0UpperBaseCompositePositionActionCfg):
+    """26-D direct action contract for V1.3B."""
+
+    class_type: type[ActionTerm] = A3ReferenceFreeTargetConditionedPositionAction
+    direct_lower_scale_rad: tuple[float, ...] = (0.24,) * 12
+    direct_upper_scale_rad: tuple[float, ...] = (0.55,) * 10
+    direct_scale_config_path: str = ""
+    microstep_enabled: bool = True
+    microstep_step_limit_m: float = 0.02
+    microstep_lowpass_alpha: float = 0.20
+    microstep_scale_rad: tuple[float, ...] = (1.0,) * 12
+    ready_joint_positions: dict[str, float] = {}
+    # Optional training-only additive model_3396 baseline.  The final
+    # reference-free deployment config leaves this disabled, so it does not
+    # load or require the historical checkpoint.
+    annealed_3396_prior_enabled: bool = False
+    annealed_3396_prior_checkpoint: str = ""
+    annealed_3396_prior_observation_group: str = "stage_a"
+    annealed_3396_prior_raw_clip: float = 0.50
+    annealed_3396_prior_alpha_start: float = 0.80
+    annealed_3396_prior_alpha_zero_progress: float = 0.60
+    # Training-only complete upper strike teacher.  ``model_900`` receives a
+    # private 56-D observation and private motion reference; neither is part
+    # of the public 98-D actor contract or final deployment task.
+    annealed_900_upper_prior_enabled: bool = False
+    annealed_900_upper_prior_checkpoint: str = ""
+    annealed_900_upper_prior_observation_group: str = "upper"
+    annealed_900_upper_prior_reference_command: str = "motion"
+    annealed_900_upper_prior_raw_clip: float = 0.50
 
 
 class A3FrozenAnchorArmAdapterPositionAction(A3F1FrozenUpperBaseCompositePositionAction):
