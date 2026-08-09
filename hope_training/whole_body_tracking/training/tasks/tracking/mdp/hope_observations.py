@@ -82,11 +82,15 @@ def racket_target_normal_b(env: ManagerBasedRLEnv, command_name: str) -> torch.T
 def racket_target_goal_10d_b(
     env: ManagerBasedRLEnv,
     command_name: str,
-    position_mean: tuple[float, float, float] = (0.42, -0.18, 0.18),
-    position_std: tuple[float, float, float] = (0.12, 0.12, 0.12),
+    # Fixed statistics from the audited 23,118-motion racket-target bank.
+    # In particular, the forehand y-range is broad; the old 0.12 m std
+    # clipped most forehand goals to -5 and destroyed target observability.
+    position_mean: tuple[float, float, float] = (0.44237322, -0.34721070, 0.09162542),
+    position_std: tuple[float, float, float] = (0.04256963, 0.29942963, 0.06187854),
     velocity_mean: tuple[float, float, float] = (0.0, 0.0, 0.0),
     velocity_std: tuple[float, float, float] = (2.0, 2.0, 2.0),
     time_std: float = 0.25,
+    time_clip_s: float = 0.5,
 ) -> torch.Tensor:
     """Return exactly one normalized policy goal in ``[p, v, n, signed_tau]`` order.
 
@@ -102,7 +106,11 @@ def racket_target_goal_10d_b(
     p_std = torch.as_tensor(position_std, device=p.device, dtype=p.dtype).clamp_min(1.0e-6)
     v_mean = torch.as_tensor(velocity_mean, device=p.device, dtype=p.dtype)
     v_std = torch.as_tensor(velocity_std, device=p.device, dtype=p.dtype).clamp_min(1.0e-6)
-    tau = command.time_to_strike.clamp(-0.5, 0.5).unsqueeze(-1) / max(float(time_std), 1.0e-6)
+    # Keep signed time after impact.  The previous fixed ±0.5 s clip made a
+    # 1--3 s private-prior strike indistinguishable from an already-finished
+    # event, which broke target/time causality.  Deployment may retain the
+    # historical default; V1.3B complete-prior config passes a wider clip.
+    tau = command.time_to_strike.clamp(-float(time_clip_s), float(time_clip_s)).unsqueeze(-1) / max(float(time_std), 1.0e-6)
     return torch.cat(((p - p_mean) / p_std, (v - v_mean) / v_std, n, tau), dim=-1).clamp(-5.0, 5.0)
 
 

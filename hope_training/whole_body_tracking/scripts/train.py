@@ -569,6 +569,43 @@ def _assert_v13b_env_contract(env_cfg, task_id: str) -> None:
         print("[train.py] V1.3B contract verified: runtime reference-free, direct 26-D action, canonical 10-D goal", flush=True)
 
 
+def _assert_v13b_complete_priors_admission(cfg, task_cfg, task_id: str) -> None:
+    """Fail closed before a formal CompletePriors long run.
+
+    A 20/100-update preflight is allowed to create the evidence.  Any longer
+    run requires the checked-in machine-readable gate generated from the two
+    event audits and the two PPO preflights.
+    """
+    if "ReferenceFreeV13BCompletePriors" not in str(task_id):
+        return
+    training = _get(task_cfg, "training")
+    if not bool(_get(training, "long_training_blocked_until_preflight") or False):
+        return
+    requested_iterations = int(cfg.get("max_iterations", _get(training, "schedule_total_iterations") or 0))
+    max_preflight = max(tuple(int(x) for x in (_get(training, "preflight_iterations") or (100,))))
+    if requested_iterations <= max_preflight:
+        print("[train.py] V1.3B CompletePriors preflight admission: allowed", flush=True)
+        return
+    gate_path = Path("eval_outputs/v13b_complete_priors_contract/gates.json")
+    if not gate_path.is_file():
+        raise RuntimeError(
+            "V1.3B CompletePriors long-training admission is closed: missing "
+            f"{gate_path}. Run the one-strike/alignment audits and 20/100 PPO preflights, then finalize gates."
+        )
+    try:
+        gate = json.loads(gate_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"invalid V1.3B gate file {gate_path}: {exc}") from exc
+    required = ("one_strike_10s", "alignment_100", "ppo_preflight_20", "ppo_preflight_100")
+    failed = [name for name in required if not bool(gate.get("gates", {}).get(name, False))]
+    if failed:
+        raise RuntimeError(
+            "V1.3B CompletePriors long-training admission is closed: failed/missing gates "
+            + ", ".join(failed)
+        )
+    print(f"[train.py] V1.3B CompletePriors admission passed: {gate_path}", flush=True)
+
+
 def _assert_fall_recovery_admission(
     task_id: str,
     task_cfg_name: str | None = None,
@@ -1483,6 +1520,13 @@ def _apply_task_overrides(env_cfg, task):
                 "final_normal_half_angle_deg": "final_normal_half_angle_deg",
                 "initial_time_half_range_s": "initial_time_half_range_s",
                 "final_time_half_range_s": "final_time_half_range_s",
+                "motion_alignment_enabled": "motion_alignment_enabled",
+                "motion_alignment_start_progress": "motion_alignment_start_progress",
+                "motion_alignment_end_progress": "motion_alignment_end_progress",
+                "motion_alignment_include_prelude_s": "motion_alignment_include_prelude_s",
+                "motion_alignment_time_range_s": "motion_alignment_time_range_s",
+                "private_motion_disable_progress": "private_motion_disable_progress",
+                "contract_assertions": "contract_assertions",
             }
             for yaml_key, command_key in goal_key_map.items():
                 value = _get(curriculum, yaml_key)
@@ -1493,11 +1537,20 @@ def _apply_task_overrides(env_cfg, task):
                 # builtin list.  Treat every sequence as a vector so the
                 # V1.3B xyz curriculum cannot silently fall through to
                 # ``float(ListConfig)`` at environment construction.
-                value = (
-                    tuple(float(v) for v in value)
-                    if isinstance(value, (list, tuple)) or OmegaConf.is_list(value)
-                    else float(value)
-                )
+                if isinstance(value, (list, tuple)) or OmegaConf.is_list(value):
+                    value = tuple(float(v) for v in value)
+                elif command_key in {
+                    "motion_alignment_enabled",
+                    "motion_alignment_include_prelude_s",
+                    "contract_assertions",
+                }:
+                    # Do not turn YAML booleans into 1.0/0.0.  Structured
+                    # configs may accept the numeric value, but preserving a
+                    # real bool keeps the runtime contract and audit output
+                    # unambiguous.
+                    value = bool(value)
+                else:
+                    value = float(value)
                 setattr(command, command_key, value)
                 applied.append(f"commands.racket_target.{command_key}={value}")
 
@@ -2066,6 +2119,7 @@ def _run(cfg):
         _get(cfg.task, "name", task_id),
         legacy_fall_strategy=bool(cfg.get("legacy_fall_strategy", False)),
     )
+    _assert_v13b_complete_priors_admission(cfg, cfg.task, task_id)
     print(f"[train.py] applied {len(applied)} task override(s) from cfg/task/{_get(cfg.task, 'name', task_id)}.yaml:", flush=True)
     for _a in applied:
         print(f"[train.py]     {_a}", flush=True)

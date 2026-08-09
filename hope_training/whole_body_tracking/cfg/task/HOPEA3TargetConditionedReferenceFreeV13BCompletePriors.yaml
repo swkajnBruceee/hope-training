@@ -1,6 +1,7 @@
 # Final V1.3B single-run training chain.  Public actor: 98-D state+goal only.
-# motion/model_3396/model_900 are private additive priors and are zeroed by
-# 65% progress; the last 35% is the exact deployment execution path.
+# motion/model_3396/model_900 are private additive priors.  Upper reference
+# ends at 60%, lower prior ends at 70%, and the final 30% is the exact
+# reference-free deployment execution path.
 defaults:
   - _self_
 
@@ -20,6 +21,18 @@ env:
   stance_lateral_widen_per_foot_m: 0.05
   stance_knee_flexion_rad: 0.48
 
+# The private motion term is only the frozen-prior source.  Its reset must be
+# identical to the public deployment READY state; do not inherit the generic
+# tracking robustness perturbations here.
+motion:
+  pose_range: {}
+  velocity_range: {}
+  joint_position_range: [0.0, 0.0]
+  reset_perturbation_probability: 0.0
+  hard_case_probability: 0.0
+  hard_case_motion_ids: []
+  hard_case_velocity_range: {}
+
 actions:
   microstep_enabled: true
   microstep_step_limit_m: 0.02
@@ -35,7 +48,7 @@ goal:
   curriculum:
     progress_source: policy_updates
     warmup_progress: 0.00
-    ramp_end_progress: 0.65
+    ramp_end_progress: 0.60
     initial_position_half_range_m: [0.01, 0.01, 0.01]
     final_position_half_range_m: [0.08, 0.08, 0.08]
     initial_speed_fraction: 0.03
@@ -44,6 +57,19 @@ goal:
     final_normal_half_angle_deg: 12.0
     initial_time_half_range_s: 0.02
     final_time_half_range_s: 0.10
+    # Training-only sampler alignment to the private motion strike state.
+    # These fields do not add motion/reference to the public 98-D actor.
+    motion_alignment_enabled: true
+    motion_alignment_start_progress: 0.00
+    # Hand the target distribution from each audited motion strike to the
+    # independent global goal as the lower prior reaches zero.
+    motion_alignment_end_progress: 0.60
+    # Teacher is rephased to this public short timing; prelude is skipped for
+    # that private playback and is never added to public tau.
+    motion_alignment_include_prelude_s: false
+    motion_alignment_time_range_s: [0.20, 0.60]
+    private_motion_disable_progress: 0.70
+    contract_assertions: true
 
 training:
   # The 20/100-update preflights use this formal-run denominator too, so they
@@ -53,14 +79,14 @@ training:
   warm_start_checkpoint: checkpoints/v13b/v13b_warmstart_from_p5u_model18900_complete_priors.pt
   lower_prior:
     checkpoint: checkpoints/frozen_priors/model_3396.pt
-    schedule: [0.80, 0.80, 0.60, 0.30, 0.00]
-    knots_progress: [0.00, 0.05, 0.20, 0.40, 0.60]
+    schedule: [1.00, 1.00, 0.85, 0.55, 0.30, 0.00]
+    knots_progress: [0.00, 0.10, 0.25, 0.45, 0.60, 0.70]
   upper_prior:
     checkpoint: checkpoints/frozen_priors/model_900.pt
     contract: complete_target_reference_plus_model900_residual
-    schedule: [0.90, 0.90, 0.70, 0.40, 0.10, 0.00]
-    knots_progress: [0.00, 0.05, 0.20, 0.40, 0.60, 0.65]
-  final_reference_free_fraction: 0.35
+    schedule: [0.90, 0.90, 0.65, 0.30, 0.00]
+    knots_progress: [0.00, 0.10, 0.25, 0.45, 0.60]
+  final_reference_free_fraction: 0.30
   public_actor_reference_free: true
   preflight_required: true
   preflight_num_envs: 128

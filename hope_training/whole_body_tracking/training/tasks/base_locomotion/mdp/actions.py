@@ -1310,6 +1310,7 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         self._annealed_prior_alpha = torch.zeros(self.num_envs, device=self.device)
         self._annealed_prior_student_rms = torch.zeros(self.num_envs, device=self.device)
         self._annealed_prior_prior_rms = torch.zeros(self.num_envs, device=self.device)
+        self._annealed_prior_student_ratio = torch.zeros(self.num_envs, device=self.device)
         # Training-only complete strike prior.  Unlike the lower 3396 branch,
         # model_900 emits a residual around a private motion reference.  We
         # reconstruct its full physical upper target before expressing it as a
@@ -1356,20 +1357,44 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         self._annealed_upper_prior_alpha = torch.zeros(self.num_envs, device=self.device)
         self._annealed_upper_prior_student_rms = torch.zeros(self.num_envs, device=self.device)
         self._annealed_upper_prior_prior_rms = torch.zeros(self.num_envs, device=self.device)
+        self._annealed_upper_prior_student_ratio = torch.zeros(self.num_envs, device=self.device)
+        # Local startup bridge clock for a rephased upper prior.  The private
+        # motion time can start at a nonzero strike frame; it must not be used
+        # as the reset-to-teacher continuity clock.
+        self._v13b_teacher_elapsed_steps = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
         self._annealed_upper_prior_last_observation = torch.zeros(
             (self.num_envs, 56), device=self.device
         )
+        # Episode-start audit buffers.  These are diagnostics only; they are
+        # reset per environment and never enter the public 98-D observation.
+        self._v13b_startup_step = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        self._v13b_startup_first_recorded = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+        self._v13b_startup_q_reset = self._ready_full.clone()
+        self._v13b_startup_q_actual = self._ready_full.clone()
+        self._v13b_startup_q_target = self._ready_full.clone()
+        self._v13b_startup_lower_prior_delta = torch.zeros((self.num_envs, 12), device=self.device)
+        self._v13b_startup_lower_student_delta = torch.zeros((self.num_envs, 12), device=self.device)
+        self._v13b_startup_microstep_delta = torch.zeros((self.num_envs, 12), device=self.device)
+        self._v13b_startup_upper_prior_delta = torch.zeros_like(self._annealed_upper_prior_delta)
+        self._v13b_startup_upper_student_delta = torch.zeros_like(self._annealed_upper_prior_delta)
+        self._v13b_startup_first_command_jump = torch.zeros_like(self._ready_full)
+        self._v13b_startup_first_command_jump_rms = torch.zeros(self.num_envs, device=self.device)
+        self._v13b_startup_first_command_jump_abs_max = torch.zeros(self.num_envs, device=self.device)
         env.v13b_annealed_prior_enabled = self._annealed_prior_enabled
         env.v13b_annealed_prior_delta = self._annealed_prior_delta
         env.v13b_annealed_prior_alpha = self._annealed_prior_alpha
         env.v13b_annealed_prior_student_rms = self._annealed_prior_student_rms
         env.v13b_annealed_prior_prior_rms = self._annealed_prior_prior_rms
+        env.v13b_annealed_prior_student_ratio = self._annealed_prior_student_ratio
         env.v13b_annealed_upper_prior_enabled = self._annealed_upper_prior_enabled
         env.v13b_annealed_upper_prior_delta = self._annealed_upper_prior_delta
         env.v13b_annealed_upper_prior_target = self._annealed_upper_prior_target
         env.v13b_annealed_upper_prior_alpha = self._annealed_upper_prior_alpha
         env.v13b_annealed_upper_prior_student_rms = self._annealed_upper_prior_student_rms
         env.v13b_annealed_upper_prior_prior_rms = self._annealed_upper_prior_prior_rms
+        env.v13b_annealed_upper_prior_student_ratio = self._annealed_upper_prior_student_ratio
         env.v13b_annealed_upper_prior_last_observation = self._annealed_upper_prior_last_observation
         env.v13b_teacher_alpha = torch.zeros(self.num_envs, device=self.device)
         env.v13b_teacher_joint_targets = None
@@ -1378,6 +1403,7 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         env.v13b_ready_joint_targets = self._ready_full
         env.v13b_microstep_joint_delta = self._microstep_joint_delta
         env.v13b_direct_scale_status = scale_status
+        env.v13b_startup_diagnostics = self.v13b_startup_diagnostics
         self._v13b_debug_action_printed = False
         print(
             "[V1.3B] direct action scales loaded: "
@@ -1399,6 +1425,66 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                 f"observation_group={self._annealed_upper_prior_observation_group}",
                 flush=True,
             )
+
+    def reset(self, env_ids=None):
+        """Clear all V1.3B action/prior/filter state for reset environments."""
+        super().reset(env_ids=env_ids)
+        if env_ids is None:
+            ids = slice(None)
+        else:
+            ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        for buffer in (
+            self._microstep_state,
+            self._microstep_joint_delta,
+            self._annealed_prior_delta,
+            self._annealed_prior_alpha,
+            self._annealed_prior_student_rms,
+            self._annealed_prior_prior_rms,
+            self._annealed_prior_student_ratio,
+            self._annealed_upper_prior_delta,
+            self._annealed_upper_prior_target,
+            self._annealed_upper_prior_alpha,
+            self._annealed_upper_prior_student_rms,
+            self._annealed_upper_prior_prior_rms,
+            self._annealed_upper_prior_student_ratio,
+            self._annealed_upper_prior_last_observation,
+            self._v13b_startup_lower_prior_delta,
+            self._v13b_startup_lower_student_delta,
+            self._v13b_startup_microstep_delta,
+            self._v13b_startup_upper_prior_delta,
+            self._v13b_startup_upper_student_delta,
+            self._v13b_startup_first_command_jump,
+        ):
+            buffer[ids] = 0.0
+        self._v13b_startup_step[ids] = 0
+        self._v13b_teacher_elapsed_steps[ids] = 0
+        self._v13b_startup_first_recorded[ids] = False
+        self._v13b_startup_q_reset[ids] = self._ready_full[ids]
+        self._v13b_startup_q_actual[ids] = self._ready_full[ids]
+        self._v13b_startup_q_target[ids] = self._ready_full[ids]
+        self._v13b_startup_first_command_jump_rms[ids] = 0.0
+        self._v13b_startup_first_command_jump_abs_max[ids] = 0.0
+        if hasattr(self._env, "f0_upper_last_action"):
+            self._env.f0_upper_last_action[ids] = 0.0
+        if hasattr(self._env, "v13b_teacher_disagreement"):
+            self._env.v13b_teacher_disagreement[ids] = 0.0
+
+    @property
+    def v13b_startup_diagnostics(self):
+        return {
+            "step": self._v13b_startup_step,
+            "q_reset": self._v13b_startup_q_reset,
+            "q_actual": self._v13b_startup_q_actual,
+            "q_target": self._v13b_startup_q_target,
+            "lower_prior_delta": self._v13b_startup_lower_prior_delta,
+            "lower_student_delta": self._v13b_startup_lower_student_delta,
+            "microstep_delta": self._v13b_startup_microstep_delta,
+            "upper_prior_delta": self._v13b_startup_upper_prior_delta,
+            "upper_student_delta": self._v13b_startup_upper_student_delta,
+            "first_command_jump": self._v13b_startup_first_command_jump,
+            "first_command_jump_rms": self._v13b_startup_first_command_jump_rms,
+            "first_command_jump_abs_max": self._v13b_startup_first_command_jump_abs_max,
+        }
 
     @staticmethod
     def _load_direct_scale_contract(cfg):
@@ -1516,6 +1602,8 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         # added to the new right-front staggered V1.3B READY.
         self._annealed_prior_delta.zero_()
         self._annealed_prior_alpha.zero_()
+        self._annealed_prior_prior_rms.zero_()
+        self._annealed_prior_student_ratio.zero_()
         alpha = torch.zeros(self.num_envs, device=self.device)
         if self._annealed_prior_enabled:
             progress = float(getattr(self._env, "v13b_policy_progress", 0.0))
@@ -1541,6 +1629,11 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                 self._annealed_prior_alpha[:] = alpha
                 self._annealed_prior_prior_rms[:] = torch.linalg.vector_norm(prior_delta, dim=-1) / math.sqrt(12.0)
             self._annealed_prior_student_rms[:] = torch.linalg.vector_norm(lower, dim=-1) / math.sqrt(12.0)
+            self._annealed_prior_student_ratio[:] = torch.where(
+                self._annealed_prior_prior_rms > 1.0e-6,
+                self._annealed_prior_student_rms / self._annealed_prior_prior_rms.clamp_min(1.0e-6),
+                torch.zeros_like(self._annealed_prior_student_rms),
+            )
 
         # Complete training-only upper strike prior.  model_900 is not used as
         # a bare residual: recover the historical full command
@@ -1550,6 +1643,8 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         self._annealed_upper_prior_delta.zero_()
         self._annealed_upper_prior_target.zero_()
         self._annealed_upper_prior_alpha.zero_()
+        self._annealed_upper_prior_prior_rms.zero_()
+        self._annealed_upper_prior_student_ratio.zero_()
         upper_prior_alpha_value = 0.0
         if self._annealed_upper_prior_enabled:
             progress = float(getattr(self._env, "v13b_policy_progress", 0.0))
@@ -1571,7 +1666,14 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                 )
                 release_steps = int(getattr(self.cfg, "upper_prelude_release_steps", 0))
                 if release_steps > 0:
-                    release = (motion.time_steps.float() / float(release_steps)).clamp(0.0, 1.0)
+                    # A rephased teacher legitimately starts at a nonzero
+                    # motion frame.  Use a local per-episode elapsed counter
+                    # for the READY->teacher bridge, otherwise the first
+                    # command can jump directly to a mid-swing pose.
+                    release = (
+                        self._v13b_teacher_elapsed_steps.float()
+                        / float(release_steps)
+                    ).clamp(0.0, 1.0)
                     gate = release.unsqueeze(-1)
                 else:
                     gate = torch.ones((self.num_envs, 1), device=self.device)
@@ -1585,6 +1687,7 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                     (self.num_envs,), upper_prior_alpha_value, device=self.device
                 )
                 self._annealed_upper_prior_target[:] = teacher_target
+                prior_delta = prior_delta * gate
                 self._annealed_upper_prior_delta[:] = prior_delta
                 self._annealed_upper_prior_alpha[:] = upper_alpha
                 self._annealed_upper_prior_prior_rms[:] = (
@@ -1595,6 +1698,11 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                 self._env.f0_upper_last_action[:] = prior_raw
             self._annealed_upper_prior_student_rms[:] = (
                 torch.linalg.vector_norm(upper, dim=-1) / math.sqrt(upper.shape[-1])
+            )
+            self._annealed_upper_prior_student_ratio[:] = torch.where(
+                self._annealed_upper_prior_prior_rms > 1.0e-6,
+                self._annealed_upper_prior_student_rms / self._annealed_upper_prior_prior_rms.clamp_min(1.0e-6),
+                torch.zeros_like(self._annealed_upper_prior_student_rms),
             )
 
         self._full_joint_targets[:] = self._ready_full
@@ -1610,6 +1718,20 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
             + self._annealed_upper_prior_alpha.unsqueeze(-1) * self._annealed_upper_prior_delta
             + upper
         )
+        self._v13b_teacher_elapsed_steps += 1
+        # Capture the complete startup decomposition before optional teacher
+        # blending and limit projection.  The buffers are diagnostics only;
+        # the physical target below remains the authoritative command.
+        self._v13b_startup_step += 1
+        self._v13b_startup_q_actual[:] = self._asset.data.joint_pos
+        self._v13b_startup_q_target[:] = self._full_joint_targets
+        self._v13b_startup_lower_prior_delta[:] = alpha.unsqueeze(-1) * self._annealed_prior_delta
+        self._v13b_startup_lower_student_delta[:] = lower
+        self._v13b_startup_microstep_delta[:] = self._microstep_joint_delta
+        self._v13b_startup_upper_prior_delta[:] = (
+            self._annealed_upper_prior_alpha.unsqueeze(-1) * self._annealed_upper_prior_delta
+        )
+        self._v13b_startup_upper_student_delta[:] = upper
         # Optional training-only bridge.  The final V1.3B task leaves alpha at
         # zero and therefore never constructs or queries a teacher.  If a
         # separate training harness supplies a full teacher target, blend it
@@ -1630,6 +1752,16 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         if self.cfg.clip_to_soft_joint_limits:
             limits = self._asset.data.soft_joint_pos_limits
             self._full_joint_targets[:] = torch.clamp(self._full_joint_targets, min=limits[..., 0], max=limits[..., 1])
+        self._v13b_startup_q_target[:] = self._full_joint_targets
+        first = ~self._v13b_startup_first_recorded
+        if torch.any(first):
+            jump = self._full_joint_targets - self._asset.data.joint_pos
+            self._v13b_startup_first_command_jump[first] = jump[first]
+            self._v13b_startup_first_command_jump_rms[first] = torch.linalg.vector_norm(
+                jump[first], dim=-1
+            ) / math.sqrt(float(jump.shape[-1]))
+            self._v13b_startup_first_command_jump_abs_max[first] = jump[first].abs().max(dim=-1).values
+            self._v13b_startup_first_recorded[first] = True
         self._processed_actions[:] = bounded
         self._upper_processed_actions[:] = self._full_joint_targets[:, self._upper_joint_ids_tensor]
         self._env.v13b_direct_action[:] = bounded

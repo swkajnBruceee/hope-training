@@ -36,18 +36,18 @@ def _piecewise_smooth(progress: float, knots: tuple[tuple[float, float], ...]) -
 
 
 def lower_prior_alpha(progress: float) -> float:
-    """3396 additive-prior schedule; exactly zero for the final 40%."""
+    """3396 additive-prior schedule; exactly zero for the final 30%."""
     return _piecewise_smooth(
         progress,
-        ((0.00, 0.80), (0.05, 0.80), (0.20, 0.60), (0.40, 0.30), (0.60, 0.00), (1.00, 0.00)),
+        ((0.00, 1.00), (0.10, 1.00), (0.25, 0.85), (0.45, 0.55), (0.60, 0.30), (0.70, 0.00), (1.00, 0.00)),
     )
 
 
 def upper_prior_alpha(progress: float) -> float:
-    """Complete model_900 strike-prior schedule; zero for the final 35%."""
+    """Complete model_900 strike-prior schedule; zero from 60% onward."""
     return _piecewise_smooth(
         progress,
-        ((0.00, 0.90), (0.05, 0.90), (0.20, 0.70), (0.40, 0.40), (0.60, 0.10), (0.65, 0.00), (1.00, 0.00)),
+        ((0.00, 0.90), (0.10, 0.90), (0.25, 0.65), (0.45, 0.30), (0.60, 0.00), (1.00, 0.00)),
     )
 
 

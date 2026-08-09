@@ -30,7 +30,7 @@ from __future__ import annotations
 import math
 import torch
 from collections.abc import Sequence
-from dataclasses import MISSING
+from dataclasses import MISSING, dataclass
 from typing import TYPE_CHECKING
 
 from isaaclab.assets import Articulation
@@ -49,6 +49,36 @@ from training.tasks.tracking.mdp.commands import MotionCommand, MotionLibraryLoa
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
+
+
+@dataclass
+class EpisodeStrikeEvent:
+    """Latched, per-environment V1.3B strike contract.
+
+    This structure is intentionally private to the environment.  The public
+    policy receives only its canonical 10-D goal, never a motion id, a frame
+    index, an event phase, or any other teacher feature.
+    """
+
+    event_id: torch.Tensor
+    motion_id: torch.Tensor
+    teacher_start_frame: torch.Tensor
+    teacher_hit_frame: torch.Tensor
+    episode_strike_time_s: torch.Tensor
+    teacher_physical_strike_time_s: torch.Tensor
+    teacher_position_b: torch.Tensor
+    teacher_velocity_b: torch.Tensor
+    teacher_normal_b: torch.Tensor
+    sampled_position_b: torch.Tensor
+    sampled_velocity_b: torch.Tensor
+    sampled_normal_b: torch.Tensor
+    sampled_timing_offset_s: torch.Tensor
+    strike_armed: torch.Tensor
+    strike_consumed: torch.Tensor
+    goal_sample_count: torch.Tensor
+    goal_resample_count_after_reset: torch.Tensor
+    strike_event_count: torch.Tensor
+    upper_prior_wrap_count: torch.Tensor
 
 
 class RacketTargetCommand(CommandTerm):
@@ -619,6 +649,11 @@ class RacketTargetCommand(CommandTerm):
     def _resample_command(self, env_ids: Sequence[int]):
         if len(env_ids) == 0:
             return
+        if bool(getattr(self._env, "v13b_private_motion_disabled", False)):
+            # Final V1.3B iterations keep this private target term registered
+            # only for manager compatibility.  It must not sample or resolve
+            # a motion clip after the prior handoff.
+            return
         n = len(env_ids)
         origins = self._env.scene.env_origins[env_ids]
 
@@ -1164,6 +1199,10 @@ class RacketTargetCommand(CommandTerm):
             return self.strike_window.float()
         return torch.exp(-0.5 * torch.square(self.time_to_strike / std))
 
+    def strike_reward_mask(self) -> torch.Tensor:
+        """Legacy temporal weight; V1.3B overrides this with a one-shot pulse."""
+        return self.strike_temporal_weight()
+
     # ------------------------------------------------------------------ #
     # Debug visualization (no-op stubs; targets are world-frame buffers).
     # ------------------------------------------------------------------ #
@@ -1181,14 +1220,72 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
 
     def __init__(self, cfg: "ReferenceFreeRacketTargetCommandCfg", env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
-        self._goal_clock = torch.zeros(self.num_envs, device=self.device)
-        self._hit_time = torch.zeros(self.num_envs, device=self.device)
+        # ``episode_time_s`` is the sole public strike clock.  Teacher frame
+        # indices are derived from the event sampled at reset; they never
+        # create a second hit timer.
+        self._episode_time_s = torch.zeros(self.num_envs, device=self.device)
+        self._previous_tau = torch.zeros(self.num_envs, device=self.device)
+        self._next_event_id = 0
+        # Isaac's manager may perform an initialization resample before the
+        # first public env.reset().  Keep reset-time sampling distinct from a
+        # forbidden mid-episode command resample.
+        self._reset_in_progress = False
+        zeros_f = torch.zeros(self.num_envs, device=self.device)
+        zeros_i = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        zeros_b = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+        zeros_v = torch.zeros(self.num_envs, 3, device=self.device)
+        self.strike_event = EpisodeStrikeEvent(
+            event_id=zeros_i.clone(),
+            motion_id=zeros_i.clone(),
+            teacher_start_frame=zeros_i.clone(),
+            teacher_hit_frame=zeros_i.clone(),
+            episode_strike_time_s=zeros_f.clone(),
+            teacher_physical_strike_time_s=zeros_f.clone(),
+            teacher_position_b=zeros_v.clone(),
+            teacher_velocity_b=zeros_v.clone(),
+            teacher_normal_b=zeros_v.clone(),
+            sampled_position_b=zeros_v.clone(),
+            sampled_velocity_b=zeros_v.clone(),
+            sampled_normal_b=zeros_v.clone(),
+            sampled_timing_offset_s=zeros_f.clone(),
+            strike_armed=zeros_b.clone(),
+            strike_consumed=zeros_b.clone(),
+            goal_sample_count=zeros_i.clone(),
+            goal_resample_count_after_reset=zeros_i.clone(),
+            strike_event_count=zeros_i.clone(),
+            upper_prior_wrap_count=zeros_i.clone(),
+        )
+        self._strike_reward_now = zeros_b.clone()
         self._v13b_previous_distance = torch.zeros(self.num_envs, device=self.device)
         self.metrics["v13b_goal_resample_exhausted"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["v13b_goal_fallback_nominal"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["v13b_curriculum_progress"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["v13b_goal_acceptance_rate"] = torch.ones(self.num_envs, device=self.device)
         self.metrics["v13b_reference_free"] = torch.ones(self.num_envs, device=self.device)
+        # Training-only alignment diagnostics.  The public actor still sees
+        # only the sampled 10-D racket goal; these values merely record how
+        # strongly the sampler was anchored to the private motion used by the
+        # frozen priors.
+        self.metrics["v13b_motion_goal_alignment_weight"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_motion_goal_alignment_time_s"] = torch.zeros(self.num_envs, device=self.device)
+        # Event/audit fields are never observations.  They make the one-shot
+        # and teacher/public-time contracts externally testable.
+        for name in (
+            "v13b_event_id", "v13b_motion_id", "v13b_teacher_start_frame",
+            "v13b_teacher_frame", "v13b_teacher_hit_frame", "v13b_goal_sample_count",
+            "v13b_goal_resample_count_after_reset", "v13b_strike_event_count",
+            "v13b_upper_prior_wrap_count", "v13b_strike_armed", "v13b_strike_consumed",
+            "v13b_strike_reward_trigger", "v13b_public_strike_time_s",
+            "v13b_teacher_physical_strike_time_s", "v13b_teacher_public_time_error_s",
+            "v13b_goal_teacher_position_error_m", "v13b_goal_teacher_velocity_error_mps",
+            "v13b_goal_teacher_normal_error_deg", "v13b_post_hit_phase",
+            "v13b_episode_time_s", "v13b_episode_step", "v13b_teacher_time_s",
+            "v13b_teacher_hit_episode_time_s", "v13b_recovery_gate",
+        ):
+            self.metrics[name] = torch.zeros(self.num_envs, device=self.device)
+        for prefix in ("v13b_goal", "v13b_teacher"):
+            for component in ("position_x", "position_y", "position_z", "velocity_x", "velocity_y", "velocity_z", "normal_x", "normal_y", "normal_z"):
+                self.metrics[f"{prefix}_{component}"] = torch.zeros(self.num_envs, device=self.device)
         # Post-hit recovery diagnostics are deliberately environment-side
         # metrics.  They use the public signed time-to-hit, never expose a
         # phase or recovery state to the 98-D actor, and let long training
@@ -1208,6 +1305,20 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         self._v13b_recovery_time_s = torch.zeros(self.num_envs, device=self.device)
         self._v13b_torso_body_id: int | None = None
 
+    def reset(self, env_ids: Sequence[int] | None = None) -> dict[str, float]:
+        """Reset exactly one strike event for each newly reset environment.
+
+        CommandTerm.reset legitimately samples the new episode goal.  The
+        contract assertion in ``_latch_episode_strike_event`` must therefore
+        only reject resampling triggered by ``compute()`` while an episode is
+        already running.
+        """
+        self._reset_in_progress = True
+        try:
+            return super().reset(env_ids)
+        finally:
+            self._reset_in_progress = False
+
     def _progress(self) -> float:
         override = getattr(self, "_v13b_policy_progress", None)
         if override is not None:
@@ -1216,6 +1327,161 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         if value is None:
             value = getattr(getattr(self._env, "unwrapped", None), "v13b_policy_progress", None)
         return 0.0 if value is None else float(max(0.0, min(1.0, value)))
+
+    def _motion_goal_alignment(self, ids: torch.Tensor):
+        """Return a private teacher strike state only while teacher is active.
+
+        The returned state is evaluated at the same wrist+mount TCP used by
+        V1.3B rewards.  Crucially, this helper never extends public timing:
+        :meth:`_sample_reference_free_goal` instead rephases teacher playback
+        to the sampled public time-to-hit.
+        """
+        if not bool(getattr(self.cfg, "motion_alignment_enabled", False)):
+            return None
+        start = float(getattr(self.cfg, "motion_alignment_start_progress", 0.0))
+        end = float(getattr(self.cfg, "motion_alignment_end_progress", 0.65))
+        progress = self._progress()
+        # Do not even resolve/read the motion bank after the handoff.  The
+        # training-only term can remain registered, but its runtime path is
+        # inert once all priors are gone.
+        if progress >= end:
+            return None
+        try:
+            motion_cmd = self._motion()
+        except Exception:
+            return None
+        motion = getattr(motion_cmd, "motion", None)
+        motion_ids = getattr(motion_cmd, "motion_ids", None)
+        if motion is None or motion_ids is None or not hasattr(motion, "hit_frame"):
+            return None
+        motion_ids = motion_ids[ids].to(dtype=torch.long)
+        base_pos = self.base_pos_w[ids]
+        base_yaw = yaw_quat(self.base_quat_w[ids])
+        origins = self._env.scene.env_origins[ids]
+        root_relative = motion.strike_target_is_root_relative[motion_ids]
+        pos_w = torch.where(
+            root_relative.unsqueeze(-1),
+            base_pos + quat_apply(base_yaw, motion.strike_pos_b0[motion_ids]),
+            origins + motion.strike_pos_w[motion_ids],
+        )
+        vel_w = torch.where(
+            root_relative.unsqueeze(-1),
+            quat_apply(base_yaw, motion.strike_vel_b0[motion_ids]),
+            motion.strike_vel_w[motion_ids],
+        )
+        normal_w = torch.where(
+            root_relative.unsqueeze(-1),
+            quat_apply(base_yaw, motion.strike_normal_b0[motion_ids]),
+            motion.strike_normal_w[motion_ids],
+        )
+        normal_w = normal_w / torch.linalg.vector_norm(normal_w, dim=-1, keepdim=True).clamp_min(1.0e-6)
+        pos_b = quat_rotate_inverse(base_yaw, pos_w - base_pos)
+        vel_b = quat_rotate_inverse(base_yaw, vel_w)
+        normal_b = quat_rotate_inverse(base_yaw, normal_w)
+        if end <= start:
+            weight = torch.full(
+                (ids.numel(),), 1.0 if progress <= start else 0.0,
+                dtype=base_pos.dtype, device=self.device,
+            )
+        else:
+            # ``_progress`` is a Python float because the runner owns the
+            # update counter.  Keep the interpolation scalar-safe instead of
+            # calling Tensor.clamp on a float during env.reset().
+            u = max(0.0, min(1.0, (progress - start) / (end - start)))
+            smooth = u * u * (3.0 - 2.0 * u)
+            weight = torch.full((ids.numel(),), 1.0 - smooth, dtype=base_pos.dtype, device=self.device)
+        hit_frame = motion.hit_frame[motion_ids].to(dtype=torch.long)
+        fps = float(max(int(motion.fps), 1))
+        return pos_b, vel_b, normal_b, motion_ids, hit_frame, fps, weight
+
+    def _latch_episode_strike_event(
+        self,
+        *,
+        ids: torch.Tensor,
+        motion_ids: torch.Tensor,
+        teacher_start: torch.Tensor,
+        teacher_hit: torch.Tensor,
+        public_hit_time: torch.Tensor,
+        teacher_physical_hit: torch.Tensor,
+        teacher_pos: torch.Tensor,
+        teacher_vel: torch.Tensor,
+        teacher_normal: torch.Tensor,
+        sampled_pos: torch.Tensor,
+        sampled_vel: torch.Tensor,
+        sampled_normal: torch.Tensor,
+    ) -> None:
+        """Atomically establish the only strike event for each reset env."""
+        event = self.strike_event
+        n = int(ids.numel())
+        # A V1.3B reference-free target must never be regenerated mid-episode.
+        if (not self._reset_in_progress) and torch.any(self._episode_time_s[ids] > 1.0e-6):
+            event.goal_resample_count_after_reset[ids] += 1
+            raise RuntimeError("V1.3B contract violation: target resampled after episode reset")
+        event.event_id[ids] = torch.arange(
+            self._next_event_id, self._next_event_id + n, dtype=torch.long, device=self.device
+        )
+        self._next_event_id += n
+        event.motion_id[ids] = motion_ids
+        event.teacher_start_frame[ids] = teacher_start
+        event.teacher_hit_frame[ids] = teacher_hit
+        event.episode_strike_time_s[ids] = public_hit_time
+        event.teacher_physical_strike_time_s[ids] = teacher_physical_hit
+        event.teacher_position_b[ids] = teacher_pos
+        event.teacher_velocity_b[ids] = teacher_vel
+        event.teacher_normal_b[ids] = teacher_normal
+        event.sampled_position_b[ids] = sampled_pos
+        event.sampled_velocity_b[ids] = sampled_vel
+        event.sampled_normal_b[ids] = sampled_normal
+        event.sampled_timing_offset_s[ids] = public_hit_time - float(self.cfg.nominal_time_to_hit_s)
+        event.strike_armed[ids] = True
+        event.strike_consumed[ids] = False
+        event.goal_sample_count[ids] = 1
+        event.goal_resample_count_after_reset[ids] = 0
+        event.strike_event_count[ids] = 0
+        event.upper_prior_wrap_count[ids] = 0
+        self._strike_reward_now[ids] = False
+        self._episode_time_s[ids] = 0.0
+        self._previous_tau[ids] = public_hit_time
+        self._write_event_metrics(ids)
+
+    def _write_event_metrics(self, ids: torch.Tensor | None = None) -> None:
+        event = self.strike_event
+        sl = slice(None) if ids is None else ids
+        normal_dot = torch.sum(event.sampled_normal_b[sl] * event.teacher_normal_b[sl], dim=-1).clamp(-1.0, 1.0)
+        self.metrics["v13b_event_id"][sl] = event.event_id[sl].float()
+        self.metrics["v13b_motion_id"][sl] = event.motion_id[sl].float()
+        self.metrics["v13b_teacher_start_frame"][sl] = event.teacher_start_frame[sl].float()
+        self.metrics["v13b_teacher_hit_frame"][sl] = event.teacher_hit_frame[sl].float()
+        self.metrics["v13b_goal_sample_count"][sl] = event.goal_sample_count[sl].float()
+        self.metrics["v13b_goal_resample_count_after_reset"][sl] = event.goal_resample_count_after_reset[sl].float()
+        self.metrics["v13b_strike_event_count"][sl] = event.strike_event_count[sl].float()
+        self.metrics["v13b_upper_prior_wrap_count"][sl] = event.upper_prior_wrap_count[sl].float()
+        self.metrics["v13b_strike_armed"][sl] = event.strike_armed[sl].float()
+        self.metrics["v13b_strike_consumed"][sl] = event.strike_consumed[sl].float()
+        self.metrics["v13b_public_strike_time_s"][sl] = event.episode_strike_time_s[sl]
+        self.metrics["v13b_teacher_physical_strike_time_s"][sl] = event.teacher_physical_strike_time_s[sl]
+        self.metrics["v13b_teacher_hit_episode_time_s"][sl] = event.teacher_physical_strike_time_s[sl]
+        self.metrics["v13b_teacher_public_time_error_s"][sl] = torch.abs(
+            event.episode_strike_time_s[sl] - event.teacher_physical_strike_time_s[sl]
+        )
+        self.metrics["v13b_goal_teacher_position_error_m"][sl] = torch.linalg.vector_norm(
+            event.sampled_position_b[sl] - event.teacher_position_b[sl], dim=-1
+        )
+        self.metrics["v13b_goal_teacher_velocity_error_mps"][sl] = torch.linalg.vector_norm(
+            event.sampled_velocity_b[sl] - event.teacher_velocity_b[sl], dim=-1
+        )
+        self.metrics["v13b_goal_teacher_normal_error_deg"][sl] = torch.rad2deg(torch.acos(normal_dot))
+        for axis, suffix in enumerate(("x", "y", "z")):
+            self.metrics[f"v13b_goal_position_{suffix}"][sl] = event.sampled_position_b[sl, axis]
+            self.metrics[f"v13b_teacher_position_{suffix}"][sl] = event.teacher_position_b[sl, axis]
+            self.metrics[f"v13b_goal_velocity_{suffix}"][sl] = event.sampled_velocity_b[sl, axis]
+            self.metrics[f"v13b_teacher_velocity_{suffix}"][sl] = event.teacher_velocity_b[sl, axis]
+            self.metrics[f"v13b_goal_normal_{suffix}"][sl] = event.sampled_normal_b[sl, axis]
+            self.metrics[f"v13b_teacher_normal_{suffix}"][sl] = event.teacher_normal_b[sl, axis]
+
+    def strike_reward_mask(self) -> torch.Tensor:
+        """One control-frame pulse used by the exact-strike reward term."""
+        return self._strike_reward_now
 
     def _sample_reference_free_goal(self, ids: torch.Tensor) -> None:
         n = ids.numel()
@@ -1232,8 +1498,35 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         )
         base_yaw = yaw_quat(self.base_quat_w[ids])
         base_pos = self.base_pos_w[ids]
+        nominal_local = torch.tensor(self.cfg.nominal_target_local_xyz, device=self.device, dtype=base_pos.dtype)
+        alignment = self._motion_goal_alignment(ids)
+        time_half_range = float(self.cfg.initial_time_half_range_s) + alpha * (
+            float(self.cfg.final_time_half_range_s) - float(self.cfg.initial_time_half_range_s)
+        )
+        # Public target timing is always the Planner/deployment contract.
+        # It is never stretched to match a legacy motion duration.
+        public_hit_time = float(self.cfg.nominal_time_to_hit_s) + sample_uniform(
+            -time_half_range, time_half_range, (n,), self.device
+        )
+        time_min, time_max = self.cfg.time_to_hit_range_s
+        public_hit_time = public_hit_time.clamp(min=float(time_min), max=float(time_max))
+        if alignment is None:
+            alignment_pos = nominal_local.unsqueeze(0).expand(n, -1)
+            alignment_vel = torch.zeros(n, 3, device=self.device, dtype=base_pos.dtype)
+            alignment_normal = torch.zeros(n, 3, device=self.device, dtype=base_pos.dtype)
+            alignment_normal[:, 0] = 1.0
+            alignment_weight = torch.zeros(n, device=self.device, dtype=base_pos.dtype)
+            motion_ids = torch.full((n,), -1, dtype=torch.long, device=self.device)
+            hit_frames = torch.full((n,), -1, dtype=torch.long, device=self.device)
+            motion_fps = 0.0
+        else:
+            alignment_pos, alignment_vel, alignment_normal, motion_ids, hit_frames, motion_fps, alignment_weight = alignment
+            alignment_normal = alignment_normal / torch.linalg.vector_norm(alignment_normal, dim=-1, keepdim=True).clamp_min(1.0e-6)
+        self.metrics["v13b_motion_goal_alignment_weight"][ids] = alignment_weight
+        self.metrics["v13b_motion_goal_alignment_time_s"][ids] = public_hit_time
+        center_local = alignment_weight.unsqueeze(-1) * alignment_pos + (1.0 - alignment_weight.unsqueeze(-1)) * nominal_local
         local_pos = (torch.rand(n, 3, device=self.device) * 2.0 - 1.0) * pos_half
-        local_pos += torch.tensor(self.cfg.nominal_target_local_xyz, device=self.device)
+        local_pos += center_local
         # Cheap fail-closed workspace filter.  Detailed IK/collision probes
         # remain an offline admission gate; no rejected sample is reported as
         # a PPO failure.  Boundary values are resampled up to the configured
@@ -1247,14 +1540,13 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         while not bool(torch.all(accepted)) and attempts < int(self.cfg.max_resample_attempts):
             bad = ~accepted
             replacement = (torch.rand(int(bad.sum()), 3, device=self.device) * 2.0 - 1.0) * pos_half[bad]
-            replacement += torch.tensor(self.cfg.nominal_target_local_xyz, device=self.device)
+            replacement += center_local[bad]
             local_pos[bad] = replacement
             accepted = ((local_pos >= local_min) & (local_pos <= local_max)).all(dim=-1)
             attempts += 1
         exhausted = ~accepted
         if torch.any(exhausted):
-            nominal = torch.tensor(self.cfg.nominal_target_local_xyz, device=self.device)
-            local_pos[exhausted] = nominal
+            local_pos[exhausted] = center_local[exhausted]
         self.metrics["v13b_goal_resample_exhausted"][ids] = exhausted.to(dtype=self.racket_target_pos_w.dtype)
         self.metrics["v13b_goal_fallback_nominal"][ids] = exhausted.to(dtype=self.racket_target_pos_w.dtype)
         self.metrics["v13b_goal_acceptance_rate"][ids] = (~exhausted).to(dtype=self.racket_target_pos_w.dtype)
@@ -1263,13 +1555,12 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         # deviation is bounded by (rather than independently exceeded by)
         # the configured half-angle.
         angle_limit = math.sin(math.radians(normal_deg))
-        tangent_dir = torch.randn(n, 2, device=self.device)
-        tangent_dir = tangent_dir / torch.linalg.vector_norm(tangent_dir, dim=-1, keepdim=True).clamp_min(1.0e-6)
+        random_vec = torch.randn(n, 3, device=self.device)
+        tangent = random_vec - torch.sum(random_vec * alignment_normal, dim=-1, keepdim=True) * alignment_normal
+        tangent = tangent / torch.linalg.vector_norm(tangent, dim=-1, keepdim=True).clamp_min(1.0e-6)
         tangent_radius = torch.sqrt(torch.rand(n, device=self.device)) * angle_limit
-        tangent = tangent_dir * tangent_radius.unsqueeze(-1)
-        normal_local = torch.zeros(n, 3, device=self.device)
-        normal_local[:, 0] = torch.sqrt(torch.clamp(1.0 - torch.sum(tangent * tangent, dim=-1), min=1.0e-6))
-        normal_local[:, 1:] = tangent
+        normal_local = alignment_normal * torch.sqrt(torch.clamp(1.0 - tangent_radius.square(), min=1.0e-6)).unsqueeze(-1)
+        normal_local = normal_local + tangent * tangent_radius.unsqueeze(-1)
         normal_local = normal_local / torch.linalg.vector_norm(normal_local, dim=-1, keepdim=True).clamp_min(1.0e-6)
         self.racket_target_normal_w[ids] = quat_apply(base_yaw, normal_local)
         speed_fraction = float(self.cfg.initial_speed_fraction) + alpha * (
@@ -1279,19 +1570,41 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             1.0 + sample_uniform(-speed_fraction, speed_fraction, (n,), self.device)
         )
         speed = speed.clamp(min=float(self.cfg.speed_range_mps[0]), max=float(self.cfg.speed_range_mps[1]))
-        self.racket_target_vel_w[ids] = self.racket_target_normal_w[ids] * speed.unsqueeze(-1)
+        global_vel_local = normal_local * speed.unsqueeze(-1)
+        # Early training must be a true teacher velocity perturbation, not a
+        # teacher direction rescaled to an unrelated global 2.5 m/s nominal.
+        teacher_speed_scale = 1.0 + sample_uniform(
+            -speed_fraction, speed_fraction, (n,), self.device
+        )
+        aligned_vel = alignment_vel * teacher_speed_scale.unsqueeze(-1)
+        target_vel_local = alignment_weight.unsqueeze(-1) * aligned_vel + (1.0 - alignment_weight.unsqueeze(-1)) * global_vel_local
+        self.racket_target_vel_w[ids] = quat_apply(base_yaw, target_vel_local)
         self.base_target_pos_w[ids] = base_pos[:, :2]
         self.swing_sign[ids] = torch.where(local_pos[:, 1] <= 0.0, 1.0, -1.0)
-        time_half_range = float(self.cfg.initial_time_half_range_s) + alpha * (
-            float(self.cfg.final_time_half_range_s) - float(self.cfg.initial_time_half_range_s)
+        # Rephase the private teacher, rather than corrupting public tau.
+        # teacher physical hit = (hit_frame - start_frame) / fps ~= public_tau
+        teacher_start = torch.full((n,), -1, dtype=torch.long, device=self.device)
+        teacher_physical_hit = torch.zeros(n, dtype=base_pos.dtype, device=self.device)
+        if alignment is not None:
+            teacher_steps_to_hit = torch.round(public_hit_time * motion_fps).to(dtype=torch.long)
+            teacher_start = torch.clamp(hit_frames - teacher_steps_to_hit, min=0)
+            teacher_physical_hit = (hit_frames - teacher_start).to(dtype=base_pos.dtype) / motion_fps
+            motion_cmd = self._motion()
+            motion_cmd.configure_v13b_episode_strike(ids, teacher_start)
+        self._latch_episode_strike_event(
+            ids=ids,
+            motion_ids=motion_ids,
+            teacher_start=teacher_start,
+            teacher_hit=hit_frames,
+            public_hit_time=public_hit_time,
+            teacher_physical_hit=teacher_physical_hit,
+            teacher_pos=alignment_pos,
+            teacher_vel=alignment_vel,
+            teacher_normal=alignment_normal,
+            sampled_pos=local_pos,
+            sampled_vel=target_vel_local,
+            sampled_normal=normal_local,
         )
-        hit_time = float(self.cfg.nominal_time_to_hit_s) + sample_uniform(
-            -time_half_range, time_half_range, (n,), self.device
-        )
-        self._hit_time[ids] = hit_time.clamp(
-            min=float(self.cfg.time_to_hit_range_s[0]), max=float(self.cfg.time_to_hit_range_s[1])
-        )
-        self._goal_clock[ids] = 0.0
         self._reset_post_hit_recovery_metrics(ids)
         self._compute_strike_timing()
         self.racket_anchor_target_pos_w[ids] = self.racket_target_pos_w[ids]
@@ -1402,9 +1715,87 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             self._sample_reference_free_goal(ids)
 
     def _compute_strike_timing(self):
-        self.time_to_strike = self._hit_time - self._goal_clock
+        self.time_to_strike = self.strike_event.episode_strike_time_s - self._episode_time_s
         self.pre_strike = self.time_to_strike > 0.0
         self.strike_window = torch.abs(self.time_to_strike) <= float(self.cfg.strike_window_s)
+
+    def _update_strike_crossing(self) -> None:
+        """Consume exactly one authoritative tau crossing per episode."""
+        event = self.strike_event
+        current_tau = self.time_to_strike
+        crossing = event.strike_armed & (self._previous_tau > 0.0) & (current_tau <= 0.0)
+        self._strike_reward_now.zero_()
+        if torch.any(crossing):
+            self._strike_reward_now[crossing] = True
+            event.strike_armed[crossing] = False
+            event.strike_consumed[crossing] = True
+            event.strike_event_count[crossing] += 1
+        self._previous_tau[:] = current_tau
+        self.metrics["v13b_strike_reward_trigger"][:] = self._strike_reward_now.float()
+        self._write_event_metrics()
+        if bool(getattr(self.cfg, "contract_assertions", False)):
+            # Isaac may call ``compute`` once during manager construction
+            # before the first reset has sampled an episode event.
+            active = event.goal_sample_count > 0
+            if not torch.any(active):
+                return
+            if torch.any(event.goal_sample_count[active] != 1):
+                raise RuntimeError("V1.3B contract violation: goal_sample_count != 1")
+            if torch.any(event.goal_resample_count_after_reset[active] != 0):
+                raise RuntimeError("V1.3B contract violation: goal resampled during episode")
+            if torch.any(event.strike_event_count[active] > 1):
+                raise RuntimeError("V1.3B contract violation: multiple strike events in one episode")
+            if torch.any(event.upper_prior_wrap_count[active] != 0):
+                raise RuntimeError("V1.3B contract violation: upper teacher wrapped")
+            aligned = active & (event.motion_id >= 0)
+            if torch.any(aligned):
+                error = torch.abs(
+                    event.episode_strike_time_s[aligned] - event.teacher_physical_strike_time_s[aligned]
+                )
+                if torch.any(error > float(self._env.step_dt) + 1.0e-6):
+                    raise RuntimeError("V1.3B contract violation: public/teacher strike time mismatch")
+
+    def _update_teacher_runtime_contract(self) -> None:
+        """Disable private bank execution once both action priors are gone."""
+        disable_after = float(getattr(self.cfg, "private_motion_disable_progress", 0.70))
+        disabled = self._progress() >= disable_after
+        self._env.v13b_private_motion_disabled = bool(disabled)
+        if disabled:
+            # The public target sampler, student actor and rewards remain live.
+            # Only the training-only private motion command / target are made
+            # inert; this is the final deployment execution path.
+            self.metrics["v13b_motion_goal_alignment_weight"].zero_()
+
+    def _update_event_phase_metrics(self) -> None:
+        """Expose private audit phase without changing the 98-D actor."""
+        tau = self.time_to_strike
+        elapsed = torch.relu(-tau)
+        phase = torch.where(
+            tau > 0.0,
+            torch.zeros_like(tau),  # PRE_STRIKE
+            torch.where(
+                elapsed < 0.15,
+                torch.ones_like(tau),  # FOLLOW_THROUGH
+                torch.where(elapsed < 0.50, torch.full_like(tau, 2.0), torch.full_like(tau, 3.0)),
+            ),
+        )
+        self.metrics["v13b_post_hit_phase"][:] = phase
+        self.metrics["v13b_episode_time_s"][:] = self._episode_time_s
+        self.metrics["v13b_episode_step"][:] = self._episode_time_s / float(self._env.step_dt)
+        self.metrics["v13b_recovery_gate"][:] = self.metrics["v13b_post_hit_gate"]
+        if not bool(getattr(self._env, "v13b_private_motion_disabled", False)):
+            try:
+                motion = self._motion()
+                self.metrics["v13b_teacher_frame"][:] = motion.time_steps.float()
+                self.metrics["v13b_teacher_time_s"][:] = motion.time_steps.float() / float(max(int(motion.motion.fps), 1))
+                if hasattr(motion, "v13b_upper_prior_wrap_count"):
+                    self.strike_event.upper_prior_wrap_count[:] = motion.v13b_upper_prior_wrap_count
+                    self.metrics["v13b_upper_prior_wrap_count"][:] = motion.v13b_upper_prior_wrap_count.float()
+            except Exception:
+                self.metrics["v13b_teacher_frame"].fill_(-1.0)
+        else:
+            self.metrics["v13b_teacher_frame"].fill_(-1.0)
+            self.metrics["v13b_teacher_time_s"].fill_(-1.0)
 
     def _update_command(self):
         if self.cfg.target_mode in ("manifest", "manifest_perturbed"):
@@ -1413,9 +1804,12 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             self.metrics["v13b_reference_free"].fill_(1.0)
             self._update_post_hit_recovery_metrics()
             return
-        self._goal_clock += float(self._env.step_dt)
+        self._update_teacher_runtime_contract()
+        self._episode_time_s += float(self._env.step_dt)
         self._compute_strike_timing()
+        self._update_strike_crossing()
         self._update_post_hit_recovery_metrics()
+        self._update_event_phase_metrics()
         self.metrics["v13b_curriculum_progress"].fill_(self._progress())
         # This command is intentionally independent from the private motion
         # command used only by the training-time priors.
@@ -1558,6 +1952,19 @@ class ReferenceFreeRacketTargetCommandCfg(RacketTargetCommandCfg):
     initial_time_half_range_s: float = 0.02
     final_time_half_range_s: float = 0.10
     time_to_hit_range_s: tuple[float, float] = (0.20, 0.60)
+    # In the complete-prior training branch, align the public target sampler
+    # to the private manifest strike state early in training.  This is a
+    # sampler-side curriculum only: motion remains absent from the actor
+    # observation and these defaults stay disabled for deployment.
+    motion_alignment_enabled: bool = False
+    motion_alignment_start_progress: float = 0.0
+    motion_alignment_end_progress: float = 0.65
+    motion_alignment_include_prelude_s: bool = True
+    # Retained only for backwards-compatible parsing.  V1.3B never extends
+    # public time-to-hit to this range; teacher playback is rephased instead.
+    motion_alignment_time_range_s: tuple[float, float] = (0.20, 0.60)
+    private_motion_disable_progress: float = 0.70
+    contract_assertions: bool = False
     curriculum_warmup_progress: float = 0.10
     # Finish the automatic target curriculum early enough to leave a stable
     # final-distribution plateau for the last 30% of PPO updates.
@@ -1565,6 +1972,9 @@ class ReferenceFreeRacketTargetCommandCfg(RacketTargetCommandCfg):
     # Bounds are in the same base-heading local frame as
     # ``nominal_target_local_xyz``.  They are deliberately not world-height
     # bounds: the runtime target is formed as ``base_pos_w + R_yaw * local``.
-    workspace_local_min_xyz: tuple[float, float, float] = (0.18, -0.65, 0.05)
+    # Include the audited forehand/backhand canonical bank (forehand reaches
+    # about y=-0.79 m and a small subset reaches z<0) while retaining a
+    # conservative box for independently sampled deployment goals.
+    workspace_local_min_xyz: tuple[float, float, float] = (0.18, -0.85, -0.05)
     workspace_local_max_xyz: tuple[float, float, float] = (0.72, 0.35, 0.45)
     max_resample_attempts: int = 32

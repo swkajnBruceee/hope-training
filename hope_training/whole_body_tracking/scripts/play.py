@@ -2211,6 +2211,30 @@ def _run_play(cfg, simulation_app):
                 }
             )
             action_term = raw_env.action_manager.get_term("joint_pos")
+            if hasattr(action_term, "v13b_startup_diagnostics"):
+                startup = action_term.v13b_startup_diagnostics
+                def _startup_row(value):
+                    return [float(item) for item in value[0].detach().cpu().tolist()]
+
+                snapshot["v13b_startup_decomposition"] = {
+                    "episode_step": int(startup["step"][0].item()),
+                    "joint_names": list(robot.joint_names),
+                    "q_reset_rad": _startup_row(startup["q_reset"]),
+                    "q_actual_rad": _startup_row(startup["q_actual"]),
+                    "q_ready_rad": _startup_row(action_term._ready_full),
+                    "lower_prior_delta_rad": _startup_row(startup["lower_prior_delta"]),
+                    "lower_student_delta_rad": _startup_row(startup["lower_student_delta"]),
+                    "microstep_delta_rad": _startup_row(startup["microstep_delta"]),
+                    "upper_prior_delta_rad": _startup_row(startup["upper_prior_delta"]),
+                    "upper_student_delta_rad": _startup_row(startup["upper_student_delta"]),
+                    "final_q_target_rad": _startup_row(startup["q_target"]),
+                    "first_command_jump_rad": _startup_row(startup["first_command_jump"]),
+                    "first_command_jump_rms_rad": float(startup["first_command_jump_rms"][0].item()),
+                    "first_command_jump_abs_max_rad": float(startup["first_command_jump_abs_max"][0].item()),
+                    "previous_action_zero": bool(
+                        torch.all(raw_env.action_manager.prev_action[0].abs() < 1.0e-8).item()
+                    ),
+                }
             if hasattr(action_term, "upper_reference_actions"):
                 upper_names = list(action_term.cfg.upper_joint_names)
                 upper_ids = action_term._upper_joint_ids_tensor

@@ -468,9 +468,6 @@ def racket_exact_hit_precision_tracking_exp(
     r_pos = torch.exp(-pos_error_sq / max(float(pos_std), 1.0e-6) ** 2)
     r_vel = torch.exp(-vel_error_sq / max(float(vel_std), 1.0e-6) ** 2)
     r_normal = torch.exp(-torch.square(normal_error) / max(float(normal_std), 1.0e-6) ** 2)
-    time_gate = torch.exp(
-        -0.5 * torch.square(cmd.time_to_strike / max(float(time_std), 1.0e-6))
-    )
     # Position remains the primary task.  Velocity and normal are bounded
     # quality factors, so they cannot buy a better reward by sacrificing the
     # canonical strike location.  The coefficients are explicit so the
@@ -479,8 +476,10 @@ def racket_exact_hit_precision_tracking_exp(
     coeff_sum = max(float(pos_coeff) + float(velocity_coeff) + float(normal_coeff), 1.0e-6)
     score = r_pos * (
         float(pos_coeff) + float(velocity_coeff) * r_vel + float(normal_coeff) * r_normal
-    ) / coeff_sum * time_gate
-    return score
+    ) / coeff_sum
+    # V1.3B supplies a latched one-frame crossing pulse.  Older tracker tasks
+    # retain their historical strike-window behaviour through the base method.
+    return score * cmd.strike_reward_mask().to(dtype=score.dtype)
 
 
 def base_position_tracking_exp(env: ManagerBasedRLEnv, command_name: str, std: float) -> torch.Tensor:

@@ -2454,7 +2454,16 @@ class A3ReferenceFreeTargetObservationsCfg(ObservationsCfg):
         racket_lin_vel_b = ObsTerm(func=mdp.racket_lin_vel_b, params={"command_name": "racket_target"})
         racket_normal_b = ObsTerm(func=mdp.racket_normal_b, params={"command_name": "racket_target"})
         # One and only one canonical 10-D goal: [position, velocity, normal, signed time].
-        strike_goal_10d = ObsTerm(func=mdp.racket_target_goal_10d_b, params={"command_name": "racket_target"})
+        strike_goal_10d = ObsTerm(
+            func=mdp.racket_target_goal_10d_b,
+            params={
+                "command_name": "racket_target",
+                "position_mean": (0.44237322, -0.34721070, 0.09162542),
+                "position_std": (0.04256963, 0.29942963, 0.06187854),
+                "time_std": 1.0,
+                "time_clip_s": 4.0,
+            },
+        )
         swing_type = None
         actions = ObsTerm(func=mdp.last_action, params={"action_name": "joint_pos"})
 
@@ -2473,7 +2482,16 @@ class A3ReferenceFreeTargetObservationsCfg(ObservationsCfg):
         racket_pos_b = ObsTerm(func=mdp.racket_pos_b, params={"command_name": "racket_target"})
         racket_lin_vel_w = ObsTerm(func=mdp.racket_lin_vel_w, params={"command_name": "racket_target"})
         racket_normal_w = ObsTerm(func=mdp.racket_normal_w, params={"command_name": "racket_target"})
-        strike_goal_10d = ObsTerm(func=mdp.racket_target_goal_10d_b, params={"command_name": "racket_target"})
+        strike_goal_10d = ObsTerm(
+            func=mdp.racket_target_goal_10d_b,
+            params={
+                "command_name": "racket_target",
+                "position_mean": (0.44237322, -0.34721070, 0.09162542),
+                "position_std": (0.04256963, 0.29942963, 0.06187854),
+                "time_std": 1.0,
+                "time_clip_s": 4.0,
+            },
+        )
         actions = ObsTerm(func=mdp.last_action, params={"action_name": "joint_pos"})
         episode_time_left = ObsTerm(func=mdp.episode_time_left)
 
@@ -2619,6 +2637,7 @@ class A3FloatingTargetConditionedReferenceFreeV13BEnvCfg(A3FloatingUnifiedUpperR
         self.v13b_ready_root_reference_z = 1.0400
         self.events.sample_leg_policy_handoff = None
         self.v13b_policy_progress = 0.0
+        self.v13b_private_motion_disabled = False
         self.rewards.undesired_contacts = None
         self.terminations.anchor_pos = None
         self.terminations.anchor_ori = None
@@ -2646,6 +2665,36 @@ class A3FloatingTargetConditionedReferenceFreeV13BAnnealedPriorEnvCfg(
         # The parent intentionally disables motion for final deployment.  This
         # private branch restores it only for the frozen stage-A prior.
         self.commands.motion = HOPECommandsCfg().motion
+        # The replacement above must not re-introduce the generic tracking
+        # reset curriculum.  CompletePriors starts from the exact deployed
+        # right-front READY state; robustness perturbations are a separate
+        # later experiment and are not part of the V1.3B start contract.
+        self.commands.motion.pose_range = {}
+        self.commands.motion.velocity_range = {}
+        self.commands.motion.joint_position_range = (0.0, 0.0)
+        self.commands.motion.reset_perturbation_probability = 0.0
+        self.commands.motion.hard_case_probability = 0.0
+        self.commands.motion.hard_case_motion_ids = ()
+        self.commands.motion.hard_case_velocity_range = {}
+        if (
+            self.commands.motion.pose_range
+            or self.commands.motion.velocity_range
+            or tuple(self.commands.motion.joint_position_range) != (0.0, 0.0)
+            or float(self.commands.motion.reset_perturbation_probability) != 0.0
+            or float(self.commands.motion.hard_case_probability) != 0.0
+        ):
+            raise RuntimeError(
+                "CompletePriors reset contract failed: private motion reset perturbation is nonzero"
+            )
+        print(
+            "[V1.3B] CompletePriors reset contract: "
+            f"pose_range={self.commands.motion.pose_range} "
+            f"velocity_range={self.commands.motion.velocity_range} "
+            f"joint_position_range={self.commands.motion.joint_position_range} "
+            f"reset_perturbation_probability={self.commands.motion.reset_perturbation_probability} "
+            f"hard_case_probability={self.commands.motion.hard_case_probability}",
+            flush=True,
+        )
         # Replacing the dataclass instance above also replaces the assignments
         # made by the inherited A3 flat/tracker setup.  The private stage-A
         # observation group still needs the same canonical anchor and tracked
@@ -2676,6 +2725,15 @@ class A3FloatingTargetConditionedReferenceFreeV13BAnnealedPriorEnvCfg(
         # generate the racket target and never enters the public 98-D actor.
         self.commands.racket_target.motion_command_name = "motion"
         self.commands.racket_target.target_mode = "reference_free_global"
+        # Early public-goal alignment prevents the frozen private priors from
+        # striking a different point/time than the 10-D reward.  It hands off
+        # by the lower-prior zero point; motion is never exposed to the actor.
+        self.commands.racket_target.motion_alignment_enabled = True
+        self.commands.racket_target.motion_alignment_start_progress = 0.0
+        self.commands.racket_target.motion_alignment_end_progress = 0.60
+        self.commands.racket_target.motion_alignment_include_prelude_s = False
+        self.commands.racket_target.motion_alignment_time_range_s = (0.20, 0.60)
+        self.commands.racket_target.private_motion_disable_progress = 0.70
         # Preserve the exact historical teacher inputs.  In particular, the
         # frozen priors must never see the public random target: that target
         # is intentionally not tied to their private reference motion.
@@ -2699,8 +2757,8 @@ class A3FloatingTargetConditionedReferenceFreeV13BAnnealedPriorEnvCfg(
             "cfg/target_conditioned/direct_action_scale_v13b_annealed_prior.yaml"
         )
         self.actions.joint_pos.annealed_3396_prior_observation_group = "stage_a"
-        self.actions.joint_pos.annealed_3396_prior_alpha_start = 0.80
-        self.actions.joint_pos.annealed_3396_prior_alpha_zero_progress = 0.60
+        self.actions.joint_pos.annealed_3396_prior_alpha_start = 1.00
+        self.actions.joint_pos.annealed_3396_prior_alpha_zero_progress = 0.70
         self.actions.joint_pos.annealed_900_upper_prior_enabled = True
         self.actions.joint_pos.annealed_900_upper_prior_checkpoint = (
             "checkpoints/frozen_priors/model_900.pt"

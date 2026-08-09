@@ -53,14 +53,14 @@ def main() -> None:
             p0 = command.racket_target_pos_w.clone()
             n0 = command.racket_target_normal_w.clone()
             v0 = command.racket_target_vel_w.clone()
-            t0 = command._hit_time.clone()
             command.racket_target_pos_w[1, 1] += 0.01
             command.racket_target_pos_w[2, 1] -= 0.01
             # A small tangent normal perturbation, followed by renormalization.
             command.racket_target_normal_w[3, 2] += 0.02
             command.racket_target_normal_w[3] /= torch.linalg.vector_norm(command.racket_target_normal_w[3]).clamp_min(1.0e-6)
             command.racket_target_vel_w[4] *= 1.05
-            command._hit_time[5] = -0.10
+            command.strike_event.episode_strike_time_s[5] = -0.10
+            command._previous_tau[5] = -0.10
             command._compute_strike_timing()
             target_deltas = command.racket_target_pos_w - p0
             signed_tau_initial = command.time_to_strike.detach().cpu().tolist()

@@ -536,6 +536,13 @@ class MotionCommand(CommandTerm):
             self.motion_ids = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
             self._use_motion_library = False
         self.time_steps = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        # V1.3B CompletePriors may rephase a private teacher so its physical
+        # hit matches the public short time-to-hit.  These are bookkeeping
+        # only; they are never exposed to the public actor.
+        self.v13b_teacher_start_frame = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        self.v13b_teacher_hit_frame = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        self.v13b_teacher_rephased = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+        self.v13b_upper_prior_wrap_count = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
         # Monotonic within-episode strike generation.  Episode resets return
         # this to zero; begin_next_shot() increments it without touching the
         # physical articulation state.  Runtime controllers use this explicit
@@ -1027,6 +1034,14 @@ class MotionCommand(CommandTerm):
         return self.robot.data.body_ang_vel_w[:, self.robot_anchor_body_index]
 
     def _update_metrics(self):
+        if bool(getattr(self._env, "v13b_private_motion_disabled", False)):
+            # Do not dereference motion tensors in the final deployment-path
+            # portion of V1.3B training.  Keep existing metric buffers finite
+            # for generic loggers without inventing a new reference phase.
+            for value in self.metrics.values():
+                if isinstance(value, torch.Tensor):
+                    value.zero_()
+            return
         anchor_pos_err = self.anchor_pos_w - self.robot_anchor_pos_w
         anchor_rot_err = quat_error_magnitude(self.anchor_quat_w, self.robot_anchor_quat_w)
         anchor_lin_vel_err = self.anchor_lin_vel_w - self.robot_anchor_lin_vel_w
@@ -1321,6 +1336,35 @@ class MotionCommand(CommandTerm):
         self.prelude_elapsed_steps[env_ids_tensor] = 0
         self.shot_cycle[env_ids_tensor] += 1
 
+    def configure_v13b_episode_strike(
+        self, env_ids: Sequence[int] | torch.Tensor, teacher_start_frames: torch.Tensor
+    ) -> None:
+        """Align teacher playback to a latched V1.3B public strike event.
+
+        ``teacher_start_frame`` is selected so that
+        ``(hit_frame - start_frame) / fps`` equals the public sampled
+        time-to-hit within one motion frame.  The legacy READY prelude is
+        deliberately skipped: it is not added to either clock and therefore
+        cannot be double counted.
+        """
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        starts = torch.as_tensor(teacher_start_frames, dtype=torch.long, device=self.device).flatten()
+        if starts.numel() != ids.numel():
+            raise ValueError("teacher_start_frames must have one entry per environment")
+        if not self._use_motion_library:
+            raise RuntimeError("V1.3B teacher rephasing requires a motion manifest")
+        lengths = self.motion.motion_lengths[self.motion_ids[ids]]
+        starts = torch.minimum(torch.clamp(starts, min=0), lengths - 1)
+        self.time_steps[ids] = starts
+        self.v13b_teacher_start_frame[ids] = starts
+        self.v13b_teacher_hit_frame[ids] = self.motion.hit_frame[self.motion_ids[ids]]
+        self.v13b_teacher_rephased[ids] = True
+        self.v13b_upper_prior_wrap_count[ids] = 0
+        # Do not run a second READY->frame0 bridge after choosing a nonzero
+        # teacher start frame.  The event clock is now authoritative.
+        self.prelude_elapsed_steps[ids] = self.prelude_steps
+        self.tail_steps[ids] = 0
+
     def can_begin_next_shot(self, env_ids: Sequence[int] | torch.Tensor) -> torch.Tensor:
         """Return the unified physical recovery gate for next-action admission.
 
@@ -1384,9 +1428,33 @@ class MotionCommand(CommandTerm):
     def _resample_command(self, env_ids: Sequence[int]):
         if len(env_ids) == 0:
             return
+        if bool(getattr(self._env, "v13b_private_motion_disabled", False)):
+            # Final V1.3B iterations must still reset the physical plant to
+            # the shared READY, but must not select/read a motion-bank clip.
+            ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+            self.time_steps[ids] = 0
+            self.tail_steps[ids] = 0
+            self.prelude_elapsed_steps[ids] = 0
+            self.v13b_teacher_rephased[ids] = False
+            self.v13b_teacher_start_frame[ids] = 0
+            self.v13b_teacher_hit_frame[ids] = 0
+            self.v13b_upper_prior_wrap_count[ids] = 0
+            root_state = self.robot.data.default_root_state.clone()
+            root_state[ids, :3] += self._env.scene.env_origins[ids]
+            joint_pos = self.ready_joint_pos[ids].clone()
+            joint_vel = self.robot.data.default_joint_vel[ids].clone()
+            limits = self.robot.data.soft_joint_pos_limits[ids]
+            joint_pos = torch.clip(joint_pos, limits[:, :, 0], limits[:, :, 1])
+            self.robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=ids)
+            self.robot.write_root_state_to_sim(root_state[ids], env_ids=ids)
+            return
         self.shot_cycle[env_ids] = 0
         self.tail_steps[env_ids] = 0
         self.prelude_elapsed_steps[env_ids] = 0
+        self.v13b_teacher_rephased[env_ids] = False
+        self.v13b_teacher_start_frame[env_ids] = 0
+        self.v13b_teacher_hit_frame[env_ids] = 0
+        self.v13b_upper_prior_wrap_count[env_ids] = 0
         hard_case_probability = float(self.cfg.hard_case_probability)
         if not 0.0 <= hard_case_probability <= 1.0:
             raise ValueError("hard_case_probability must be in [0, 1]")
@@ -1473,6 +1541,12 @@ class MotionCommand(CommandTerm):
         )
 
     def _update_command(self):
+        if bool(getattr(self._env, "v13b_private_motion_disabled", False)):
+            # The command remains registered for a single training run, but
+            # final reference-free iterations must not read or advance motion
+            # bank data once both priors are annealed out.
+            return
+        previous_steps = self.time_steps.clone()
         advance_mask = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
         if self.prelude_steps > 0:
             prelude_active = self.prelude_elapsed_steps < self.prelude_steps
@@ -1504,6 +1578,11 @@ class MotionCommand(CommandTerm):
             else:
                 env_ids = torch.where(advance_mask & (self.time_steps >= self.motion.time_step_total))[0]
         self._resample_command(env_ids)
+        # CompletePriors is finite/one-shot: a rephased teacher is never
+        # allowed to rewind before environment reset.  Count and fail through
+        # the public event assertion if a future refactor reintroduces wrap.
+        wrapped = self.v13b_teacher_rephased & (self.time_steps < previous_steps)
+        self.v13b_upper_prior_wrap_count[wrapped] += 1
 
         anchor_pos_w_repeat = self.anchor_pos_w[:, None, :].repeat(1, len(self.cfg.body_names), 1)
         anchor_quat_w_repeat = self.anchor_quat_w[:, None, :].repeat(1, len(self.cfg.body_names), 1)

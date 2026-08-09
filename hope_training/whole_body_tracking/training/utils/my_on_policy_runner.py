@@ -129,8 +129,10 @@ class MyOnPolicyRunner(OnPolicyRunner):
             "V13B/alpha_upper": mean("v13b_annealed_upper_prior_alpha"),
             "V13B/lower_prior_rms": mean("v13b_annealed_prior_prior_rms"),
             "V13B/lower_student_rms": mean("v13b_annealed_prior_student_rms"),
+            "V13B/lower_student_prior_ratio": mean("v13b_annealed_prior_student_ratio"),
             "V13B/upper_prior_rms": mean("v13b_annealed_upper_prior_prior_rms"),
             "V13B/upper_student_rms": mean("v13b_annealed_upper_prior_student_rms"),
+            "V13B/upper_student_prior_ratio": mean("v13b_annealed_upper_prior_student_ratio"),
         }
         for tag, value in values.items():
             if value is not None and math.isfinite(value):
@@ -338,8 +340,10 @@ class MotionOnPolicyRunner(OnPolicyRunner):
             ("V13B/alpha_upper", "v13b_annealed_upper_prior_alpha"),
             ("V13B/lower_prior_rms", "v13b_annealed_prior_prior_rms"),
             ("V13B/lower_student_rms", "v13b_annealed_prior_student_rms"),
+            ("V13B/lower_student_prior_ratio", "v13b_annealed_prior_student_ratio"),
             ("V13B/upper_prior_rms", "v13b_annealed_upper_prior_prior_rms"),
             ("V13B/upper_student_rms", "v13b_annealed_upper_prior_student_rms"),
+            ("V13B/upper_student_prior_ratio", "v13b_annealed_upper_prior_student_ratio"),
         ):
             self._log_scalar(tag, self._mean_tensor(getattr(env, attr, None)), step)
 
