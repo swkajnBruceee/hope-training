@@ -1,0 +1,109 @@
+# Opt-in continuation of the resolved CompletePriors contract.  This is not
+# WorkspaceExpansion and does not alter the task used by the active run.
+defaults:
+  - _self_
+
+name: HOPEA3TargetConditionedReferenceFreeV13BCompletePriorsPrecisionRescue
+gym_task: HOPE-FloatingTargetConditionedReferenceFreeV13BCompletePriorsPrecisionRescue-AgibotA3-v0
+experiment_name: agibot_a3_target_conditioned_reference_free_v13b_complete_priors_precision_rescue
+motion_manifest: /home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/training_manifest.json
+validation_manifest: /home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/validation_manifest.json
+v13b_migrated_warm_start: false
+
+env:
+  episode_length_s: 10.0
+  staggered_stance_half_span_m: 0.06
+  staggered_front_foot: right
+  stance_lateral_widen_per_foot_m: 0.05
+  stance_knee_flexion_rad: 0.48
+
+motion:
+  pose_range: {}
+  velocity_range: {}
+  joint_position_range: [0.0, 0.0]
+  reset_perturbation_probability: 0.0
+  hard_case_probability: 0.0
+  hard_case_motion_ids: []
+  hard_case_velocity_range: {}
+
+actions:
+  microstep_enabled: true
+  microstep_step_limit_m: 0.02
+  microstep_lowpass_alpha: 0.20
+  upper_prelude_release_steps: 12
+
+goal:
+  contract_version: policy_strike_goal_10d/racket_contact_v1
+  canonical_order: [position_xyz, velocity_xyz, normal_xyz, signed_time_to_hit]
+  target_position_semantics: racket_reference_point_at_strike
+  target_velocity_semantics: ideal_racket_impact_velocity
+  target_normal_semantics: desired_racket_face_normal
+  curriculum:
+    progress_source: policy_updates_continued_from_source
+    warmup_progress: 0.00
+    ramp_end_progress: 0.60
+    initial_position_half_range_m: [0.01, 0.01, 0.01]
+    final_position_half_range_m: [0.08, 0.08, 0.08]
+    initial_speed_fraction: 0.03
+    final_speed_fraction: 0.20
+    initial_normal_half_angle_deg: 2.0
+    final_normal_half_angle_deg: 12.0
+    initial_time_half_range_s: 0.02
+    final_time_half_range_s: 0.10
+    motion_alignment_enabled: true
+    motion_alignment_start_progress: 0.00
+    motion_alignment_end_progress: 0.60
+    motion_alignment_include_prelude_s: false
+    motion_alignment_time_range_s: [0.20, 0.60]
+    private_motion_disable_progress: 0.70
+    contract_assertions: true
+
+training:
+  # User-selected after the read-only Native/Common ablation screen.  This
+  # remains a training initialization only; deployment does not load it.
+  source_checkpoint: /home/bistu/桌面/HOPETableTennis/hope_training/whole_body_tracking/logs/rsl_rl/agibot_a3_target_conditioned_reference_free_v13b_complete_priors_rightfront_v1/2026-08-09_18-10-06_v13b_resetfixed_model18900_clean_23118_rightfront_16384x50000_resume_from2300_exact/model_5000.pt
+  source_iteration: 5000
+  source_historical_progress: 0.1000020000400008
+  source_lower_alpha: 0.9999999999199976
+  source_upper_alpha: 0.8999999998666626
+  schedule_total_iterations: 50000
+  upper_prior_hold_updates: 300
+  upper_prior_max_step: 0.05
+  upper_prior_withdrawal: performance_gated_monotonic
+  lower_prior_continuation: hold_or_monotonic_decline
+  # Evaluation-only teacher-off probe.  The actor remains 98-D; these
+  # private amplitudes are never part of its observation.
+  upper_probe_interval_updates: 200
+  upper_probe_max_steps: 600
+  upper_probe_consecutive_passes: 2
+  upper_probe_min_survival: 0.95
+  upper_probe_min_hit_rate: 0.95
+  upper_probe_max_position_error_m: 0.03
+  upper_probe_max_normal_error_deg: 35.0
+  upper_probe_max_velocity_error_mps: 1.2
+  upper_probe_seed: 20260810
+  # Populated per formal run.  A separate GPU worker writes only approved
+  # teacher-off probe results; an absent or invalid file means HOLD.
+  upper_gate_file: ""
+  upper_gate_run_id: ""
+  actor_only_warm_start: true
+  fresh_critic: true
+  fresh_optimizer: true
+  restart_lr_schedule: true
+  workspace_expansion_enabled: false
+  preflight_required: true
+  preflight_num_envs: 128
+  preflight_iterations: [20, 100]
+  long_training_blocked_until_preflight: true
+
+rewards:
+  # Exact source-of-truth terms remain unchanged; only these two recovery
+  # terms are new.  Gate parameters are audited by tools/audit_*.py.
+  racket_normal_wide_weight: 1.5
+  racket_normal_wide_std_rad: 0.60
+  racket_velocity_wide_weight: 1.25
+  racket_velocity_wide_std_mps: 2.0
+  velocity_wide_position_threshold_m: 0.02
+  velocity_wide_position_excess_std_m: 0.05
+
+workspace_expansion_enabled: false

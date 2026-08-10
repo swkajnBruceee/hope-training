@@ -28,9 +28,6 @@ del _REPO_ROOT, _p
 import hydra
 from omegaconf import OmegaConf
 
-from train import _apply_task_overrides, _as_bool
-
-
 def _run_play(cfg, simulation_app):
     import pathlib
     import copy
@@ -39,6 +36,12 @@ def _run_play(cfg, simulation_app):
 
     import gymnasium as gym
     import torch
+
+    # ``train`` imports task utilities that eventually import IsaacLab.  It
+    # must be imported only after AppLauncher created omni::timeline; doing it
+    # at module import time makes standalone headless replay fail before its
+    # own launcher runs.  This is evaluation-only and does not alter training.
+    from train import _apply_task_overrides, _as_bool
 
     from rsl_rl.runners import OnPolicyRunner
     import rsl_rl.runners.on_policy_runner as rsl_on_policy_runner

@@ -41,7 +41,6 @@ for _p in (
 del _HERE, _REPO_ROOT, _p
 
 from tools.a3_strike_contract import assert_training_manifest
-from training.utils.v13b_checkpoint_admission import validate_pure_v13b_checkpoint
 
 
 def _assert_a3_base_stand_smoke_gate(
@@ -577,7 +576,7 @@ def _assert_v13b_complete_priors_admission(cfg, task_cfg, task_id: str) -> None:
     run requires the checked-in machine-readable gate generated from the two
     event audits and the two PPO preflights.
     """
-    if "ReferenceFreeV13BCompletePriors" not in str(task_id):
+    if "ReferenceFreeV13BCompletePriors" not in str(task_id) or "PrecisionRescue" in str(task_id):
         return
     training = _get(task_cfg, "training")
     if not bool(_get(training, "long_training_blocked_until_preflight") or False):
@@ -605,6 +604,65 @@ def _assert_v13b_complete_priors_admission(cfg, task_cfg, task_id: str) -> None:
             + ", ".join(failed)
         )
     print(f"[train.py] V1.3B CompletePriors admission passed: {gate_path}", flush=True)
+
+
+def _assert_v13b_precision_rescue_admission(cfg, task_cfg, task_id: str) -> None:
+    """Keep PrecisionRescue formal runs closed until its own evidence exists."""
+    if "PrecisionRescue" not in str(task_id):
+        return
+    training = _get(task_cfg, "training") or {}
+    requested = int(cfg.get("max_iterations", _get(training, "schedule_total_iterations") or 0))
+    max_preflight = max(tuple(int(x) for x in (_get(training, "preflight_iterations") or (100,))))
+    source = str(_get(training, "source_checkpoint") or "").strip()
+    fields = (
+        _get(training, "source_iteration"),
+        _get(training, "source_historical_progress"),
+        _get(training, "source_lower_alpha"),
+        _get(training, "source_upper_alpha"),
+    )
+    selection_ready = bool(source) and all(value is not None and float(value) >= 0.0 for value in fields)
+    if not selection_ready:
+        raise RuntimeError(
+            "PrecisionRescue admission is closed: checkpoint selection has not populated source checkpoint/"
+            "iteration/progress/lower-alpha/upper-alpha. Do not hard-code model7000."
+        )
+    if requested <= max_preflight:
+        print("[train.py] PrecisionRescue preflight admission: source continuity verified", flush=True)
+        return
+    gate_path = Path("eval_outputs/v13b_complete_priors_precision_rescue/gates.json")
+    if not gate_path.is_file():
+        raise RuntimeError(
+            "PrecisionRescue formal long-run admission is closed: missing "
+            f"{gate_path}. Complete sweeps, ablations, no-learning replay, 1-env, 128x20, 128x100 and gated anneal first."
+        )
+    payload = json.loads(gate_path.read_text(encoding="utf-8"))
+    required = (
+        "config_equivalence", "workspace_hash", "kernel_sweeps", "checkpoint_selection",
+        "prior_ablation", "no_learning_replay", "one_env", "ppo_preflight_20",
+        "ppo_preflight_100", "bounded_gated_anneal",
+    )
+    failed = [name for name in required if not bool(payload.get("gates", {}).get(name, False))]
+    if failed:
+        raise RuntimeError("PrecisionRescue formal long-run admission is closed: " + ", ".join(failed))
+    print(f"[train.py] PrecisionRescue admission passed: {gate_path}", flush=True)
+    print(
+        "=== V1.3B Precision Rescue Admission ===\n"
+        f"source_checkpoint = {source}\n"
+        f"source_iteration = {_get(training, 'source_iteration')}\n"
+        f"source_completepriors_progress = {_get(training, 'source_historical_progress')}\n"
+        f"source_upper_alpha = {_get(training, 'source_upper_alpha')}\n"
+        f"source_lower_alpha = {_get(training, 'source_lower_alpha')}\n"
+        "actor_obs_dim = 98\ncritic_obs_dim = 99\naction_dim = 26\n"
+        "actor_loaded = true\nactor_normalizer_loaded = true\ncritic_loaded = false\n"
+        "optimizer_loaded = false\nlr_schedule_restarted = true\n"
+        "workspace_expansion_enabled = false\ntarget_sampler = current_completepriors_local\n"
+        "position_reward_unchanged = true\nprehit_position_progress_unchanged = true\n"
+        "velocity_exact_std = 0.50\nnormal_exact_std = 0.1745329\nstrike_time_std = 0.05\n"
+        "velocity_wide_std = 2.0\nnormal_wide_std = 0.60\n"
+        "upper_withdrawal = performance_gated_monotonic\n"
+        "current_completepriors_untouched = true\nworkspace_expansion_hash_unchanged = true",
+        flush=True,
+    )
 
 
 def _assert_v13b_workspace_expansion_contract(cfg, task_cfg, env_cfg, task_id: str) -> None:
@@ -663,6 +721,11 @@ def _assert_v13b_workspace_expansion_contract(cfg, task_cfg, env_cfg, task_id: s
         )
     requested_iterations = int(cfg.get("max_iterations", _get(training, "schedule_total_iterations") or 0))
     max_preflight = max(tuple(int(x) for x in (_get(training, "preflight_iterations") or (100,))))
+    # Import this Isaac-dependent helper only on the WorkspaceExpansion path.
+    # Importing ``training`` at module load time initializes Isaac extensions
+    # before ``AppLauncher`` and prevents ordinary training/Rescue startup.
+    from training.utils.v13b_checkpoint_admission import validate_pure_v13b_checkpoint
+
     admission = validate_pure_v13b_checkpoint(
         checkpoint,
         require_behavioral=requested_iterations > max_preflight,
@@ -1657,6 +1720,53 @@ def _apply_task_overrides(env_cfg, task):
                 setattr(command, command_key, value)
                 applied.append(f"commands.racket_target.{command_key}={value}")
 
+    # PrecisionRescue accepts a selected historical source only through its
+    # own opt-in task.  These fields are copied before ManagerBasedRLEnv
+    # constructs the ActionTerm, so its first rollout starts at the source
+    # progress/alphas instead of accidentally restarting the old schedule.
+    training = _get(task, "training") or {}
+    if bool(getattr(env_cfg, "precision_rescue_enabled", False)):
+        source_map = {
+            "source_checkpoint": "precision_rescue_source_checkpoint",
+            "source_iteration": "precision_rescue_source_iteration",
+            "source_historical_progress": "precision_rescue_source_progress",
+            "source_lower_alpha": "precision_rescue_source_lower_alpha",
+            "source_upper_alpha": "precision_rescue_source_upper_alpha",
+            "upper_prior_hold_updates": "precision_rescue_hold_updates",
+            "upper_prior_max_step": "precision_rescue_upper_step",
+            "schedule_total_iterations": "precision_rescue_schedule_total_updates",
+            "upper_probe_interval_updates": "precision_rescue_upper_probe_interval_updates",
+            "upper_probe_max_steps": "precision_rescue_upper_probe_max_steps",
+            "upper_probe_consecutive_passes": "precision_rescue_upper_probe_consecutive_passes",
+            "upper_probe_min_survival": "precision_rescue_upper_probe_min_survival",
+            "upper_probe_min_hit_rate": "precision_rescue_upper_probe_min_hit_rate",
+            "upper_probe_max_position_error_m": "precision_rescue_upper_probe_max_position_error_m",
+            "upper_probe_max_normal_error_deg": "precision_rescue_upper_probe_max_normal_error_deg",
+            "upper_probe_max_velocity_error_mps": "precision_rescue_upper_probe_max_velocity_error_mps",
+            "upper_probe_seed": "precision_rescue_upper_probe_seed",
+            "upper_gate_file": "precision_rescue_upper_gate_file",
+            "upper_gate_run_id": "precision_rescue_upper_gate_run_id",
+        }
+        for yaml_key, cfg_key in source_map.items():
+            value = _get(training, yaml_key)
+            if value is None:
+                continue
+            if yaml_key in {"source_checkpoint", "upper_gate_file", "upper_gate_run_id"}:
+                value = str(value)
+            elif yaml_key in {
+                "source_iteration", "upper_prior_hold_updates", "schedule_total_iterations",
+                "upper_probe_interval_updates", "upper_probe_max_steps", "upper_probe_consecutive_passes",
+                "upper_probe_seed",
+            }:
+                value = int(value)
+            else:
+                value = float(value)
+            setattr(env_cfg, cfg_key, value)
+            if hasattr(env_cfg.actions.joint_pos, cfg_key):
+                setattr(env_cfg.actions.joint_pos, cfg_key, value)
+            applied.append(f"precision_rescue.{cfg_key}={value}")
+        env_cfg.actions.joint_pos.precision_rescue_enabled = True
+
     rw = _get(task, "rewards")
     if rw is not None:
         R = env_cfg.rewards
@@ -1707,6 +1817,18 @@ def _apply_task_overrides(env_cfg, task):
         _set_reward(R, "racket_position_fine", _get(rw, "racket_position_fine_weight"), _get(rw, "racket_position_fine_std"), applied)
         _set_reward(R, "racket_position_y_fine", _get(rw, "racket_position_y_fine_weight"), _get(rw, "racket_position_y_fine_std"), applied)
         _set_reward(R, "racket_velocity", _get(rw, "racket_velocity_weight"), _get(rw, "racket_velocity_std"), applied)
+        _set_reward(R, "racket_velocity_wide", _get(rw, "racket_velocity_wide_weight"), None, applied)
+        if hasattr(R, "racket_velocity_wide") and R.racket_velocity_wide is not None:
+            R.racket_velocity_wide.params["audit_weight"] = float(R.racket_velocity_wide.weight)
+            for _key, _yaml_key in (
+                ("velocity_std", "racket_velocity_wide_std_mps"),
+                ("position_threshold", "velocity_wide_position_threshold_m"),
+                ("position_excess_std", "velocity_wide_position_excess_std_m"),
+            ):
+                _value = _get(rw, _yaml_key)
+                if _value is not None:
+                    R.racket_velocity_wide.params[_key] = float(_value)
+                    applied.append(f"rewards.racket_velocity_wide.params.{_key}={float(_value)}")
         # P5U causal reward ablation terms.  These are deliberately explicit
         # YAML overrides so R0/R1/R2/R3 can be replayed without editing the
         # environment code or silently changing the reward contract.
@@ -1754,6 +1876,9 @@ def _apply_task_overrides(env_cfg, task):
                         f"{key}={float(val)}"
                     )
         _set_reward(R, "racket_normal", _get(rw, "racket_normal_weight"), _get(rw, "racket_normal_std"), applied)
+        _set_reward(R, "racket_normal_wide", _get(rw, "racket_normal_wide_weight"), _get(rw, "racket_normal_wide_std_rad"), applied)
+        if hasattr(R, "racket_normal_wide") and R.racket_normal_wide is not None:
+            R.racket_normal_wide.params["audit_weight"] = float(R.racket_normal_wide.weight)
         _set_reward(R, "racket_hit_coupled", _get(rw, "racket_hit_coupled_weight"), None, applied)
         if hasattr(R, "racket_hit_coupled") and R.racket_hit_coupled is not None:
             coupled = _get(rw, "racket_hit_coupled")
@@ -2222,6 +2347,7 @@ def _run(cfg):
         _get(cfg.task, "name", task_id),
         legacy_fall_strategy=bool(cfg.get("legacy_fall_strategy", False)),
     )
+    _assert_v13b_precision_rescue_admission(cfg, cfg.task, task_id)
     _assert_v13b_complete_priors_admission(cfg, cfg.task, task_id)
     _assert_v13b_workspace_expansion_contract(cfg, cfg.task, env_cfg, task_id)
     print(f"[train.py] applied {len(applied)} task override(s) from cfg/task/{_get(cfg.task, 'name', task_id)}.yaml:", flush=True)
@@ -2546,7 +2672,10 @@ def _run(cfg):
         # The cfg object is copied into ManagerBasedRLEnv; arbitrary cfg
         # attributes are not automatically promoted to runtime state.  Seed
         # the explicit update-driven curriculum clock before the first reset.
-        env.unwrapped.v13b_policy_progress = 0.0
+        rescue_schedule = getattr(env.unwrapped, "v13b_precision_rescue_schedule", None)
+        env.unwrapped.v13b_policy_progress = (
+            float(rescue_schedule.global_progress) if rescue_schedule is not None else 0.0
+        )
         if "ReferenceFreeV13BWorkspaceExpansion" in task_id:
             env.unwrapped.workspace_curriculum_progress = 0.0
         schedule_total = int(
@@ -2556,7 +2685,8 @@ def _run(cfg):
             raise ValueError(f"V1.3B schedule_total_iterations must be >= 2, got {schedule_total}")
         env.unwrapped.v13b_schedule_total_iterations = schedule_total
         print(
-            "[train.py] V1.3B curriculum clock initialized at progress=0.0 "
+            "[train.py] V1.3B curriculum clock initialized at progress="
+            f"{env.unwrapped.v13b_policy_progress:.6f} "
             f"(schedule_total_iterations={schedule_total})",
             flush=True,
         )

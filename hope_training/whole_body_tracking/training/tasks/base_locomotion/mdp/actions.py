@@ -1402,6 +1402,14 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         env.v13b_annealed_upper_prior_student_rms = self._annealed_upper_prior_student_rms
         env.v13b_annealed_upper_prior_prior_rms = self._annealed_upper_prior_prior_rms
         env.v13b_annealed_upper_prior_student_ratio = self._annealed_upper_prior_student_ratio
+        # Scalar schedule observability is intentionally separate from the
+        # per-environment diagnostic tensors above.  ``reset(env_ids)`` must
+        # clear the latter for terminated environments; averaging them after a
+        # rollout would otherwise make a constant global alpha look as if it
+        # had decayed.  These scalars record the value actually selected by
+        # the action path on its most recent control step.
+        env.v13b_precision_rescue_applied_lower_alpha = None
+        env.v13b_precision_rescue_applied_upper_alpha = None
         env.v13b_annealed_upper_prior_last_observation = self._annealed_upper_prior_last_observation
         env.v13b_teacher_alpha = torch.zeros(self.num_envs, device=self.device)
         env.v13b_teacher_joint_targets = None
@@ -1412,6 +1420,51 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         env.v13b_direct_scale_status = scale_status
         env.v13b_startup_diagnostics = self.v13b_startup_diagnostics
         self._v13b_debug_action_printed = False
+        # PrecisionRescue is a separate opt-in task.  Its continuation clock
+        # lives on this ActionTerm so the public 98-D actor never receives a
+        # teacher field.  The default branch below is intentionally absent for
+        # CompletePriors and therefore preserves its original schedule.
+        self._precision_rescue_schedule = None
+        if bool(getattr(cfg, "precision_rescue_enabled", False)):
+            from training.utils.v13b_precision_rescue import PrecisionRescuePriorSchedule
+
+            self._precision_rescue_schedule = PrecisionRescuePriorSchedule(
+                source_progress=float(cfg.precision_rescue_source_progress),
+                source_lower_alpha=float(cfg.precision_rescue_source_lower_alpha),
+                source_upper_alpha=float(cfg.precision_rescue_source_upper_alpha),
+                total_chain_updates=int(cfg.precision_rescue_schedule_total_updates),
+                hold_updates=int(cfg.precision_rescue_hold_updates),
+                upper_step=float(cfg.precision_rescue_upper_step),
+            )
+            env.v13b_precision_rescue_schedule = self._precision_rescue_schedule
+            # Probe settings are private runtime metadata.  They must not be
+            # added to the public 98-D actor observation.
+            env.v13b_precision_rescue_upper_probe_config = {
+                "interval_updates": int(cfg.precision_rescue_upper_probe_interval_updates),
+                "max_steps": int(cfg.precision_rescue_upper_probe_max_steps),
+                "consecutive_passes": int(cfg.precision_rescue_upper_probe_consecutive_passes),
+                "min_survival": float(cfg.precision_rescue_upper_probe_min_survival),
+                "min_hit_rate": float(cfg.precision_rescue_upper_probe_min_hit_rate),
+                "max_position_error_m": float(cfg.precision_rescue_upper_probe_max_position_error_m),
+                "max_normal_error_deg": float(cfg.precision_rescue_upper_probe_max_normal_error_deg),
+                "max_velocity_error_mps": float(cfg.precision_rescue_upper_probe_max_velocity_error_mps),
+                "seed": int(cfg.precision_rescue_upper_probe_seed),
+            }
+            env.v13b_precision_rescue_upper_gate_config = {
+                "file": str(cfg.precision_rescue_upper_gate_file),
+                "run_id": str(cfg.precision_rescue_upper_gate_run_id),
+                "source_checkpoint": str(cfg.precision_rescue_source_checkpoint),
+            }
+            # Start the target curriculum at the source checkpoint's already
+            # consumed progress, never at 0.0.
+            env.v13b_policy_progress = self._precision_rescue_schedule.global_progress
+            print(
+                "[V1.3B PrecisionRescue] continuation prior schedule armed: "
+                f"progress={env.v13b_policy_progress:.6f} "
+                f"lower={self._precision_rescue_schedule.lower_alpha():.6f} "
+                f"upper={self._precision_rescue_schedule.upper_alpha():.6f}",
+                flush=True,
+            )
         print(
             "[V1.3B] direct action scales loaded: "
             f"status={scale_status} lower={tuple(round(v, 5) for v in lower_scale)} "
@@ -1578,6 +1631,20 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
             raise ValueError(f"V1.3B smoke override {name!r} alpha must be in [0, 1]")
         return override
 
+    def _scheduled_prior_alpha(self, name: str, progress: float) -> float:
+        """Use Rescue continuation schedule only when its opt-in cfg enables it."""
+        if self._precision_rescue_schedule is not None:
+            if name == "lower":
+                return self._prior_alpha_for_smoke(name, self._precision_rescue_schedule.lower_alpha())
+            if name == "upper":
+                return self._prior_alpha_for_smoke(name, self._precision_rescue_schedule.upper_alpha())
+            raise KeyError(f"unknown V1.3B prior name {name!r}")
+        if name == "lower":
+            return self._prior_alpha_for_smoke(name, lower_prior_alpha(progress))
+        if name == "upper":
+            return self._prior_alpha_for_smoke(name, upper_prior_alpha(progress))
+        raise KeyError(f"unknown V1.3B prior name {name!r}")
+
     def process_actions(self, actions: torch.Tensor):
         if actions.shape != self._raw_actions.shape or not torch.isfinite(actions).all():
             raise ValueError(f"Expected finite V1.3B action shape {self._raw_actions.shape}")
@@ -1612,11 +1679,10 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         self._annealed_prior_prior_rms.zero_()
         self._annealed_prior_student_ratio.zero_()
         alpha = torch.zeros(self.num_envs, device=self.device)
+        alpha_value = 0.0
         if self._annealed_prior_enabled:
             progress = float(getattr(self._env, "v13b_policy_progress", 0.0))
-            alpha_value = self._prior_alpha_for_smoke(
-                "lower", lower_prior_alpha(progress)
-            )
+            alpha_value = self._scheduled_prior_alpha("lower", progress)
             if alpha_value > 0.0:
                 alpha = torch.full((self.num_envs,), alpha_value, device=self.device)
                 prior_obs = self._compute_observation_group(self._annealed_prior_observation_group)
@@ -1642,6 +1708,8 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                 self._annealed_prior_student_rms / self._annealed_prior_prior_rms.clamp_min(1.0e-6),
                 torch.zeros_like(self._annealed_prior_student_rms),
             )
+        if self._precision_rescue_schedule is not None:
+            self._env.v13b_precision_rescue_applied_lower_alpha = float(alpha_value)
 
         # Complete training-only upper strike prior.  model_900 is not used as
         # a bare residual: recover the historical full command
@@ -1656,9 +1724,7 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         upper_prior_alpha_value = 0.0
         if self._annealed_upper_prior_enabled:
             progress = float(getattr(self._env, "v13b_policy_progress", 0.0))
-            upper_prior_alpha_value = self._prior_alpha_for_smoke(
-                "upper", upper_prior_alpha(progress)
-            )
+            upper_prior_alpha_value = self._scheduled_prior_alpha("upper", progress)
             if upper_prior_alpha_value > 0.0:
                 motion = self._env.command_manager.get_term(
                     self._annealed_upper_prior_reference_command
@@ -1713,6 +1779,8 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                 self._annealed_upper_prior_student_rms / self._annealed_upper_prior_prior_rms.clamp_min(1.0e-6),
                 torch.zeros_like(self._annealed_upper_prior_student_rms),
             )
+        if self._precision_rescue_schedule is not None:
+            self._env.v13b_precision_rescue_applied_upper_alpha = float(upper_prior_alpha_value)
 
         self._full_joint_targets[:] = self._ready_full
         self._full_joint_velocity_targets.zero_()
@@ -1806,6 +1874,31 @@ class A3ReferenceFreeTargetConditionedPositionActionCfg(A3F0UpperBaseCompositePo
     annealed_900_upper_prior_observation_group: str = "upper"
     annealed_900_upper_prior_reference_command: str = "motion"
     annealed_900_upper_prior_raw_clip: float = 0.50
+    # Strictly opt-in PrecisionRescue continuation schedule.  Defaults retain
+    # current CompletePriors behavior exactly.
+    precision_rescue_enabled: bool = False
+    # Kept on the ActionCfg as runtime provenance for the external upper-off
+    # gate.  The gate must only approve withdrawals for the exact selected
+    # source checkpoint; an empty/default value would make that contract
+    # unverifiable.
+    precision_rescue_source_checkpoint: str = ""
+    precision_rescue_source_progress: float = -1.0
+    precision_rescue_source_lower_alpha: float = -1.0
+    precision_rescue_source_upper_alpha: float = -1.0
+    precision_rescue_hold_updates: int = 300
+    precision_rescue_upper_step: float = 0.05
+    precision_rescue_schedule_total_updates: int = 50000
+    precision_rescue_upper_probe_interval_updates: int = 200
+    precision_rescue_upper_probe_max_steps: int = 600
+    precision_rescue_upper_probe_consecutive_passes: int = 2
+    precision_rescue_upper_probe_min_survival: float = 0.95
+    precision_rescue_upper_probe_min_hit_rate: float = 0.95
+    precision_rescue_upper_probe_max_position_error_m: float = 0.03
+    precision_rescue_upper_probe_max_normal_error_deg: float = 35.0
+    precision_rescue_upper_probe_max_velocity_error_mps: float = 1.2
+    precision_rescue_upper_probe_seed: int = 20260810
+    precision_rescue_upper_gate_file: str = ""
+    precision_rescue_upper_gate_run_id: str = ""
 
 
 class A3FrozenAnchorArmAdapterPositionAction(A3F1FrozenUpperBaseCompositePositionAction):
