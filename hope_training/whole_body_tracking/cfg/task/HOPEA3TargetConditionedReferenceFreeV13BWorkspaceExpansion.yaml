@@ -1,0 +1,82 @@
+# V1.3B Workspace Expansion: pure-V1.3B actor continuation only.
+# This task is opt-in and does not alter CompletePriors defaults.
+defaults:
+  - _self_
+
+name: HOPEA3TargetConditionedReferenceFreeV13BWorkspaceExpansion
+gym_task: HOPE-FloatingTargetConditionedReferenceFreeV13BWorkspaceExpansion-AgibotA3-v0
+experiment_name: agibot_a3_target_conditioned_reference_free_v13b_workspace_expansion
+motion_manifest: /home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/training_manifest.json
+validation_manifest: /home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/validation_manifest.json
+
+env:
+  episode_length_s: 10.0
+  staggered_stance_half_span_m: 0.06
+  staggered_front_foot: right
+  stance_lateral_widen_per_foot_m: 0.05
+  stance_knee_flexion_rad: 0.48
+
+actions:
+  microstep_enabled: true
+  microstep_step_limit_m: 0.02
+  microstep_lowpass_alpha: 0.20
+
+goal:
+  contract_version: policy_strike_goal_10d/racket_contact_v1
+  canonical_order: [position_xyz, velocity_xyz, normal_xyz, signed_time_to_hit]
+  target_position_semantics: racket_reference_point_at_strike
+  target_velocity_semantics: ideal_racket_impact_velocity
+  target_normal_semantics: desired_racket_face_normal
+  curriculum:
+    progress_source: workspace_policy_updates
+    warmup_progress: 0.00
+    ramp_end_progress: 0.70
+    initial_position_half_range_m: [0.01, 0.01, 0.01]
+    final_position_half_range_m: [0.08, 0.08, 0.08]
+    initial_speed_fraction: 0.20
+    final_speed_fraction: 0.20
+    initial_normal_half_angle_deg: 12.0
+    final_normal_half_angle_deg: 12.0
+    initial_time_half_range_s: 0.10
+    final_time_half_range_s: 0.10
+    workspace_expansion_enabled: true
+    workspace_sampling_mode: audited_anchor_bank
+    workspace_anchor_bank_enabled: true
+    workspace_anchor_sampling_enabled: true
+    workspace_anchor_source: audited_feasible_goal_samples
+    workspace_anchor_requires_qualified: true
+    workspace_anchor_manifest: /home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807/training_manifest.json
+    workspace_motion_anchor_probability: 1.0
+    workspace_global_probability: 0.0
+    workspace_keep_motion_anchor_final: false
+    workspace_local_min_xyz: [0.18, -0.85, -0.05]
+    workspace_local_max_xyz: [0.72, 0.35, 0.45]
+    workspace_local_support_half_range_xyz: [0.08, 0.08, 0.08]
+    workspace_support_distance_tolerance_m: 0.0001
+    max_resample_attempts: 32
+    contract_assertions: true
+
+training:
+  source_checkpoint_kind: pure_v13b_actor
+  warm_start_checkpoint: ""
+  load_actor: true
+  load_critic: false
+  load_optimizer: false
+  restart_lr_schedule: true
+  schedule_total_iterations: 30000
+  workspace_curriculum_progress_source: policy_updates
+  model18900_loaded: false
+  model900_loaded: false
+  model3396_loaded: false
+  p5u_migration_loaded: false
+  upper_prior_alpha: 0.0
+  lower_prior_alpha: 0.0
+  reference_action_prior_enabled: false
+  global_target_fraction: 0.0
+  preflight_required: true
+  preflight_num_envs: 128
+  preflight_iterations: [20, 100]
+  long_training_blocked_until_preflight: true
+
+# Reward weights and physical contracts are inherited unchanged from the pure
+# V1.3B environment. This stage changes target distribution only.

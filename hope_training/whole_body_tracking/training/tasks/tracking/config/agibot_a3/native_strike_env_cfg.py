@@ -2387,6 +2387,26 @@ class A3ReferenceFreeCommandsCfg(HOPECommandsCfg):
 
 
 @configclass
+class A3WorkspaceExpansionCommandsCfg(A3ReferenceFreeCommandsCfg):
+    """Pure V1.3B commands; the manifest is anchor metadata only."""
+
+    racket_target = mdp.ReferenceFreeRacketTargetCommandCfg(
+        asset_name="robot",
+        debug_vis=False,
+        racket_body_name="__force_wrist_offset_racket_fk__",
+        wrist_body_name="right_wrist_yaw_Link",
+        racket_fk_mode="wrist_offset",
+        target_mode="reference_free_global",
+        strike_window_s=0.06,
+        strike_time_std_s=0.05,
+        workspace_expansion_enabled=True,
+        workspace_sampling_mode="audited_anchor_bank",
+        workspace_anchor_bank_enabled=True,
+        workspace_keep_motion_anchor_final=False,
+    )
+
+
+@configclass
 class A3AnnealedPriorCommandsCfg(A3ReferenceFreeCommandsCfg):
     """Training-only command set retaining a private motion source.
 
@@ -2777,6 +2797,38 @@ class A3FloatingTargetConditionedReferenceFreeV13BAnnealedPriorEnvCfg(
         self.actions.joint_pos.joint_velocity_feedforward_joint_names = (
             "right_shoulder_pitch_joint",
             "right_shoulder_yaw_joint",
+        )
+
+
+@configclass
+class A3FloatingTargetConditionedReferenceFreeV13BWorkspaceExpansionEnvCfg(
+    A3FloatingTargetConditionedReferenceFreeV13BEnvCfg
+):
+    """Pure-V1.3B continuation over an audited anchor metadata bank.
+
+    This class intentionally inherits the deployable reference-free plant,
+    not the annealed-prior class.  No motion command, model_900 or model_3396
+    action path is constructed.
+    """
+
+    commands: A3WorkspaceExpansionCommandsCfg = A3WorkspaceExpansionCommandsCfg()
+    training_only_annealed_prior: bool = False
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.commands.motion is not None:
+            raise RuntimeError("WorkspaceExpansion must not instantiate a motion command")
+        term = self.actions.joint_pos
+        if bool(getattr(term, "annealed_3396_prior_enabled", False)):
+            raise RuntimeError("WorkspaceExpansion lower prior must be disabled")
+        if bool(getattr(term, "annealed_900_upper_prior_enabled", False)):
+            raise RuntimeError("WorkspaceExpansion upper prior must be disabled")
+        print(
+            "[V1.3B WorkspaceExpansion] pure actor contract: "
+            "p5u_migration_loaded=false model18900_loaded=false "
+            "model900_loaded=false model3396_loaded=false "
+            "upper_prior_alpha=0 lower_prior_alpha=0 reference_action_enabled=false",
+            flush=True,
         )
 
 

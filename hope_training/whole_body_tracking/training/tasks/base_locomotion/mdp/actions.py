@@ -1383,6 +1383,13 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
         self._v13b_startup_first_command_jump_rms = torch.zeros(self.num_envs, device=self.device)
         self._v13b_startup_first_command_jump_abs_max = torch.zeros(self.num_envs, device=self.device)
         env.v13b_annealed_prior_enabled = self._annealed_prior_enabled
+        if not hasattr(env, "v13b_workspace_runtime_counters"):
+            env.v13b_workspace_runtime_counters = {
+                "model3396_forward_count": 0,
+                "model900_forward_count": 0,
+                "reference_action_apply_count": 0,
+                "p5u_migration_runtime_count": 0,
+            }
         env.v13b_annealed_prior_delta = self._annealed_prior_delta
         env.v13b_annealed_prior_alpha = self._annealed_prior_alpha
         env.v13b_annealed_prior_student_rms = self._annealed_prior_student_rms
@@ -1613,6 +1620,7 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
             if alpha_value > 0.0:
                 alpha = torch.full((self.num_envs,), alpha_value, device=self.device)
                 prior_obs = self._compute_observation_group(self._annealed_prior_observation_group)
+                self._env.v13b_workspace_runtime_counters["model3396_forward_count"] += int(self.num_envs)
                 prior_raw = self._annealed_prior_policy(prior_obs)[:, :12]
                 clip = max(self._annealed_prior_raw_clip, 1.0e-6)
                 prior_bounded = clip * torch.tanh(prior_raw / clip)
@@ -1659,6 +1667,7 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                     self._annealed_upper_prior_observation_group
                 )
                 self._annealed_upper_prior_last_observation[:] = upper_obs
+                self._env.v13b_workspace_runtime_counters["model900_forward_count"] += int(self.num_envs)
                 prior_raw = self._annealed_upper_prior_policy(upper_obs)
                 prior_raw = prior_raw.clamp(
                     -self._annealed_upper_prior_raw_clip,

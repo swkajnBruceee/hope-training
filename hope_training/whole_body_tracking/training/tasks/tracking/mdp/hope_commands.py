@@ -1260,8 +1260,39 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         self.metrics["v13b_goal_resample_exhausted"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["v13b_goal_fallback_nominal"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["v13b_curriculum_progress"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["v13b_workspace_curriculum_progress"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["v13b_goal_acceptance_rate"] = torch.ones(self.num_envs, device=self.device)
         self.metrics["v13b_reference_free"] = torch.ones(self.num_envs, device=self.device)
+        # Workspace-expansion diagnostics.  These remain zero in the current
+        # nominal-local sampler, so adding them cannot change the existing
+        # training contract.
+        self.metrics["v13b_workspace_motion_anchor_fraction"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
+        self.metrics["v13b_workspace_global_fraction"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
+        self.metrics["v13b_workspace_eligible_anchor_fraction"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
+        self.metrics["v13b_workspace_eligible_anchor_count"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
+        self.metrics["v13b_workspace_anchor_id"] = torch.full(
+            (self.num_envs,), -1.0, device=self.device
+        )
+        self.metrics["v13b_workspace_anchor_distance_m"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
+        self.metrics["v13b_workspace_nominal_fallback_count"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
+        self.metrics["v13b_workspace_out_of_bounds_reject_count"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
+        self.metrics["v13b_workspace_resample_count"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
         # Training-only alignment diagnostics.  The public actor still sees
         # only the sampled 10-D racket goal; these values merely record how
         # strongly the sampler was anchored to the private motion used by the
@@ -1303,7 +1334,52 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             self.num_envs, dtype=torch.bool, device=self.device
         )
         self._v13b_recovery_time_s = torch.zeros(self.num_envs, device=self.device)
+        self._workspace_runtime_counts = getattr(self._env, "v13b_workspace_runtime_counters", {
+            "workspace_anchor_sample_count": 0,
+            "workspace_global_sample_count": 0,
+            "workspace_nominal_fallback_count": 0,
+            "workspace_resample_count": 0,
+            "workspace_out_of_bounds_reject_count": 0,
+            "motion_command_activation_count": 0,
+            "reference_action_apply_count": 0,
+            "p5u_migration_runtime_count": 0,
+            "model900_forward_count": 0,
+            "model3396_forward_count": 0,
+        })
+        for _key in (
+            "workspace_anchor_sample_count", "workspace_global_sample_count",
+            "workspace_nominal_fallback_count", "workspace_resample_count",
+            "workspace_out_of_bounds_reject_count", "motion_command_activation_count",
+            "reference_action_apply_count", "p5u_migration_runtime_count",
+            "model900_forward_count", "model3396_forward_count",
+        ):
+            self._workspace_runtime_counts.setdefault(_key, 0)
+        self._env.v13b_workspace_runtime_counters = self._workspace_runtime_counts
         self._v13b_torso_body_id: int | None = None
+        self._workspace_anchor_bank = None
+        if bool(getattr(cfg, "workspace_anchor_bank_enabled", False)):
+            if not bool(getattr(cfg, "workspace_expansion_enabled", False)):
+                raise RuntimeError("workspace anchor bank requires workspace_expansion_enabled=true")
+            if str(getattr(cfg, "workspace_sampling_mode", "")) != "audited_anchor_bank":
+                raise RuntimeError("workspace expansion must use workspace_sampling_mode=audited_anchor_bank")
+            from training.utils.workspace_anchor_bank import WorkspaceStrikeAnchorBank
+            manifest = str(getattr(cfg, "workspace_anchor_manifest", ""))
+            if not manifest:
+                raise RuntimeError("workspace_anchor_manifest is required for WorkspaceExpansion")
+            self._workspace_anchor_bank = WorkspaceStrikeAnchorBank(
+                manifest,
+                self.device,
+                require_qualified=bool(getattr(cfg, "workspace_anchor_requires_qualified", False)),
+                nominal_local=tuple(cfg.nominal_target_local_xyz),
+                support_half_range=tuple(getattr(cfg, "workspace_local_support_half_range_xyz", (0.08, 0.08, 0.08))),
+                support_tolerance_m=float(getattr(cfg, "workspace_support_distance_tolerance_m", 1.0e-4)),
+            )
+            stats = self._workspace_anchor_bank.statistics(tuple(cfg.nominal_target_local_xyz))
+            print(
+                "[V1.3B WorkspaceExpansion] anchor-only metadata bank loaded: "
+                f"count={stats['anchor_count']} support_inside={stats['inside_current_support_count']} "
+                f"manifest={stats['manifest']}", flush=True
+            )
 
     def reset(self, env_ids: Sequence[int] | None = None) -> dict[str, float]:
         """Reset exactly one strike event for each newly reset environment.
@@ -1320,9 +1396,19 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             self._reset_in_progress = False
 
     def _progress(self) -> float:
+        workspace_override = getattr(self, "_workspace_curriculum_progress", None)
+        if workspace_override is not None:
+            return float(max(0.0, min(1.0, workspace_override)))
         override = getattr(self, "_v13b_policy_progress", None)
         if override is not None:
             return float(max(0.0, min(1.0, override)))
+        # Workspace expansion owns an independent clock. It must not infer
+        # target coverage from the old prior/teacher annealing clock.
+        value = getattr(self._env, "workspace_curriculum_progress", None)
+        if value is None:
+            value = getattr(getattr(self._env, "unwrapped", None), "workspace_curriculum_progress", None)
+        if value is not None:
+            return float(max(0.0, min(1.0, value)))
         value = getattr(self._env, "v13b_policy_progress", None)
         if value is None:
             value = getattr(getattr(self._env, "unwrapped", None), "v13b_policy_progress", None)
@@ -1336,15 +1422,26 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         :meth:`_sample_reference_free_goal` instead rephases teacher playback
         to the sampled public time-to-hit.
         """
-        if not bool(getattr(self.cfg, "motion_alignment_enabled", False)):
+        workspace_anchor_enabled = bool(
+            getattr(self.cfg, "workspace_anchor_bank_enabled", False)
+        )
+        if not workspace_anchor_enabled and not bool(
+            getattr(self.cfg, "motion_alignment_enabled", False)
+        ):
             return None
-        start = float(getattr(self.cfg, "motion_alignment_start_progress", 0.0))
-        end = float(getattr(self.cfg, "motion_alignment_end_progress", 0.65))
+        if workspace_anchor_enabled:
+            start = float(getattr(self.cfg, "workspace_anchor_start_progress", 0.0))
+            end = float(getattr(self.cfg, "workspace_anchor_end_progress", 1.0))
+        else:
+            start = float(getattr(self.cfg, "motion_alignment_start_progress", 0.0))
+            end = float(getattr(self.cfg, "motion_alignment_end_progress", 0.65))
         progress = self._progress()
-        # Do not even resolve/read the motion bank after the handoff.  The
-        # training-only term can remain registered, but its runtime path is
-        # inert once all priors are gone.
-        if progress >= end:
+        # The current CompletePriors run hands off to the nominal global goal
+        # at ``end``.  The later workspace-expansion run may explicitly keep
+        # the private motion bank available as a sampler-side anchor; this is
+        # still invisible to the public 98-D actor.
+        keep_final = bool(getattr(self.cfg, "workspace_keep_motion_anchor_final", False))
+        if progress >= end and not keep_final:
             return None
         try:
             motion_cmd = self._motion()
@@ -1378,7 +1475,9 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         pos_b = quat_rotate_inverse(base_yaw, pos_w - base_pos)
         vel_b = quat_rotate_inverse(base_yaw, vel_w)
         normal_b = quat_rotate_inverse(base_yaw, normal_w)
-        if end <= start:
+        if keep_final:
+            weight = torch.ones((ids.numel(),), dtype=base_pos.dtype, device=self.device)
+        elif end <= start:
             weight = torch.full(
                 (ids.numel(),), 1.0 if progress <= start else 0.0,
                 dtype=base_pos.dtype, device=self.device,
@@ -1393,6 +1492,21 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         hit_frame = motion.hit_frame[motion_ids].to(dtype=torch.long)
         fps = float(max(int(motion.fps), 1))
         return pos_b, vel_b, normal_b, motion_ids, hit_frame, fps, weight
+
+    def _workspace_anchor_sample(self, count: int):
+        """Sample audited anchor metadata without instantiating a motion teacher."""
+        if self._workspace_anchor_bank is None:
+            return None
+        return self._workspace_anchor_bank.sample(
+            count,
+            self._progress(),
+            tuple(self.cfg.nominal_target_local_xyz),
+            tuple(getattr(self.cfg, "workspace_local_support_half_range_xyz", (0.08, 0.08, 0.08))),
+        )
+
+    def workspace_runtime_audit(self) -> dict[str, int]:
+        """Return counters accumulated from actual Workspace sampler paths."""
+        return {key: int(value) for key, value in self._workspace_runtime_counts.items()}
 
     def _latch_episode_strike_event(
         self,
@@ -1490,6 +1604,8 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         ramp = float(self.cfg.curriculum_ramp_end_progress)
         alpha = 0.0 if p <= warm else min(1.0, (p - warm) / max(ramp - warm, 1.0e-6))
         self.metrics["v13b_curriculum_progress"][ids] = p
+        if "v13b_workspace_curriculum_progress" in self.metrics:
+            self.metrics["v13b_workspace_curriculum_progress"][ids] = p
         initial = torch.tensor(self.cfg.initial_position_half_range_m, device=self.device)
         final = torch.tensor(self.cfg.final_position_half_range_m, device=self.device)
         pos_half = (initial + alpha * (final - initial)).unsqueeze(0).expand(n, -1)
@@ -1499,7 +1615,25 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         base_yaw = yaw_quat(self.base_quat_w[ids])
         base_pos = self.base_pos_w[ids]
         nominal_local = torch.tensor(self.cfg.nominal_target_local_xyz, device=self.device, dtype=base_pos.dtype)
-        alignment = self._motion_goal_alignment(ids)
+        workspace_mode = str(getattr(self.cfg, "workspace_sampling_mode", "nominal_local"))
+        workspace_enabled = bool(getattr(self.cfg, "workspace_expansion_enabled", False))
+        anchor_sample = self._workspace_anchor_sample(n) if workspace_enabled else None
+        alignment = None if anchor_sample is not None else self._motion_goal_alignment(ids)
+        if workspace_mode not in {
+            "nominal_local",
+            "motion_anchor_per_action",
+            "motion_anchor_workspace_mixture",
+            "audited_anchor_bank",
+            "workspace_box_uniform",
+        }:
+            raise ValueError(f"Unknown V1.3B workspace_sampling_mode={workspace_mode!r}")
+        if workspace_enabled and workspace_mode == "audited_anchor_bank" and anchor_sample is None:
+            raise RuntimeError("WorkspaceExpansion anchor sample is unavailable")
+        if workspace_enabled and workspace_mode != "nominal_local" and alignment is None and anchor_sample is None:
+            raise RuntimeError(
+                "V1.3B workspace expansion requires an active private motion anchor; "
+                "keep motion_alignment enabled and workspace_keep_motion_anchor_final=true"
+            )
         time_half_range = float(self.cfg.initial_time_half_range_s) + alpha * (
             float(self.cfg.final_time_half_range_s) - float(self.cfg.initial_time_half_range_s)
         )
@@ -1510,7 +1644,19 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         )
         time_min, time_max = self.cfg.time_to_hit_range_s
         public_hit_time = public_hit_time.clamp(min=float(time_min), max=float(time_max))
-        if alignment is None:
+        if anchor_sample is not None:
+            alignment_pos, alignment_vel, alignment_normal, anchor_times, motion_ids, eligible_count = anchor_sample
+            alignment_weight = torch.ones(n, device=self.device, dtype=base_pos.dtype)
+            hit_frames = torch.full((n,), -1, dtype=torch.long, device=self.device)
+            motion_fps = 0.0
+            self.metrics["v13b_workspace_anchor_id"][ids] = motion_ids.to(dtype=base_pos.dtype)
+            self.metrics["v13b_workspace_eligible_anchor_count"][ids] = float(eligible_count)
+            self.metrics["v13b_workspace_eligible_anchor_fraction"][ids] = float(eligible_count) / float(self._workspace_anchor_bank.anchor_count)
+            self.metrics["v13b_workspace_anchor_distance_m"][ids] = torch.linalg.vector_norm(
+                alignment_pos - nominal_local.unsqueeze(0), dim=-1
+            )
+            self._workspace_runtime_counts["workspace_anchor_sample_count"] += int(n)
+        elif alignment is None:
             alignment_pos = nominal_local.unsqueeze(0).expand(n, -1)
             alignment_vel = torch.zeros(n, 3, device=self.device, dtype=base_pos.dtype)
             alignment_normal = torch.zeros(n, 3, device=self.device, dtype=base_pos.dtype)
@@ -1522,16 +1668,82 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         else:
             alignment_pos, alignment_vel, alignment_normal, motion_ids, hit_frames, motion_fps, alignment_weight = alignment
             alignment_normal = alignment_normal / torch.linalg.vector_norm(alignment_normal, dim=-1, keepdim=True).clamp_min(1.0e-6)
+        # Keep the private teacher values intact for the event audit.  The
+        # workspace-expansion sampler may select a global target for some
+        # environments, but that must not rewrite the teacher/public
+        # comparison fields.
+        teacher_alignment_pos = alignment_pos.clone()
+        teacher_alignment_vel = alignment_vel.clone()
+        teacher_alignment_normal = alignment_normal.clone()
+
+        workspace_motion_mask = (
+            torch.ones(n, dtype=torch.bool, device=self.device)
+            if anchor_sample is not None
+            else torch.zeros(n, dtype=torch.bool, device=self.device)
+        )
+        workspace_global_center = nominal_local.unsqueeze(0).expand(n, -1)
+        if workspace_enabled and workspace_mode not in ("nominal_local", "audited_anchor_bank"):
+            workspace_local_min = torch.tensor(self.cfg.workspace_local_min_xyz, device=self.device, dtype=base_pos.dtype)
+            workspace_local_max = torch.tensor(self.cfg.workspace_local_max_xyz, device=self.device, dtype=base_pos.dtype)
+            workspace_global_center = workspace_local_min + torch.rand(
+                n, 3, device=self.device, dtype=base_pos.dtype
+            ) * (workspace_local_max - workspace_local_min)
+            if workspace_mode == "motion_anchor_per_action":
+                workspace_motion_mask[:] = True
+            elif workspace_mode == "motion_anchor_workspace_mixture":
+                motion_probability = float(getattr(self.cfg, "workspace_motion_anchor_probability", 0.70))
+                if not 0.0 <= motion_probability <= 1.0:
+                    raise ValueError("workspace_motion_anchor_probability must be in [0, 1]")
+                workspace_motion_mask = torch.rand(n, device=self.device) < motion_probability
+            # workspace_box_uniform deliberately leaves the mask all false.
+            alignment_weight = workspace_motion_mask.to(dtype=base_pos.dtype)
+            alignment_pos = torch.where(
+                workspace_motion_mask.unsqueeze(-1),
+                teacher_alignment_pos,
+                workspace_global_center,
+            )
+            zero_vel = torch.zeros_like(teacher_alignment_vel)
+            alignment_vel = torch.where(
+                workspace_motion_mask.unsqueeze(-1), teacher_alignment_vel, zero_vel
+            )
+            default_normal = torch.zeros_like(teacher_alignment_normal)
+            default_normal[:, 0] = 1.0
+            alignment_normal = torch.where(
+                workspace_motion_mask.unsqueeze(-1), teacher_alignment_normal, default_normal
+            )
+            alignment_normal = alignment_normal / torch.linalg.vector_norm(
+                alignment_normal, dim=-1, keepdim=True
+            ).clamp_min(1.0e-6)
+            self._workspace_runtime_counts["workspace_global_sample_count"] += int((~workspace_motion_mask).sum().item())
         self.metrics["v13b_motion_goal_alignment_weight"][ids] = alignment_weight
         self.metrics["v13b_motion_goal_alignment_time_s"][ids] = public_hit_time
+        self.metrics["v13b_workspace_motion_anchor_fraction"][ids] = (
+            workspace_motion_mask.float() if workspace_enabled else 0.0
+        )
+        self.metrics["v13b_workspace_global_fraction"][ids] = (
+            (~workspace_motion_mask).float() if workspace_enabled else 0.0
+        )
         center_local = alignment_weight.unsqueeze(-1) * alignment_pos + (1.0 - alignment_weight.unsqueeze(-1)) * nominal_local
+        if workspace_enabled and workspace_mode not in ("nominal_local", "audited_anchor_bank"):
+            center_local = torch.where(
+                workspace_motion_mask.unsqueeze(-1), alignment_pos, workspace_global_center
+            )
         local_pos = (torch.rand(n, 3, device=self.device) * 2.0 - 1.0) * pos_half
         local_pos += center_local
+        if workspace_enabled and workspace_mode not in ("nominal_local", "audited_anchor_bank"):
+            # Motion-anchor environments receive the audited per-action
+            # perturbation.  Global environments are sampled directly from
+            # the bounded local workspace, rather than from nominal +/- 8 cm.
+            local_pos = torch.where(
+                workspace_motion_mask.unsqueeze(-1),
+                local_pos,
+                workspace_global_center,
+            )
         # Cheap fail-closed workspace filter.  Detailed IK/collision probes
         # remain an offline admission gate; no rejected sample is reported as
-        # a PPO failure.  Boundary values are resampled up to the configured
-        # attempt count.  Exhaustion falls back to the fixed nominal target,
-        # never to an unchecked/clamped boundary point.
+        # a PPO failure. Boundary values are resampled up to the configured
+        # attempt count. In audited-anchor mode exhaustion falls back to that
+        # same anchor; no nominal/global or unchecked/clamped target appears.
         local_min = torch.tensor(self.cfg.workspace_local_min_xyz, device=self.device)
         local_max = torch.tensor(self.cfg.workspace_local_max_xyz, device=self.device)
         accepted = (local_pos >= local_min) & (local_pos <= local_max)
@@ -1541,15 +1753,31 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             bad = ~accepted
             replacement = (torch.rand(int(bad.sum()), 3, device=self.device) * 2.0 - 1.0) * pos_half[bad]
             replacement += center_local[bad]
+            if workspace_enabled and workspace_mode not in ("nominal_local", "audited_anchor_bank"):
+                global_min = torch.tensor(self.cfg.workspace_local_min_xyz, device=self.device, dtype=base_pos.dtype)
+                global_max = torch.tensor(self.cfg.workspace_local_max_xyz, device=self.device, dtype=base_pos.dtype)
+                global_replacement = global_min + torch.rand(
+                    int(bad.sum()), 3, device=self.device, dtype=base_pos.dtype
+                ) * (global_max - global_min)
+                replacement = torch.where(
+                    workspace_motion_mask[bad].unsqueeze(-1), replacement, global_replacement
+                )
             local_pos[bad] = replacement
             accepted = ((local_pos >= local_min) & (local_pos <= local_max)).all(dim=-1)
             attempts += 1
         exhausted = ~accepted
+        self._workspace_runtime_counts["workspace_out_of_bounds_reject_count"] += int((~accepted).sum().item())
+        self._workspace_runtime_counts["workspace_resample_count"] += int(max(attempts - 1, 0) * max(int(n), 1))
         if torch.any(exhausted):
             local_pos[exhausted] = center_local[exhausted]
+        nominal_fallback = exhausted & (~workspace_motion_mask)
+        self._workspace_runtime_counts["workspace_nominal_fallback_count"] += int(nominal_fallback.sum().item())
         self.metrics["v13b_goal_resample_exhausted"][ids] = exhausted.to(dtype=self.racket_target_pos_w.dtype)
-        self.metrics["v13b_goal_fallback_nominal"][ids] = exhausted.to(dtype=self.racket_target_pos_w.dtype)
+        self.metrics["v13b_goal_fallback_nominal"][ids] = nominal_fallback.to(dtype=self.racket_target_pos_w.dtype)
         self.metrics["v13b_goal_acceptance_rate"][ids] = (~exhausted).to(dtype=self.racket_target_pos_w.dtype)
+        self.metrics["v13b_workspace_nominal_fallback_count"][ids] = nominal_fallback.to(dtype=self.racket_target_pos_w.dtype)
+        self.metrics["v13b_workspace_out_of_bounds_reject_count"][ids] = exhausted.to(dtype=self.racket_target_pos_w.dtype)
+        self.metrics["v13b_workspace_resample_count"][ids] = float(max(attempts - 1, 0))
         self.racket_target_pos_w[ids] = base_pos + quat_apply(base_yaw, local_pos)
         # Uniformly sample a disk in the tangent plane so the normal angular
         # deviation is bounded by (rather than independently exceeded by)
@@ -1591,6 +1819,11 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             teacher_physical_hit = (hit_frames - teacher_start).to(dtype=base_pos.dtype) / motion_fps
             motion_cmd = self._motion()
             motion_cmd.configure_v13b_episode_strike(ids, teacher_start)
+        elif anchor_sample is not None:
+            # Anchor metadata is not a teacher clock.  Keep the public final
+            # timing distribution authoritative and retain the anchor timing
+            # only as an offline feasibility field.
+            teacher_physical_hit = public_hit_time.clone()
         self._latch_episode_strike_event(
             ids=ids,
             motion_ids=motion_ids,
@@ -1598,9 +1831,9 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             teacher_hit=hit_frames,
             public_hit_time=public_hit_time,
             teacher_physical_hit=teacher_physical_hit,
-            teacher_pos=alignment_pos,
-            teacher_vel=alignment_vel,
-            teacher_normal=alignment_normal,
+            teacher_pos=teacher_alignment_pos,
+            teacher_vel=teacher_alignment_vel,
+            teacher_normal=teacher_alignment_normal,
             sampled_pos=local_pos,
             sampled_vel=target_vel_local,
             sampled_normal=normal_local,
@@ -1758,7 +1991,13 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
     def _update_teacher_runtime_contract(self) -> None:
         """Disable private bank execution once both action priors are gone."""
         disable_after = float(getattr(self.cfg, "private_motion_disable_progress", 0.70))
-        disabled = self._progress() >= disable_after
+        # Workspace-expansion fine-tuning may keep the audited motion bank
+        # alive solely as a sampler-side action anchor.  It still never enters
+        # the public actor observation or action contract.
+        keep_sampler_anchor = bool(
+            getattr(self.cfg, "workspace_keep_motion_anchor_final", False)
+        ) and bool(getattr(self.cfg, "workspace_expansion_enabled", False))
+        disabled = (self._progress() >= disable_after) and not keep_sampler_anchor
         self._env.v13b_private_motion_disabled = bool(disabled)
         if disabled:
             # The public target sampler, student actor and rewards remain live.
@@ -1977,4 +2216,21 @@ class ReferenceFreeRacketTargetCommandCfg(RacketTargetCommandCfg):
     # conservative box for independently sampled deployment goals.
     workspace_local_min_xyz: tuple[float, float, float] = (0.18, -0.85, -0.05)
     workspace_local_max_xyz: tuple[float, float, float] = (0.72, 0.35, 0.45)
+    # Isolated next-stage sampler.  The defaults intentionally reproduce the
+    # current nominal-local V1.3B run; only the new workspace-expansion task
+    # enables these fields.  ``motion_anchor`` uses the already audited
+    # racket-at-strike points from the private manifest as sampler anchors,
+    # while the actor remains 98-D reference-free.
+    workspace_expansion_enabled: bool = False
+    workspace_sampling_mode: str = "nominal_local"
+    workspace_motion_anchor_probability: float = 0.70
+    workspace_keep_motion_anchor_final: bool = False
+    workspace_anchor_bank_enabled: bool = False
+    workspace_anchor_manifest: str = ""
+    workspace_anchor_sampling_enabled: bool = False
+    workspace_anchor_source: str = ""
+    workspace_anchor_requires_qualified: bool = False
+    workspace_local_support_half_range_xyz: tuple[float, float, float] = (0.08, 0.08, 0.08)
+    workspace_support_distance_tolerance_m: float = 1.0e-4
+    workspace_global_probability: float = 0.0
     max_resample_attempts: int = 32

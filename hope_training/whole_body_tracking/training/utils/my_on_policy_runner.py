@@ -26,11 +26,19 @@ def _set_v13b_progress(runner: OnPolicyRunner, iteration: int) -> None:
     )
     progress = min(1.0, max(0.0, iteration / max(schedule_total - 1, 1)))
     env.v13b_policy_progress = progress
+    workspace_route = hasattr(env, "workspace_curriculum_progress")
+    if workspace_route:
+        env.workspace_curriculum_progress = progress
     try:
         command = env.command_manager.get_term("racket_target")
-        command._v13b_policy_progress = progress
+        if workspace_route:
+            command._workspace_curriculum_progress = progress
+        else:
+            command._v13b_policy_progress = progress
         if "v13b_curriculum_progress" in command.metrics:
             command.metrics["v13b_curriculum_progress"].fill_(progress)
+        if "v13b_workspace_curriculum_progress" in command.metrics:
+            command.metrics["v13b_workspace_curriculum_progress"].fill_(progress)
     except (AttributeError, KeyError, ValueError) as exc:
         if not getattr(runner, "_v13b_progress_error_reported", False):
             print(f"[V1.3B] curriculum command progress hook unavailable: {type(exc).__name__}: {exc}", flush=True)
@@ -137,6 +145,24 @@ class MyOnPolicyRunner(OnPolicyRunner):
         for tag, value in values.items():
             if value is not None and math.isfinite(value):
                 self.writer.add_scalar(tag, value, step)
+        try:
+            command = env.command_manager.get_term("racket_target")
+            for name in (
+                "v13b_workspace_curriculum_progress",
+                "v13b_workspace_eligible_anchor_fraction",
+                "v13b_workspace_eligible_anchor_count",
+                "v13b_workspace_anchor_distance_m",
+                "v13b_workspace_nominal_fallback_count",
+                "v13b_workspace_out_of_bounds_reject_count",
+                "v13b_workspace_resample_count",
+                "v13b_workspace_motion_anchor_fraction",
+                "v13b_workspace_global_fraction",
+            ):
+                value = command.metrics.get(name)
+                if isinstance(value, torch.Tensor) and value.numel():
+                    self.writer.add_scalar(f"V13B/Workspace/{name.removeprefix('v13b_workspace_')}", value.float().mean().item(), step)
+        except (AttributeError, KeyError):
+            pass
 
     def save(self, path: str, infos=None):
         """Save the model and training information."""

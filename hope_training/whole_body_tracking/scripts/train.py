@@ -41,6 +41,7 @@ for _p in (
 del _HERE, _REPO_ROOT, _p
 
 from tools.a3_strike_contract import assert_training_manifest
+from training.utils.v13b_checkpoint_admission import validate_pure_v13b_checkpoint
 
 
 def _assert_a3_base_stand_smoke_gate(
@@ -604,6 +605,86 @@ def _assert_v13b_complete_priors_admission(cfg, task_cfg, task_id: str) -> None:
             + ", ".join(failed)
         )
     print(f"[train.py] V1.3B CompletePriors admission passed: {gate_path}", flush=True)
+
+
+def _assert_v13b_workspace_expansion_contract(cfg, task_cfg, env_cfg, task_id: str) -> None:
+    """Fail closed for the pure-actor, anchor-only follow-up route."""
+    if "ReferenceFreeV13BWorkspaceExpansion" not in str(task_id):
+        return
+    training = _get(task_cfg, "training") or {}
+    curriculum = _get(_get(task_cfg, "goal") or {}, "curriculum") or {}
+    if bool(getattr(env_cfg, "training_only_annealed_prior", False)):
+        raise RuntimeError("WorkspaceExpansion must use the pure V1.3B environment, not CompletePriors")
+    if getattr(env_cfg.commands, "motion", None) is not None:
+        raise RuntimeError("WorkspaceExpansion motion command is active; refusing teacher dependency")
+    term = env_cfg.actions.joint_pos
+    if bool(getattr(term, "annealed_3396_prior_enabled", False)) or bool(getattr(term, "annealed_900_upper_prior_enabled", False)):
+        raise RuntimeError("WorkspaceExpansion detected a nonzero legacy action-prior path")
+    if not bool(_get(curriculum, "workspace_expansion_enabled")):
+        raise RuntimeError("WorkspaceExpansion sampler is not enabled")
+    if str(_get(curriculum, "workspace_sampling_mode")) != "audited_anchor_bank":
+        raise RuntimeError("WorkspaceExpansion must use the audited_anchor_bank sampler")
+    if not bool(_get(curriculum, "workspace_anchor_bank_enabled")):
+        raise RuntimeError("WorkspaceExpansion anchor metadata bank is disabled")
+    if bool(_get(curriculum, "workspace_anchor_requires_qualified")):
+        manifest = Path(str(_get(curriculum, "workspace_anchor_manifest"))).expanduser()
+        if not manifest.is_file():
+            raise RuntimeError(f"WorkspaceExpansion anchor manifest does not exist: {manifest}")
+        try:
+            manifest_payload = json.loads(manifest.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise RuntimeError(f"WorkspaceExpansion anchor manifest is not valid JSON: {manifest}: {exc}") from exc
+        if not bool(manifest_payload.get("physics_qualified", False)) or not bool(manifest_payload.get("training_admission", False)):
+            raise RuntimeError(
+                "WorkspaceExpansion requires a qualified/admitted anchor manifest; "
+                f"got status={manifest_payload.get('status')!r}, "
+                f"physics_qualified={manifest_payload.get('physics_qualified')!r}, "
+                f"training_admission={manifest_payload.get('training_admission')!r}"
+            )
+    if float(_get(curriculum, "workspace_global_probability") or 0.0) != 0.0:
+        raise RuntimeError("WorkspaceExpansion first stage must have global_probability=0")
+    if float(_get(curriculum, "initial_speed_fraction")) != 0.20 or float(_get(curriculum, "final_speed_fraction")) != 0.20:
+        raise RuntimeError("WorkspaceExpansion velocity curriculum must remain fixed at 20%")
+    if float(_get(curriculum, "initial_normal_half_angle_deg")) != 12.0 or float(_get(curriculum, "final_normal_half_angle_deg")) != 12.0:
+        raise RuntimeError("WorkspaceExpansion normal curriculum must remain fixed at 12 degrees")
+    if float(_get(curriculum, "initial_time_half_range_s")) != 0.10 or float(_get(curriculum, "final_time_half_range_s")) != 0.10:
+        raise RuntimeError("WorkspaceExpansion timing curriculum must remain fixed at 100 ms")
+    if bool(cfg.get("v13b_migrated_warm_start", False)):
+        raise RuntimeError("WorkspaceExpansion cannot run P5U -> V1.3B migration")
+    if not bool(cfg.get("warm_start_actor_only", False)):
+        raise RuntimeError("WorkspaceExpansion requires warm_start_actor_only=true")
+    checkpoint = cfg.get("checkpoint", None)
+    if checkpoint is None or not Path(str(checkpoint)).expanduser().is_file():
+        raise RuntimeError("WorkspaceExpansion requires an explicit pure-V1.3B actor checkpoint")
+    requested_kind = str(_get(training, "source_checkpoint_kind") or "")
+    if requested_kind != "pure_v13b_actor":
+        raise RuntimeError(
+            "WorkspaceExpansion source_checkpoint_kind is only a request; it must explicitly request pure_v13b_actor"
+        )
+    requested_iterations = int(cfg.get("max_iterations", _get(training, "schedule_total_iterations") or 0))
+    max_preflight = max(tuple(int(x) for x in (_get(training, "preflight_iterations") or (100,))))
+    admission = validate_pure_v13b_checkpoint(
+        checkpoint,
+        require_behavioral=requested_iterations > max_preflight,
+        min_progress=0.70,
+    )
+    print(
+        "[train.py] WorkspaceExpansion checkpoint admission: "
+        f"requested_source_kind={requested_kind} "
+        f"verified_source_kind={admission['verified_source_kind']} "
+        f"checkpoint_admission_verified={admission['checkpoint_admission_verified']} "
+        f"actor={admission['runtime_shapes']['actor_obs_dim']}x{admission['runtime_shapes']['action_dim']} "
+        f"sidecar={admission['sidecar']}",
+        flush=True,
+    )
+    print(
+        "[train.py] WorkspaceExpansion admission contract: "
+        "source_checkpoint_kind=pure_v13b_actor actor_warm_start_loaded=true "
+        "p5u_migration=false model18900_loaded=false model900_loaded=false "
+        "model3396_loaded=false upper_prior_alpha=0 lower_prior_alpha=0 "
+        "reference_action_enabled=false workspace_expansion_enabled=true",
+        flush=True,
+    )
 
 
 def _assert_fall_recovery_admission(
@@ -1527,6 +1608,21 @@ def _apply_task_overrides(env_cfg, task):
                 "motion_alignment_time_range_s": "motion_alignment_time_range_s",
                 "private_motion_disable_progress": "private_motion_disable_progress",
                 "contract_assertions": "contract_assertions",
+                "workspace_expansion_enabled": "workspace_expansion_enabled",
+                "workspace_sampling_mode": "workspace_sampling_mode",
+                "workspace_motion_anchor_probability": "workspace_motion_anchor_probability",
+                "workspace_keep_motion_anchor_final": "workspace_keep_motion_anchor_final",
+                "workspace_local_min_xyz": "workspace_local_min_xyz",
+                "workspace_local_max_xyz": "workspace_local_max_xyz",
+                "workspace_anchor_bank_enabled": "workspace_anchor_bank_enabled",
+                "workspace_anchor_manifest": "workspace_anchor_manifest",
+                "workspace_anchor_sampling_enabled": "workspace_anchor_sampling_enabled",
+                "workspace_anchor_source": "workspace_anchor_source",
+                "workspace_anchor_requires_qualified": "workspace_anchor_requires_qualified",
+                "workspace_local_support_half_range_xyz": "workspace_local_support_half_range_xyz",
+                "workspace_support_distance_tolerance_m": "workspace_support_distance_tolerance_m",
+                "workspace_global_probability": "workspace_global_probability",
+                "max_resample_attempts": "max_resample_attempts",
             }
             for yaml_key, command_key in goal_key_map.items():
                 value = _get(curriculum, yaml_key)
@@ -1543,12 +1639,19 @@ def _apply_task_overrides(env_cfg, task):
                     "motion_alignment_enabled",
                     "motion_alignment_include_prelude_s",
                     "contract_assertions",
+                    "workspace_expansion_enabled",
+                    "workspace_keep_motion_anchor_final",
+                    "workspace_anchor_bank_enabled",
+                    "workspace_anchor_sampling_enabled",
+                    "workspace_anchor_requires_qualified",
                 }:
                     # Do not turn YAML booleans into 1.0/0.0.  Structured
                     # configs may accept the numeric value, but preserving a
                     # real bool keeps the runtime contract and audit output
                     # unambiguous.
                     value = bool(value)
+                elif command_key == "workspace_anchor_manifest" or command_key == "workspace_anchor_source":
+                    value = str(value)
                 else:
                     value = float(value)
                 setattr(command, command_key, value)
@@ -2120,6 +2223,7 @@ def _run(cfg):
         legacy_fall_strategy=bool(cfg.get("legacy_fall_strategy", False)),
     )
     _assert_v13b_complete_priors_admission(cfg, cfg.task, task_id)
+    _assert_v13b_workspace_expansion_contract(cfg, cfg.task, env_cfg, task_id)
     print(f"[train.py] applied {len(applied)} task override(s) from cfg/task/{_get(cfg.task, 'name', task_id)}.yaml:", flush=True)
     for _a in applied:
         print(f"[train.py]     {_a}", flush=True)
@@ -2443,6 +2547,8 @@ def _run(cfg):
         # attributes are not automatically promoted to runtime state.  Seed
         # the explicit update-driven curriculum clock before the first reset.
         env.unwrapped.v13b_policy_progress = 0.0
+        if "ReferenceFreeV13BWorkspaceExpansion" in task_id:
+            env.unwrapped.workspace_curriculum_progress = 0.0
         schedule_total = int(
             _get(_get(cfg.task, "training", {}), "schedule_total_iterations", cfg.get("v13b_schedule_total_iterations", agent_cfg.max_iterations))
         )
@@ -4698,6 +4804,33 @@ def _run(cfg):
             and not fixed_motion_recovery
         ),
     )
+    if "ReferenceFreeV13BWorkspaceExpansion" in task_id:
+        try:
+            command_term = env.unwrapped.command_manager.get_term("racket_target")
+            audit = command_term.workspace_runtime_audit()
+        except Exception as exc:
+            audit = {"runtime_audit_error": str(exc)}
+        audit_path = Path("eval_outputs/v13b_workspace_expansion") / "runtime_audit.json"
+        audit_path.parent.mkdir(parents=True, exist_ok=True)
+        audit_path.write_text(json.dumps(audit, indent=2) + "\n", encoding="utf-8")
+        print(f"[train.py] WorkspaceExpansion runtime audit: {json.dumps(audit)}", flush=True)
+        training_cfg = _get(task_cfg, "training") or {}
+        preflight_max = max(tuple(int(x) for x in (_get(training_cfg, "preflight_iterations") or (100,))))
+        required_zero = (
+            "workspace_global_sample_count",
+            "workspace_nominal_fallback_count",
+            "motion_command_activation_count",
+            "model900_forward_count",
+            "model3396_forward_count",
+            "reference_action_apply_count",
+            "p5u_migration_runtime_count",
+        )
+        if int(agent_cfg.max_iterations) <= preflight_max:
+            if int(audit.get("workspace_anchor_sample_count", 0)) <= 0:
+                raise RuntimeError("WorkspaceExpansion preflight runtime audit: no anchor samples were observed")
+            bad = [key for key in required_zero if int(audit.get(key, 0)) != 0]
+            if bad:
+                raise RuntimeError("WorkspaceExpansion preflight runtime audit failed: " + ", ".join(bad))
     env.close()
 
 

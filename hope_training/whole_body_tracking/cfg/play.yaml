@@ -40,6 +40,10 @@ zero_tracker_residual: false  # P5D-only diagnostic: send safe reference with no
 force_zero_action: false
 v13b_force_lower_prior_alpha: null
 v13b_force_upper_prior_alpha: null
+# Optional fixed training-progress snapshot for a faithful V1.3B checkpoint
+# replay.  It drives the same curriculum and annealed-prior schedule that was
+# active when the checkpoint was saved; null retains the task default (0.0).
+v13b_policy_progress: null
 # Evaluation-only P4C upper-chain ablation. ``policy`` preserves historical
 # execution. ``reference_only`` keeps the lower stabilizer but removes the
 # frozen upper actor, coordinator upper residual and legacy target adapter.

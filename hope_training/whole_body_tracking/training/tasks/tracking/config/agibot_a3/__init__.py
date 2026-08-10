@@ -192,6 +192,19 @@ gym.register(
     },
 )
 
+# V1.3B follow-up: pure actor workspace expansion.  This is intentionally a
+# separate registration/configuration from CompletePriors; the manifest is
+# consumed only as strike-anchor metadata and no private prior is instantiated.
+gym.register(
+    id="HOPE-FloatingTargetConditionedReferenceFreeV13BWorkspaceExpansion-AgibotA3-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": native_strike_env_cfg.A3FloatingTargetConditionedReferenceFreeV13BWorkspaceExpansionEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.ppo:HOPEAgibotA3PPORunnerCfg",
+    },
+)
+
 gym.register(
     id="HOPE-FloatingUnifiedUpperReferenceTrackerB-AgibotA3-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",

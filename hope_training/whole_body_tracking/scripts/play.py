@@ -790,6 +790,29 @@ def _run_play(cfg, simulation_app):
                 viewer_cfg.origin_type = "world"
     render_mode = "rgb_array" if cfg.video else None
     env = gym.make(task_id, cfg=env_cfg, render_mode=render_mode)
+    # A V1.3B checkpoint is saved at a particular point on the shared
+    # curriculum/prior schedule.  Evaluation normally has no runner to
+    # advance that clock, so allow a caller to latch the exact saved progress
+    # before the first policy action and resample the one episode goal under
+    # that same distribution.  This is replay-only and cannot alter PPO.
+    v13b_policy_progress = cfg.get("v13b_policy_progress", None)
+    if v13b_policy_progress is not None:
+        if "ReferenceFreeV13B" not in task_id:
+            raise ValueError("v13b_policy_progress is only valid for a V1.3B task")
+        v13b_policy_progress = float(v13b_policy_progress)
+        if not torch.isfinite(torch.tensor(v13b_policy_progress)) or not 0.0 <= v13b_policy_progress <= 1.0:
+            raise ValueError("v13b_policy_progress must be finite and in [0, 1]")
+        env.unwrapped.v13b_policy_progress = v13b_policy_progress
+        racket_target = env.unwrapped.command_manager.get_term("racket_target")
+        racket_target._v13b_policy_progress = v13b_policy_progress
+        replay_env_ids = torch.arange(env.unwrapped.num_envs, device=env.unwrapped.device)
+        racket_target._resample_command(replay_env_ids)
+        racket_target._compute_strike_timing()
+        print(
+            "[V1.3B] replay latched training-progress snapshot: "
+            f"{v13b_policy_progress:.6f}",
+            flush=True,
+        )
     # Ordered V1.3B admission smokes use these *evaluation-only* switches to
     # isolate zero-action/lower-prior/upper-prior paths.  They are runtime
     # attributes, never task configuration, and are ignored by normal PPO.
