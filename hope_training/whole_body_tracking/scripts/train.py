@@ -1734,6 +1734,12 @@ def _apply_task_overrides(env_cfg, task):
             "source_upper_alpha": "precision_rescue_source_upper_alpha",
             "upper_prior_hold_updates": "precision_rescue_hold_updates",
             "upper_prior_max_step": "precision_rescue_upper_step",
+            "controllability_recovery_enabled": "precision_rescue_controllability_recovery_enabled",
+            "controllability_start_alpha": "precision_rescue_controllability_start_alpha",
+            "controllability_min_alpha": "precision_rescue_controllability_min_alpha",
+            "upper_force_zero_start_progress": "precision_rescue_upper_force_zero_start_progress",
+            "upper_force_zero_progress": "precision_rescue_upper_force_zero_progress",
+            "upper_hard_zero_enabled": "precision_rescue_upper_hard_zero_enabled",
             "schedule_total_iterations": "precision_rescue_schedule_total_updates",
             "upper_probe_interval_updates": "precision_rescue_upper_probe_interval_updates",
             "upper_probe_max_steps": "precision_rescue_upper_probe_max_steps",
@@ -1753,6 +1759,10 @@ def _apply_task_overrides(env_cfg, task):
                 continue
             if yaml_key in {"source_checkpoint", "upper_gate_file", "upper_gate_run_id"}:
                 value = str(value)
+            elif yaml_key == "controllability_recovery_enabled":
+                value = bool(value)
+            elif yaml_key == "upper_hard_zero_enabled":
+                value = bool(value)
             elif yaml_key in {
                 "source_iteration", "upper_prior_hold_updates", "schedule_total_iterations",
                 "upper_probe_interval_updates", "upper_probe_max_steps", "upper_probe_consecutive_passes",
@@ -1816,6 +1826,56 @@ def _apply_task_overrides(env_cfg, task):
         _set_reward(R, "racket_position_y", _get(rw, "racket_position_y_weight"), _get(rw, "racket_position_y_std"), applied)
         _set_reward(R, "racket_position_fine", _get(rw, "racket_position_fine_weight"), _get(rw, "racket_position_fine_std"), applied)
         _set_reward(R, "racket_position_y_fine", _get(rw, "racket_position_y_fine_weight"), _get(rw, "racket_position_y_fine_std"), applied)
+        _set_reward(R, "racket_position_wide_recovery", _get(rw, "racket_position_wide_weight"), None, applied)
+        if hasattr(R, "racket_position_wide_recovery") and R.racket_position_wide_recovery is not None:
+            R.racket_position_wide_recovery.params["audit_weight"] = float(R.racket_position_wide_recovery.weight)
+            _spatial_std = _get(rw, "racket_position_wide_std_m")
+            if _spatial_std is not None:
+                R.racket_position_wide_recovery.params["std"] = float(_spatial_std)
+                applied.append(f"rewards.racket_position_wide_recovery.params.std={float(_spatial_std)}")
+            _time_std = _get(rw, "racket_position_wide_time_std_s")
+            if _time_std is not None:
+                R.racket_position_wide_recovery.params["time_std_s"] = float(_time_std)
+                applied.append(f"rewards.racket_position_wide_recovery.params.time_std_s={float(_time_std)}")
+        _set_reward(
+            R,
+            "racket_joint_quality_recovery",
+            _get(rw, "racket_joint_quality_weight"),
+            None,
+            applied,
+        )
+        if hasattr(R, "racket_joint_quality_recovery") and R.racket_joint_quality_recovery is not None:
+            R.racket_joint_quality_recovery.params["audit_weight"] = float(
+                R.racket_joint_quality_recovery.weight
+            )
+            for _key, _yaml_key in (
+                ("position_std", "racket_joint_quality_position_std_m"),
+                ("velocity_std", "racket_joint_quality_velocity_std_mps"),
+                ("normal_std", "racket_joint_quality_normal_std_rad"),
+                ("time_std_s", "racket_joint_quality_time_std_s"),
+                ("softmax_beta", "racket_joint_quality_softmax_beta"),
+                ("progress_weight", "racket_joint_quality_progress_weight"),
+                ("regression_weight", "racket_joint_quality_regression_weight"),
+                ("progress_clip", "racket_joint_quality_progress_clip"),
+                ("regression_clip", "racket_joint_quality_regression_clip"),
+            ):
+                _value = _get(rw, _yaml_key)
+                if _value is not None:
+                    R.racket_joint_quality_recovery.params[_key] = float(_value)
+                    applied.append(
+                        f"rewards.racket_joint_quality_recovery.params.{_key}={float(_value)}"
+                    )
+        _set_reward(
+            R,
+            "racket_strike_position_recovery",
+            _get(rw, "racket_strike_position_recovery_weight"),
+            _get(rw, "racket_strike_position_recovery_std_m"),
+            applied,
+        )
+        if hasattr(R, "racket_strike_position_recovery") and R.racket_strike_position_recovery is not None:
+            R.racket_strike_position_recovery.params["audit_weight"] = float(
+                R.racket_strike_position_recovery.weight
+            )
         _set_reward(R, "racket_velocity", _get(rw, "racket_velocity_weight"), _get(rw, "racket_velocity_std"), applied)
         _set_reward(R, "racket_velocity_wide", _get(rw, "racket_velocity_wide_weight"), None, applied)
         if hasattr(R, "racket_velocity_wide") and R.racket_velocity_wide is not None:
@@ -2531,6 +2591,14 @@ def _run(cfg):
             flush=True,
         )
     warm_start_actor_only = bool(cfg.get("warm_start_actor_only", False))
+    # PrecisionRescue keeps its experiment contract under task.training.
+    # Bridge the task-local spelling into the runner switch so the YAML cannot
+    # claim actor-only warm start while the runtime silently starts from a
+    # random actor or follows strict-resume semantics.
+    task_training = _get(_get(cfg, "task"), "training") or {}
+    task_actor_only_warm_start = _get(task_training, "actor_only_warm_start")
+    if task_actor_only_warm_start is not None:
+        warm_start_actor_only = warm_start_actor_only or bool(task_actor_only_warm_start)
     warm_start_support_actor_only = bool(cfg.get("warm_start_support_actor_only", False))
     warm_start_append_zero_policy_obs = bool(cfg.get("warm_start_append_zero_policy_obs", False))
     actor_only_warm_start = warm_start_actor_only or warm_start_support_actor_only

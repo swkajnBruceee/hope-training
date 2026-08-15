@@ -1,0 +1,37 @@
+{
+  "schema_version": "a3_candidate_reference_split_report/v1",
+  "source_manifest": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_20260806/manifest.json",
+  "source_index": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/final_candidate_index_fixed_base_weighted_20260806.csv",
+  "seed": 20260806,
+  "validation_fraction_target": 0.1,
+  "total_motions": 25076,
+  "total_groups": 20854,
+  "group_size_distribution": {
+    "1": 16632,
+    "2": 4222
+  },
+  "split_counts": {
+    "training": {
+      "motions": 22601,
+      "groups": 18775,
+      "by_stroke_role": {
+        "backhand/boundary": 6230,
+        "backhand/core": 7107,
+        "forehand/boundary": 4137,
+        "forehand/core": 5127
+      }
+    },
+    "validation": {
+      "motions": 2475,
+      "groups": 2079,
+      "by_stroke_role": {
+        "backhand/boundary": 689,
+        "backhand/core": 804,
+        "forehand/boundary": 459,
+        "forehand/core": 523
+      }
+    }
+  },
+  "group_overlap_count": 0,
+  "status": "completed"
+}

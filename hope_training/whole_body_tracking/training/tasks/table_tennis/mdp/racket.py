@@ -159,10 +159,25 @@ def racket_normal_w(
 ) -> torch.Tensor:
     """Racket face normal in world frame.
 
-    For the A3 ping-pong asset the blade is thin along local Y; +Y corresponds to the red face.
+    For the A3 ping-pong asset the blade is thin along local Y; +Y corresponds
+    to the red face.  When the active racket command exposes a per-environment
+    ``face_sign`` (+1 red / -1 black), use it so replay/contact diagnostics
+    share the training command's face convention.
     """
     _, _, racket_quat_w = racket_state_w(env, robot_cfg)
-    return matrix_from_quat(racket_quat_w)[:, :, normal_axis] * normal_sign
+    command_face_sign = None
+    command_manager = getattr(env, "command_manager", None)
+    if command_manager is not None:
+        try:
+            command_face_sign = getattr(
+                command_manager.get_term("racket_target"), "face_sign", None
+            )
+        except Exception:
+            command_face_sign = None
+    normal = matrix_from_quat(racket_quat_w)[:, :, normal_axis]
+    if command_face_sign is None:
+        return normal * float(normal_sign)
+    return normal * (float(normal_sign) * command_face_sign).unsqueeze(-1)
 
 
 def racket_normal_b(

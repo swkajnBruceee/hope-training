@@ -63,6 +63,15 @@ def main() -> None:
     assert all(a >= b - 1e-12 for a, b in zip(upper, upper[1:]))
     assert all(abs(value - .305) < 1e-12 for value in upper[:300])
     assert min(upper) == 0.0
+    deadline = PrecisionRescuePriorSchedule(
+        source_progress=.10, source_lower_alpha=1.0, source_upper_alpha=.9,
+        total_chain_updates=50000, controllability_recovery_enabled=True,
+        controllability_start_alpha=.45, force_zero_progress=.70,
+    )
+    deadline.set_update(30555)
+    assert .20 < deadline.upper_alpha() < .25
+    deadline.set_update(33333)
+    assert deadline.global_progress >= .70 and deadline.upper_alpha() == 0.0
     print("PASS: PrecisionRescue schedule continuity/hold/monotonicity")
 
 

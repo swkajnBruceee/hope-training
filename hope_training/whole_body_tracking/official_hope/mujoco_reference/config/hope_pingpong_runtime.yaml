@@ -1,0 +1,57 @@
+# Runtime configuration -- baseline model_21800, 110-D `hitter_pure`.
+#
+# Read by the Python reference runner (a3_deploy_onnx_ref_pingpong). Every
+# relative path resolves against THIS file's directory.
+#
+# Single observation/action path only: 110-D observation, 31-D action, no
+# observation normalization, one control rate, and no additional admission gates.
+
+contract: hitter_pure
+control_hz: 50.0                 # 50 Hz control loop
+observation_normalization: none  # raw observation (must stay 'none')
+passive_neck: true               # hold head_yaw/head_pitch at their default angle
+
+policy:
+  # Baseline model_21800 actor (obs[1,110] -> raw_action[1,31]).
+  # Override on the command line with --onnx to evaluate another compatible actor.
+  onnx_path: ../models/model_21800/policy/exported/policy.onnx
+  joint_order: agibot_a3         # informational; the canonical order lives in joint_order.py
+
+action_adapter:
+  # The exact defaults, scales and safe intervals exported with model_21800.
+  config_path: ../models/model_21800/policy/params/deploy.yaml
+
+simulation:
+  # The a3_pingpong MJCF shipped with this repo (loaded directly by the MuJoCo
+  # bridge; no build step needed). Point --model-xml elsewhere to use your own.
+  # Project-local copy of the same MJCF used by the training/deployment stack.
+  model_xml_path: ../../../../../agibot/A3_MuJoCo_Sim/aimrt_mujoco_sim/src/models/bin/cfg/model/a3_pingpong/a3_pingpong.xml
+  # Use the model_21800 exported joint stiffness/damping in MuJoCo. This does not
+  # configure or bypass a robot backend; it only realizes q_des in the simulator.
+  pd_gains:
+    deploy_config_path: ../models/model_21800/policy/params/deploy.yaml
+
+runtime:
+  # HOPE native runner bring-up and policy handoff.
+  warmup_ticks: 100
+  motion_blend_ticks: 25       # 0.5 s at 50 Hz
+  hold_recover_s: 2.5
+  official_stand: true
+  auto_leg_hold: false         # expose the native optional full-body hold
+  leg_clamp_rad: 0.0           # 0 disables; native CLI equivalent
+  leg_smooth_alpha: 1.0        # 1 disables EMA smoothing
+  gain_scale: 1.0
+  leg_gain_scale: 1.0
+  ankle_gain_scale: 1.0
+  initial_stance: standard  # or right_front (project V13B READY pose)
+
+lifecycle:
+  # Example continuous-rally timing (ready -> swing -> follow-through -> recovery).
+  follow_through_s: 0.6
+  recovery_s: 0.8
+  ready_time_to_strike: 1.0
+  # Fallback values for actors without hitter_pure geometry metadata. For
+  # model_21800 the runner uses the exported fixed-plane/station geometry.
+  ready_reach_x: 0.40
+  ready_reach_y: 0.20
+  ready_reach_z: -0.05

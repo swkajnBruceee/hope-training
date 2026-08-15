@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""Relay motion_capture_tracking (OptiTrack/NatNet) output into the HOPE mocap interface.
+
+OptiTrack counterpart of the VRPN path (``vrpn_mocap`` + ``pose_to_posearray``).
+The independently built ``NatNet2ROS2`` workspace depacketizes NatNet from
+Motive and publishes a rate-capped NamedPoseArray containing only the available
+competition rigid bodies:
+
+* Motive-native rigid bodies ``P1`` and ``P2`` under their asset names, and
+* the ping-pong ball as a Motive rigid-body asset named ``Ball``. The HOPE
+  standard requires the ball to be tracked as a strict 6-DOF rigid body
+  (marker dots added to a standard ball — verified workable on both OptiTrack
+  and Chingmu); single-marker/point tracking does not meet the spec.
+
+This relay maps those named entries onto the HOPE-standard topics the planner
+consumes: ``/poses`` (geometry_msgs/PoseArray, ball at index 0 — the
+hope_planner input contract, same as ``pose_to_posearray`` produces on the
+VRPN side), plus ``/ball/point``, ``/P1/pose``, ``/P2/pose`` and TF.
+Compared with the VRPN adapter:
+
+* no runtime topic discovery -- the driver already names everything; mapping
+  is a pure name lookup;
+* ``position_scale`` defaults to 1.0 (Motive streams metres; the parameter is
+  kept because some venue feeds turn out to stream millimetres);
+* orientation sanitizing (defensive): a non-finite quaternion from the
+  driver is replaced with identity so NaN never reaches ``/poses`` or TF —
+  with the required rigid-body ball this should not occur in practice.
+
+``/poses`` is published ONLY when the incoming frame contains the ball entry
+(occluded ball -> the driver omits it) so a stale ball position is never
+re-emitted at rigid-body timestamps -- the planner's velocity polyfit relies
+on this, exactly like the ball-triggered publishing of ``pose_to_posearray``.
+The driver deliberately sends an empty-array heartbeat when a valid selected
+NatNet frame contains none of the three competition bodies. That callback
+feeds this relay's throttled missing-ball diagnostic without generating a
+placeholder pose, TF, or planner sample.
+
+The standalone adapter launch owns the ``/optitrack`` namespace and publishes
+no raw TF. ``optitrack_hope_bridge.launch.py`` starts only this relay and the
+optional HOPE world frame; it never starts the NatNet driver.
+"""
+
+from __future__ import annotations
+
+import math
+
+import rclpy
+from geometry_msgs.msg import PointStamped, Pose, PoseArray, PoseStamped, TransformStamped
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+from tf2_ros import TransformBroadcaster
+
+
+def _finite_quat(q) -> bool:
+    return (
+        math.isfinite(q.x) and math.isfinite(q.y)
+        and math.isfinite(q.z) and math.isfinite(q.w)
+    )
+
+
+class OptitrackMctRelay(Node):
+    """Convert motion_capture_tracking NamedPoseArray frames into HOPE-standard topics."""
+
+    def __init__(self, named_pose_array_type) -> None:
+        super().__init__("optitrack_mct_relay")
+        self._named_pose_array_type = named_pose_array_type
+
+        self.declare_parameter("input_poses_topic", "/optitrack/poses")
+        self.declare_parameter("p1_object", "P1")
+        self.declare_parameter("p2_object", "P2")
+        # Ball entry name = the Motive rigid-body asset name. STANDARDIZED:
+        # ball object is named 'Ball' (robots: P1/P2) — see mocap/README.md.
+        # The ball MUST be a strict 6-DOF rigid body (HOPE spec).
+        self.declare_parameter("ball_object", "Ball")
+        self.declare_parameter("world_frame", "world")
+        self.declare_parameter("p1_pose_topic", "/P1/pose")
+        self.declare_parameter("p2_pose_topic", "/P2/pose")
+        self.declare_parameter("ball_point_topic", "/ball/point")
+        self.declare_parameter("poses_topic", "/poses")
+        self.declare_parameter("pose_array_order", ["ball", "P1", "P2"])
+        self.declare_parameter("publish_tf", True)
+        self.declare_parameter("publish_pose_array", True)
+        # Warn (throttled) when frames keep arriving without a ball entry for
+        # this long -- ball out of the volume / tracker lost the marker.
+        self.declare_parameter("ball_stale_warn_s", 2.0)
+        # Uniform scale applied to every relayed POSITION (poses, ball point, TF).
+        # Motive streams METRES -> 1.0. Kept as a parameter because some venue
+        # feeds (seen on the VRPN side) turn out to stream millimetres.
+        self.declare_parameter("position_scale", 1.0)
+
+        self._p1_object = str(self.get_parameter("p1_object").value)
+        self._p2_object = str(self.get_parameter("p2_object").value)
+        self._ball_object = str(self.get_parameter("ball_object").value)
+        self._world_frame = str(self.get_parameter("world_frame").value)
+        self._publish_tf = bool(self.get_parameter("publish_tf").value)
+        self._publish_pose_array = bool(self.get_parameter("publish_pose_array").value)
+        self._pose_array_order = [str(item) for item in self.get_parameter("pose_array_order").value]
+        self._stale_warn_s = float(self.get_parameter("ball_stale_warn_s").value)
+        self._position_scale = float(self.get_parameter("position_scale").value)
+        if self._position_scale != 1.0:
+            self.get_logger().info(
+                f"position_scale={self._position_scale} (relayed positions are scaled; "
+                "Motive normally streams metres -> 1.0)")
+
+        self._name_to_key = {
+            self._p1_object: "P1",
+            self._p2_object: "P2",
+            self._ball_object: "ball",
+        }
+
+        sensor_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
+
+        self._latest: dict[str, PoseStamped] = {}
+        self._ball_seen = False
+        self._last_ball_rx = 0.0
+        self._last_stale_warn = 0.0
+        self._sanitized_orientation_names: set[str] = set()
+
+        self._tf_broadcaster = TransformBroadcaster(self)
+        self._pose_array_pub = self.create_publisher(
+            PoseArray, str(self.get_parameter("poses_topic").value), sensor_qos
+        )
+        self._ball_pub = self.create_publisher(
+            PointStamped, str(self.get_parameter("ball_point_topic").value), sensor_qos
+        )
+        self._pose_publishers = {
+            "P1": self.create_publisher(
+                PoseStamped, str(self.get_parameter("p1_pose_topic").value), sensor_qos
+            ),
+            "P2": self.create_publisher(
+                PoseStamped, str(self.get_parameter("p2_pose_topic").value), sensor_qos
+            ),
+        }
+        input_topic = str(self.get_parameter("input_poses_topic").value)
+        self._sub = self.create_subscription(
+            named_pose_array_type, input_topic, self._on_frame, sensor_qos
+        )
+        self.get_logger().info(
+            f"relaying {input_topic} (NamedPoseArray) -> HOPE topics; objects: "
+            f"ball='{self._ball_object}' P1='{self._p1_object}' P2='{self._p2_object}'"
+        )
+
+    # ---- message handling ------------------------------------------------
+
+    def _now(self) -> float:
+        return self.get_clock().now().nanoseconds * 1e-9
+
+    def _on_frame(self, msg) -> None:
+        if not msg.poses:
+            self._warn_no_competition_bodies()
+            return
+
+        ball_in_frame = False
+        for named in msg.poses:
+            key = self._name_to_key.get(named.name)
+            if key is None:
+                continue
+            stamped = self._normalize(named.name, named.pose, msg.header)
+            self._latest[key] = stamped
+            if key == "ball":
+                ball_in_frame = True
+                continue  # ball is emitted last, after the rigid bodies
+            self._pose_publishers[key].publish(stamped)
+            if self._publish_tf:
+                self._broadcast_tf(key, stamped)
+
+        if ball_in_frame:
+            if not self._ball_seen or (
+                self._stale_warn_s > 0.0
+                and self._now() - self._last_ball_rx > self._stale_warn_s
+            ):
+                self.get_logger().info(f"ball '{self._ball_object}' acquired")
+            self._ball_seen = True
+            self._last_ball_rx = self._now()
+            self._emit_ball(self._latest["ball"])
+        else:
+            self._warn_ball_stale()
+
+    def _warn_ball_stale(self) -> None:
+        if self._stale_warn_s <= 0.0:
+            return
+        now = self._now()
+        since = now - self._last_ball_rx if self._ball_seen else float("inf")
+        if since <= self._stale_warn_s or now - self._last_stale_warn < self._stale_warn_s:
+            return
+        self._last_stale_warn = now
+        if self._ball_seen:
+            self.get_logger().warn(
+                f"no ball entry in mocap frames for {since:.1f}s "
+                "(ball out of volume or tracker lost the marker); /poses is paused"
+            )
+        else:
+            self.get_logger().warn(
+                f"mocap frames arriving but ball '{self._ball_object}' has never been "
+                "tracked; check Motive streaming, the exact asset name, and marker visibility"
+            )
+
+    def _warn_no_competition_bodies(self) -> None:
+        if self._stale_warn_s <= 0.0:
+            return
+        now = self._now()
+        if now - self._last_stale_warn < self._stale_warn_s:
+            return
+        self._last_stale_warn = now
+        self.get_logger().warn(
+            "NatNet frames are arriving, but the filtered frame contains none of "
+            f"'{self._ball_object}', '{self._p1_object}', or '{self._p2_object}'; "
+            "check Motive tracking/streaming and exact case-sensitive asset names. "
+            "No downstream pose or TF is being published"
+        )
+
+    def _emit_ball(self, normalized: PoseStamped) -> None:
+        out = PointStamped()
+        out.header = normalized.header
+        out.point = normalized.pose.position
+        self._ball_pub.publish(out)
+        if self._publish_tf:
+            self._broadcast_tf("ball", normalized)
+        # Publish /poses synchronized to the BALL update only (see module doc).
+        if self._publish_pose_array:
+            self._publish_poses(normalized.header.stamp)
+
+    def _normalize(self, name: str, pose: Pose, header) -> PoseStamped:
+        normalized = PoseStamped()
+        normalized.header.stamp = header.stamp
+        normalized.header.frame_id = header.frame_id or self._world_frame
+        out = Pose()
+        s = self._position_scale
+        out.position.x = pose.position.x * s
+        out.position.y = pose.position.y * s
+        out.position.z = pose.position.z * s
+        if _finite_quat(pose.orientation):
+            out.orientation = pose.orientation
+        else:
+            # Defensive: identity keeps a non-finite driver quaternion out
+            # of /poses and TF (should not occur with the required rigid-body
+            # ball). Position-only consumers are unaffected.
+            out.orientation.w = 1.0
+            if name not in self._sanitized_orientation_names:
+                self._sanitized_orientation_names.add(name)
+                self.get_logger().info(
+                    f"'{name}' streamed a non-finite quaternion; "
+                    "publishing identity (check the rigid-body asset — the HOPE "
+                    "spec requires a strict 6-DOF ball)"
+                )
+        normalized.pose = out
+        return normalized
+
+    def _broadcast_tf(self, object_key: str, msg: PoseStamped) -> None:
+        tf_msg = TransformStamped()
+        tf_msg.header = msg.header
+        tf_msg.header.frame_id = msg.header.frame_id or self._world_frame
+        tf_msg.child_frame_id = object_key
+        tf_msg.transform.translation.x = msg.pose.position.x
+        tf_msg.transform.translation.y = msg.pose.position.y
+        tf_msg.transform.translation.z = msg.pose.position.z
+        tf_msg.transform.rotation = msg.pose.orientation
+        self._tf_broadcaster.sendTransform(tf_msg)
+
+    def _publish_poses(self, stamp) -> None:
+        if "ball" not in self._latest:
+            return
+
+        msg = PoseArray()
+        msg.header.stamp = stamp
+        msg.header.frame_id = self._world_frame
+        msg.poses = [
+            self._latest[key].pose
+            for key in self._pose_array_order
+            if key in self._latest
+        ]
+        self._pose_array_pub.publish(msg)
+
+
+def main(args=None) -> None:
+    try:
+        from motion_capture_tracking_interfaces.msg import NamedPoseArray
+    except ImportError as exc:
+        raise SystemExit(
+            "optitrack_mct_relay needs motion_capture_tracking_interfaces "
+            "from the independent NatNet2ROS2 workspace. Install/source that "
+            "interface package on this host, or use the VRPN "
+            f"backend instead. Import error: {exc}"
+        )
+
+    rclpy.init(args=args)
+    node = OptitrackMctRelay(NamedPoseArray)
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

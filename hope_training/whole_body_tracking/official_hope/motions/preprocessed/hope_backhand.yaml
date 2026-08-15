@@ -1,0 +1,63 @@
+# HOPE Build backhand motion published under the stable public filename.
+
+name: hope_backhand
+swing_side: -1          # forehand = +1, backhand = -1
+fps: 50
+frame_count: 109
+frame_time_s: 0.02
+duration_s: 2.16
+body_schema: complete_articulation_v1
+provenance: HOPE project staged recording retargeted to Agibot A3
+license: Apache-2.0
+
+# Phase structure (frame indices). The clip covers ready -> strike -> follow-through -> recover.
+strike_frame: 48
+strike_phase: 0.44444444
+strike_time_s: 0.96
+recover_end_frame: 108
+
+# Isaac articulation order stored in joint_pos/joint_vel (index 0..30).
+joint_order:
+  - left_hip_pitch_joint
+  - right_hip_pitch_joint
+  - waist_yaw_joint
+  - left_hip_roll_joint
+  - right_hip_roll_joint
+  - waist_roll_joint
+  - left_hip_yaw_joint
+  - right_hip_yaw_joint
+  - waist_pitch_joint
+  - left_knee_joint
+  - right_knee_joint
+  - head_yaw_joint
+  - left_shoulder_pitch_joint
+  - right_shoulder_pitch_joint
+  - left_ankle_pitch_joint
+  - right_ankle_pitch_joint
+  - head_pitch_joint
+  - left_shoulder_roll_joint
+  - right_shoulder_roll_joint
+  - left_ankle_roll_joint
+  - right_ankle_roll_joint
+  - left_shoulder_yaw_joint
+  - right_shoulder_yaw_joint
+  - left_elbow_joint
+  - right_elbow_joint
+  - left_wrist_roll_joint
+  - right_wrist_roll_joint
+  - left_wrist_pitch_joint
+  - right_wrist_pitch_joint
+  - left_wrist_yaw_joint
+  - right_wrist_yaw_joint
+
+# body_* arrays store all 32 unmerged articulation bodies. MotionLoader selects
+# the configured 14-body training subset using the live Isaac body indexes.
+anchor_body: torso_Link
+root_body: pelvis_link
+
+# Racket mount + public blade convention.
+racket_link: right_wrist_yaw_Link            # the paddle is mounted on the right wrist
+racket_body: pingpang_red_Link               # racket-center body, if present in the asset
+mount_offset_xyz: [0.21, 0.032, 0.032]       # wrist -> racket center, wrist local frame (m)
+blade_normal_axis: y                         # racket-local +Y is the blade face normal
+blade_normal_sign: -1.0                      # black/backhand face

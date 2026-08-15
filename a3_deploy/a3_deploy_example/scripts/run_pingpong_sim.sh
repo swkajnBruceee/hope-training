@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Copyright (c) 2026 Intelligent Racing Inc. (dba Hitch Interactive)
+# SPDX-License-Identifier: Apache-2.0
+#
+# Launch the Python reference runner against the in-process MuJoCo sim.
+#
+# This drives the SAME a3_pingpong MJCF that the AimRT MuJoCo sim wraps, stepping
+# MuJoCo in-process -- no AimRT/iceoryx/ROS2 stack required. Requires:
+#     pip install -r reference/requirements.txt
+# The default runtime config selects the published model_21800 bundle; pass
+# --onnx to exercise another compatible export.
+#
+# Examples:
+#   ./run_pingpong_sim.sh --view --realtime            # windowed, wall-clock 50 Hz
+#   ./run_pingpong_sim.sh --duration 20                # headless, 20 s
+#   ./run_pingpong_sim.sh --onnx /path/policy.onnx --idle
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXAMPLE_DIR="$(cd "${HERE}/.." && pwd)"
+REF_DIR="${EXAMPLE_DIR}/reference"
+
+export PYTHONPATH="${REF_DIR}:${PYTHONPATH:-}"
+
+exec python3 -m a3_deploy_onnx_ref_pingpong \
+  --config "${EXAMPLE_DIR}/config/hope_pingpong_runtime.yaml" \
+  --backend mujoco \
+  "$@"

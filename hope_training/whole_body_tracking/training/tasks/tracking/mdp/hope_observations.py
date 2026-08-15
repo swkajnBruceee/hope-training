@@ -375,7 +375,11 @@ def _reference_racket_state_b(env: ManagerBasedRLEnv, command_name: str, lookahe
     tcp_vel_w = wvel + torch.cross(wang, mount_w, dim=-1)
     mount_quat = torch.tensor(target.cfg.mount_quat, dtype=wquat.dtype, device=wquat.device).expand_as(wquat)
     tcp_quat = quat_mul(wquat, mount_quat)
-    tcp_normal_w = matrix_from_quat(tcp_quat)[:, :, int(target.cfg.mount_normal_axis)] * float(target.cfg.mount_normal_sign)
+    tcp_normal_w = matrix_from_quat(
+        tcp_quat
+    )[:, :, int(target.cfg.mount_normal_axis)] * (
+        float(target.cfg.mount_normal_sign) * target.face_sign.unsqueeze(-1)
+    )
     base_yaw = yaw_quat(target.base_quat_w)
     return (
         quat_rotate_inverse(base_yaw, tcp_pos_w - target.base_pos_w),

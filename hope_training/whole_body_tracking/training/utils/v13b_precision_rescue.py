@@ -35,9 +35,22 @@ class PrecisionRescuePriorSchedule:
     total_chain_updates: int
     hold_updates: int = 300
     upper_step: float = 0.05
+    # Optional controllability-recovery mode.  This is deliberately separate
+    # from the historical source alpha: it records that a new rescue branch
+    # intentionally starts with less upper-prior authority.
+    controllability_recovery_enabled: bool = False
+    controllability_start_alpha: float = -1.0
+    controllability_min_alpha: float = 0.30
+    # Safety deadline: regardless of an absent/stale external gate, the
+    # upper teacher may not remain active beyond this continued curriculum
+    # progress.  This guarantees a genuinely teacher-free tail phase.
+    force_zero_start_progress: float = 0.60
+    force_zero_progress: float = 0.70
+    hard_zero_enabled: bool = True
     readiness_open: bool = False
     current_update: int = 0
     _upper_alpha: float | None = None
+    _force_ramp_start_alpha: float | None = None
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.source_progress <= 1.0:
@@ -48,11 +61,24 @@ class PrecisionRescuePriorSchedule:
             raise ValueError("PrecisionRescue source_upper_alpha must be in [0, 1]")
         if self.total_chain_updates < 2:
             raise ValueError("PrecisionRescue total_chain_updates must be >= 2")
+        if not 0.0 <= self.force_zero_progress <= 1.0:
+            raise ValueError("force_zero_progress must be in [0, 1]")
+        if not 0.0 <= self.force_zero_start_progress <= self.force_zero_progress:
+            raise ValueError("force_zero_start_progress must be <= force_zero_progress")
         if self.hold_updates < 0:
             raise ValueError("PrecisionRescue hold_updates must be >= 0")
         if not 0.0 < self.upper_step <= 0.05:
             raise ValueError("PrecisionRescue upper_step must be in (0, 0.05]")
-        self._upper_alpha = float(self.source_upper_alpha)
+        if self.controllability_recovery_enabled:
+            if not 0.0 <= self.controllability_start_alpha <= 1.0:
+                raise ValueError("controllability_start_alpha must be in [0, 1]")
+            if not 0.0 <= self.controllability_min_alpha <= self.controllability_start_alpha:
+                raise ValueError("controllability_min_alpha must be <= controllability_start_alpha")
+            if self.controllability_start_alpha > self.source_upper_alpha + 1.0e-9:
+                raise ValueError("controllability start alpha cannot exceed source upper alpha")
+            self._upper_alpha = float(self.controllability_start_alpha)
+        else:
+            self._upper_alpha = float(self.source_upper_alpha)
 
     @property
     def global_progress(self) -> float:
@@ -65,6 +91,24 @@ class PrecisionRescuePriorSchedule:
 
     def set_update(self, update: int) -> None:
         self.current_update = max(0, int(update))
+        if self.hard_zero_enabled:
+            progress = self.global_progress
+            if progress >= self.force_zero_progress:
+                # The deadline is monotone and irreversible.  It is deliberately
+                # independent of the optional external readiness gate.
+                self._upper_alpha = 0.0
+                self.readiness_open = False
+            elif progress >= self.force_zero_start_progress:
+                # Smooth fallback withdrawal over the final curriculum band.
+                # External gate withdrawals may already have made alpha lower;
+                # never increase it during this safety ramp.
+                if self._force_ramp_start_alpha is None:
+                    self._force_ramp_start_alpha = max(float(self._upper_alpha), 0.0)
+                span = max(self.force_zero_progress - self.force_zero_start_progress, 1.0e-8)
+                phase = (progress - self.force_zero_start_progress) / span
+                ramp_start = self._force_ramp_start_alpha
+                self._upper_alpha = min(self._upper_alpha, ramp_start * (1.0 - phase))
+                self.readiness_open = False
 
     def lower_alpha(self) -> float:
         # The historical schedule itself is monotone.  Clamp by source value
@@ -73,6 +117,8 @@ class PrecisionRescuePriorSchedule:
 
     def upper_alpha(self) -> float:
         assert self._upper_alpha is not None
+        if self.hard_zero_enabled and self.global_progress >= self.force_zero_progress:
+            return 0.0
         if self.current_update < self.hold_updates or not self.readiness_open:
             return float(self._upper_alpha)
         # A single call may happen many physics steps per PPO update; only
@@ -102,6 +148,12 @@ class PrecisionRescuePriorSchedule:
             "upper_alpha": self.upper_alpha(),
             "hold_updates": self.hold_updates,
             "upper_step": self.upper_step,
+            "controllability_recovery_enabled": self.controllability_recovery_enabled,
+            "controllability_start_alpha": self.controllability_start_alpha,
+            "controllability_min_alpha": self.controllability_min_alpha,
+            "force_zero_start_progress": self.force_zero_start_progress,
+            "force_zero_progress": self.force_zero_progress,
+            "hard_zero_enabled": self.hard_zero_enabled,
             "readiness_open": self.readiness_open,
         }
 

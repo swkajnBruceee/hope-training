@@ -98,7 +98,7 @@ def main() -> None:
         "status": "candidate_reference_pending_training_split",
         "source_manifest": str(source_manifest),
         "source_index": str(weighted_index),
-        "notice_contract": "THIRD_PARTY_NOTICES.md",
+        "notice_contract": "project_manifest",
         "reference_semantics": source.get("reference_semantics"),
         "physics_qualified": False,
         "teacher_approved": False,

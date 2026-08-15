@@ -1,0 +1,51 @@
+schema_version: v13b_observation_contract_v1
+
+student_98d:
+  fields:
+    - base_lin_vel: 3
+    - base_ang_vel: 3
+    - projected_gravity: 3
+    - joint_pos_relative: 22
+    - joint_vel_relative: 22
+    - racket_pos_local: 3
+    - racket_lin_vel_local: 3
+    - racket_normal_local: 3
+    - goal_10d:
+        order: [target_racket_position_local_xyz, target_racket_linear_velocity_local_xyz, target_racket_normal_local_xyz, signed_time_to_hit]
+        width: 10
+    - previous_action: 26
+  total: 98
+
+lower_prior_126d:
+  fields: []
+  note: >-
+    Historical Stage-A private contract. It must be constructed exactly as
+    the original model3396 training environment; do not concatenate the 98D
+    student observation into it.
+  total: 126
+  normalizer_required: true
+
+upper_prior_56d:
+  order:
+    - base_ang_vel: 3
+    - projected_gravity: 3
+    - native_strike_joint_pos_relative: 10
+    - native_strike_joint_vel_relative: 10
+    - racket_target_pos_local: 3
+    - racket_target_vel_local: 3
+    - racket_target_normal_local: 3
+    - racket_pos_local: 3
+    - racket_lin_vel_local: 3
+    - racket_normal_local: 3
+    - time_to_strike_with_prelude: 1
+    - swing_type: 1
+    - previous_upper_action: 10
+  total: 56
+  normalizer_required: true
+  shoulder_lookahead_steps: 12
+  velocity_feedforward_beta: 0.75
+
+common:
+  goal_frame: pelvis_root_local
+  signed_time_definition: t_hit_minus_t
+  deterministic_inference: true

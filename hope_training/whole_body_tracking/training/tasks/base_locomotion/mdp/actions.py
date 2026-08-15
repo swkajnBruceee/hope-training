@@ -1435,6 +1435,18 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                 total_chain_updates=int(cfg.precision_rescue_schedule_total_updates),
                 hold_updates=int(cfg.precision_rescue_hold_updates),
                 upper_step=float(cfg.precision_rescue_upper_step),
+                controllability_recovery_enabled=bool(
+                    cfg.precision_rescue_controllability_recovery_enabled
+                ),
+                controllability_start_alpha=float(
+                    cfg.precision_rescue_controllability_start_alpha
+                ),
+                controllability_min_alpha=float(
+                    cfg.precision_rescue_controllability_min_alpha
+                ),
+                force_zero_start_progress=float(cfg.precision_rescue_upper_force_zero_start_progress),
+                force_zero_progress=float(cfg.precision_rescue_upper_force_zero_progress),
+                hard_zero_enabled=bool(cfg.precision_rescue_upper_hard_zero_enabled),
             )
             env.v13b_precision_rescue_schedule = self._precision_rescue_schedule
             # Probe settings are private runtime metadata.  They must not be
@@ -1462,7 +1474,9 @@ class A3ReferenceFreeTargetConditionedPositionAction(A3F0UpperBaseCompositePosit
                 "[V1.3B PrecisionRescue] continuation prior schedule armed: "
                 f"progress={env.v13b_policy_progress:.6f} "
                 f"lower={self._precision_rescue_schedule.lower_alpha():.6f} "
-                f"upper={self._precision_rescue_schedule.upper_alpha():.6f}",
+                f"upper={self._precision_rescue_schedule.upper_alpha():.6f} "
+                f"controllability_recovery="
+                f"{self._precision_rescue_schedule.controllability_recovery_enabled}",
                 flush=True,
             )
         print(
@@ -1887,6 +1901,12 @@ class A3ReferenceFreeTargetConditionedPositionActionCfg(A3F0UpperBaseCompositePo
     precision_rescue_source_upper_alpha: float = -1.0
     precision_rescue_hold_updates: int = 300
     precision_rescue_upper_step: float = 0.05
+    precision_rescue_controllability_recovery_enabled: bool = False
+    precision_rescue_controllability_start_alpha: float = -1.0
+    precision_rescue_controllability_min_alpha: float = 0.30
+    precision_rescue_upper_force_zero_start_progress: float = 0.60
+    precision_rescue_upper_force_zero_progress: float = 0.70
+    precision_rescue_upper_hard_zero_enabled: bool = True
     precision_rescue_schedule_total_updates: int = 50000
     precision_rescue_upper_probe_interval_updates: int = 200
     precision_rescue_upper_probe_max_steps: int = 600

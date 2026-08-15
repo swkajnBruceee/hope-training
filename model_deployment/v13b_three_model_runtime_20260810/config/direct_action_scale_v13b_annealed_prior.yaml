@@ -1,0 +1,33 @@
+contract_version: v13b_direct_action_scale_v1_annealed_prior
+status: qualified_physx_dynamic_limits_no_self_collision
+source_probe: eval_outputs/target_conditioned_v13b_complete_priors_envelope_probe_20260808/physx_dynamic_envelope_summary.json
+notes: >-
+  Combined model_3396 additive lower prior plus model_900 upper prior probe
+  passed at all 528 cases (22 channels, both signs, levels 0.01..1.00).
+  Qualification covers PhysX dynamic limits, root height/tilt, torque,
+  velocity, soft-limit margin, and action saturation. Self-collision remains
+  disabled by the current articulation contract and is not covered here.
+lower_scale_rad:
+  - 0.192
+  - 0.048
+  - 0.192
+  - 0.192
+  - 0.144
+  - 0.192
+  - 0.192
+  - 0.048
+  - 0.096
+  - 0.072
+  - 0.144
+  - 0.192
+upper_scale_rad:
+  - 0.440
+  - 0.022
+  - 0.110
+  - 0.440
+  - 0.0132
+  - 0.110
+  - 0.440
+  - 0.440
+  - 0.440
+  - 0.440

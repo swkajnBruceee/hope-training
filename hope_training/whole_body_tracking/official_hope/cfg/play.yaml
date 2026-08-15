@@ -1,0 +1,46 @@
+# =============================================================================
+# Hydra config for playing a trained HOPE policy in-sim.
+#
+# Usage:
+#   python scripts/play.py task=HOPEPingPong algo=ppo num_envs=4 \
+#       checkpoint=logs/rsl_rl/hope_pingpong/<run>/model_<iter>.pt
+#
+# Loads a LOCAL checkpoint and runs the policy in the viewer. Without `checkpoint`, the latest
+# local checkpoint under logs/rsl_rl/<experiment>/ is used. Export is a separate step
+# (scripts/export_onnx.py) — play.py does not export.
+# =============================================================================
+
+defaults:
+  - task: HOPEPingPong
+  - algo: ppo
+  - _self_
+
+headless: false
+device: cuda:0
+num_envs: 4
+seed: null
+
+checkpoint: null       # explicit local model_*.pt path (else: latest local checkpoint)
+
+# Reference motion clips (null -> the task's placeholder clips).
+motion_file: null      # clip 0 (forehand)
+motion_file_2: null    # clip 1 (backhand)
+
+video: false
+video_length: 200
+video_dir: videos/play
+video_name: hope_play_verification.mp4
+video_stop_on_termination: false
+video_stride: 1
+max_steps: null
+# Verification-only fast path: rewards/terminations do not affect actor inference or physics.
+verification_disable_scoring: false
+progress_interval: 50
+# false uses the standard play.py behavior; true applies the Hydra task recipe exactly as train.py.
+apply_task_overrides: false
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}

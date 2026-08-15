@@ -38,8 +38,20 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--set", choices=("native", "common"), required=True)
     parser.add_argument(
         "--condition",
-        choices=("historical", "half_upper", "upper_off", "all_off"),
+        choices=("historical", "half_upper", "lower_off", "upper_off", "all_off"),
         required=True,
+    )
+    parser.add_argument(
+        "--lower-alpha-override",
+        type=float,
+        default=None,
+        help="Optional evaluation-only lower-prior alpha override.",
+    )
+    parser.add_argument(
+        "--upper-alpha-override",
+        type=float,
+        default=None,
+        help="Optional evaluation-only upper-prior alpha override.",
     )
     parser.add_argument(
         "--progress", type=float, required=True,
@@ -47,6 +59,18 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--source-lower-alpha", required=True, type=float)
     parser.add_argument("--source-upper-alpha", required=True, type=float)
+    parser.add_argument(
+        "--lower-prior-checkpoint",
+        type=Path,
+        default=None,
+        help="Optional frozen model_3396-compatible checkpoint used for this evaluation.",
+    )
+    parser.add_argument(
+        "--upper-prior-checkpoint",
+        type=Path,
+        default=None,
+        help="Optional frozen model_900-compatible checkpoint used for this evaluation.",
+    )
     parser.add_argument("--episodes", type=int, default=128)
     parser.add_argument("--seed", type=int, default=20260810)
     parser.add_argument("--device", default="cuda:1")
@@ -60,6 +84,8 @@ def _condition_alphas(args: argparse.Namespace) -> tuple[float, float]:
     upper = float(args.source_upper_alpha)
     if args.condition == "half_upper":
         upper *= 0.5
+    elif args.condition == "lower_off":
+        lower = 0.0
     elif args.condition == "upper_off":
         upper = 0.0
     elif args.condition == "all_off":
@@ -70,6 +96,21 @@ def _condition_alphas(args: argparse.Namespace) -> tuple[float, float]:
 def _finite_mean(values, torch) -> float | None:
     valid = values[torch.isfinite(values)]
     return None if valid.numel() == 0 else float(valid.mean().item())
+
+
+def _group_metrics(values, face_sign, torch) -> dict[str, float | int | None]:
+    """Return hit metrics separately for the active red and black faces."""
+    result: dict[str, float | int | None] = {}
+    for label, mask in (
+        ("forehand_red", face_sign > 0.0),
+        ("backhand_black", face_sign < 0.0),
+    ):
+        valid = mask & torch.isfinite(values)
+        result[label] = {
+            "count": int(valid.sum().item()),
+            "mean": _finite_mean(values[valid], torch) if torch.any(valid) else None,
+        }
+    return result
 
 
 def _digest_goal(goal, torch) -> str:
@@ -127,12 +168,35 @@ def main() -> None:
         torch.manual_seed(args.seed)
         env_cfg = parse_env_cfg(task_id, device=args.device, num_envs=args.episodes)
         _apply_task_overrides(env_cfg, task_cfg)
+        # Keep the public student checkpoint separate from the two private
+        # teacher checkpoints.  This makes teacher/student matrix evaluations
+        # explicit and prevents a path change from silently changing the
+        # default frozen-prior contract.
+        if args.lower_prior_checkpoint is not None:
+            if not args.lower_prior_checkpoint.is_file():
+                raise SystemExit(f"lower prior checkpoint does not exist: {args.lower_prior_checkpoint}")
+            env_cfg.actions.joint_pos.annealed_3396_prior_checkpoint = str(
+                args.lower_prior_checkpoint.resolve()
+            )
+        if args.upper_prior_checkpoint is not None:
+            if not args.upper_prior_checkpoint.is_file():
+                raise SystemExit(f"upper prior checkpoint does not exist: {args.upper_prior_checkpoint}")
+            env_cfg.actions.joint_pos.annealed_900_upper_prior_checkpoint = str(
+                args.upper_prior_checkpoint.resolve()
+            )
         env_cfg.commands.motion.motion_manifest = str(Path(task_cfg.motion_manifest))
         env_cfg.commands.motion.motion_file = None
         env = gym.make(task_id, cfg=env_cfg, render_mode=None)
         raw = env.unwrapped
         raw.v13b_policy_progress = float(args.progress)
         lower_alpha, upper_alpha = _condition_alphas(args)
+        if args.lower_alpha_override is not None:
+            lower_alpha = float(args.lower_alpha_override)
+        if args.upper_alpha_override is not None:
+            upper_alpha = float(args.upper_alpha_override)
+        for name, value in (("lower", lower_alpha), ("upper", upper_alpha)):
+            if not 0.0 <= value <= 1.0:
+                raise SystemExit(f"{name} alpha override must lie in [0, 1]")
         # These are documented replay-only latches in actions.py.  They are
         # required on Common-set so all candidates share goals but retain
         # their own historical teacher amplitudes.
@@ -176,6 +240,7 @@ def main() -> None:
         position = torch.full((raw.num_envs,), float("nan"), device=raw.device)
         velocity = torch.full_like(position, float("nan"))
         normal = torch.full_like(position, float("nan"))
+        hit_face_sign = torch.zeros_like(position)
         exact_success = torch.zeros_like(recorded_hit)
 
         # A process-local seed plus the explicit post-reset resample gives a
@@ -214,6 +279,7 @@ def main() -> None:
                 position[hit] = command.metrics["racket_pos_error_exact_strike"][hit]
                 velocity[hit] = command.metrics["racket_vel_error_exact_strike"][hit]
                 normal[hit] = command.metrics["racket_normal_error_deg_exact_strike"][hit]
+                hit_face_sign[hit] = command.face_sign[hit]
                 exact_success[hit] = (
                     (position[hit] < float(command.cfg.strike_success_pos_thresh))
                     & (velocity[hit] < float(command.cfg.strike_success_vel_thresh))
@@ -251,6 +317,14 @@ def main() -> None:
             "max_steps": int(args.max_steps),
             "sampler_progress": float(args.progress),
             "prior_alphas": {"lower": lower_alpha, "upper": upper_alpha},
+            "teacher_checkpoints": {
+                "lower": str(
+                    (args.lower_prior_checkpoint or Path(env_cfg.actions.joint_pos.annealed_3396_prior_checkpoint)).resolve()
+                ),
+                "upper": str(
+                    (args.upper_prior_checkpoint or Path(env_cfg.actions.joint_pos.annealed_900_upper_prior_checkpoint)).resolve()
+                ),
+            },
             "common_goal_local_sha256": goal_digest,
             "goal_contract": "[target_position_b, target_velocity_b, target_normal_b, signed_time_to_hit]",
             "metrics": {
@@ -266,6 +340,23 @@ def main() -> None:
                 "combined_success_given_hit": (
                     float(exact_success[recorded_hit].float().mean().item()) if hit_count else None
                 ),
+                "by_active_face": {
+                    "position_error_m": _group_metrics(position, hit_face_sign, torch),
+                    "velocity_error_mps": _group_metrics(velocity, hit_face_sign, torch),
+                    "normal_error_deg": _group_metrics(normal, hit_face_sign, torch),
+                    "combined_success": {
+                        "forehand_red": float(
+                            exact_success[(hit_face_sign > 0.0) & recorded_hit].float().mean().item()
+                        )
+                        if torch.any((hit_face_sign > 0.0) & recorded_hit)
+                        else None,
+                        "backhand_black": float(
+                            exact_success[(hit_face_sign < 0.0) & recorded_hit].float().mean().item()
+                        )
+                        if torch.any((hit_face_sign < 0.0) & recorded_hit)
+                        else None,
+                    },
+                },
             },
         }
         args.output.parent.mkdir(parents=True, exist_ok=True)

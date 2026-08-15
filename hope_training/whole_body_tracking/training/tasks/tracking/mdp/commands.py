@@ -363,6 +363,21 @@ class MotionLibraryLoader:
         self.strike_normal_b0 = torch.tensor(
             np.stack([a["strike_normal_b0"] for a in arrays]), dtype=torch.float32, device=device
         )
+        # The canonical motion payload stores the geometric red-face normal
+        # (+Y of the racket frame) for both stroke families.  The motion
+        # family itself is still distinct, but the contact-face semantic must
+        # be applied explicitly: forehand=red (+1), backhand=black (-1).
+        self.face_sign = torch.where(
+            self.stroke_ids == 0,
+            torch.ones_like(self.stroke_ids, dtype=torch.float32),
+            torch.where(
+                self.stroke_ids == 1,
+                -torch.ones_like(self.stroke_ids, dtype=torch.float32),
+                torch.ones_like(self.stroke_ids, dtype=torch.float32),
+            ),
+        )
+        self.strike_normal_w = self.strike_normal_w * self.face_sign.unsqueeze(-1)
+        self.strike_normal_b0 = self.strike_normal_b0 * self.face_sign.unsqueeze(-1)
         self.strike_target_is_root_relative = torch.tensor(
             [a["strike_target_is_root_relative"] for a in arrays],
             dtype=torch.bool,

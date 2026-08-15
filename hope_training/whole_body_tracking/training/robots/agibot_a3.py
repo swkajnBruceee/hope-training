@@ -1,7 +1,7 @@
 """Agibot (Zhiyuan) Expedition A3 — ping-pong configuration for BeyondMimic / HOPE WBC.
 
-This file is written against the Agibot A3 ping-pong assets shipped in the HOPE repo under
-``agibot/`` (the URDF ``agibot/URDF/A3T2.5-URDF-std-pingpang/``).
+This file is written for the Agibot A3 ping-pong assets under ``agibot/``
+(the URDF ``agibot/URDF/A3T2.5-URDF-std-pingpang/``).
 Names, link inertials (urdf mass.txt), effort/velocity limits (joints.txt), and the
 standing pose follow the provided model materials. The PD control gains
 (Kp/Kd = stiffness/damping) and armature values are starter reference values
@@ -24,7 +24,7 @@ from isaaclab.assets.articulation import ArticulationCfg
 from training.assets import ASSET_DIR
 
 ##
-# Asset path: the A3 ping-pong URDF is copied from agibot/URDF/A3T2.5-URDF-std-pingpang/
+# Asset path: the A3 ping-pong URDF is prepared from agibot/URDF/A3T2.5-URDF-std-pingpang/
 # into assets/agibot_a3/ by scripts/prepare_a3_isaac_asset.py. Isaac Lab spawns the URDF directly;
 # MuJoCo/AimRT runtime assets are intentionally not vendored in the v1 starter.
 ##
@@ -32,7 +32,7 @@ AGIBOT_A3_ASSET_ROOT = f"{ASSET_DIR}/agibot_a3"
 AGIBOT_A3_URDF_PATH = f"{AGIBOT_A3_ASSET_ROOT}/urdf/model.urdf"
 
 ##
-# Body / joint name constants (real names from the A3 ping-pong URDF). The rest of the HOPE
+# Body / joint name constants (real names from the A3 ping-pong URDF). The rest of the
 # code imports these so there is a single source of truth when the asset is swapped.
 ##
 # NOTE the mixed casing — it is INTENTIONAL and matches the A3 URDF exactly: the root is

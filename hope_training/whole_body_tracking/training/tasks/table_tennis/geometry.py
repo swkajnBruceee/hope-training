@@ -64,8 +64,8 @@ P2_HALF_CENTER: tuple[float, float, float] = (3.0 * TABLE_LENGTH / 4.0, -TABLE_W
 FLOOR_Z: float = -TABLE_HEIGHT      # the floor surface, in HOPE z
 
 ##
-# Robot nominal standing pose, P1 side (HOPE frame).
-# From HOPE_7DOF_Racket_Model_based_Planner_Reference_Setup.md: "Robot nominal standing position
+# Robot nominal standing pose, P1 side (project frame).
+# Robot nominal standing position
 # ~ (-0.5, -0.7625, floor)". X < 0 puts the robot behind the near table end; Y centers it on the
 # table width; the pelvis height is added on top of FLOOR_Z by the robot-specific config.
 ##

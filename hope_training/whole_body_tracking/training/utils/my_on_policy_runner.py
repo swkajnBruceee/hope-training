@@ -47,7 +47,10 @@ def _set_v13b_progress(runner: OnPolicyRunner, iteration: int) -> None:
         # merely log a discrepancy here; continuing would silently train under
         # a different physical action distribution than the selected source.
         if iteration < int(rescue_schedule.hold_updates):
-            expected = float(rescue_schedule.source_upper_alpha)
+            # Controllability-recovery branches intentionally start below
+            # the historical source alpha.  The schedule's active value is
+            # authoritative for the first-phase physical hold.
+            expected = float(rescue_schedule.upper_alpha())
             observed = getattr(env, "v13b_precision_rescue_applied_upper_alpha", None)
             if observed is None or not math.isclose(
                 float(observed), expected, rel_tol=0.0, abs_tol=1.0e-6
@@ -56,7 +59,7 @@ def _set_v13b_progress(runner: OnPolicyRunner, iteration: int) -> None:
                 raise RuntimeError(
                     "PrecisionRescue source-alpha hold violation: "
                     f"iteration={iteration} applied_upper_alpha={observed_text} "
-                    f"expected_source_upper_alpha={expected:.9f}. "
+                    f"expected_hold_upper_alpha={expected:.9f}. "
                     "Refuse to continue with a changed upper-prior distribution."
                 )
     env.v13b_policy_progress = progress
@@ -134,6 +137,7 @@ class MyOnPolicyRunner(OnPolicyRunner):
         self._v13b_max_iterations = int(train_cfg.get("max_iterations", 1)) if isinstance(train_cfg, dict) else 1
         self._precision_rescue_probe_pass_streak = 0
         self._precision_rescue_last_probe_update = -1
+        self._precision_rescue_last_consumed_gate_index = 0
         print(
             f"[V1.3B] MyOnPolicyRunner active; run max_iterations={self._v13b_max_iterations}",
             flush=True,
@@ -146,10 +150,61 @@ class MyOnPolicyRunner(OnPolicyRunner):
         # PPO-update path instead of relying on logging side effects elsewhere.
         iteration = int(locs.get("it", getattr(self, "current_learning_iteration", 0)))
         _set_v13b_progress(self, iteration)
+        # PrecisionRescue upper withdrawal is driven by an external,
+        # evaluation-only upper-off gate.  Consume it on the actual runner
+        # used by reference-free tasks (MyOnPolicyRunner), then refresh the
+        # applied alpha/progress diagnostics.  The hard progress deadline in
+        # the schedule remains independent of this optional gate.
+        self._consume_precision_rescue_upper_gate(iteration)
+        _set_v13b_progress(self, iteration)
         super().log(locs, width, pad)
         if self.disable_logs or self.writer is None:
             return
         self._log_v13b_metrics(int(locs.get("it", 0)))
+
+    def _consume_precision_rescue_upper_gate(self, iteration: int) -> None:
+        """Consume one monotone upper-off approval for reference-free runs."""
+        raw = self.env.unwrapped
+        schedule = getattr(raw, "v13b_precision_rescue_schedule", None)
+        gate_cfg = getattr(raw, "v13b_precision_rescue_upper_gate_config", None)
+        if schedule is None or not isinstance(gate_cfg, dict):
+            return
+        if iteration < int(schedule.hold_updates):
+            return
+        path_text = str(gate_cfg.get("file", "")).strip()
+        if not path_text:
+            return
+        path = Path(path_text)
+        if not path.is_file():
+            return
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if payload.get("contract") != "v13b_precision_rescue_upper_off_gate_v1":
+                return
+            if payload.get("run_id") != gate_cfg.get("run_id"):
+                return
+            if payload.get("source_checkpoint") != gate_cfg.get("source_checkpoint"):
+                return
+            approved = int(payload.get("approved_withdrawal_index", 0))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return
+        if approved != self._precision_rescue_last_consumed_gate_index + 1:
+            return
+        before = float(schedule.upper_alpha())
+        schedule.set_readiness(True)
+        after = float(schedule.advance_upper_once())
+        schedule.set_readiness(False)
+        if after > before + 1.0e-12:
+            return
+        self._precision_rescue_last_consumed_gate_index = approved
+        raw.v13b_precision_rescue_upper_gate_consumed_index = float(approved)
+        raw.v13b_precision_rescue_upper_gate_alpha_before = before
+        raw.v13b_precision_rescue_upper_gate_alpha_after = after
+        print(
+            "[V1.3B PrecisionRescue] upper gate consumed: "
+            f"index={approved} alpha={before:.3f}->{after:.3f}",
+            flush=True,
+        )
 
     def _maybe_run_precision_rescue_upper_probe(self, iteration: int) -> None:
         """Run an evaluation-only, deterministic upper-prior-off readiness test.
@@ -669,6 +724,9 @@ class MotionOnPolicyRunner(OnPolicyRunner):
             ("V13B/upper_probe_position_error_m", "v13b_precision_rescue_upper_probe_position_error_m"),
             ("V13B/upper_probe_normal_error_deg", "v13b_precision_rescue_upper_probe_normal_error_deg"),
             ("V13B/upper_probe_velocity_error_mps", "v13b_precision_rescue_upper_probe_velocity_error_mps"),
+            ("V13B/upper_gate_consumed_index", "v13b_precision_rescue_upper_gate_consumed_index"),
+            ("V13B/upper_gate_alpha_before", "v13b_precision_rescue_upper_gate_alpha_before"),
+            ("V13B/upper_gate_alpha_after", "v13b_precision_rescue_upper_gate_alpha_after"),
         ):
             self._log_scalar(tag, self._mean_tensor(getattr(env, attr, None)), step)
 

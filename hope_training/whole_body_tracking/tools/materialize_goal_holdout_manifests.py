@@ -60,7 +60,7 @@ def main() -> None:
         "source_manifest": str(source_path),
         "goal_manifest": str(goal_path),
         "source_index": source.get("source_index"),
-        "notice_contract": "THIRD_PARTY_NOTICES.md",
+        "notice_contract": "project_manifest",
         "reference_semantics": source.get("reference_semantics"),
         "physics_qualified": False,
         "teacher_approved": False,

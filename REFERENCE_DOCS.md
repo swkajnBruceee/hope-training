@@ -1,6 +1,5 @@
 # Reference Documents
 
-The original public HOPE reference material is preserved in this repository.
 These documents provide background and design context; the starter quickstart is
 in `QUICKSTART_A3_ISAAC.md`.
 
@@ -18,8 +17,6 @@ under `agibot/`, but they are optional for the starter smoke run.
 ## Root Reference Documents
 
 - `HOPE_7DOF_Racket_Model_based_Planner_Reference_Setup.md`
-- `HOPE_WBC_Simulation_Training_Reference_Setup.md`
-- `HOPE_Hardware_Deployment_Reference_Setup.md`
 - `HOPE_AI_Challenge_2026_Rules_EN.docx`
 - `HOPE_AI_Challenge_2026_Rules_ZH.docx`
 

@@ -1,0 +1,46 @@
+optitrack_mct_relay:
+  ros__parameters:
+    # NOTE: the Motive PC hostname/IP and raw driver configuration belong to
+    # the independently launched NatNet2ROS2 workspace, NOT this relay.
+    #
+    # Where the independent NatNet2ROS2 adapter publishes its
+    # NamedPoseArray after the launch-file remap. Raw driver topics live under
+    # /optitrack/* on purpose -- the bare /poses name is the HOPE contract
+    # (geometry_msgs/PoseArray) that THIS relay produces.
+    input_poses_topic: "/optitrack/poses"
+
+    # STANDARDIZED object names (the HOPE tracked-object taxonomy, see
+    # mocap/README.md): Motive competition rigid-body ASSETS must be named
+    # EXACTLY P1 / P2, and the ball entry is named Ball. A mismatch = no data
+    # relayed; check with
+    # `ros2 topic echo --once /optitrack/poses` after the driver is up.
+    p1_object: "P1"        # our robot's marker-cluster rigid body (standardized)
+    p2_object: "P2"        # opponent marker-cluster rigid body (standardized)
+    # Ball entry name in the NamedPoseArray. HOPE requires a Motive-native
+    # strict 6-DOF rigid-body asset; the standardized asset name is Ball.
+    ball_object: "Ball"
+
+    # Unit conversion for every relayed position (poses, ball point, TF). THE
+    # CHAIN WORKS IN METRES and Motive/NatNet streams METRES -> 1.0. Kept as a
+    # parameter because some venue feeds (seen on the VRPN side) turn out to
+    # stream millimetres; if /P1/pose ever reads hundreds, set 0.001.
+    position_scale: 1.0
+
+    world_frame: "world"
+
+    # Warn (throttled) when mocap frames keep arriving without a ball entry
+    # for this long. /poses is paused while the ball is absent BY DESIGN (the
+    # planner's velocity polyfit must never see a re-emitted stale ball).
+    ball_stale_warn_s: 2.0
+
+    # Published HOPE-standard topics.
+    p1_pose_topic: "/P1/pose"
+    p2_pose_topic: "/P2/pose"
+    ball_point_topic: "/ball/point"
+    poses_topic: "/poses"
+
+    # Keep ball first so hope_planner's default ball_pose_index=0 works.
+    # Competition output contains Ball/P1/P2 only.
+    pose_array_order: ["ball", "P1", "P2"]
+    publish_tf: true
+    publish_pose_array: true

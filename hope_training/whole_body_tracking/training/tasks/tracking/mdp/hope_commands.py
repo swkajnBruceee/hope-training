@@ -166,6 +166,9 @@ class RacketTargetCommand(CommandTerm):
         self.racket_anchor_target_normal_w = torch.zeros(self.num_envs, 3, device=self.device)
         self.racket_anchor_target_normal_w[:, 2] = 1.0
         self.base_target_pos_w = torch.zeros(self.num_envs, 2, device=self.device)
+        # Explicit contact-face semantic.  This is independent of target
+        # position: +1 is red/forehand, -1 is black/backhand.
+        self.face_sign = torch.ones(self.num_envs, device=self.device)
         self.swing_sign = torch.ones(self.num_envs, device=self.device)
         # Runtime planner/audit override.  The position is expressed in the
         # base yaw-heading frame at command receipt, then converted once to a
@@ -239,9 +242,15 @@ class RacketTargetCommand(CommandTerm):
         self.metrics["racket_pos_error"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["racket_vel_error"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["racket_normal_error_deg"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["racket_normal_error_deg_forehand"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["racket_normal_error_deg_backhand"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["racket_normal_target_dot_forehand"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["racket_normal_target_dot_backhand"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["face_forehand_fraction"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["racket_normal_reward_raw"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["racket_normal_reward_temporal"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["racket_normal_reward_std_rad"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["face_sign"] = torch.ones(self.num_envs, device=self.device)
         self.metrics["racket_hit_coupled_reward_raw"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["racket_hit_coupled_pos_raw"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["racket_hit_coupled_vel_raw"] = torch.zeros(self.num_envs, device=self.device)
@@ -353,6 +362,67 @@ class RacketTargetCommand(CommandTerm):
             self._motion_term = self._env.command_manager.get_term(self.cfg.motion_command_name)
         return self._motion_term
 
+    def _set_face_sign(
+        self,
+        env_ids: Sequence[int] | torch.Tensor,
+        motion_ids: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Set per-environment red/black face signs.
+
+        Motion-backed targets use the explicit manifest stroke label.  Pure
+        reference-free targets sample a balanced face label because target-Y
+        is not a reliable forehand/backhand classifier.
+        """
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        n = ids.numel()
+        signs = torch.ones(n, device=self.device)
+        assigned = torch.zeros(n, dtype=torch.bool, device=self.device)
+
+        if motion_ids is not None:
+            motion_ids = torch.as_tensor(motion_ids, dtype=torch.long, device=self.device).flatten()
+            if motion_ids.numel() != n:
+                raise ValueError("motion_ids and env_ids must have the same length")
+            try:
+                motion = self._motion().motion
+            except Exception:
+                motion = None
+            if motion is not None and hasattr(motion, "face_sign"):
+                valid = (motion_ids >= 0) & (motion_ids < motion.face_sign.shape[0])
+                if torch.any(valid):
+                    signs[valid] = motion.face_sign[motion_ids[valid]]
+                    assigned[valid] = True
+
+        if torch.any(~assigned):
+            probability = float(getattr(self.cfg, "forehand_probability", 0.5))
+            if not 0.0 <= probability <= 1.0:
+                raise ValueError("forehand_probability must be in [0, 1]")
+            sampled_forehand = torch.rand(int((~assigned).sum()), device=self.device) < probability
+            signs[~assigned] = torch.where(
+                sampled_forehand,
+                torch.ones_like(sampled_forehand, dtype=torch.float32),
+                -torch.ones_like(sampled_forehand, dtype=torch.float32),
+            )
+
+        self.face_sign[ids] = signs
+        # Keep the historical swing channel semantically aligned with the
+        # explicit face label for tasks that still expose it.
+        self.swing_sign[ids] = signs
+        self.metrics["face_sign"][ids] = signs
+        return signs
+
+    def _motion_face_sign(self, motion, motion_id: int) -> torch.Tensor:
+        """Return the explicit red/black sign for one loaded motion."""
+        if hasattr(motion, "face_sign"):
+            return motion.face_sign[int(motion_id)]
+        if hasattr(motion, "stroke_ids"):
+            stroke_id = motion.stroke_ids[int(motion_id)]
+            return torch.where(
+                stroke_id == 1,
+                torch.as_tensor(-1.0, device=stroke_id.device),
+                torch.as_tensor(1.0, device=stroke_id.device),
+            )
+        return torch.as_tensor(1.0, device=self.device)
+
     def _reference_body_state(
         self, motion, step: int, body_index: int, motion_id: int | None = None
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -427,7 +497,8 @@ class RacketTargetCommand(CommandTerm):
                     pos = wpos + offset_w
                     lin = wlin + torch.cross(wang, offset_w, dim=-1)
                     quat = quat_mul(wquat.unsqueeze(0), self._mount_quat[0:1]).squeeze(0)
-                normal = matrix_from_quat(quat.unsqueeze(0))[0, :, self.cfg.mount_normal_axis] * self.cfg.mount_normal_sign
+                normal = matrix_from_quat(quat.unsqueeze(0))[0, :, self.cfg.mount_normal_axis]
+                normal = normal * float(self.cfg.mount_normal_sign) * self._motion_face_sign(motion, motion_id)
                 normal = normal / (torch.norm(normal) + 1e-6)
                 base_pos, _base_quat, _base_lin, _base_ang = self._reference_body_state(motion, strike_step, 0, motion_id)
                 reach = (pos[:2] - base_pos[:2]).detach().clone()
@@ -463,7 +534,8 @@ class RacketTargetCommand(CommandTerm):
             pos = wpos + offset_w
             lin = wlin + torch.cross(wang, offset_w, dim=-1)
             quat = quat_mul(wquat.unsqueeze(0), self._mount_quat[0:1]).squeeze(0)
-        normal = matrix_from_quat(quat.unsqueeze(0))[0, :, self.cfg.mount_normal_axis] * self.cfg.mount_normal_sign
+        normal = matrix_from_quat(quat.unsqueeze(0))[0, :, self.cfg.mount_normal_axis]
+        normal = normal * float(self.cfg.mount_normal_sign)
         self._ref_racket_pos_rel = pos.detach().clone()
         self._ref_racket_vel_w = lin.detach().clone()
         self._ref_racket_normal_w = (normal / (torch.norm(normal) + 1e-6)).detach().clone()
@@ -505,6 +577,13 @@ class RacketTargetCommand(CommandTerm):
 
     def _sample_targets_uniform(self, env_ids: Sequence[int], origins: torch.Tensor, n: int):
         """Independent box sampling (legacy mode). Ranges are PLACEHOLDERS not tied to the swing."""
+        # Legacy uniform mode has no stroke-family source and its
+        # ``normal_mode='velocity'`` contract is intentionally preserved.
+        # The explicit red/black mapping is used by manifest/reference-free
+        # target modes below.
+        ids = torch.as_tensor(env_ids, dtype=torch.long, device=self.device).flatten()
+        self.face_sign[ids] = 1.0
+        self.metrics["face_sign"][ids] = 1.0
         pos = origins.clone()
         pos[:, 0] += sample_uniform(*self.cfg.racket_pos_x_range, (n,), self.device)
         pos[:, 1] += sample_uniform(*self.cfg.racket_pos_y_range, (n,), self.device)
@@ -545,6 +624,7 @@ class RacketTargetCommand(CommandTerm):
         root_relative = None
         if hasattr(self, "_ref_racket_pos_rel_by_motion"):
             motion_ids = motion_cmd.motion_ids[env_ids]
+            self._set_face_sign(env_ids, motion_ids)
             ref_pos = self._ref_racket_pos_rel_by_motion[motion_ids]
             ref_vel = self._ref_racket_vel_w_by_motion[motion_ids]
             ref_normal = self._ref_racket_normal_w_by_motion[motion_ids]
@@ -610,6 +690,7 @@ class RacketTargetCommand(CommandTerm):
             raise RuntimeError("target_mode='manifest_perturbed' requires MotionCommandCfg.motion_manifest")
 
         motion_ids = motion_cmd.motion_ids[env_ids]
+        self._set_face_sign(env_ids, motion_ids)
         scale = self._perturb_scale()
         dev = self.device
         pos_h = torch.tensor(self.cfg.manifest_perturb_pos, device=dev) * scale
@@ -861,6 +942,7 @@ class RacketTargetCommand(CommandTerm):
         if not isinstance(motion, MotionLibraryLoader):
             raise RuntimeError("target_mode='manifest' requires MotionCommandCfg.motion_manifest")
         motion_ids = motion_cmd.motion_ids[env_ids]
+        self._set_face_sign(env_ids, motion_ids)
         root_relative = motion.strike_target_is_root_relative[motion_ids]
         if self.cfg.manifest_base_aligned:
             hit_steps = motion.hit_frame[motion_ids]
@@ -922,8 +1004,10 @@ class RacketTargetCommand(CommandTerm):
             self.racket_quat_w = quat_mul(wquat, self._mount_quat)
         # Face normal = chosen local axis of the racket frame, mapped to world.
         # TODO(asset): confirm mount_normal_axis/sign against pingpang_red_Link.STL (see hope-a3-racket-mount).
-        self.racket_normal_w = (
-            matrix_from_quat(self.racket_quat_w)[:, :, self.cfg.mount_normal_axis] * self.cfg.mount_normal_sign
+        self.racket_normal_w = matrix_from_quat(
+            self.racket_quat_w
+        )[:, :, self.cfg.mount_normal_axis] * (
+            float(self.cfg.mount_normal_sign) * self.face_sign.unsqueeze(-1)
         )
 
     def _compute_strike_timing(self):
@@ -983,6 +1067,17 @@ class RacketTargetCommand(CommandTerm):
         vel_err = torch.norm(self.racket_lin_vel_w - self.racket_target_vel_w, dim=-1)
         cos_ang = torch.sum(self.racket_normal_w * self.racket_target_normal_w, dim=-1).clamp(-1.0, 1.0)
         normal_err_deg = torch.acos(cos_ang) * (180.0 / math.pi)
+        forehand = self.face_sign > 0.0
+        backhand = ~forehand
+        forehand_normal_error = normal_err_deg[forehand].mean() if torch.any(forehand) else torch.zeros((), device=self.device)
+        backhand_normal_error = normal_err_deg[backhand].mean() if torch.any(backhand) else torch.zeros((), device=self.device)
+        forehand_normal_dot = cos_ang[forehand].mean() if torch.any(forehand) else torch.zeros((), device=self.device)
+        backhand_normal_dot = cos_ang[backhand].mean() if torch.any(backhand) else torch.zeros((), device=self.device)
+        self.metrics["racket_normal_error_deg_forehand"].fill_(forehand_normal_error)
+        self.metrics["racket_normal_error_deg_backhand"].fill_(backhand_normal_error)
+        self.metrics["racket_normal_target_dot_forehand"].fill_(forehand_normal_dot)
+        self.metrics["racket_normal_target_dot_backhand"].fill_(backhand_normal_dot)
+        self.metrics["face_forehand_fraction"].fill_(forehand.float().mean())
         base_err = torch.norm(self.base_pos_w[:, :2] - self.base_target_pos_w, dim=-1)
         base_pos_rel = self.base_pos_w[:, :2] - origins[:, :2]
         base_err_xy = self.base_pos_w[:, :2] - self.base_target_pos_w
@@ -1310,6 +1405,8 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             "v13b_teacher_physical_strike_time_s", "v13b_teacher_public_time_error_s",
             "v13b_goal_teacher_position_error_m", "v13b_goal_teacher_velocity_error_mps",
             "v13b_goal_teacher_normal_error_deg", "v13b_post_hit_phase",
+            "v13b_goal_teacher_normal_error_deg_forehand",
+            "v13b_goal_teacher_normal_error_deg_backhand",
             "v13b_episode_time_s", "v13b_episode_step", "v13b_teacher_time_s",
             "v13b_teacher_hit_episode_time_s", "v13b_recovery_gate",
         ):
@@ -1585,6 +1682,12 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
             event.sampled_velocity_b[sl] - event.teacher_velocity_b[sl], dim=-1
         )
         self.metrics["v13b_goal_teacher_normal_error_deg"][sl] = torch.rad2deg(torch.acos(normal_dot))
+        event_face_forehand = self.face_sign[sl] > 0.0
+        event_normal_error_deg = torch.rad2deg(torch.acos(normal_dot))
+        fh_error = event_normal_error_deg[event_face_forehand].mean() if torch.any(event_face_forehand) else torch.zeros((), device=self.device)
+        bh_error = event_normal_error_deg[~event_face_forehand].mean() if torch.any(~event_face_forehand) else torch.zeros((), device=self.device)
+        self.metrics["v13b_goal_teacher_normal_error_deg_forehand"][sl] = fh_error
+        self.metrics["v13b_goal_teacher_normal_error_deg_backhand"][sl] = bh_error
         for axis, suffix in enumerate(("x", "y", "z")):
             self.metrics[f"v13b_goal_position_{suffix}"][sl] = event.sampled_position_b[sl, axis]
             self.metrics[f"v13b_teacher_position_{suffix}"][sl] = event.teacher_position_b[sl, axis]
@@ -1668,6 +1771,18 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         else:
             alignment_pos, alignment_vel, alignment_normal, motion_ids, hit_frames, motion_fps, alignment_weight = alignment
             alignment_normal = alignment_normal / torch.linalg.vector_norm(alignment_normal, dim=-1, keepdim=True).clamp_min(1.0e-6)
+
+        # Stroke family is the source of truth for the contact face.  The
+        # private motion bank carries this explicitly; once the sampler is
+        # fully reference-free, sample the face label independently instead
+        # of inferring it from target-Y.  The teacher normal is already
+        # converted to the signed red/black convention by MotionLibraryLoader.
+        if alignment is not None:
+            self._set_face_sign(ids, motion_ids)
+        else:
+            face_sign = self._set_face_sign(ids)
+            alignment_normal = alignment_normal * face_sign.unsqueeze(-1)
+
         # Keep the private teacher values intact for the event audit.  The
         # workspace-expansion sampler may select a global target for some
         # environments, but that must not rewrite the teacher/public
@@ -1808,7 +1923,6 @@ class ReferenceFreeRacketTargetCommand(RacketTargetCommand):
         target_vel_local = alignment_weight.unsqueeze(-1) * aligned_vel + (1.0 - alignment_weight.unsqueeze(-1)) * global_vel_local
         self.racket_target_vel_w[ids] = quat_apply(base_yaw, target_vel_local)
         self.base_target_pos_w[ids] = base_pos[:, :2]
-        self.swing_sign[ids] = torch.where(local_pos[:, 1] <= 0.0, 1.0, -1.0)
         # Rephase the private teacher, rather than corrupting public tau.
         # teacher physical hit = (hit_frame - start_frame) / fps ~= public_tau
         teacher_start = torch.full((n,), -1, dtype=torch.long, device=self.device)
@@ -2169,6 +2283,7 @@ class RacketTargetCommandCfg(CommandTermCfg):
 
     # --- swing-type convention ---
     forehand_on_negative_y: bool = True  # right arm holds the paddle: target on -Y side -> forehand (+1)
+    forehand_probability: float = 0.5  # reference-free fallback when no manifest stroke label is available
 
 
 @configclass

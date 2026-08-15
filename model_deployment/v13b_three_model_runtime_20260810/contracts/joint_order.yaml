@@ -1,0 +1,42 @@
+schema_version: v13b_joint_order_v1
+
+lower_student_channels:
+  - left_hip_pitch_joint
+  - left_hip_roll_joint
+  - left_hip_yaw_joint
+  - left_knee_joint
+  - left_ankle_pitch_joint
+  - left_ankle_roll_joint
+  - right_hip_pitch_joint
+  - right_hip_roll_joint
+  - right_hip_yaw_joint
+  - right_knee_joint
+  - right_ankle_pitch_joint
+  - right_ankle_roll_joint
+
+upper_student_channels:
+  - waist_yaw_joint
+  - waist_roll_joint
+  - waist_pitch_joint
+  - right_shoulder_pitch_joint
+  - right_shoulder_roll_joint
+  - right_shoulder_yaw_joint
+  - right_elbow_joint
+  - right_wrist_roll_joint
+  - right_wrist_pitch_joint
+  - right_wrist_yaw_joint
+
+student_action:
+  lower_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+  upper_indices: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+  microstep_indices: [22, 23, 24, 25]
+
+runtime_rules:
+  lower_prior_alpha_for_model_5000: 1.0
+  upper_prior_alpha_for_model_5000: 0.9
+  ready_pose_required: true
+  action_rate_limit_required: true
+  joint_limit_required: true
+  velocity_limit_required: true
+  torque_limit_required: true
+  emergency_stop_required: true

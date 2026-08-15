@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""Synthetic motion_capture_tracking feed for OptiTrack-relay testing WITHOUT Motive.
+
+Publishes /optitrack/poses (motion_capture_tracking_interfaces/NamedPoseArray —
+the vendored driver's remapped output) at ``rate_hz``, mimicking what the real
+node emits: every frame carries the static rigid bodies (P1, Table) and, while a
+serve is in flight, the ball entry. Between serves the ball is OMITTED from the
+frames — exactly how the driver behaves when the ball leaves the volume — which
+exercises the relay's /poses gating (rigid-body topics keep updating, /poses
+pauses).
+
+The ball flight reuses the fake_ball_publisher quadratic-drag + table-bounce
+model; drag_k / restitution_* MUST match hope_planner's params for closed-loop
+tests. Positions are metres in the HOPE table frame (z=0 at the table surface).
+
+Typical use (bench, no hardware):
+  ros2 run hope_bringup fake_optitrack_publisher
+  ros2 launch hope_bringup optitrack_mct_relay.launch.py   # relay under test
+"""
+
+import numpy as np
+import rclpy
+from geometry_msgs.msg import Pose
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+
+
+class FakeOptitrackPublisher(Node):
+    def __init__(self, named_pose_array_type, named_pose_type):
+        super().__init__("fake_optitrack_publisher")
+        self._array_type = named_pose_array_type
+        self._pose_type = named_pose_type
+        # serve = [px, py, pz, vx, vy, vz] in the table frame (z=0 at table surface).
+        self.declare_parameter("serve_forehand", [2.3, -1.00, 0.40, -5.0, 0.2, 1.0])
+        self.declare_parameter("serve_backhand", [2.3, -0.52, 0.40, -5.0, -0.2, 1.0])
+        self.declare_parameter("rate_hz", 360.0)      # OptiTrack rigs commonly run 360
+        self.declare_parameter("drag_k", 0.15)        # MUST match hope_planner drag_k
+        self.declare_parameter("restitution_h", 0.85)  # MUST match hope_planner
+        self.declare_parameter("restitution_v", 0.85)  # MUST match hope_planner
+        self.declare_parameter("table_x_max", 2.74)
+        self.declare_parameter("end_x", -0.6)
+        self.declare_parameter("pause_s", 1.0)        # ball absent from frames this long
+        self.declare_parameter("max_flight_s", 3.0)
+        self.declare_parameter("frame_id", "world")
+        self.declare_parameter("ball_name", "Ball")
+        self.declare_parameter("p1_name", "P1")
+        self.declare_parameter("table_name", "Table")
+        # Static rigid-body poses [x, y, z] (identity orientation): robot base
+        # near the table's robot end, table marker at the origin corner.
+        self.declare_parameter("p1_position", [-0.5, -0.7625, 0.9])
+        self.declare_parameter("table_position", [0.0, 0.0, 0.0])
+
+        gp = self.get_parameter
+        self._serves = [
+            np.array([float(v) for v in gp("serve_forehand").value]),
+            np.array([float(v) for v in gp("serve_backhand").value]),
+        ]
+        self._dt = 1.0 / max(float(gp("rate_hz").value), 1.0)
+        self._k = float(gp("drag_k").value)
+        self._ch = float(gp("restitution_h").value)
+        self._cv = float(gp("restitution_v").value)
+        self._x_max = float(gp("table_x_max").value)
+        self._end_x = float(gp("end_x").value)
+        self._pause_len = float(gp("pause_s").value)
+        self._max_flight = float(gp("max_flight_s").value)
+        self._frame = str(gp("frame_id").value)
+        self._ball_name = str(gp("ball_name").value)
+        self._p1_name = str(gp("p1_name").value)
+        self._table_name = str(gp("table_name").value)
+        self._p1_pos = [float(v) for v in gp("p1_position").value]
+        self._table_pos = [float(v) for v in gp("table_position").value]
+        self._g = np.array([0.0, 0.0, -9.81])
+
+        qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
+                         durability=DurabilityPolicy.VOLATILE,
+                         history=HistoryPolicy.KEEP_LAST, depth=1)
+        self._pub = self.create_publisher(self._array_type, "/optitrack/poses", qos)
+        self._serve_i = 0
+        self._pause = 0.0
+        self._reset()
+        self.create_timer(self._dt, self._tick)
+        self.get_logger().info(
+            f"fake OptiTrack NamedPoseArray @{1.0/self._dt:.0f} Hz on /optitrack/poses "
+            f"(bodies: {self._ball_name} in flight only, {self._p1_name}, {self._table_name})")
+
+    def _reset(self):
+        s = self._serves[self._serve_i % len(self._serves)]
+        self._serve_i += 1
+        self._p = s[:3].copy()
+        self._v = s[3:].copy()
+        self._t = 0.0
+        self.get_logger().info(
+            f"serve {self._serve_i}: p={np.round(self._p, 2).tolist()} "
+            f"v={np.round(self._v, 2).tolist()}")
+
+    def _named_pose(self, name, xyz, orientation_w=1.0):
+        named = self._pose_type()
+        named.name = name
+        pose = Pose()
+        pose.position.x, pose.position.y, pose.position.z = (
+            float(xyz[0]), float(xyz[1]), float(xyz[2]))
+        pose.orientation.w = orientation_w
+        named.pose = pose
+        return named
+
+    def _tick(self):
+        ball_in_flight = True
+        if self._pause > 0.0:
+            self._pause -= self._dt
+            ball_in_flight = False
+            if self._pause <= 0.0:
+                self._reset()
+        else:
+            self._t += self._dt
+            a = -self._k * np.linalg.norm(self._v) * self._v + self._g
+            self._v = self._v + a * self._dt
+            self._p = self._p + self._v * self._dt
+            if self._p[2] <= 0.0 and self._v[2] < 0.0 and 0.0 <= self._p[0] <= self._x_max:
+                self._p[2] = 0.001
+                self._v[0] *= self._ch
+                self._v[1] *= self._ch
+                self._v[2] = -self._cv * self._v[2]
+            if self._p[0] < self._end_x or self._p[2] < -0.7 or self._t > self._max_flight:
+                self._pause = self._pause_len
+                ball_in_flight = False
+
+        # The real driver streams EVERY camera frame; rigid bodies are always
+        # present, the ball entry only while it is tracked.
+        msg = self._array_type()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = self._frame
+        if ball_in_flight:
+            msg.poses.append(self._named_pose(self._ball_name, self._p))
+        msg.poses.append(self._named_pose(self._p1_name, self._p1_pos))
+        msg.poses.append(self._named_pose(self._table_name, self._table_pos))
+        self._pub.publish(msg)
+
+
+def main(args=None):
+    try:
+        from motion_capture_tracking_interfaces.msg import NamedPose, NamedPoseArray
+    except ImportError as exc:
+        raise SystemExit(
+            "fake_optitrack_publisher needs motion_capture_tracking_interfaces "
+            "from the independent NatNet2ROS2 workspace; install/source that "
+            f"interface package on this host. Import error: {exc}"
+        )
+
+    rclpy.init(args=args)
+    node = FakeOptitrackPublisher(NamedPoseArray, NamedPose)
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

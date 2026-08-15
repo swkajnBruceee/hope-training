@@ -1,0 +1,167 @@
+# Copyright (c) 2026 Intelligent Racing Inc. (dba Hitch Interactive)
+# SPDX-License-Identifier: Apache-2.0
+"""Runtime configuration loader for the reference runner.
+
+Reads ``config/hope_pingpong_runtime.yaml`` (the clean 110-D ``hitter_pure``
+runtime config) and resolves the ActionAdapter, the example simulation PD gains,
+and the lifecycle timing into ready-to-use arrays. All relative paths in the YAML
+are resolved against the YAML file's own directory.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import numpy as np
+import yaml
+
+from .action_adapter import ActionAdapter
+from .joint_order import JOINT_NAMES, NUM_JOINTS
+from .lifecycle import LifecycleConfig
+from .observation import CONTRACT_NAME
+
+# Index ranges of the four joint groups (used to expand example PD gains).
+_GROUP_RANGES = {
+    "waist": range(0, 3),
+    "neck": range(3, 5),
+    "arm": range(5, 19),
+    "leg": range(19, 31),
+}
+
+
+@dataclass
+class RuntimeConfig:
+    control_hz: float
+    onnx_path: Path
+    model_xml_path: Path
+    action_adapter: ActionAdapter
+    sim_kp: np.ndarray
+    sim_kd: np.ndarray
+    lifecycle: LifecycleConfig
+    warmup_ticks: int = 100
+    motion_blend_ticks: int = 25
+    hold_recover_s: float = 2.5
+    official_stand: bool = True
+    auto_leg_hold: bool = False
+    leg_clamp_rad: float = 0.0
+    leg_smooth_alpha: float = 1.0
+    gain_scale: float = 1.0
+    leg_gain_scale: float = 1.0
+    ankle_gain_scale: float = 1.0
+    initial_stance: str = "standard"
+    passive_neck: bool = True
+    contract: str = CONTRACT_NAME
+    config_dir: Path = field(default_factory=Path)
+
+    @property
+    def control_dt(self) -> float:
+        return 1.0 / float(self.control_hz)
+
+    @classmethod
+    def load(cls, path: str | Path) -> "RuntimeConfig":
+        path = Path(path).resolve()
+        cfg_dir = path.parent
+        with open(path, "r", encoding="utf-8") as fh:
+            doc = yaml.safe_load(fh)
+
+        norm = str(doc.get("observation_normalization", "none")).lower()
+        if norm != "none":
+            raise ValueError(
+                f"observation_normalization must be 'none' (raw obs), got '{norm}'"
+            )
+
+        contract = str(doc.get("contract", CONTRACT_NAME))
+        if contract != CONTRACT_NAME:
+            raise ValueError(
+                f"runtime config contract must be '{CONTRACT_NAME}' (the 110-D "
+                f"observation layout this runner implements), got '{contract}'"
+            )
+
+        control_hz = float(doc.get("control_hz", 50.0))
+        dt = 1.0 / control_hz
+
+        onnx_path = _resolve(cfg_dir, doc["policy"]["onnx_path"])
+        model_xml_path = _resolve(cfg_dir, doc["simulation"]["model_xml_path"])
+        adapter_path = _resolve(cfg_dir, doc["action_adapter"]["config_path"])
+        adapter = ActionAdapter.from_yaml(adapter_path)
+
+        sim_kp, sim_kd = _expand_pd_gains(doc["simulation"]["pd_gains"], cfg_dir)
+
+        life_doc = doc.get("lifecycle", {})
+        runtime_doc = doc.get("runtime", {})
+        lifecycle = LifecycleConfig(
+            dt=dt,
+            follow_through_s=float(life_doc.get("follow_through_s", 0.6)),
+            recovery_s=float(life_doc.get("recovery_s", 0.8)),
+            ready_time_to_strike=float(life_doc.get("ready_time_to_strike", 1.0)),
+            ready_reach_x=float(life_doc.get("ready_reach_x", 0.40)),
+            ready_reach_y=float(life_doc.get("ready_reach_y", 0.20)),
+            ready_reach_z=float(life_doc.get("ready_reach_z", -0.05)),
+        )
+
+        # The 110-D runner reads the same geometry that the native PpPolicy reads
+        # from ONNX metadata.  RuntimeConfig only carries switches and timings;
+        # the actual boxes are filled by PingPongReferenceRunner after loading the
+        # actor, so an alternate compatible checkpoint remains possible.
+
+        return cls(
+            control_hz=control_hz,
+            onnx_path=onnx_path,
+            model_xml_path=model_xml_path,
+            action_adapter=adapter,
+            sim_kp=sim_kp,
+            sim_kd=sim_kd,
+            lifecycle=lifecycle,
+            warmup_ticks=int(runtime_doc.get("warmup_ticks", 100)),
+            motion_blend_ticks=int(runtime_doc.get("motion_blend_ticks", 25)),
+            hold_recover_s=float(runtime_doc.get("hold_recover_s", 2.5)),
+            official_stand=bool(runtime_doc.get("official_stand", True)),
+            auto_leg_hold=bool(runtime_doc.get("auto_leg_hold", False)),
+            leg_clamp_rad=float(runtime_doc.get("leg_clamp_rad", 0.0)),
+            leg_smooth_alpha=float(runtime_doc.get("leg_smooth_alpha", 1.0)),
+            gain_scale=float(runtime_doc.get("gain_scale", 1.0)),
+            leg_gain_scale=float(runtime_doc.get("leg_gain_scale", 1.0)),
+            ankle_gain_scale=float(runtime_doc.get("ankle_gain_scale", 1.0)),
+            initial_stance=str(runtime_doc.get("initial_stance", "standard")),
+            passive_neck=bool(doc.get("passive_neck", True)),
+            contract=contract,
+            config_dir=cfg_dir,
+        )
+
+
+def _resolve(base: Path, rel: str) -> Path:
+    p = Path(rel)
+    return p if p.is_absolute() else (base / p).resolve()
+
+
+def _expand_pd_gains(spec: dict, cfg_dir: Path) -> tuple[np.ndarray, np.ndarray]:
+    """Resolve model deploy gains or expand example group gains to 31 arrays."""
+    deploy_relpath = spec.get("deploy_config_path")
+    if deploy_relpath:
+        deploy_path = _resolve(cfg_dir, deploy_relpath)
+        with open(deploy_path, "r", encoding="utf-8") as fh:
+            deploy = yaml.safe_load(fh)
+        names = tuple(str(name) for name in deploy["joint_sdk_names"])
+        if len(names) != NUM_JOINTS or set(names) != set(JOINT_NAMES):
+            raise ValueError("deploy.yaml joint_sdk_names must name all 31 A3 joints once")
+
+        def reorder(values, field_name: str) -> np.ndarray:
+            if len(values) != NUM_JOINTS:
+                raise ValueError(f"deploy.yaml {field_name} must be length {NUM_JOINTS}")
+            by_name = {name: value for name, value in zip(names, values)}
+            return np.asarray([by_name[name] for name in JOINT_NAMES], dtype=np.float64)
+
+        return reorder(deploy["stiffness"], "stiffness"), reorder(deploy["damping"], "damping")
+
+    kp = np.zeros(NUM_JOINTS, dtype=np.float64)
+    kd = np.zeros(NUM_JOINTS, dtype=np.float64)
+    groups = spec.get("groups", {})
+    for name, rng in _GROUP_RANGES.items():
+        if name not in groups:
+            raise ValueError(f"simulation.pd_gains.groups is missing '{name}'")
+        g = groups[name]
+        for i in rng:
+            kp[i] = float(g["kp"])
+            kd[i] = float(g["kd"])
+    return kp, kd

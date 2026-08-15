@@ -2637,35 +2637,91 @@ class A3ReferenceFreeTargetRewardsCfg(RewardsCfg):
 
 @configclass
 class A3PrecisionRescueRewardsCfg(A3ReferenceFreeTargetRewardsCfg):
-    """Current exact rewards plus opt-in wide p/v recovery shaping only."""
+    """Unified position/velocity/normal recovery objective.
 
-    # The wrappers preserve the exact functions/parameters byte-for-byte in
-    # value semantics and solely add per-episode accounting to the Rescue
-    # command.  Position and pre-hit progress remain inherited unchanged.
+    Precision Rescue deliberately has one joint strike-quality term.  The old
+    independent terms are retained as zero-weight compatibility entries so a
+    stale YAML override cannot silently reintroduce position-versus-normal
+    compensation.
+    """
+
+    # All strike-state shaping is owned by racket_joint_quality_recovery.
+    pre_hit_progress = None
+
+    racket_position = RewTerm(
+        func=mdp.racket_position_tracking_exp,
+        weight=0.0,
+        params={"command_name": "racket_target", "std": 0.04},
+    )
     racket_velocity = RewTerm(
         func=rescue_rewards.racket_velocity_tracking_exact_audited,
-        weight=2.5,
-        params={"command_name": "racket_target", "std": 0.50, "audit_weight": 2.5},
+        weight=0.0,
+        params={"command_name": "racket_target", "std": 0.50, "audit_weight": 0.0},
     )
     racket_normal = RewTerm(
         func=rescue_rewards.racket_normal_tracking_exact_audited,
-        weight=3.0,
-        params={"command_name": "racket_target", "std": 0.1745329, "audit_weight": 3.0},
+        weight=0.0,
+        params={"command_name": "racket_target", "std": 0.1745329, "audit_weight": 0.0},
+    )
+    racket_hit_precision = RewTerm(
+        func=mdp.racket_exact_hit_precision_tracking_exp,
+        weight=0.0,
+        params={
+            "command_name": "racket_target",
+            "pos_std": 0.04,
+            "vel_std": 0.50,
+            "normal_std": 0.1745329,
+            "time_std": 0.05,
+            "pos_coeff": 0.40,
+            "velocity_coeff": 0.30,
+            "normal_coeff": 0.30,
+        },
+    )
+
+    racket_joint_quality_recovery = RewTerm(
+        func=rescue_rewards.racket_joint_quality_recovery_exp,
+        weight=10.0,
+        params={
+            "command_name": "racket_target",
+            "position_std": 0.50,
+            "velocity_std": 2.0,
+            "normal_std": 1.0471976,
+            "time_std_s": 0.18,
+            "softmax_beta": 4.0,
+            "progress_weight": 0.25,
+            "regression_weight": 0.10,
+            "progress_clip": 0.25,
+            "regression_clip": 0.25,
+            "audit_weight": 10.0,
+        },
+    )
+
+    # Zero-weight compatibility entries for the former independent recovery
+    # terms.  They remain addressable by the audit/override machinery.
+    racket_position_wide_recovery = RewTerm(
+        func=rescue_rewards.racket_position_tracking_wide_recovery_exp,
+        weight=0.0,
+        params={"command_name": "racket_target", "std": 0.50, "audit_weight": 0.0, "time_std_s": 0.18},
+    )
+    racket_strike_position_recovery = RewTerm(
+        func=rescue_rewards.racket_strike_position_recovery_exp,
+        weight=0.0,
+        params={"command_name": "racket_target", "std": 0.50, "audit_weight": 0.0},
     )
     racket_normal_wide = RewTerm(
         func=rescue_rewards.racket_normal_tracking_wide_exp,
-        weight=1.5,
-        params={"command_name": "racket_target", "std": 0.60, "audit_weight": 1.5},
+        weight=0.0,
+        params={"command_name": "racket_target", "std": 0.60, "audit_weight": 0.0},
     )
     racket_velocity_wide = RewTerm(
         func=rescue_rewards.racket_velocity_tracking_position_gated_wide_exp,
-        weight=1.25,
+        weight=0.0,
         params={
             "command_name": "racket_target",
             "velocity_std": 2.0,
             "position_threshold": 0.02,
             "position_excess_std": 0.05,
-            "audit_weight": 1.25,
+            "audit_weight": 0.0,
         },
     )
 
@@ -2864,9 +2920,10 @@ class A3FloatingTargetConditionedReferenceFreeV13BCompletePriorsPrecisionRescueE
     """Opt-in Precision Rescue continuation; CompletePriors is not mutated.
 
     This retains the exact CompletePriors plant, READY/reset contract, public
-    98-D actor and 26-D action path.  The only task-local deltas are the two
-    broad p/v reward kernels and a continuation scheduler populated after
-    checkpoint selection.  Workspace expansion is explicitly forbidden.
+    98-D actor and 26-D action path.  The task-local strike objective is the
+    unified position/velocity/normal bottleneck reward, with its continuation
+    scheduler populated after checkpoint selection. Workspace expansion is
+    explicitly forbidden.
     """
 
     commands: A3PrecisionRescueCommandsCfg = A3PrecisionRescueCommandsCfg()
@@ -2879,6 +2936,12 @@ class A3FloatingTargetConditionedReferenceFreeV13BCompletePriorsPrecisionRescueE
     precision_rescue_source_upper_alpha: float = -1.0
     precision_rescue_hold_updates: int = 300
     precision_rescue_upper_step: float = 0.05
+    precision_rescue_controllability_recovery_enabled: bool = False
+    precision_rescue_controllability_start_alpha: float = -1.0
+    precision_rescue_controllability_min_alpha: float = 0.30
+    precision_rescue_upper_force_zero_start_progress: float = 0.60
+    precision_rescue_upper_force_zero_progress: float = 0.70
+    precision_rescue_upper_hard_zero_enabled: bool = True
     precision_rescue_schedule_total_updates: int = 50000
     precision_rescue_upper_probe_interval_updates: int = 200
     precision_rescue_upper_probe_max_steps: int = 600
@@ -2891,11 +2954,26 @@ class A3FloatingTargetConditionedReferenceFreeV13BCompletePriorsPrecisionRescueE
     precision_rescue_upper_probe_seed: int = 20260810
     precision_rescue_upper_gate_file: str = ""
     precision_rescue_upper_gate_run_id: str = ""
+    # Explicit rescue-only knob for controlled reward ablations.  The
+    # default preserves the original PrecisionRescue contract; exposing it on
+    # the structured env config prevents ad-hoc Python edits between tests.
+    precision_rescue_wide_position_weight: float = 0.0
+    precision_rescue_wide_position_std_m: float = 0.50
+    precision_rescue_wide_position_time_std_s: float = 0.18
 
     def __post_init__(self):
         super().__post_init__()
         if bool(getattr(self.commands.racket_target, "workspace_expansion_enabled", False)):
             raise RuntimeError("PrecisionRescue must use current CompletePriors local sampler")
+        self.rewards.racket_position_wide_recovery.weight = float(
+            self.precision_rescue_wide_position_weight
+        )
+        self.rewards.racket_position_wide_recovery.params["std"] = float(
+            self.precision_rescue_wide_position_std_m
+        )
+        self.rewards.racket_position_wide_recovery.params["time_std_s"] = float(
+            self.precision_rescue_wide_position_time_std_s
+        )
         term = self.actions.joint_pos
         term.precision_rescue_enabled = True
         term.precision_rescue_source_checkpoint = str(self.precision_rescue_source_checkpoint)
@@ -2904,6 +2982,15 @@ class A3FloatingTargetConditionedReferenceFreeV13BCompletePriorsPrecisionRescueE
         term.precision_rescue_source_upper_alpha = float(self.precision_rescue_source_upper_alpha)
         term.precision_rescue_hold_updates = int(self.precision_rescue_hold_updates)
         term.precision_rescue_upper_step = float(self.precision_rescue_upper_step)
+        term.precision_rescue_controllability_recovery_enabled = bool(
+            self.precision_rescue_controllability_recovery_enabled
+        )
+        term.precision_rescue_controllability_start_alpha = float(
+            self.precision_rescue_controllability_start_alpha
+        )
+        term.precision_rescue_controllability_min_alpha = float(
+            self.precision_rescue_controllability_min_alpha
+        )
         term.precision_rescue_schedule_total_updates = int(self.precision_rescue_schedule_total_updates)
         if float(self.precision_rescue_source_progress) < 0.0:
             # Static auditing may instantiate this config before checkpoint
@@ -2924,6 +3011,18 @@ class A3FloatingTargetConditionedReferenceFreeV13BCompletePriorsPrecisionRescueE
                 total_chain_updates=int(self.precision_rescue_schedule_total_updates),
                 hold_updates=int(self.precision_rescue_hold_updates),
                 upper_step=float(self.precision_rescue_upper_step),
+                controllability_recovery_enabled=bool(
+                    self.precision_rescue_controllability_recovery_enabled
+                ),
+                controllability_start_alpha=float(
+                    self.precision_rescue_controllability_start_alpha
+                ),
+                controllability_min_alpha=float(
+                    self.precision_rescue_controllability_min_alpha
+                ),
+                force_zero_start_progress=float(self.precision_rescue_upper_force_zero_start_progress),
+                force_zero_progress=float(self.precision_rescue_upper_force_zero_progress),
+                hard_zero_enabled=bool(self.precision_rescue_upper_hard_zero_enabled),
             )
         print(
             "[V1.3B PrecisionRescue] opt-in task configured: "

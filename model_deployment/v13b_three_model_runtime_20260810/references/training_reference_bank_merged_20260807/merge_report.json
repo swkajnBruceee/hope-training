@@ -1,0 +1,28 @@
+{
+  "status": "completed",
+  "source_original": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_20260806",
+  "source_generalization": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/generalization_candidate_bank_20260807/audited_fixed_base_20260807",
+  "output_dir": "/home/bistu/桌面/HOPETableTennis/a3_ik_point_offline_wrapper_v2/training_reference_bank_merged_20260807",
+  "counts": {
+    "training": {
+      "motions": 23118,
+      "core": 12710,
+      "boundary": 10408,
+      "backhand": 13844,
+      "forehand": 9274,
+      "original": 22601,
+      "generalization_added": 517
+    },
+    "validation": {
+      "motions": 2619,
+      "core": 1454,
+      "boundary": 1165,
+      "backhand": 1631,
+      "forehand": 988,
+      "original": 2475,
+      "generalization_added": 144
+    }
+  },
+  "total_added": 661,
+  "policy": "fixed-base-audited generalization candidates admitted; floating-base replay failures remain intentionally ignored per plan"
+}

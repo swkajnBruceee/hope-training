@@ -1,0 +1,60 @@
+# Copyright (c) 2026 Intelligent Racing Inc. (dba Hitch Interactive)
+# SPDX-License-Identifier: Apache-2.0
+"""Python reference runner for the 110-D ``hitter_pure`` deploy contract.
+
+This package implements the observation, action and RacketCommand contract. It
+contains the executable simulation path and runs the exported policy against the
+shipped MuJoCo sim.
+
+Public modules:
+  joint_order      -- the 31-DOF Agibot A3 joint order
+  observation      -- the 110-D hitter_pure observation builder
+  action_adapter   -- the shared ActionAdapter (raw_action -> joint targets)
+  racket_command   -- RacketCommand + command sources
+  ros_command_source -- ROS 2 planner bridge (/racket/command_flat -> source)
+  lifecycle        -- ready -> swing -> follow-through -> recovery state machine
+  onnx_policy      -- onnxruntime actor wrapper (obs[1,110] -> raw_action[1,31])
+  sim_bridge       -- MuJoCo (default) and AimRT-process (seam) bridges
+  config           -- runtime config loader
+  runner           -- the 50 Hz control loop
+"""
+
+from __future__ import annotations
+
+from .action_adapter import ActionAdapter
+from .config import RuntimeConfig
+from .joint_order import JOINT_NAMES, NUM_JOINTS
+from .lifecycle import LifecycleConfig, Phase, SwingLifecycle
+from .observation import CONTRACT_NAME, OBS_DIM, ObsTarget, RobotState, build_observation
+from .racket_command import (
+    BACKHAND,
+    FOREHAND,
+    ExampleCommandFeed,
+    QueueRacketCommandSource,
+    RacketCommand,
+    RacketCommandSource,
+)
+from .ros_command_source import RosRacketCommandSource, parse_flat_racket_command
+
+__all__ = [
+    "ActionAdapter",
+    "RuntimeConfig",
+    "JOINT_NAMES",
+    "NUM_JOINTS",
+    "LifecycleConfig",
+    "Phase",
+    "SwingLifecycle",
+    "CONTRACT_NAME",
+    "OBS_DIM",
+    "ObsTarget",
+    "RobotState",
+    "build_observation",
+    "BACKHAND",
+    "FOREHAND",
+    "ExampleCommandFeed",
+    "QueueRacketCommandSource",
+    "RacketCommand",
+    "RacketCommandSource",
+    "RosRacketCommandSource",
+    "parse_flat_racket_command",
+]

@@ -1,0 +1,47 @@
+schema_version: v13b_mujoco_isaac_compatible_v1
+model: models/a3_v13b_isaac_compatible/mjcf/a3_v13b_isaac_compatible.xml
+source_training_contract:
+  sim_dt_s: 0.005
+  control_decimation: 4
+  policy_hz: 50.0
+  self_collision: false
+  robot_ground_collision: foot_collision_geometries_only
+  ground_friction: [1.0, 0.005, 0.0001]
+  restitution: 0.0
+drive:
+  mode: torque_pd_for_mujoco_position_drive_equivalent
+  mujoco_low_level_profile: isaac_passive_stable
+  profiles: [official_pd, isaac_passive_stable]
+  tau_formula: Kp*(q_des-q)+Kd*(dq_des-dq)+tau_bias_mujoco_only
+  hardware_tau_ff_default: 0.0
+  note: >-
+    isaac_passive_stable copies the source-snapshot simulation-only
+    PD_STAND candidate and adds bounded support feedback inside each MuJoCo
+    physics substep. MuJoCo bias/balance compensation is simulation-only. The
+    hardware adapter always sends the separate official q_des/dq_des/Kp/Kd
+    contract and leaves gravity feed-forward to the calibrated robot
+    controller unless a separately identified tau_ff model is approved.
+reference_runtime:
+  provider: MotionManifestReferenceProvider
+  project_manifest: ../references/training_reference_bank_merged_20260807/training_manifest.json
+  payload_policy: lazy_load_selected_motion_npz
+  selection_modes: [fixed, nearest]
+  fps_required: 50
+  ready_prelude_steps: 50
+  preview_steps: [8, 12, 16]
+  note: >-
+    The manifest/reference motion is a causal planned trajectory used by the
+    private frozen priors. It is not future robot sensing. The large bank is
+    copied into this deployment directory under references/ so the extracted
+    package does not depend on an external workspace path.
+contact_acceptance:
+  reset_nonfoot_contacts: 0
+  allowed_contact_bodies: [left_ankle_roll_Link, right_ankle_roll_Link]
+  note: >-
+    The XML contains multiple small foot spheres, so allowed contact count is
+    not fixed at two; every contact must be floor-to-foot only.
+real_robot_boundary:
+  command_joint_order: A3_BACKEND_JOINTS
+  command_fields: [q_des, dq_des, kp, kd, tau_ff]
+  sdk_scatter_required: true
+  never_send_mujoco_data_ctrl: true

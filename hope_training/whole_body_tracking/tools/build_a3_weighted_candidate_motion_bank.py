@@ -138,7 +138,7 @@ def _write_manifest(path: Path, entries: list[dict], failures: list[dict], sourc
         "schema_version": "a3_weighted_candidate_reference_bank/v1",
         "status": "candidate_reference_pending_training_split",
         "source_index": str(source_index.expanduser().resolve()),
-        "notice_contract": "THIRD_PARTY_NOTICES.md",
+        "notice_contract": "project_manifest",
         "reference_semantics": "fixed-base FK-expanded offline IK candidate reference",
         "coordinate_contract": "current_root_relative_initial_heading",
         "root_pose_contract": {

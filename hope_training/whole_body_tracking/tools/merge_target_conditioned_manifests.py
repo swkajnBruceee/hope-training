@@ -58,7 +58,7 @@ def main() -> None:
         "status": "candidate_reference_pending_training_split",
         "source_manifests": [str(Path(x).expanduser().resolve()) for x in args.source_manifest],
         "goal_manifests": [str(Path(x).expanduser().resolve()) for x in args.goal_manifest],
-        "notice_contract": "THIRD_PARTY_NOTICES.md",
+        "notice_contract": "project_manifest",
         "reference_semantics": "fixed-base FK-expanded offline IK candidate reference",
         "coordinate_contract": "current_root_relative_initial_heading",
         "root_pose_contract": {

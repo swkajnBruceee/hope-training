@@ -238,7 +238,7 @@ def _run() -> dict:
         "physics_qualified": False,
         "teacher_approved": False,
         "training_admission": False,
-        "notice_contract": "THIRD_PARTY_NOTICES.md",
+        "notice_contract": "project_manifest",
         "rows": rows,
     }
     args_cli.output.expanduser().write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

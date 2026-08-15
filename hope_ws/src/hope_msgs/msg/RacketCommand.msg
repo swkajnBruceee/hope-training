@@ -1,0 +1,11 @@
+std_msgs/Header header
+geometry_msgs/Point position
+geometry_msgs/Vector3 velocity
+geometry_msgs/Vector3 normal
+float64 strike_time
+float64 time_to_strike
+geometry_msgs/Vector3 ball_velocity_outgoing
+bool valid
+bool clears_net
+bool bypasses_net_posts
+int32 predicted_bounces

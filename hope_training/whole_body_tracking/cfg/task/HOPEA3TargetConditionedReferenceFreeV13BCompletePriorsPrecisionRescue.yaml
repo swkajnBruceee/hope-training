@@ -70,6 +70,18 @@ training:
   upper_prior_hold_updates: 300
   upper_prior_max_step: 0.05
   upper_prior_withdrawal: performance_gated_monotonic
+  # Start the physical upper-prior composition in the measured
+  # controllability band.  The historical source alpha remains 0.90 for
+  # provenance, while this rescue branch deliberately starts at 0.45 so the
+  # target-conditioned student has usable racket-position authority.
+  controllability_recovery_enabled: true
+  controllability_start_alpha: 0.45
+  controllability_min_alpha: 0.30
+  # Performance-gated withdrawals happen first; this hard deadline guarantees
+  # a teacher-free tail even if an external gate is delayed or unavailable.
+  upper_force_zero_start_progress: 0.60
+  upper_force_zero_progress: 0.70
+  upper_hard_zero_enabled: true
   lower_prior_continuation: hold_or_monotonic_decline
   # Evaluation-only teacher-off probe.  The actor remains 98-D; these
   # private amplitudes are never part of its observation.
@@ -97,13 +109,42 @@ training:
   long_training_blocked_until_preflight: true
 
 rewards:
-  # Exact source-of-truth terms remain unchanged; only these two recovery
-  # terms are new.  Gate parameters are audited by tools/audit_*.py.
-  racket_normal_wide_weight: 1.5
+  # Precision Rescue uses one joint strike-quality objective.  Position,
+  # velocity, normal, exact-hit, and the former wide recovery terms are kept
+  # at zero so no component can compensate for another through an independent
+  # additive reward.
+  racket_position_weight: 0.0
+  racket_velocity_weight: 0.0
+  racket_normal_weight: 0.0
+  racket_hit_precision_weight: 0.0
+  racket_position_wide_weight: 0.0
+  racket_position_wide_std_m: 0.50
+  racket_position_wide_time_std_s: 0.18
+  racket_strike_position_recovery_weight: 0.0
+  racket_strike_position_recovery_std_m: 0.50
+  racket_normal_wide_weight: 0.0
   racket_normal_wide_std_rad: 0.60
-  racket_velocity_wide_weight: 1.25
+  racket_velocity_wide_weight: 0.0
   racket_velocity_wide_std_mps: 2.0
   velocity_wide_position_threshold_m: 0.02
   velocity_wide_position_excess_std_m: 0.05
+  # Dimensionless smooth-bottleneck recovery: the worst component dominates.
+  # The normal scale is deliberately broad enough to provide gradient around
+  # the current ~90 degree error without making normal irrelevant.
+  racket_joint_quality_weight: 10.0
+  racket_joint_quality_position_std_m: 0.50
+  racket_joint_quality_velocity_std_mps: 2.0
+  racket_joint_quality_normal_std_rad: 1.0471976
+  racket_joint_quality_time_std_s: 0.18
+  racket_joint_quality_softmax_beta: 4.0
+  racket_joint_quality_progress_weight: 0.25
+  racket_joint_quality_regression_weight: 0.10
+  racket_joint_quality_progress_clip: 0.25
+  racket_joint_quality_regression_clip: 0.25
 
 workspace_expansion_enabled: false
+# Recovery-stage shaping: provide nonzero position signal at the current
+# roughly 0.6 m error scale, then tighten this kernel after recovery.
+precision_rescue_wide_position_weight: 0.0
+precision_rescue_wide_position_std_m: 0.50
+precision_rescue_wide_position_time_std_s: 0.18

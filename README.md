@@ -60,8 +60,6 @@ See [QUICKSTART_A3_ISAAC.md](QUICKSTART_A3_ISAAC.md) for the full path. WandB is
 |----------|-------------|---------|
 | [Motion Capture System Reference Setup](data/mocap/HOPE_Motion_Capture_System_and_Coordinates_Reference_Setup.md) | OptiTrack/ROS 2 arena configuration, coordinate frames, tracked object taxonomy, humanoid base_link marker setup, ball tracking, and streaming pipeline | v0.3 |
 | [7DOF Racket Model-based Planner Reference Setup](HOPE_7DOF_Racket_Model_based_Planner_Reference_Setup.md) | Ball state estimation, trajectory prediction, and racket target planning (Stages 1–3 of the HITTER framework), reimplemented in the HOPE canonical frame | v0.1 |
-| [WBC Simulation Training Reference Setup](HOPE_WBC_Simulation_Training_Reference_Setup.md) | SMPL-X motion acquisition, GMR retargeting, BeyondMimic RL training pipeline for whole-body control (Stage 4), with dual-backend support for Isaac Lab and mjlab | v0.5 |
-| [Hardware Deployment Reference Setup](HOPE_Hardware_Deployment_Reference_Setup.md) | Real-robot deployment via `legged_control2` (G1) or AimRT (A3): ONNX inference, ROS 2 node graph, PD gain tuning, safety procedures, and competition workflow | v0.1 |
 
 Each document contains a **Section 0 prologue** listing all implementation differences from the original HITTER work (see References).
 
@@ -140,7 +138,9 @@ Each document contains a **Section 0 prologue** listing all implementation diffe
 
 **Multi-platform support.** The reference design documents discuss Unitree G1 and Agibot Expedition A3 paths. This public starter currently focuses on Agibot A3 in Isaac Lab for setup and smoke training. It also includes Agibot's A3 deployment and MuJoCo/AimRT reference materials for teams that want to study the body-drive interface or optional simulation path after exporting policies.
 
-**Open-source training stack.** The WBC training pipeline is built entirely on open-source code: [BeyondMimic](https://github.com/HybridRobotics/whole_body_tracking) (MIT license) for motion tracking RL, [GMR](https://github.com/YanjieZe/GMR) (MIT license) for SMPL-X to robot retargeting, and [GVHMR](https://github.com/zju3dv/GVHMR) for monocular video-to-SMPL-X extraction. The HITTER paper's trained weights are not released; all training starts from scratch.
+**Training stack.** The WBC pipeline combines motion tracking RL, SMPL-X-to-robot retargeting,
+monocular pose extraction, simulation evaluation, and ONNX deployment. The included training
+recipes start from locally managed checkpoints and motion data.
 
 ## Supported Robots
 
@@ -213,7 +213,7 @@ The HOPE open platform is developed with the support of our technical sponsors, 
 
 This project is licensed under the [Apache License, Version 2.0](LICENSE). See [LICENSE](LICENSE) for the full terms.
 
-Some starter materials are derived from or interoperate with third-party software and robot assets. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for provenance and per-directory license notes.
+Runtime integrations use the local robot assets, simulation models, and deployment interfaces documented in their respective directories.
 
 ## Contact
 

@@ -1200,6 +1200,10 @@ def _run_play(cfg, simulation_app):
                 "motion id/phase updated without frame-0 teleport",
                 flush=True,
             )
+            # Keep the post-branch diagnostics valid when the replay
+            # deliberately preserves the configured READY pose instead of
+            # entering the legacy frame-0 physical synchronization branch.
+            motion_cmd = env.unwrapped.command_manager.get_term("motion")
         if auto_motion_selection is None:
             print(
                 f"[INFO] forced manifest motion_id={int(selected_motion_ids[0].item())} "
@@ -1874,6 +1878,30 @@ def _run_play(cfg, simulation_app):
                 raise RuntimeError(
                     "external target audit could not access the frozen upper policy"
                 )
+            normalized = torch.clamp(
+                (upper_observation - upper_policy.mean) / upper_policy.std,
+                -100.0,
+                100.0,
+            )
+        elif hasattr(action_term, "_annealed_upper_prior_last_observation"):
+            # CompletePriors keeps the frozen model_900 branch under the
+            # annealed-prior names rather than the legacy _upper_policy
+            # names.  External target-grid replay is evaluation-only, so use
+            # the exact cached model_900 observation/output from this action
+            # term instead of rejecting an otherwise valid CompletePriors
+            # target audit.
+            upper_policy = getattr(action_term, "_annealed_upper_prior_policy", None)
+            if upper_policy is None:
+                raise RuntimeError(
+                    "external target audit could not access the CompletePriors model_900 policy"
+                )
+            upper_observation = action_term._annealed_upper_prior_last_observation.detach().clone()
+            upper_action = getattr(raw_env, "f0_upper_last_action", None)
+            if upper_action is None:
+                raise RuntimeError(
+                    "external target audit could not access the CompletePriors model_900 output"
+                )
+            upper_action = upper_action.detach().clone()
             normalized = torch.clamp(
                 (upper_observation - upper_policy.mean) / upper_policy.std,
                 -100.0,
@@ -2976,7 +3004,7 @@ def _run_play(cfg, simulation_app):
                 )
                 if target_audit_initial_actor is None:
                     target_audit_initial_actor = {
-                        name: value.detach().clone()
+                        name: None if value is None else value.detach().clone()
                         for name, value in actor_snapshot.items()
                     }
                 motion_cmd = raw_env.command_manager.get_term("motion")

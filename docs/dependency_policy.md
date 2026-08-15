@@ -66,8 +66,8 @@ as a deliberate vendor bundle:
 - Do not mix local edits into vendored code unless the change is intentional.
 - Prefer wrapper code, patches, or clearly named integration files for local
   project behavior.
-- If replacing a vendor bundle, record the source, version, license, and checksum
-  in `THIRD_PARTY_NOTICES.md` or the nearest `README.md`.
+- If replacing a runtime bundle, record the version and checksum in the nearest
+  project manifest or README.
 
 ## Runtime Archives And Sysroots
 
