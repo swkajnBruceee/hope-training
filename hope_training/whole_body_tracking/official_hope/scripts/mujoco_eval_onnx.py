@@ -361,6 +361,7 @@ def run_eval(args) -> dict:
         video_width=args.video_width,
         video_height=args.video_height,
         initial_stance=args.initial_stance,
+        mu_ground_contact=args.mu_ground_contact,
     )
 
     # The published actor owns the authoritative strike plane and FH/BH
@@ -566,7 +567,9 @@ def run_eval(args) -> dict:
         f"success_rate={accumulator.value:.4f}",
         file=sys.stderr,
     )
-    return accumulator.as_dict()
+    result = accumulator.as_dict()
+    result["mu_ground_contact"] = args.mu_ground_contact
+    return result
 
 
 def parse_args() -> argparse.Namespace:
@@ -605,8 +608,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--video-width", type=int, default=960)
     parser.add_argument("--video-height", type=int, default=720)
     parser.add_argument(
-        "--initial-stance", choices=["standard", "right_front", "left_front"],
-        default="standard", help="Initial robot pose; right_front matches the reference replay.",
+        "--initial-stance", choices=["standard", "right_front", "left_front", "width50_parallel"],
+        default="standard", help="Initial robot pose; width50_parallel is the fixed Curriculum-FT target.",
+    )
+    parser.add_argument(
+        "--mu-ground-contact", type=float, default=None,
+        help="set both A3 foot geoms and the robot floor to one effective sliding friction value",
     )
     parser.add_argument("--json-out", default=None, help="Also write {'success_rate': ...} to this file.")
     return parser.parse_args()

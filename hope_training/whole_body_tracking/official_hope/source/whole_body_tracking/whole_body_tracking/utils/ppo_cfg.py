@@ -159,6 +159,7 @@ def runner_kwargs(params: dict, experiment_name: str) -> dict:
             residual_time_scale=float(p.get("residual_time_scale", 1.0)),
             residual_train_std=bool(p.get("residual_train_std", False)),
             residual_architecture=str(p.get("residual_architecture", "plain")),
+            residual_active_joint_names=[str(x) for x in p.get("residual_active_joint_names", [])],
             structured_proprio_hidden_dims=[
                 int(x) for x in p.get("structured_proprio_hidden_dims", [128, 64])
             ],

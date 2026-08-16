@@ -47,7 +47,9 @@ to the approximation.
 from __future__ import annotations
 
 import math
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 
@@ -114,6 +116,7 @@ class PingPongRealPhysicsScene:
         video_width: int = 960,
         video_height: int = 720,
         initial_stance: str | None = None,
+        mu_ground_contact: float | None = None,
     ) -> None:
         import mujoco  # lazy import so the module imports without MuJoCo present
 
@@ -122,6 +125,11 @@ class PingPongRealPhysicsScene:
         self.joint_names = list(joint_names)
         self.num_joints = len(self.joint_names)
         self._initial_stance = initial_stance
+        self.mu_ground_contact = None if mu_ground_contact is None else float(mu_ground_contact)
+        if self.mu_ground_contact is not None and (
+            not math.isfinite(self.mu_ground_contact) or self.mu_ground_contact < 0.0
+        ):
+            raise ValueError("mu_ground_contact must be finite and non-negative")
 
         # --- geometry from the shared ball-physics config -----------------------
         g = float(ball_cfg.get("gravity", 9.81))
@@ -152,6 +160,7 @@ class PingPongRealPhysicsScene:
 
         # --- build the combined model via the MuJoCo spec API -------------------
         self._build_model(mujoco, robot_xml_path, ball_cfg)
+        self._configure_effective_ground_friction()
 
         # --- resolve addresses -------------------------------------------------
         m = self.model
@@ -221,6 +230,37 @@ class PingPongRealPhysicsScene:
             self._camera.elevation = -12.0
             self._camera.distance = 3.8
             self._camera.lookat[:] = [1.10, 0.0, 0.85]
+
+    def _configure_effective_ground_friction(self) -> None:
+        """Optionally set both A3 feet and the robot floor to one contact scalar.
+
+        The explicit ball-floor ``<pair>`` remains governed by the ball physics config.  This
+        knob controls only robot foot-ground contacts, which is the quantity used by the stance
+        and policy robustness experiments.
+        """
+        if self.mu_ground_contact is None:
+            return
+        foot_names = ("left_ankle_roll_Link", "right_ankle_roll_Link")
+        gids = []
+        for body_name in foot_names:
+            body_id = self._mj.mj_name2id(self.model, self._mj.mjtObj.mjOBJ_BODY, body_name)
+            if body_id < 0:
+                raise ValueError(f"required ground-friction body not found: {body_name}")
+            body_gids = [
+                gid for gid in range(self.model.ngeom)
+                if int(self.model.geom_bodyid[gid]) == int(body_id)
+                and int(self.model.geom_contype[gid]) != 0
+            ]
+            if not body_gids:
+                raise ValueError(f"required ground-friction collision geom not found under body: {body_name}")
+            gids.extend(body_gids)
+        floor_gid = self._mj.mj_name2id(self.model, self._mj.mjtObj.mjOBJ_GEOM, "floor")
+        if floor_gid < 0:
+            raise ValueError("required ground-friction geom not found: floor")
+        gids.append(int(floor_gid))
+        for gid in gids:
+            self.model.geom_friction[gid, 0] = self.mu_ground_contact
+        self._mj.mj_forward(self.model, self.data)
 
     # -- model construction -----------------------------------------------------
     def _build_model(self, mujoco, robot_xml_path, ball_cfg) -> None:
@@ -331,15 +371,24 @@ class PingPongRealPhysicsScene:
             self._mj.mj_resetData(m, d)
         d.xfrc_applied[:] = 0.0
         if self._initial_stance not in (None, "standard"):
-            from a3_deploy_onnx_ref_pingpong.initial_stance import get_initial_stance
+            if self._initial_stance == "width50_parallel":
+                offset_path = Path(__file__).resolve().parents[1] / "configs/stance_offsets/a3_hip15_knee25_width50_parallel.json"
+                payload = json.loads(offset_path.read_text(encoding="utf-8"))
+                offsets = np.asarray(payload["offset_rad"], dtype=np.float64)
+                if list(payload["joint_names"]) != self.joint_names or offsets.shape != (self.num_joints,):
+                    raise ValueError("width50_parallel stance offset does not match the active joint contract")
+                self.data.qpos[self._q_adr] += offsets
+                self.data.qpos[self._base_qadr + 2] += float(payload["root_offset_m"][2])
+            else:
+                from a3_deploy_onnx_ref_pingpong.initial_stance import get_initial_stance
 
-            stance = get_initial_stance(self._initial_stance)
-            if stance is not None:
-                joints, root_height_delta = stance
-                names_to_index = {name: i for i, name in enumerate(self.joint_names)}
-                for name, value in joints.items():
-                    self.data.qpos[self._q_adr[names_to_index[name]]] = float(value)
-                self.data.qpos[self._base_qadr + 2] += float(root_height_delta)
+                stance = get_initial_stance(self._initial_stance)
+                if stance is not None:
+                    joints, root_height_delta = stance
+                    names_to_index = {name: i for i, name in enumerate(self.joint_names)}
+                    for name, value in joints.items():
+                        self.data.qpos[self._q_adr[names_to_index[name]]] = float(value)
+                    self.data.qpos[self._base_qadr + 2] += float(root_height_delta)
         self._mj.mj_forward(self.model, self.data)
         # Park the ball out of play until a serve is set.
         d.qpos[self._ball_qadr:self._ball_qadr + 3] = [self.near_edge_x + self.length / 2.0, 0.0, self.table_height + 1.0]

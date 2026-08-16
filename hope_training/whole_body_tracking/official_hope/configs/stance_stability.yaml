@@ -1,0 +1,39 @@
+# PD-only stance experiment configuration.  Angles are degrees in the CLI/API and
+# converted to radians inside stance_stability.py.
+stance_test:
+  enabled: true
+  simulator: mujoco
+  control_dt: 0.02
+  transition_s: 1.0
+  static_duration_s: 10.0
+  trials: 5
+  seed: 0
+  pd_profile: official_stand  # existing reference runner PD_STAND path
+  hip_flexion_deg: [5, 10, 15, 20, 25]
+  knee_flexion_deg: [15, 20, 25, 30, 35, 40, 45]
+  torso_pitch_deg: [0, 5, 10]
+  stance_width_scale: [1.0, 1.1, 1.2]
+  fore_aft_m: [0.00, 0.05, 0.10, 0.15, 0.20]
+  lead_leg: [left, right]
+  initial_noise:
+    joint_position_deg: 1.0
+    joint_velocity_rad_s: 0.05
+    base_roll_deg: 1.0
+    base_pitch_deg: 1.0
+  push:
+    settle_s: 2.0
+    duration_s: 0.15
+    recovery_s: 5.0
+    recovery_hold_s: 0.4
+    directions: [front, back, left, right, front_left, front_right, back_left, back_right]
+    forces_n: [50, 100, 150, 200]
+  swing:
+    motion_file: motions/preprocessed/hope_forehand.npz
+    modes: [arm_only, arm_torso, full_body]
+    prepare_s: 0.5
+    recovery_s: 2.0
+  output:
+    raw_csv: stance_results.csv
+    summary_csv: stance_summary.csv
+    report: STANCE_STABILITY_REPORT.md
+    replay_dir: replay

@@ -45,6 +45,10 @@ _NET_CLEAR_Z_MIN = _TABLE_SURFACE_Z + _NET_HEIGHT + _BALL_RADIUS + 0.03
 _HIT_TIME_RANGE = (0.80, 1.25)
 _HIT_Y_RANGE = (-0.78, -0.50)
 _MIXED_HIT_Y_RANGE = (-1.30, -0.75)
+# Moderate lateral locomotion protocol: retain a clear FH/BH station change
+# without sending the robot from one table edge to the other.  The two lane
+# centers are about 0.90 m apart (the previous draft was about 1.34 m).
+_WIDE_LATERAL_HIT_Y_RANGE = (-1.30, -0.30)
 _HIT_Z_RANGE = (_TABLE_SURFACE_Z + _BALL_RADIUS - 0.005, 1.15)
 _MAX_APEX_Z = 1.65
 _VALID_LAUNCH_SPEED_RANGE = (3.3, 4.3)
@@ -400,6 +404,63 @@ def make_random_mixed_serves(count: int, seed: int):
 make_random_mixed_serves.last_diagnostics = []
 
 
+def _validated_random_wide_lateral_mixed_serves(count: int, seed: int):
+    """Generate legal, speed-compliant serves across both lateral extremes.
+
+    This is a locomotion-capability protocol, separate from the fixed-station
+    mixed benchmark.  Side labels are only generator lanes; the planner still
+    selects the deployed swing side from the observed target.
+    """
+    if int(count) != count or count < 1:
+        raise ValueError("wide lateral mixed serve count must be positive")
+    rng = random.Random(int(seed))
+    validator = _MuJoCoServeValidator()
+    serves = []
+    diagnostics = []
+    previous_range = _HIT_Y_RANGE
+    globals()["_HIT_Y_RANGE"] = _WIDE_LATERAL_HIT_Y_RANGE
+    try:
+        for _ in range((int(count) + 1) // 2):
+            lane_order = ["forehand", "backhand"]
+            if rng.random() < 0.5:
+                lane_order.reverse()
+            for side in lane_order:
+                if len(serves) >= int(count):
+                    break
+                lane = (-1.30, -1.20) if side == "forehand" else (-0.40, -0.30)
+                for _ in range(500):
+                    candidate = (
+                        rng.uniform(2.64, 2.72),
+                        rng.uniform(*lane),
+                        rng.uniform(*_RANDOM_Z_RANGE),
+                        rng.uniform(*_VALID_VX_RANGE),
+                        rng.uniform(-0.05, 0.05),
+                        rng.uniform(*_VALID_VZ_RANGE),
+                    )
+                    report = validator.validate(candidate)
+                    if report["ok"]:
+                        serves.append(candidate)
+                        diagnostics.append({**report, "requested_side": side})
+                        break
+                else:
+                    raise RuntimeError(
+                        f"could not generate a physically valid wide {side} serve"
+                    )
+    finally:
+        globals()["_HIT_Y_RANGE"] = previous_range
+    return serves, diagnostics
+
+
+def make_random_wide_lateral_mixed_serves(count: int, seed: int):
+    """Generate the separate wide-lateral locomotion test sequence."""
+    serves, diagnostics = _validated_random_wide_lateral_mixed_serves(count, seed)
+    make_random_wide_lateral_mixed_serves.last_diagnostics = diagnostics
+    return serves
+
+
+make_random_wide_lateral_mixed_serves.last_diagnostics = []
+
+
 class Gate3Launcher(Node):
     def __init__(self, args):
         super().__init__("gate3_ball_launcher")
@@ -517,6 +578,11 @@ def main():
         action="store_true",
         help="balanced side-neutral current-contract FH/BH random serves",
     )
+    parser.add_argument(
+        "--randomize-wide-lateral-mixed",
+        action="store_true",
+        help="balanced legal FH/BH serves spanning wide lateral lanes for locomotion testing",
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
         "--serve",
@@ -527,7 +593,7 @@ def main():
     )
     args = parser.parse_args()
     if args.serve:
-        if args.randomize or args.randomize_mixed:
+        if args.randomize or args.randomize_mixed or args.randomize_wide_lateral_mixed:
             parser.error("--serve and random serve modes cannot be combined")
         args.serves = []
         for item in args.serve:
@@ -536,10 +602,15 @@ def main():
                 parser.error("--serve must contain x,y,z,vx,vy,vz")
             args.serves.append(values)
         args.shots = len(args.serves)
-    elif args.randomize or args.randomize_mixed:
-        if args.randomize and args.randomize_mixed:
-            parser.error("--randomize and --randomize-mixed cannot be combined")
-        generator = make_random_mixed_serves if args.randomize_mixed else make_random_safe_backhand_serves
+    elif args.randomize or args.randomize_mixed or args.randomize_wide_lateral_mixed:
+        if sum(bool(value) for value in (args.randomize, args.randomize_mixed, args.randomize_wide_lateral_mixed)) > 1:
+            parser.error("random serve modes cannot be combined")
+        if args.randomize_wide_lateral_mixed:
+            generator = make_random_wide_lateral_mixed_serves
+        elif args.randomize_mixed:
+            generator = make_random_mixed_serves
+        else:
+            generator = make_random_safe_backhand_serves
         args.serves = generator(args.shots, args.seed)
         for index, report in enumerate(generator.last_diagnostics, start=1):
             hit = report["hit_position"]

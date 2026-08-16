@@ -11,11 +11,12 @@ optitrack_mct_relay:
 
     # STANDARDIZED object names (the HOPE tracked-object taxonomy, see
     # mocap/README.md): Motive competition rigid-body ASSETS must be named
-    # EXACTLY P1 / P2, and the ball entry is named Ball. A mismatch = no data
+    # P1 is standardized, while this venue's opponent rigid body is THU_P2.
+    # A mismatch = that body is omitted from the relay.
     # relayed; check with
     # `ros2 topic echo --once /optitrack/poses` after the driver is up.
     p1_object: "P1"        # our robot's marker-cluster rigid body (standardized)
-    p2_object: "P2"        # opponent marker-cluster rigid body (standardized)
+    p2_object: "THU_P2"    # opponent marker-cluster rigid body in this venue
     # Ball entry name in the NamedPoseArray. HOPE requires a Motive-native
     # strict 6-DOF rigid-body asset; the standardized asset name is Ball.
     ball_object: "Ball"

@@ -1,0 +1,37 @@
+# Curriculum-FT only: preserve the old A5 action contract and move the nominal stance
+# from the original stand toward the fixed model-backed 50 cm crouched parallel stance.
+defaults:
+  - HOPEPingPong
+  - _self_
+
+name: HitterPingPongA5StanceCurriculum
+
+motion:
+  # Keep an explicit no-ball hold between clips; this is a reference-clock hold, while the
+  # action term below supplies the stance offset target.
+  hold_steps_range:
+  - 60
+  - 60
+  hold_long_prob: 0.0
+  hold_long_steps_range:
+  - 0
+  - 0
+
+action:
+  stance_offset_path: configs/stance_offsets/a3_hip15_knee25_width50_parallel.json
+  stance_curriculum_steps: 3000
+  stance_curriculum_hold_fraction: 0.10
+
+# Double curriculum: beta is derived from stance alpha inside the reset-time material event.
+# The nominal value is a provisional simulator contract, not a claim about 8 mm PVC; replace it
+# after the corrected MuJoCo effective-contact sweep is calibrated against the intended venue.
+friction_curriculum:
+  enabled: true
+  nominal: 1.0
+  min: 0.3
+  max: 1.5
+  start_stance_alpha: 0.25
+  sample_per_episode: true
+  randomize_per_env: true
+  restitution_range: [0.0, 0.0]
+  bucket_edges: [0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5]

@@ -212,6 +212,7 @@ class ResidualMeanActorCritic(ActorCritic):
         residual_time_scale: float = 1.0,
         residual_train_std: bool = False,
         residual_architecture: str = "plain",
+        residual_active_joint_names: list[str] | tuple[str, ...] = (),
         structured_proprio_hidden_dims: list[int] | tuple[int, ...] = (128, 64),
         structured_goal_hidden_dims: list[int] | tuple[int, ...] = (64, 32),
         structured_time_hidden_dims: list[int] | tuple[int, ...] = (16, 8),
@@ -223,6 +224,7 @@ class ResidualMeanActorCritic(ActorCritic):
         self.residual_time_scale = float(residual_time_scale)
         self.residual_train_std = bool(residual_train_std)
         self.residual_architecture = str(residual_architecture).lower()
+        self.residual_active_joint_names = tuple(str(name) for name in residual_active_joint_names)
         if self.residual_architecture not in ("plain", "structured", "structured_film"):
             raise ValueError(
                 "residual_architecture must be 'plain', 'structured', or 'structured_film', "
@@ -514,6 +516,7 @@ class ResidualMeanActorCritic(ActorCritic):
             "residual_delta_q_max_rad": float(self.residual_delta_q_max_rad),
             "residual_time_scale": float(self.residual_time_scale),
             "residual_train_std": bool(self.residual_train_std),
+            "residual_active_joint_names": list(self.residual_active_joint_names),
             "std_trainable": bool(self.std.requires_grad),
             "resolved_action_scale_31d": self.resolved_action_scale.detach().cpu().tolist(),
             "residual_bound_raw_31d": self.residual_bound_raw.detach().cpu().tolist(),
@@ -578,6 +581,7 @@ class RslRlResidualMeanActorCriticCfg(RslRlPpoActorCriticCfg):
     residual_time_scale: float = 1.0
     residual_train_std: bool = False
     residual_architecture: str = "plain"
+    residual_active_joint_names: list[str] = []
     structured_proprio_hidden_dims: list[int] = [128, 64]
     structured_goal_hidden_dims: list[int] = [64, 32]
     structured_time_hidden_dims: list[int] = [16, 8]

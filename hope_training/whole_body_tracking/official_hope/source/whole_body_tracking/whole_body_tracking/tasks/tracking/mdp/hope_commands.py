@@ -139,6 +139,17 @@ class RacketTargetCommand(CommandTerm):
                 "position_guidance_temporal_scale must be non-negative; got "
                 f"{cfg.position_guidance_temporal_scale}"
             )
+        interval_range = tuple(
+            float(value) for value in getattr(cfg, "target_strike_interval_s", ())
+        )
+        if interval_range:
+            if len(interval_range) != 2 or any(
+                (not math.isfinite(value) or value <= 0.0) for value in interval_range
+            ) or interval_range[0] > interval_range[1]:
+                raise ValueError(
+                    "target_strike_interval_s must be an empty tuple or a finite positive "
+                    f"(lo, hi) range; got {cfg.target_strike_interval_s}"
+                )
         for lo_name, hi_name in (
             ("metrics_post_settle_t_lo", "metrics_post_settle_t_hi"),
             ("metrics_ready_heading_t_lo", "metrics_ready_heading_t_hi"),
@@ -1294,6 +1305,36 @@ class RacketTargetCommand(CommandTerm):
         # _update_command): wraps start a new swing but never count a pre-strike fall (a wrapped
         # env necessarily passed its strike frame alive).
         self._resample_is_wrap = False
+
+        # Paired baseline/gate audit.  The recipe is captured after the ordinary baseline
+        # question has been fully generated (including the BH conditioned target, when enabled),
+        # then replayed before the optional FH correction is applied.  This makes the two runs
+        # share the same exogenous question sequence while leaving the robot dynamics free to
+        # reveal carry-over effects.
+        self._paired_recipe_mode = str(getattr(cfg, "paired_recipe_mode", "off"))
+        if self._paired_recipe_mode not in {"off", "capture", "replay"}:
+            raise ValueError(
+                "paired_recipe_mode must be 'off', 'capture', or 'replay'; "
+                f"got {self._paired_recipe_mode!r}"
+            )
+        self._paired_recipe_strict = bool(getattr(cfg, "paired_recipe_strict", True))
+        self._paired_recipe_path = str(getattr(cfg, "paired_recipe_path", "") or "")
+        self._paired_recipe_index = torch.zeros(
+            self.num_envs, dtype=torch.long, device=self.device
+        )
+        self._paired_recipe_current_index = torch.full(
+            (self.num_envs,), -1, dtype=torch.long, device=self.device
+        )
+        self._paired_recipe_current_is_wrap = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
+        self._paired_recipe_current: list[dict | None] = [None] * self.num_envs
+        self._paired_recipe_events: list[list[dict]] = [
+            [] for _ in range(self.num_envs)
+        ]
+        self._paired_recipe_mismatches: list[dict] = []
+        if self._paired_recipe_mode == "replay":
+            self._load_paired_recipe()
 
         # --- Rally drift accounting (2026-07-07 continuous-rally upgrade) -------------------------
         # Deploy P7 failure mode: each walk-and-strike lunges forward; over consecutive swings the
@@ -2705,6 +2746,251 @@ class RacketTargetCommand(CommandTerm):
         self._assert_v17_metric_storage_isolation()
         return super().reset(env_ids)
 
+    def _load_paired_recipe(self) -> None:
+        """Load the per-environment resample recipe used by a paired audit."""
+        if not self._paired_recipe_path:
+            raise ValueError("paired_recipe_mode='replay' requires paired_recipe_path")
+        path = Path(self._paired_recipe_path).expanduser()
+        if not path.is_absolute():
+            path = (Path.cwd() / path).resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"paired recipe not found: {path}")
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if int(payload.get("schema_version", -1)) != 1:
+            raise RuntimeError(
+                f"unsupported paired recipe schema in {path}: "
+                f"{payload.get('schema_version')!r}"
+            )
+        events = payload.get("events")
+        source_env_id = getattr(self.cfg, "paired_recipe_source_env_id", None)
+        source_env_ids = getattr(self.cfg, "paired_recipe_source_env_ids", None)
+        if not isinstance(events, list):
+            raise RuntimeError(
+                "paired recipe environment count does not match evaluation: "
+                f"recipe={len(events) if isinstance(events, list) else None}, "
+                f"eval={self.num_envs}"
+            )
+        if source_env_ids is not None:
+            source_env_ids = tuple(int(value) for value in source_env_ids)
+            if len(source_env_ids) != self.num_envs:
+                raise RuntimeError(
+                    "paired recipe source environment count does not match evaluation: "
+                    f"sources={len(source_env_ids)}, eval={self.num_envs}"
+                )
+            if any(not 0 <= source < len(events) for source in source_env_ids):
+                raise RuntimeError(
+                    "paired recipe source environment is out of range: "
+                    f"sources={source_env_ids}, recipe_envs={len(events)}"
+                )
+            events = [events[source] for source in source_env_ids]
+        elif source_env_id is not None:
+            source_env_id = int(source_env_id)
+            if not 0 <= source_env_id < len(events):
+                raise RuntimeError(
+                    "paired recipe source environment is out of range: "
+                    f"source={source_env_id}, recipe_envs={len(events)}"
+                )
+            events = [events[source_env_id] for _ in range(self.num_envs)]
+        elif len(events) != self.num_envs:
+            raise RuntimeError(
+                "paired recipe environment count does not match evaluation: "
+                f"recipe={len(events)}, eval={self.num_envs}"
+            )
+        if any(not isinstance(rows, list) for rows in events):
+            raise RuntimeError("paired recipe events must be a list for every environment")
+        self._paired_recipe_events = events
+        self._paired_recipe_path = str(path)
+
+    @staticmethod
+    def _paired_list(value: torch.Tensor, index: int) -> list[float]:
+        return value[index].detach().float().cpu().tolist()
+
+    def _paired_prepare_replay(self, env_ids: torch.Tensor, clip: torch.Tensor) -> None:
+        """Select and restore target-side fields for the current resample."""
+        if self._paired_recipe_mode != "replay":
+            return
+        for local, env_id in enumerate(env_ids.detach().cpu().tolist()):
+            event_index = int(self._paired_recipe_index[env_id].item())
+            rows = self._paired_recipe_events[env_id]
+            if event_index >= len(rows):
+                if self._paired_recipe_strict:
+                    raise RuntimeError(
+                        "paired recipe exhausted before evaluation finished: "
+                        f"env={env_id}, event={event_index}, available={len(rows)}"
+                    )
+                if len(self._paired_recipe_mismatches) < 10000:
+                    self._paired_recipe_mismatches.append(
+                        {
+                            "env_id": env_id,
+                            "event_index": event_index,
+                            "reason": "recipe_exhausted",
+                            "available": len(rows),
+                        }
+                    )
+                # Continue only to finish the diagnostic log. This event is explicitly outside
+                # the paired prefix and must not be used for the causal comparison.
+                event_index = len(rows) - 1
+            event = rows[event_index]
+            expected_wrap = bool(event.get("is_wrap", False))
+            actual_clip = int(clip[local].item())
+            expected_clip = int(event.get("clip_id", -1))
+            topology_mismatch = expected_wrap != bool(self._resample_is_wrap)
+            clip_mismatch = expected_clip != actual_clip
+            if topology_mismatch or clip_mismatch:
+                if len(self._paired_recipe_mismatches) < 10000:
+                    self._paired_recipe_mismatches.append(
+                        {
+                            "env_id": env_id,
+                            "event_index": event_index,
+                            "recipe_wrap": expected_wrap,
+                            "live_wrap": bool(self._resample_is_wrap),
+                            "recipe_clip": expected_clip,
+                            "live_clip": actual_clip,
+                        }
+                    )
+            if self._paired_recipe_strict and topology_mismatch:
+                raise RuntimeError(
+                    "paired recipe resample topology diverged: "
+                    f"env={env_id}, event={event_index}, "
+                    f"recipe_wrap={expected_wrap}, live_wrap={self._resample_is_wrap}"
+                )
+            if self._paired_recipe_strict and clip_mismatch:
+                raise RuntimeError(
+                    "paired recipe clip sequence diverged: "
+                    f"env={env_id}, event={event_index}, "
+                    f"recipe_clip={expected_clip}, live_clip={actual_clip}"
+                )
+            self._paired_recipe_current[env_id] = event
+            self._paired_recipe_current_index[env_id] = event_index
+            self._paired_recipe_current_is_wrap[env_id] = expected_wrap
+            origin = self._env.scene.env_origins[env_id]
+            self.racket_target_pos_w[env_id] = origin + torch.as_tensor(
+                event["racket_target_pos_env"], dtype=torch.float32, device=self.device
+            )
+            self.racket_target_vel_w[env_id] = torch.as_tensor(
+                event["racket_target_velocity"], dtype=torch.float32, device=self.device
+            )
+            self.racket_target_normal_w[env_id] = torch.as_tensor(
+                event["racket_target_normal"], dtype=torch.float32, device=self.device
+            )
+            base_xy = torch.as_tensor(
+                event["base_target_pos_env"], dtype=torch.float32, device=self.device
+            )
+            self.base_target_pos_w[env_id] = origin[:2] + base_xy
+            self._venue_tuple_selected[env_id] = bool(event["venue_tuple_selected"])
+            self._venue_planner_contact_normal_w[env_id] = torch.as_tensor(
+                event.get("venue_planner_contact_normal", [0.0, 0.0, 0.0]),
+                dtype=torch.float32,
+                device=self.device,
+            )
+
+    def _paired_restore_incoming(self, env_ids: torch.Tensor) -> None:
+        """Restore incoming-ball and tuple-side fields after normal sampling has run."""
+        if self._paired_recipe_mode != "replay":
+            return
+        for env_id in env_ids.detach().cpu().tolist():
+            event = self._paired_recipe_current[env_id]
+            if event is None:
+                raise RuntimeError(f"missing paired recipe state for env={env_id}")
+            self.vb_vel_in_w[env_id] = torch.as_tensor(
+                event["incoming_velocity"], dtype=torch.float32, device=self.device
+            )
+            self.vb_spin_in_w[env_id] = torch.as_tensor(
+                event["incoming_spin"], dtype=torch.float32, device=self.device
+            )
+            self._venue_intended_landing_xy[env_id] = torch.as_tensor(
+                event.get("intended_landing_xy", [0.0, 0.0]),
+                dtype=torch.float32,
+                device=self.device,
+            )
+            self._venue_outgoing_velocity_seed[env_id] = torch.as_tensor(
+                event.get("outgoing_velocity_seed", [0.0, 0.0, 0.0]),
+                dtype=torch.float32,
+                device=self.device,
+            )
+            self._venue_tuple_outcome_pending[env_id] = bool(
+                event.get("venue_tuple_outcome_pending", False)
+            )
+            self._venue_tuple_outcome_clip[env_id] = int(
+                event.get("venue_tuple_outcome_clip", -1)
+            )
+            self.metrics["venue_tuple_selected"][env_id] = float(
+                bool(event["venue_tuple_selected"])
+            )
+            self._paired_recipe_index[env_id] += 1
+            self._paired_recipe_current[env_id] = None
+
+    def _paired_capture_current(self, env_ids: torch.Tensor, motion) -> None:
+        """Append the fully materialized baseline question to the capture recipe."""
+        if self._paired_recipe_mode != "capture":
+            return
+        for env_id in env_ids.detach().cpu().tolist():
+            clip_id = int(motion.clip_id[env_id].item()) if motion._multiseg else 0
+            origin = self._env.scene.env_origins[env_id]
+            self._paired_recipe_events[env_id].append(
+                {
+                    "event_index": len(self._paired_recipe_events[env_id]),
+                    "is_wrap": bool(self._resample_is_wrap),
+                    "clip_id": clip_id,
+                    "racket_target_pos_env": self._paired_list(
+                        self.racket_target_pos_w - self._env.scene.env_origins, env_id
+                    ),
+                    "racket_target_velocity": self._paired_list(
+                        self.racket_target_vel_w, env_id
+                    ),
+                    "racket_target_normal": self._paired_list(
+                        self.racket_target_normal_w, env_id
+                    ),
+                    "base_target_pos_env": self._paired_list(
+                        self.base_target_pos_w - self._env.scene.env_origins[:, :2], env_id
+                    ),
+                    "swing_sign": float(self.swing_sign[env_id].item()),
+                    "venue_tuple_selected": bool(
+                        self._venue_tuple_selected[env_id].item()
+                    ),
+                    "venue_tuple_outcome_pending": bool(
+                        self._venue_tuple_outcome_pending[env_id].item()
+                    ),
+                    "venue_tuple_outcome_clip": int(
+                        self._venue_tuple_outcome_clip[env_id].item()
+                    ),
+                    "incoming_velocity": self._paired_list(self.vb_vel_in_w, env_id),
+                    "incoming_spin": self._paired_list(self.vb_spin_in_w, env_id),
+                    "intended_landing_xy": self._paired_list(
+                        self._venue_intended_landing_xy, env_id
+                    ),
+                    "outgoing_velocity_seed": self._paired_list(
+                        self._venue_outgoing_velocity_seed, env_id
+                    ),
+                    "venue_planner_contact_normal": self._paired_list(
+                        self._venue_planner_contact_normal_w, env_id
+                    ),
+                }
+            )
+            self._paired_recipe_current_index[env_id] = (
+                len(self._paired_recipe_events[env_id]) - 1
+            )
+            self._paired_recipe_current_is_wrap[env_id] = bool(self._resample_is_wrap)
+
+    def write_paired_recipe(self, path: str | None = None) -> str:
+        """Write a captured recipe and return its absolute path."""
+        if self._paired_recipe_mode != "capture":
+            raise RuntimeError("write_paired_recipe requires paired_recipe_mode='capture'")
+        target = Path(path or self._paired_recipe_path).expanduser()
+        if not str(target):
+            raise ValueError("a recipe output path is required")
+        if not target.is_absolute():
+            target = (Path.cwd() / target).resolve()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "schema_version": 1,
+            "num_envs": self.num_envs,
+            "events": self._paired_recipe_events,
+        }
+        target.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        self._paired_recipe_path = str(target)
+        return str(target)
+
     @property
     def command(self) -> torch.Tensor:
         """Raw desired-target vector (world frame): [pos(3), vel(3), normal(3), t_left(1), base_xy(2), swing(1)]."""
@@ -2732,6 +3018,68 @@ class RacketTargetCommand(CommandTerm):
         if self._motion_term is None:
             self._motion_term = self._env.command_manager.get_term(self.cfg.motion_command_name)
         return self._motion_term
+
+    def _apply_strike_interval_scheduler(
+        self, motion: MotionCommand, env_ids: torch.Tensor
+    ) -> None:
+        """Solve the next wrap hold from a real strike-to-strike target.
+
+        A complete clip is still played from frame zero.  For a wrapped transition, the
+        interval is therefore the sum of the previous clip's post-strike tail, the new
+        pre-strike hold, and the new clip's strike phase.  Targets below that clip-only
+        minimum are clamped to zero hold and explicitly marked unreachable.
+        """
+        target_range = tuple(
+            float(value) for value in getattr(self.cfg, "target_strike_interval_s", ())
+        )
+        if not target_range or not self._resample_is_wrap or len(env_ids) == 0:
+            return
+        short_fraction = float(getattr(motion.cfg, "short_transition_env_fraction", 0.0))
+        if short_fraction > 0.0:
+            short_start = int(round(short_fraction * motion.num_envs))
+            env_ids = env_ids[env_ids >= short_start]
+            if len(env_ids) == 0:
+                return
+        if int(getattr(motion.cfg, "post_wrap_min_hold", 0)) > 0:
+            raise ValueError(
+                "target_strike_interval_s cannot be combined with post_wrap_min_hold; "
+                "the interval scheduler must own the wrap hold"
+            )
+
+        step_dt = float(self._env.step_dt)
+        num_segments = int(motion.motion.num_segments)
+        previous_clip = self._prev_clip_id[env_ids].clamp(0, num_segments - 1)
+        next_clip = motion.clip_id[env_ids].clamp(0, num_segments - 1)
+        seg_len = motion.motion.seg_len
+        previous_len = seg_len[previous_clip].float()
+        next_len = seg_len[next_clip].float()
+        phase_values = tuple(self.cfg.strike_phase_per_clip)
+        if len(phase_values) != num_segments:
+            phase_values = (float(self.cfg.strike_phase),) * num_segments
+        phase_tensor = torch.as_tensor(phase_values, dtype=torch.float32, device=self.device)
+        previous_strike = torch.round(
+            phase_tensor[previous_clip] * (previous_len - 1.0)
+        )
+        next_strike = torch.round(phase_tensor[next_clip] * (next_len - 1.0))
+        previous_post_steps = previous_len - previous_strike
+        next_pre_steps = next_strike
+
+        target_interval = sample_uniform(
+            target_range[0], target_range[1], (len(env_ids),), device=self.device
+        )
+        target_steps = torch.round(target_interval / step_dt)
+        raw_hold_steps = target_steps - previous_post_steps - next_pre_steps
+        scheduled_hold_steps = torch.clamp(raw_hold_steps, min=0.0).long()
+        motion.hold_counter[env_ids] = scheduled_hold_steps
+
+        motion.metrics["target_strike_interval_s"][env_ids] = target_interval
+        motion.metrics["required_hold_s"][env_ids] = raw_hold_steps * step_dt
+        motion.metrics["scheduled_hold_s"][env_ids] = scheduled_hold_steps.float() * step_dt
+        motion.metrics["previous_clip_poststrike_s"][env_ids] = previous_post_steps * step_dt
+        motion.metrics["next_clip_prestrike_s"][env_ids] = next_pre_steps * step_dt
+        motion.metrics["strike_interval_scheduler_unreachable"][env_ids] = (
+            (raw_hold_steps < 0.0).float()
+        )
 
     def _strike_frame_for_clip(self, motion, clip_id: int) -> tuple[int, float, int, int]:
         """Return (global strike frame, phase, segment start, segment len) for one reference clip."""
@@ -4352,6 +4700,9 @@ class RacketTargetCommand(CommandTerm):
         ids = torch.as_tensor(
             env_ids, dtype=torch.long, device=self.device
         )
+        # When enabled, replace the legacy wrap hold with a hold solved from the actual
+        # previous/new clip strike phases. True resets keep their existing startup hold.
+        self._apply_strike_interval_scheduler(motion, ids)
         self._resolve_pending_venue_outcomes_as_failures(ids)
         self._venue_planner_contact_normal_w[ids] = 0.0
         if self._venue_tuple_mix_mode == "fixed_balanced_bank_v1":
@@ -4481,6 +4832,20 @@ class RacketTargetCommand(CommandTerm):
         else:
             self._sample_targets_uniform(env_ids, origins, n)
 
+        # Restore the target-side part of a paired question before station/locomotion commands
+        # consume it.  Incoming velocity/spin is restored below, after the ordinary virtual-ball
+        # sampling block, so the replay path remains valid for both core and tuple questions.
+        if self._paired_recipe_mode == "replay":
+            replay_clip = (
+                motion.clip_id[ids]
+                if motion._multiseg
+                else torch.zeros(len(ids), dtype=torch.long, device=self.device)
+            )
+            self._paired_prepare_replay(ids, replay_clip)
+            self.metrics["venue_tuple_selected"][ids] = (
+                self._venue_tuple_selected[ids].float()
+            )
+
         # Desired base XY (world): COUPLE it to the racket target so standing there keeps the racket
         # reachable by the imitated swing — base_target = racket_target_xy - (reference base->racket
         # offset). Independent sampling used to fight the arm's reach (the base_position reward pulled
@@ -4562,6 +4927,12 @@ class RacketTargetCommand(CommandTerm):
             else:
                 self.swing_sign[env_ids] = torch.where(dy >= 0.0, 1.0, -1.0)
 
+        if self._paired_recipe_mode == "replay":
+            for env_id in ids.detach().cpu().tolist():
+                event = self._paired_recipe_current[env_id]
+                if event is not None:
+                    self.swing_sign[env_id] = float(event.get("swing_sign", 1.0))
+
         # Tier-1 virtual incoming ball: one (v_in, omega_in) per swing. The ball's position at the
         # strike time is the racket target BY CONSTRUCTION (the sampler defines the ball to arrive
         # there), so only velocity + spin are sampled. Boxes stay inside the venue-fit envelope.
@@ -4583,13 +4954,20 @@ class RacketTargetCommand(CommandTerm):
                     -_s, _s, (core_n, 3), self.device
                 )
 
+        if self._paired_recipe_mode == "replay":
+            self._paired_restore_incoming(ids)
+
         # Diagnostic-only core target conditioning.  The formal recipe leaves this disabled:
         # core target velocity and virtual incoming velocity are sampled independently.  When
         # enabled for an A/B evaluation, use the sampled incoming vertical velocity to adjust only
         # the backhand target v_z.  Do not touch venue tuples, target normal, rewards, or the actor
         # observation contract; the conditioned target reaches the actor through the existing
         # racket_target_vel_w channel.
-        if self.cfg.vb_target_conditioning and self.cfg.virtual_ball:
+        if (
+            self.cfg.vb_target_conditioning
+            and self.cfg.virtual_ball
+            and self._paired_recipe_mode != "replay"
+        ):
             core_mask = ~self._venue_tuple_selected[ids]
             bh_mask = core_mask & (clip == int(self.cfg.vb_target_conditioning_clip_id))
             conditioned_ids = ids[bh_mask]
@@ -4608,6 +4986,11 @@ class RacketTargetCommand(CommandTerm):
             core_mask = ~self._venue_tuple_selected[ids]
             fh_mask = core_mask & (clip == int(self.cfg.fh_target_conditioning_clip_id))
             conditioned_ids = ids[fh_mask]
+            if self.cfg.fh_target_conditioning_vx_max is not None and len(conditioned_ids) > 0:
+                conditioned_ids = conditioned_ids[
+                    self.vb_vel_in_w[conditioned_ids, 0]
+                    <= float(self.cfg.fh_target_conditioning_vx_max)
+                ]
             if len(conditioned_ids) > 0:
                 self.racket_target_vel_w[conditioned_ids, 0] += float(
                     self.cfg.fh_target_conditioning_delta_vx
@@ -4749,6 +5132,8 @@ class RacketTargetCommand(CommandTerm):
         # sampled.  This hook is telemetry-only and cannot mutate the command buffers.
         if self._physical is not None:
             self._physical.on_resample(env_ids)
+
+        self._paired_capture_current(ids, motion)
 
     def _resolve_safe_recovery_events(
         self, env_ids: torch.Tensor, success: torch.Tensor
@@ -10781,6 +11166,11 @@ class RacketTargetCommandCfg(CommandTermCfg):
     # MotionLoader segment order (i.e. the order of motion files: forehand, backhand). Empty -> use the
     # scalar strike_phase for every clip. e.g. (0.36, 0.74) for forehand_new + backhand_new.
     strike_phase_per_clip: tuple = ()
+    # Optional wrap scheduler. When enabled, the next clip's pre-swing hold is solved so the
+    # next reference strike occurs at this real strike-to-strike interval (seconds). Empty keeps
+    # the legacy hold_steps_range behavior. Targets below the clip-only minimum are clamped to
+    # zero hold and marked unreachable in telemetry; they do not silently phase-skip the clip.
+    target_strike_interval_s: tuple[float, ...] = ()
     strike_window_s: float = 0.1  # half-window; goal-racket reward active within ±strike_window_s
     # Independent position-derived gate. <=0 preserves the legacy full strike window. RallyV15
     # sets 0.04 s and owns its temporal scale in YAML; velocity/normal remain on strike_window_s.
@@ -11196,6 +11586,14 @@ class RacketTargetCommandCfg(CommandTermCfg):
     fh_target_conditioning_clip_id: int = 0
     fh_target_conditioning_delta_vx: float = 0.0
     fh_target_conditioning_delta_vy: float = 0.0
+    fh_target_conditioning_vx_max: float | None = None
+    # Paired causal audit. ``capture`` records the fully materialized per-env swing questions;
+    # ``replay`` restores them in order for baseline/gate runs. Defaults are inert.
+    paired_recipe_mode: str = "off"
+    paired_recipe_path: str = ""
+    paired_recipe_source_env_id: int | None = None
+    paired_recipe_source_env_ids: tuple[int, ...] | None = None
+    paired_recipe_strict: bool = True
     # virtual_spin reward semantics: "topspin" = Ace-style outgoing-topspin generation (ball
     # quality); "minimize" = stage-1 placement-first mode (franco 2026-07-04) — reward CANCELING
     # the incoming spin, kernel exp(-|omega_out|^2 / vb_spin_min_sigma^2) on the outgoing spin

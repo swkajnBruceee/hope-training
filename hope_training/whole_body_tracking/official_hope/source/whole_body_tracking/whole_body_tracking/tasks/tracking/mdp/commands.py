@@ -293,6 +293,12 @@ class MotionCommand(CommandTerm):
             raise ValueError(
                 "runtime_handoff_hold_steps_range must satisfy 0 <= lo <= hi"
             )
+        short_fraction = float(getattr(cfg, "short_transition_env_fraction", 0.0))
+        if not 0.0 <= short_fraction <= 1.0:
+            raise ValueError(
+                "short_transition_env_fraction must lie in [0, 1]; "
+                f"got {short_fraction}"
+            )
 
         self.robot: Articulation = env.scene[cfg.asset_name]
         self.robot_anchor_body_index = self.robot.body_names.index(self.cfg.anchor_body_name)
@@ -464,6 +470,16 @@ class MotionCommand(CommandTerm):
         self.metrics["error_body_rot"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_joint_pos"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_joint_vel"] = torch.zeros(self.num_envs, device=self.device)
+        # Cumulative completed clip-to-clip transition audit.  This is intentionally kept
+        # outside the per-step metrics: PPO's scalar metric reducer cannot recover a reliable
+        # event count from a per-env mean after resets.  train.py prints this matrix at the end
+        # of a run so transition oversampling can be checked against the actual rollout.
+        self.transition_event_counts = torch.zeros(
+            self.motion.num_segments,
+            self.motion.num_segments,
+            dtype=torch.long,
+            device=self.device,
+        )
         self.metrics["sampling_entropy"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["sampling_top1_prob"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["sampling_top1_bin"] = torch.zeros(self.num_envs, device=self.device)
@@ -537,6 +553,17 @@ class MotionCommand(CommandTerm):
         )
         self.metrics["motion_phase"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["in_hold"] = torch.zeros(self.num_envs, device=self.device)
+        # Optional strike-interval scheduler diagnostics. RacketTargetCommand owns the
+        # strike-phase definition and writes these values when a wrapped successor swing is
+        # materialized; keeping them on MotionCommand exposes timing without changing the actor.
+        self.metrics["target_strike_interval_s"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["required_hold_s"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["scheduled_hold_s"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["previous_clip_poststrike_s"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["next_clip_prestrike_s"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["strike_interval_scheduler_unreachable"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
         self.metrics["error_anchor_rot_deg"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_joint_pos_mean_abs"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_joint_pos_max_abs"] = torch.zeros(self.num_envs, device=self.device)
@@ -736,6 +763,9 @@ class MotionCommand(CommandTerm):
             n = len(env_ids)
             if n > 0:
                 eval_sequence = tuple(getattr(self.cfg, "eval_clip_sequence", ()) or ())
+                transition_sequence = tuple(
+                    getattr(self.cfg, "transition_clip_sequence", ()) or ()
+                )
                 if eval_sequence:
                     if any(int(value) < 0 or int(value) >= self.motion.num_segments for value in eval_sequence):
                         raise ValueError(
@@ -756,6 +786,9 @@ class MotionCommand(CommandTerm):
                     self._eval_sequence_counter[env_ids] += 1
                 else:
                     new_clip = torch.randint(0, self.motion.num_segments, (n,), device=self.device)
+                env_ids_t = torch.as_tensor(
+                    env_ids, dtype=torch.long, device=self.device
+                )
                 fixed_fraction = float(
                     getattr(self.cfg, "fixed_clip_env_fraction_per_clip", 0.0)
                 )
@@ -765,14 +798,61 @@ class MotionCommand(CommandTerm):
                             "fixed_clip_env_fraction_per_clip * num_segments must be <= 1"
                         )
                     quota = int(round(fixed_fraction * self.num_envs))
-                    env_ids_t = torch.as_tensor(
-                        env_ids, dtype=torch.long, device=self.device
-                    )
                     for clip_id in range(self.motion.num_segments):
                         start = clip_id * quota
                         stop = start + quota
                         permanent = (env_ids_t >= start) & (env_ids_t < stop)
                         new_clip[permanent] = clip_id
+                if transition_sequence:
+                    if any(
+                        int(value) < 0 or int(value) >= self.motion.num_segments
+                        for value in transition_sequence
+                    ):
+                        raise ValueError(
+                            "transition_clip_sequence contains invalid clip id: "
+                            f"{transition_sequence}"
+                        )
+                    short_fraction = float(
+                        getattr(self.cfg, "short_transition_env_fraction", 0.0)
+                    )
+                    short_start = int(round(short_fraction * self.num_envs))
+                    transition_mask = env_ids_t >= short_start
+                    if bool(transition_mask.any()):
+                        if not hasattr(self, "_transition_sequence_counter"):
+                            self._transition_sequence_counter = torch.zeros(
+                                self.num_envs, dtype=torch.long, device=self.device
+                            )
+                        sequence = torch.as_tensor(
+                            transition_sequence, device=self.device, dtype=torch.long
+                        )
+                        transition_ids = env_ids_t[transition_mask]
+                        sequence_index = (
+                            self._transition_sequence_counter[transition_ids]
+                            % len(transition_sequence)
+                        )
+                        new_clip[transition_mask] = sequence[sequence_index]
+                        self._transition_sequence_counter[transition_ids] += 1
+                # Count only wrap-path materializations.  Initial/reset sampling does not
+                # represent a completed previous shot; Stage1 uses clip_switch_prob=0, so every
+                # wrap-path event here is a real completed clip-to-clip transition.
+                if self._resampling_from_wrap:
+                    previous_clip = self.clip_id[env_ids_t]
+                    valid = (
+                        (previous_clip >= 0)
+                        & (previous_clip < self.motion.num_segments)
+                        & (new_clip >= 0)
+                        & (new_clip < self.motion.num_segments)
+                    )
+                    if bool(valid.any()):
+                        flat = (
+                            previous_clip[valid] * self.motion.num_segments
+                            + new_clip[valid]
+                        )
+                        self.transition_event_counts.view(-1).scatter_add_(
+                            0,
+                            flat,
+                            torch.ones_like(flat, dtype=torch.long),
+                        )
                 self.clip_id[env_ids] = new_clip
                 self.time_steps[env_ids] = self.motion.seg_start[new_clip]
             # Report the REAL clip-sampling distribution (repurpose the bin-sampling metrics for clips):
@@ -2178,8 +2258,12 @@ class MotionCommand(CommandTerm):
         rsi_ids = env_ids_t[~(stand_mask | post_mask)]
 
         if len(stand_ids) > 0:
+            action_term = self._env.action_manager.get_term(str(self.cfg.post_swing_action_name))
             default_root = self.robot.data.default_root_state[stand_ids].clone()
             default_root[:, :3] += self._env.scene.env_origins[stand_ids]
+            stance_root_offset = getattr(action_term, "stance_reset_root_offset", None)
+            if callable(stance_root_offset):
+                default_root[:, :3] += stance_root_offset(len(stand_ids))
             default_root[:, 7:] = 0.0  # zero lin/ang velocity
             # FIXED-STATION RECOVERY DR: offset the robot while leaving the commanded station at
             # the environment origin.  This creates an actual return-to-station question instead
@@ -2223,7 +2307,11 @@ class MotionCommand(CommandTerm):
             self.robot.write_root_state_to_sim(default_root, env_ids=stand_ids)
             self.last_reset_root_pos_w[stand_ids] = default_root[:, :3]
             self.robot.write_joint_state_to_sim(
-                self.robot.data.default_joint_pos[stand_ids],
+                action_term.stance_reset_joint_pos(
+                    self.robot.data.default_joint_pos[stand_ids], env_ids=stand_ids
+                )
+                if callable(getattr(action_term, "stance_reset_joint_pos", None))
+                else self.robot.data.default_joint_pos[stand_ids],
                 torch.zeros_like(self.robot.data.default_joint_vel[stand_ids]),
                 env_ids=stand_ids,
             )
@@ -2262,14 +2350,21 @@ class MotionCommand(CommandTerm):
                     static_root[:, :3] += self._env.scene.env_origins[
                         handoff_ids
                     ]
+                    stance_root_offset = getattr(action_term, "stance_reset_root_offset", None)
+                    if callable(stance_root_offset):
+                        static_root[:, :3] += stance_root_offset(len(handoff_ids))
                     static_root[:, 7:] = 0.0
                     self.robot.write_root_state_to_sim(
                         static_root, env_ids=handoff_ids
                     )
                     self.last_reset_root_pos_w[handoff_ids] = static_root[:, :3]
-                    static_joint_pos = self.robot.data.default_joint_pos[
-                        handoff_ids
-                    ].clone()
+                    static_joint_pos = (
+                        action_term.stance_reset_joint_pos(
+                            self.robot.data.default_joint_pos[handoff_ids], env_ids=handoff_ids
+                        )
+                        if callable(getattr(action_term, "stance_reset_joint_pos", None))
+                        else self.robot.data.default_joint_pos[handoff_ids].clone()
+                    )
                     static_joint_vel = torch.zeros_like(
                         self.robot.data.default_joint_vel[handoff_ids]
                     )
@@ -2633,6 +2728,10 @@ class MotionCommandCfg(CommandTermCfg):
     # Deterministic evaluator only: cycle each env through a frozen external serve-side sequence.
     # Empty keeps all train/play behavior byte-identical. Training YAMLs must never set this field.
     eval_clip_sequence: tuple[int, ...] = ()
+    # Optional continual-learning rehearsal split. The final fraction of env ids uses this
+    # transition sequence while the prefix keeps the ordinary conditioned-core distribution.
+    short_transition_env_fraction: float = 0.0
+    transition_clip_sequence: tuple[int, ...] = ()
 
     adaptive_kernel_size: int = 1
     adaptive_lambda: float = 0.8

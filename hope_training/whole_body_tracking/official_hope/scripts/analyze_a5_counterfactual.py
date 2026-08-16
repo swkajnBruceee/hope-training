@@ -415,6 +415,108 @@ def _fh_horizontal_sweep(
     }
 
 
+def _fh_conditional_benefit(
+    rows: list[dict[str, Any]],
+    prm: dict[str, float],
+    delta_vx: float = -0.10,
+    delta_vy: float = 0.0,
+) -> dict[str, Any]:
+    """Measure per-shot benefit/harm of one FH correction across interpretable state bins."""
+    captured = [row for row in rows if bool(row.get("capture_gate"))]
+    n = len(captured)
+    actual_v = _vec(captured, "achieved_racket_velocity")
+    actual_n = _vec(captured, "achieved_racket_normal")
+    target_v = _vec(captured, "planner_racket_velocity")
+    delta = np.zeros_like(target_v)
+    delta[:, 0] = float(delta_vx)
+    delta[:, 1] = float(delta_vy)
+    baseline = _rollout(captured, actual_v, actual_n, prm)
+    corrected = _rollout(captured, actual_v + delta, actual_n, prm)
+    base_codes = np.asarray(_codes(baseline), dtype=object)
+    corrected_codes = np.asarray(_codes(corrected), dtype=object)
+    base_legal = base_codes == "LEGAL"
+    corrected_legal = corrected_codes == "LEGAL"
+    incoming = np.asarray([row["incoming_velocity"] for row in captured], dtype=float)
+    contact_y = np.asarray([row["achieved_racket_pos_env"][1] for row in captured], dtype=float)
+
+    def _group_summary(mask: np.ndarray) -> dict[str, Any]:
+        count = int(mask.sum())
+        if count == 0:
+            return {"n": 0}
+
+        def rate(values: np.ndarray) -> float:
+            return _pct(int(np.sum(values[mask])), count)
+
+        return {
+            "n": count,
+            "baseline_legal_pct": rate(base_legal),
+            "corrected_legal_pct": rate(corrected_legal),
+            "delta_legal_pp": rate(corrected_legal) - rate(base_legal),
+            "rescued_pct": _pct(int(np.sum((~base_legal & corrected_legal)[mask])), count),
+            "broken_pct": _pct(int(np.sum((base_legal & ~corrected_legal)[mask])), count),
+            "baseline_far_pct": rate(base_codes == "LAND_OUT_FAR"),
+            "corrected_far_pct": rate(corrected_codes == "LAND_OUT_FAR"),
+            "delta_far_pp": rate(corrected_codes == "LAND_OUT_FAR") - rate(base_codes == "LAND_OUT_FAR"),
+            "baseline_side_pct": rate(base_codes == "LAND_OUT_SIDE"),
+            "corrected_side_pct": rate(corrected_codes == "LAND_OUT_SIDE"),
+            "delta_side_pp": rate(corrected_codes == "LAND_OUT_SIDE") - rate(base_codes == "LAND_OUT_SIDE"),
+            "baseline_net_failure_pct": rate((base_codes == "NO_NET_CROSS") | (base_codes == "NET_TOO_LOW")),
+            "corrected_net_failure_pct": rate(
+                (corrected_codes == "NO_NET_CROSS") | (corrected_codes == "NET_TOO_LOW")
+            ),
+            "delta_net_failure_pp": rate(
+                (corrected_codes == "NO_NET_CROSS") | (corrected_codes == "NET_TOO_LOW")
+            ) - rate((base_codes == "NO_NET_CROSS") | (base_codes == "NET_TOO_LOW")),
+        }
+
+    def quantile_groups(values: np.ndarray, count: int = 4) -> tuple[np.ndarray, list[float]]:
+        edges = np.quantile(values, np.linspace(0.0, 1.0, count + 1)).astype(float)
+        edges = np.maximum.accumulate(edges)
+        labels = np.searchsorted(edges[1:-1], values, side="right")
+        return labels, [float(edge) for edge in edges]
+
+    vx_group, vx_edges = quantile_groups(incoming[:, 0])
+    vy_group, vy_edges = quantile_groups(incoming[:, 1])
+    cy_group, cy_edges = quantile_groups(contact_y)
+
+    def one_dimensional(name: str, groups: np.ndarray, edges: list[float]) -> dict[str, Any]:
+        return {
+            "edges": edges,
+            "groups": {
+                f"q{group}": _group_summary(groups == group)
+                for group in range(4)
+            },
+        }
+
+    vx_vy = {}
+    for vx_bin in range(4):
+        for vy_bin in range(4):
+            vx_vy[f"vx_q{vx_bin}_vy_q{vy_bin}"] = _group_summary(
+                (vx_group == vx_bin) & (vy_group == vy_bin)
+            )
+
+    return {
+        "candidate": {"delta_vx_mps": float(delta_vx), "delta_vy_mps": float(delta_vy)},
+        "captured_rows": n,
+        "overall": _group_summary(np.ones(n, dtype=bool)),
+        "by_incoming_vx": one_dimensional("incoming_vx", vx_group, vx_edges),
+        "by_incoming_vy": one_dimensional("incoming_vy", vy_group, vy_edges),
+        "by_contact_y": one_dimensional("contact_y", cy_group, cy_edges),
+        "by_incoming_vx_x_incoming_vy": {
+            "vx_edges": vx_edges,
+            "vy_edges": vy_edges,
+            "groups": vx_vy,
+        },
+        "definitions": {
+            "delta_L": "I(corrected is LEGAL) - I(baseline is LEGAL)",
+            "rescued": "baseline non-LEGAL and corrected LEGAL",
+            "broken": "baseline LEGAL and corrected non-LEGAL",
+            "execution": "actual_v_new = actual_v_old + (delta_vx, delta_vy, 0); normal held fixed",
+            "binning": "quartile bins computed on captured FH core rows",
+        },
+    }
+
+
 def _sweep_entry(
     rows: list[dict[str, Any]],
     outcome: dict[str, np.ndarray],
@@ -514,6 +616,7 @@ def main() -> int:
         "rows": {"all": len(rows), "core": len(core), "fh_core": len(fh), "bh_core": len(bh)},
         "fh_CF0_CF1_CF2": _fh_counterfactual(fh, prm),
         "fh_horizontal_velocity_sweep": _fh_horizontal_sweep(fh, prm, fh_dvx_grid, fh_dvy_grid),
+        "fh_conditional_benefit": _fh_conditional_benefit(fh, prm),
         "bh_planner_vz_sweep": _bh_sweep(bh, prm, k_grid, v_ref_grid, args.delta_max),
         "notes": [
             "All counterfactuals hold the original capture_gate fixed; they isolate post-contact landing physics and do not predict a new actor trajectory.",

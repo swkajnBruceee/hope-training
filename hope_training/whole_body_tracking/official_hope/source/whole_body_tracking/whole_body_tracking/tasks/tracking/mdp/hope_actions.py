@@ -15,6 +15,7 @@ ankle-roll q_des inside an absolute +/-0.20 rad safety band.
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import pathlib
@@ -158,6 +159,12 @@ class ClampedJointPositionAction(JointPositionAction):
         self._passive_joint_ids = torch.tensor(
             [action_joint_ids[col] for col in passive_cols], dtype=torch.long, device=self.device
         )
+        self._stance_offset_action = torch.zeros(
+            self._num_envs, self._raw_actions.shape[-1], dtype=self._processed_actions.dtype, device=self.device
+        )
+        self._stance_root_offset_m = torch.zeros(3, dtype=self._processed_actions.dtype, device=self.device)
+        self._stance_offset_joint_names: tuple[str, ...] = ()
+        self._load_stance_offset()
         print("[hope_actions] q_des CLAMP ACTIVE: processed targets use conservative Isaac soft "
               "limits; deploy uses hard pp_joint_limits", flush=True)
         if passive_names:
@@ -171,6 +178,9 @@ class ClampedJointPositionAction(JointPositionAction):
         super().process_actions(actions)
         self._applied_raw_actions.copy_(self._raw_actions)
         self._unclamped_processed_actions.copy_(self._processed_actions)
+        if self._stance_offset_joint_names:
+            self._unclamped_processed_actions.add_(self.stance_alpha() * self._stance_offset_action)
+            self._processed_actions.copy_(self._unclamped_processed_actions)
         limits = self._asset.data.soft_joint_pos_limits[:, self._joint_ids, :]
         self._processed_actions = torch.clamp(
             self._processed_actions, min=limits[..., 0], max=limits[..., 1]
@@ -190,6 +200,88 @@ class ClampedJointPositionAction(JointPositionAction):
         else:
             self._applied_raw_actions[env_ids] = 0.0
             self._unclamped_processed_actions[env_ids] = 0.0
+
+    def _load_stance_offset(self) -> None:
+        path_value = str(getattr(self.cfg, "stance_offset_path", "") or "").strip()
+        if not path_value:
+            return
+        path = pathlib.Path(path_value).expanduser()
+        if not path.is_file():
+            raise FileNotFoundError(f"stance_offset_path does not exist: {path}")
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        names = [str(name) for name in payload.get("joint_names", [])]
+        offsets = [float(value) for value in payload.get("offset_rad", [])]
+        if len(names) != len(offsets) or len(names) != len(set(names)):
+            raise ValueError("stance offset joint_names/offset_rad must be equal-length and unique")
+        action_names = list(self._joint_names)
+        missing = [name for name in names if name not in action_names]
+        if missing:
+            raise ValueError(f"stance offset joints missing from action term: {missing}")
+        for name, value in zip(names, offsets):
+            self._stance_offset_action[:, action_names.index(name)] = value
+        root_offset = payload.get("root_offset_m", [0.0, 0.0, 0.0])
+        if len(root_offset) != 3:
+            raise ValueError("stance offset root_offset_m must contain [x, y, z]")
+        self._stance_root_offset_m.copy_(torch.as_tensor(
+            root_offset, dtype=self._stance_root_offset_m.dtype, device=self.device
+        ))
+        self._stance_offset_joint_names = tuple(names)
+        print(
+            "[hope_actions] stance offset loaded: "
+            f"{path} ({len(names)} joints; root_offset_m={list(map(float, root_offset))})",
+            flush=True,
+        )
+
+    def stance_alpha(self) -> float:
+        total = int(getattr(self.cfg, "stance_curriculum_steps", 0))
+        if total <= 0 or not self._stance_offset_joint_names:
+            return 1.0 if self._stance_offset_joint_names else 0.0
+        hold_fraction = float(getattr(self.cfg, "stance_curriculum_hold_fraction", 0.10))
+        if not 0.0 <= hold_fraction < 1.0:
+            raise ValueError("stance_curriculum_hold_fraction must lie in [0, 1)")
+        step = int(getattr(self._env, "common_step_counter", 0))
+        hold_steps = int(round(total * hold_fraction))
+        ramp_steps = max(1, total - hold_steps)
+        return float(max(0.0, min(1.0, (step - hold_steps) / ramp_steps)))
+
+    def friction_beta(self, start_stance_alpha: float = 0.25) -> float:
+        """Return the friction curriculum phase derived from the stance curriculum.
+
+        Friction remains nominal while the policy is still learning the first quarter of the
+        stance migration.  The ground-friction event owns the actual per-environment sampling;
+        this scalar is only the shared schedule/telemetry contract.
+        """
+        start = float(start_stance_alpha)
+        if not 0.0 <= start < 1.0:
+            raise ValueError("start_stance_alpha must lie in [0, 1)")
+        alpha = self.stance_alpha()
+        return float(max(0.0, min(1.0, (alpha - start) / (1.0 - start))))
+
+    def stance_reset_joint_pos(
+        self, articulation_joint_pos: torch.Tensor, env_ids: torch.Tensor | None = None
+    ) -> torch.Tensor:
+        result = articulation_joint_pos.clone()
+        if self._stance_offset_joint_names:
+            action_joint_ids = torch.as_tensor(
+                _action_joint_ids_in_column_order(self), dtype=torch.long, device=result.device
+            )
+            # Reset callbacks often operate on a subset of environments.  The offset buffer is
+            # stored for all envs, so select the same rows before adding it to the subset pose.
+            stance_offset = self._stance_offset_action
+            if env_ids is not None:
+                stance_offset = stance_offset[env_ids]
+            if stance_offset.shape[0] != result.shape[0]:
+                raise RuntimeError(
+                    "stance reset env/pose batch mismatch: "
+                    f"offset={stance_offset.shape[0]} pose={result.shape[0]}"
+                )
+            result[:, action_joint_ids] += self.stance_alpha() * stance_offset
+        return result
+
+    def stance_reset_root_offset(self, count: int) -> torch.Tensor:
+        if not self._stance_offset_joint_names:
+            return torch.zeros(count, 3, dtype=self._processed_actions.dtype, device=self.device)
+        return self.stance_alpha() * self._stance_root_offset_m.unsqueeze(0).expand(count, -1)
 
     @property
     def unclamped_processed_actions(self) -> torch.Tensor:
@@ -249,6 +341,9 @@ class ClampedJointPositionActionCfg(JointPositionActionCfg):
     class_type: type = ClampedJointPositionAction
 
     passive_joint_names: tuple[str, ...] = ()
+    stance_offset_path: str = ""
+    stance_curriculum_steps: int = 0
+    stance_curriculum_hold_fraction: float = 0.10
     """Exact joint names fixed at default q and zeroed in applied last-action feedback.
 
     Empty by default to avoid changing non-A3 tasks.  A passive-head A3 task must explicitly set
@@ -344,7 +439,7 @@ class V11SafeClampedJointPositionAction(ClampedJointPositionAction):
             )
 
         default_qdes = self._select_action_joints(
-            self._asset.data.default_joint_pos
+            self.stance_reset_joint_pos(self._asset.data.default_joint_pos)
         ).clone()
         self._qdes_commanded = default_qdes.clone()
         self._qdes_executed = default_qdes.clone()
@@ -670,7 +765,7 @@ class V11SafeClampedJointPositionAction(ClampedJointPositionAction):
     def reset(self, env_ids=None):
         super().reset(env_ids)
         default_q = self._select_action_joints(
-            self._asset.data.default_joint_pos
+            self.stance_reset_joint_pos(self._asset.data.default_joint_pos)
         )
         if env_ids is None:
             env_ids_t = torch.arange(

@@ -15,6 +15,7 @@ RUNNER_CFG="$A3_DIR/src/a3/a3_deploy_onnx_ref/config/a3_runtime_config.pingpong.
 POLICY_DIR="$A3_DIR/models/model_21800/policy"
 POLICY_LABEL="official_model_21800"
 WS_INSTALL="$ROOT_DIR/hope_ws/install"
+NATNET_INSTALL="/home/bistu/桌面/HOPE/NatNet2ROS2/install"
 GATE3_PY_BUILD="/tmp/hope_gate3_build"
 CONDA_SH="/home/bistu/anaconda3/etc/profile.d/conda.sh"
 TABLE_CENTER_Y="-0.7625"
@@ -29,6 +30,10 @@ CONTACT_HOLD=1.5
 INTER_SHOT=0.5
 RANDOMIZE=0
 MIXED_RANDOMIZE=0
+WIDE_LATERAL_MIXED_RANDOMIZE=0
+INPUT_SOURCE="sim"
+MOTIVE_HOST="192.168.50.1"
+MOCAP_INTERFACE_IP="192.168.50.230"
 RANDOM_SEED=0
 OFFICIAL_GATE3=0
 OFFICIAL_PLANNER=0
@@ -39,14 +44,19 @@ BASE_RELAY_PID=""
 PLANNER_PID=""
 BALL_PID=""
 POSE_BRIDGE_PID=""
+MOCAP_ADAPTER_PID=""
+MOCAP_RELAY_PID=""
 RUNNER_PID=""
 EVIDENCE_PID=""
 PHYSICAL_EVIDENCE_JSON=""
 AUDIT_SUMMARY_JSON=""
 
 usage() {
-  echo "Usage: $0 [--official-gate3|--official-planner] [--duration SEC] [--shots N] [--motion-idle SEC] [--randomize|--mixed-random --seed N] [--flight-window SEC] [--contact-hold SEC] [--inter-shot SEC] [--serve TUPLE ...] [--stand-x X --stand-y Y] [--policy-dir DIR] [--label NAME] [--keep]"
-  echo "Starts AimRT, planner, physical Gate3 ball, and native runner MOTION."
+  echo "Usage: $0 [--input-source sim|mocap] [--motive-host IP] [--mocap-interface-ip IP] [--official-gate3|--official-planner] [--duration SEC] [--shots N] [--motion-idle SEC] [--randomize|--mixed-random|--wide-lateral-mixed --seed N] [--flight-window SEC] [--contact-hold SEC] [--inter-shot SEC] [--serve TUPLE ...] [--stand-x X --stand-y Y] [--policy-dir DIR] [--label NAME] [--keep]"
+  echo "Starts AimRT, planner, and native runner MOTION; ball input defaults to simulation."
+  echo "  --input-source sim|mocap  sim starts Gate3 ball; mocap starts NatNet2ROS2 + HOPE relay"
+  echo "  --motive-host IP          NatNet/Motive host (mocap mode, default: $MOTIVE_HOST)"
+  echo "  --mocap-interface-ip IP  local wired NatNet receive address (default: $MOCAP_INTERFACE_IP)"
   echo "  --official-gate3  use the published 12-shot Gate3 serve/planner contract"
   echo "  --official-planner  use official planner/serve geometry without forcing 12 shots"
 }
@@ -62,6 +72,21 @@ log() {
 
 while (($#)); do
   case "$1" in
+    --input-source)
+      (($# >= 2)) || die "--input-source needs sim or mocap"
+      INPUT_SOURCE="$2"
+      shift 2
+      ;;
+    --motive-host)
+      (($# >= 2)) || die "--motive-host needs an IPv4 address"
+      MOTIVE_HOST="$2"
+      shift 2
+      ;;
+    --mocap-interface-ip)
+      (($# >= 2)) || die "--mocap-interface-ip needs an IPv4 address"
+      MOCAP_INTERFACE_IP="$2"
+      shift 2
+      ;;
     --official-gate3)
       OFFICIAL_GATE3=1
       OFFICIAL_PLANNER=1
@@ -113,6 +138,10 @@ while (($#)); do
       MIXED_RANDOMIZE=1
       shift
       ;;
+    --wide-lateral-mixed)
+      WIDE_LATERAL_MIXED_RANDOMIZE=1
+      shift
+      ;;
     --seed)
       (($# >= 2)) || die "--seed needs a value"
       RANDOM_SEED="$2"
@@ -154,6 +183,8 @@ while (($#)); do
   esac
 done
 
+[[ "$INPUT_SOURCE" == "sim" || "$INPUT_SOURCE" == "mocap" ]] || die "invalid input-source: $INPUT_SOURCE"
+
 [[ "$RUN_DURATION" =~ ^[0-9]+([.][0-9]+)?$ ]] || die "invalid duration"
 [[ "$SHOTS" =~ ^[1-9][0-9]*$ ]] || die "invalid shots"
 [[ "$FLIGHT_WINDOW" =~ ^[0-9]+([.][0-9]+)?$ ]] || die "invalid flight-window"
@@ -164,15 +195,15 @@ done
 if ((${#SERVES[@]} > 0)); then
   SHOTS="${#SERVES[@]}"
 fi
-if ((RANDOMIZE || MIXED_RANDOMIZE)) && ((${#SERVES[@]} > 0)); then
+if ((RANDOMIZE || MIXED_RANDOMIZE || WIDE_LATERAL_MIXED_RANDOMIZE)) && ((${#SERVES[@]} > 0)); then
   die "random serve modes and --serve cannot be combined"
 fi
-if ((RANDOMIZE && MIXED_RANDOMIZE)); then
-  die "--randomize and --mixed-random cannot be combined"
+if ((RANDOMIZE + MIXED_RANDOMIZE + WIDE_LATERAL_MIXED_RANDOMIZE > 1)); then
+  die "random serve modes cannot be combined"
 fi
 if ((OFFICIAL_GATE3)); then
   (( ${#SERVES[@]} == 0 )) || die "--official-gate3 cannot be combined with --serve"
-  (( RANDOMIZE == 0 && MIXED_RANDOMIZE == 0 )) || die "--official-gate3 cannot be combined with random serve modes"
+  (( RANDOMIZE == 0 && MIXED_RANDOMIZE == 0 && WIDE_LATERAL_MIXED_RANDOMIZE == 0 )) || die "--official-gate3 cannot be combined with random serve modes"
   SHOTS=12
   FLIGHT_WINDOW=2.5
   CONTACT_HOLD=1.5
@@ -184,6 +215,9 @@ fi
 [[ -f "$RUNNER_CFG" ]] || die "missing runner config: $RUNNER_CFG"
 [[ -d "$POLICY_DIR" ]] || die "missing policy directory: $POLICY_DIR"
 [[ -f "$WS_INSTALL/setup.bash" ]] || die "hope_ws is not built: $WS_INSTALL/setup.bash"
+if [[ "$INPUT_SOURCE" == "mocap" ]]; then
+  [[ -f "$NATNET_INSTALL/setup.bash" ]] || die "NatNet2ROS2 is not built: $NATNET_INSTALL/setup.bash"
+fi
 
 set +u
 source "$CONDA_SH"
@@ -191,6 +225,10 @@ conda activate hope-ros
 [[ -f "$CONDA_PREFIX/setup.bash" ]] && source "$CONDA_PREFIX/setup.bash"
 source "$A3_DIR/setup_a3_env.sh"
 source "$WS_INSTALL/setup.bash"
+if [[ "$INPUT_SOURCE" == "mocap" ]]; then
+  source "$NATNET_INSTALL/setup.bash"
+  source "$WS_INSTALL/setup.bash"
+fi
 if [[ -f "$SIM_BIN/../share/mujoco_sim_msgs/local_setup.bash" ]]; then
   source "$SIM_BIN/../share/mujoco_sim_msgs/local_setup.bash"
 fi
@@ -272,6 +310,10 @@ cleanup_previous() {
   stop_matching "hope_base_pose_flat_relay.*$WS_INSTALL/hope_planner"
   stop_matching "gate3_state_to_poses.py"
   stop_matching "$WS_INSTALL/hope_bringup.*fake_ball_publisher"
+  if [[ "$INPUT_SOURCE" == "mocap" ]]; then
+    stop_matching "NatNet2ROS2/install/motion_capture_tracking.*motion_capture_tracking_node"
+    stop_matching "hope_ws/install/hope_bringup.*optitrack_mct_relay"
+  fi
   stop_executable "$SIM_BIN/aimrt_main"
   stop_executable "$SIM_BIN/iox-roudi"
 }
@@ -287,6 +329,8 @@ cleanup() {
   kill_group "$BALL_PID"
   kill_group "$EVIDENCE_PID"
   kill_group "$POSE_BRIDGE_PID"
+  kill_group "$MOCAP_RELAY_PID"
+  kill_group "$MOCAP_ADAPTER_PID"
   kill_group "$PLANNER_PID"
   kill_group "$BASE_RELAY_PID"
   kill_group "$SIM_PID"
@@ -585,29 +629,48 @@ PLANNER_PID="$!"
 wait_for_log "$PLANNER_PID" "$LOG_DIR/planner.log" "HOPE planner started" 15 || \
   die "planner did not initialize; see $LOG_DIR/planner.log"
 
-log "starting physical Gate3 ball -> /poses bridge"
-setsid bash -c 'exec python "$1"' bash \
-  "$ROOT_DIR/hope_training/whole_body_tracking/official_hope/scripts/gate3_state_to_poses.py" \
-  > >(tee "$LOG_DIR/gate3_state_to_poses.log") 2>&1 &
-POSE_BRIDGE_PID="$!"
+if [[ "$INPUT_SOURCE" == "sim" ]]; then
+  log "starting simulated Gate3 ball -> /poses bridge"
+  setsid bash -c 'exec python "$1"' bash \
+    "$ROOT_DIR/hope_training/whole_body_tracking/official_hope/scripts/gate3_state_to_poses.py" \
+    > >(tee "$LOG_DIR/gate3_state_to_poses.log") 2>&1 &
+  POSE_BRIDGE_PID="$!"
 
-# Capture the authoritative 250 Hz Gate3BallState stream before the first
-# launch.  This is separate from the launcher log: the official evidence
-# accumulator joins shot_id-local contact/table/net counter edges and writes
-# a fail-closed per-shot physical report.
-log "starting per-shot Gate3 physical evidence recorder"
-setsid bash -c 'exec python "$1" \
-  --expected-shots "$2" \
-  --output "$3" \
-  --min-samples 20 \
-  --max-sample-gap-s 0.050' bash \
-  "$A3_DIR/scripts/pp_gate3_ball_evidence.py" \
-  "$SHOTS" "$PHYSICAL_EVIDENCE_JSON" \
-  > >(tee "$LOG_DIR/physical_evidence.log") 2>&1 &
-EVIDENCE_PID="$!"
-sleep 0.3
-kill -0 "$EVIDENCE_PID" 2>/dev/null || \
-  die "physical evidence recorder stopped; see $LOG_DIR/physical_evidence.log"
+  # Capture the authoritative 250 Hz Gate3BallState stream before the first
+  # launch.  This is separate from the launcher log: the official evidence
+  # accumulator joins shot_id-local contact/table/net counter edges and writes
+  # a fail-closed per-shot physical report.
+  log "starting per-shot Gate3 physical evidence recorder"
+  setsid bash -c 'exec python "$1" \
+    --expected-shots "$2" \
+    --output "$3" \
+    --min-samples 20 \
+    --max-sample-gap-s 0.050' bash \
+    "$A3_DIR/scripts/pp_gate3_ball_evidence.py" \
+    "$SHOTS" "$PHYSICAL_EVIDENCE_JSON" \
+    > >(tee "$LOG_DIR/physical_evidence.log") 2>&1 &
+  EVIDENCE_PID="$!"
+  sleep 0.3
+  kill -0 "$EVIDENCE_PID" 2>/dev/null || \
+    die "physical evidence recorder stopped; see $LOG_DIR/physical_evidence.log"
+else
+  log "starting real NatNet mocap -> HOPE relay -> /poses"
+  setsid bash -c 'exec ros2 launch motion_capture_tracking natnet2ros2.launch.py \
+    hostname:="$1" interface_ip:="$2" output_rate_hz:=200.0 header_time:=camera_utc' bash \
+    "$MOTIVE_HOST" "$MOCAP_INTERFACE_IP" \
+    > >(tee "$LOG_DIR/natnet_adapter.log") 2>&1 &
+  MOCAP_ADAPTER_PID="$!"
+  wait_for_log "$MOCAP_ADAPTER_PID" "$LOG_DIR/natnet_adapter.log" \
+    "NatNet clock sync ready" 20 || \
+    die "NatNet2ROS2 did not initialize; see $LOG_DIR/natnet_adapter.log"
+
+  setsid bash -c 'exec ros2 launch hope_bringup optitrack_mct_relay.launch.py' bash \
+    > >(tee "$LOG_DIR/optitrack_relay.log") 2>&1 &
+  MOCAP_RELAY_PID="$!"
+  wait_for_log "$MOCAP_RELAY_PID" "$LOG_DIR/optitrack_relay.log" \
+    "relaying /optitrack/poses" 15 || \
+    die "OptiTrack relay did not initialize; see $LOG_DIR/optitrack_relay.log"
+fi
 
 # Enter MOTION level 0 before the serve.  PD_STAND is only a static nominal
 # joint hold; the learned policy's level-0 hold is the actual trained
@@ -639,7 +702,8 @@ wait_for_log "$RUNNER_PID" "$LOG_DIR/runner.log" "\[runner-control\].*ENTER_MOTI
 wait_for_log "$RUNNER_PID" "$LOG_DIR/runner.log" "\[status\] mode=MOTION level=0.*gravZ=-1" 8 || \
   die "runner did not stabilize in pre-serve MOTION level=0; see $LOG_DIR/runner.log"
 
-log "starting physical Gate3 serve sequence after policy preparation (${SHOTS} shots)"
+if [[ "$INPUT_SOURCE" == "sim" ]]; then
+log "starting simulated Gate3 serve sequence after policy preparation (${SHOTS} shots)"
 LAUNCH_ARGS=(
   --shots "$SHOTS"
   --flight-window "$FLIGHT_WINDOW"
@@ -650,6 +714,8 @@ if ((${#SERVES[@]} > 0)); then
   for serve in "${SERVES[@]}"; do
     LAUNCH_ARGS+=(--serve "$serve")
   done
+elif ((WIDE_LATERAL_MIXED_RANDOMIZE)); then
+  LAUNCH_ARGS+=(--randomize-wide-lateral-mixed --seed "$RANDOM_SEED")
 elif ((MIXED_RANDOMIZE)); then
   LAUNCH_ARGS+=(--randomize-mixed --seed "$RANDOM_SEED")
 elif ((RANDOMIZE)); then
@@ -695,6 +761,7 @@ setsid bash -c 'script="$1"; shift; exec python "$script" "$@"' bash \
   "${LAUNCH_ARGS[@]}" \
   > >(tee "$LOG_DIR/gate3_launcher.log") 2>&1 &
 BALL_PID="$!"
+fi
 
 log "checking planner output"
 if ! timeout 15s python - <<'PY'
@@ -786,7 +853,7 @@ then
   die "no valid /racket/command_flat message observed"
 fi
 
-log "READY: AimRT + planner + prepared MOTION level=0 + physical Gate3 ball are connected"
+log "READY: AimRT + planner + prepared MOTION level=0 + ${INPUT_SOURCE} ball input are connected"
 log "runner: $(grep -F "[status] mode=MOTION" "$LOG_DIR/runner.log" | grep -E "ticks=[1-9][0-9]*" | tail -1)"
 log "logs: $LOG_DIR"
 
@@ -801,18 +868,22 @@ else
   done
 fi
 
-# Stop the ball/evidence pair in a defined order so the recorder can flush its
-# final snapshot before the surrounding ROS graph is torn down.
-log "finalizing per-shot physical evidence"
-kill_group "$BALL_PID"
-BALL_PID=""
-kill_group "$EVIDENCE_PID"
-EVIDENCE_PID=""
-if python "$A3_DIR/scripts/pp_closed_loop_audit.py" \
-    --log-dir "$LOG_DIR" \
-    --physical-evidence "$PHYSICAL_EVIDENCE_JSON" \
-    --output "$AUDIT_SUMMARY_JSON"; then
-  log "audit summary: $AUDIT_SUMMARY_JSON"
+if [[ "$INPUT_SOURCE" == "sim" ]]; then
+  # Stop the ball/evidence pair in a defined order so the recorder can flush
+  # its final snapshot before the surrounding ROS graph is torn down.
+  log "finalizing per-shot physical evidence"
+  kill_group "$BALL_PID"
+  BALL_PID=""
+  kill_group "$EVIDENCE_PID"
+  EVIDENCE_PID=""
+  if python "$A3_DIR/scripts/pp_closed_loop_audit.py" \
+      --log-dir "$LOG_DIR" \
+      --physical-evidence "$PHYSICAL_EVIDENCE_JSON" \
+      --output "$AUDIT_SUMMARY_JSON"; then
+    log "audit summary: $AUDIT_SUMMARY_JSON"
+  else
+    log "audit summary failed; raw logs and physical evidence were preserved"
+  fi
 else
-  log "audit summary failed; raw logs and physical evidence were preserved"
+  log "mocap run complete; raw NatNet and relay logs: $LOG_DIR"
 fi

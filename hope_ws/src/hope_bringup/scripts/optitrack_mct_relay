@@ -76,6 +76,10 @@ class OptitrackMctRelay(Node):
         self.declare_parameter("p1_pose_topic", "/P1/pose")
         self.declare_parameter("p2_pose_topic", "/P2/pose")
         self.declare_parameter("ball_point_topic", "/ball/point")
+        # Optional MuJoCo visualization feed.  It carries the same canonical
+        # table-surface-frame pose as /poses; the simulator adds the floor
+        # offset before writing its free joint.
+        self.declare_parameter("sim_ball_pose_topic", "/sim/mocap/ball_pose")
         self.declare_parameter("poses_topic", "/poses")
         self.declare_parameter("pose_array_order", ["ball", "P1", "P2"])
         self.declare_parameter("publish_tf", True)
@@ -127,6 +131,9 @@ class OptitrackMctRelay(Node):
         )
         self._ball_pub = self.create_publisher(
             PointStamped, str(self.get_parameter("ball_point_topic").value), sensor_qos
+        )
+        self._sim_ball_pose_pub = self.create_publisher(
+            PoseStamped, str(self.get_parameter("sim_ball_pose_topic").value), sensor_qos
         )
         self._pose_publishers = {
             "P1": self.create_publisher(
@@ -219,6 +226,7 @@ class OptitrackMctRelay(Node):
         out.header = normalized.header
         out.point = normalized.pose.position
         self._ball_pub.publish(out)
+        self._sim_ball_pose_pub.publish(normalized)
         if self._publish_tf:
             self._broadcast_tf("ball", normalized)
         # Publish /poses synchronized to the BALL update only (see module doc).

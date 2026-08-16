@@ -87,6 +87,14 @@ def parse_args() -> argparse.Namespace:
         help="Optional PPO YAML (for example cfg/algo/ppo_residual.yaml); default keeps official ppo.yaml.",
     )
     parser.add_argument(
+        "--task-config",
+        default="cfg/task/HOPEPingPong.yaml",
+        help=(
+            "Task YAML used for evaluation. It is merged on top of the base HOPEPingPong recipe; "
+            "use cfg/task/HOPEPingPongStanceCurriculum.yaml for the stance Curriculum-FT policy."
+        ),
+    )
+    parser.add_argument(
         "--motion-file", default="motions/preprocessed/hope_forehand.npz", help="Forehand clip."
     )
     parser.add_argument(
@@ -109,6 +117,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--condition-v-ref", type=float, default=0.25)
     parser.add_argument("--condition-delta-max", type=float, default=0.40)
     parser.add_argument(
+        "--target-strike-interval-s",
+        type=float,
+        nargs=2,
+        default=None,
+        metavar=("LO", "HI"),
+        help=(
+            "Override the wrap scheduler target strike-to-strike interval in seconds. "
+            "The motion clip remains full-length; the scheduler solves the successor hold."
+        ),
+    )
+    parser.add_argument(
+        "--short-transition-env-fraction",
+        type=float,
+        default=None,
+        help=(
+            "Assign this fraction of the highest environment ids to the short-transition "
+            "scheduler/clip sequence; 0.0 means all environments are short-transition."
+        ),
+    )
+    parser.add_argument(
+        "--transition-clip-sequence",
+        default=None,
+        help="Short-transition clip sequence, e.g. '0,0,1,1'.",
+    )
+    parser.add_argument(
         "--condition-fh-target",
         action="store_true",
         help=(
@@ -118,6 +151,122 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--condition-fh-dvx", type=float, default=0.0)
     parser.add_argument("--condition-fh-dvy", type=float, default=0.0)
+    parser.add_argument(
+        "--condition-fh-vx-max",
+        type=float,
+        default=None,
+        help="Optional incoming FH ball-vx upper gate for the horizontal correction (m/s).",
+    )
+    parser.add_argument(
+        "--paired-recipe-mode",
+        choices=("off", "capture", "replay"),
+        default="off",
+        help="Capture or replay a per-environment paired question recipe for causal audits.",
+    )
+    parser.add_argument(
+        "--paired-recipe-path",
+        default=None,
+        help="JSON path for paired recipe capture/replay.",
+    )
+    parser.add_argument(
+        "--paired-recipe-source-env-id",
+        type=int,
+        default=None,
+        help="Replay one source environment's event sequence in a single-env controlled branch.",
+    )
+    parser.add_argument(
+        "--paired-recipe-source-env-ids",
+        default=None,
+        help="Comma-separated source environment ids, one per runtime env, for batched branches.",
+    )
+    parser.add_argument(
+        "--paired-recipe-nonstrict",
+        action="store_true",
+        help="Log topology/clip divergence instead of aborting paired replay (diagnostic only).",
+    )
+    parser.add_argument(
+        "--post-strike-offsets",
+        default="0.05,0.10,0.20,0.30,0.50,0.80",
+        help="Comma-separated post-contact telemetry offsets in seconds.",
+    )
+    parser.add_argument(
+        "--state-transplant-source",
+        default=None,
+        help="Baseline telemetry JSON containing post_strike_state_rows for a transplant audit.",
+    )
+    parser.add_argument(
+        "--state-transplant-source-env-id",
+        type=int,
+        default=None,
+        help="Map this source telemetry environment to runtime env 0 for a single-shot branch.",
+    )
+    parser.add_argument(
+        "--state-transplant-source-env-ids",
+        default=None,
+        help="Comma-separated source telemetry env ids, one per runtime env.",
+    )
+    parser.add_argument(
+        "--state-transplant-offset",
+        type=float,
+        default=None,
+        help="Apply the source state at this post-contact offset (seconds).",
+    )
+    parser.add_argument(
+        "--state-transplant-fields",
+        default="root_lin_vel,root_ang_vel",
+        help="Comma-separated fields: root_pos,root_quat,root_lin_vel,root_ang_vel,joint_pos,joint_vel.",
+    )
+    parser.add_argument(
+        "--snapshot-branch-mode",
+        action="store_true",
+        help=(
+            "Run the true in-process single-shot branch audit. Requires five environments; "
+            "env 0 is the gate snapshot and envs 1..4 are G-ang/G-lin/G-upper/G-allvel."
+        ),
+    )
+    parser.add_argument(
+        "--snapshot-branch-source",
+        default=None,
+        help="Baseline telemetry JSON supplying the counterfactual state at snapshot offset.",
+    )
+    parser.add_argument(
+        "--snapshot-branch-source-env-id",
+        type=int,
+        default=None,
+        help="Source telemetry env id used for the in-process snapshot counterfactual.",
+    )
+    parser.add_argument(
+        "--snapshot-branch-offset",
+        type=float,
+        default=0.20,
+        help="Post-FH snapshot offset in seconds for the in-process branch audit.",
+    )
+    parser.add_argument(
+        "--snapshot-branch-blend-steps",
+        type=int,
+        default=0,
+        help=(
+            "If positive, ramp branch velocity interventions over this many control steps; "
+            "zero keeps the legacy instantaneous transplant."
+        ),
+    )
+    parser.add_argument(
+        "--snapshot-action-replay-steps",
+        type=int,
+        default=0,
+        help=(
+            "If positive, replay the baseline policy action on branches for this many steps "
+            "after the snapshot; no simulator state transplant is applied."
+        ),
+    )
+    parser.add_argument(
+        "--snapshot-action-replay-sequence",
+        action="store_true",
+        help=(
+            "Replay the source baseline policy action at each saved post-strike offset after the "
+            "snapshot; requires snapshot branch mode and policy_action telemetry."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -134,6 +283,110 @@ def main() -> int:
     checkpoint = os.path.abspath(args.checkpoint)
     if not os.path.isfile(checkpoint):
         raise FileNotFoundError(f"checkpoint not found: {checkpoint}")
+    try:
+        post_strike_offsets = tuple(
+            float(item.strip())
+            for item in str(args.post_strike_offsets).split(",")
+            if item.strip()
+        )
+    except ValueError as exc:
+        raise ValueError("--post-strike-offsets must be comma-separated seconds") from exc
+    if not post_strike_offsets or any(value <= 0.0 for value in post_strike_offsets):
+        raise ValueError("--post-strike-offsets must contain positive values")
+    if args.state_transplant_source and args.state_transplant_offset is None:
+        raise ValueError("--state-transplant-offset is required with --state-transplant-source")
+    if args.snapshot_branch_mode:
+        if int(args.num_envs) < 5:
+            raise ValueError("--snapshot-branch-mode requires at least five environments")
+        if not args.snapshot_branch_source:
+            raise ValueError("--snapshot-branch-source is required with --snapshot-branch-mode")
+        if args.snapshot_branch_source_env_id is None:
+            raise ValueError("--snapshot-branch-source-env-id is required with --snapshot-branch-mode")
+        if float(args.snapshot_branch_offset) <= 0.0:
+            raise ValueError("--snapshot-branch-offset must be positive")
+        if args.snapshot_action_replay_sequence and int(args.snapshot_action_replay_steps) > 0:
+            raise ValueError(
+                "use only one of --snapshot-action-replay-sequence and "
+                "--snapshot-action-replay-steps"
+            )
+    def _parse_id_list(value, option_name):
+        if value is None:
+            return None
+        try:
+            values = tuple(int(item.strip()) for item in str(value).split(",") if item.strip())
+        except ValueError as exc:
+            raise ValueError(f"{option_name} must be comma-separated integers") from exc
+        if not values:
+            raise ValueError(f"{option_name} must contain at least one id")
+        return values
+
+    paired_recipe_source_env_ids = _parse_id_list(
+        args.paired_recipe_source_env_ids, "--paired-recipe-source-env-ids"
+    )
+    transplant_source_env_ids = _parse_id_list(
+        args.state_transplant_source_env_ids, "--state-transplant-source-env-ids"
+    )
+    if paired_recipe_source_env_ids is not None and args.paired_recipe_source_env_id is not None:
+        raise ValueError("use only one of --paired-recipe-source-env-id/--paired-recipe-source-env-ids")
+    if transplant_source_env_ids is not None and args.state_transplant_source_env_id is not None:
+        raise ValueError(
+            "use only one of --state-transplant-source-env-id/--state-transplant-source-env-ids"
+        )
+    transplant_records = {}
+    if args.state_transplant_source:
+        transplant_path = pathlib.Path(args.state_transplant_source).expanduser()
+        if not transplant_path.is_absolute():
+            transplant_path = (_repo_root() / transplant_path).resolve()
+        transplant_payload = json.loads(transplant_path.read_text(encoding="utf-8"))
+        for row in transplant_payload.get("post_strike_state_rows", []):
+            # Reset-before-offset markers share this list but do not carry a
+            # sampled offset/state payload.
+            if "offset_s" not in row:
+                continue
+            if transplant_source_env_ids is not None:
+                source_to_runtime = {source: runtime for runtime, source in enumerate(transplant_source_env_ids)}
+                if int(row["env_id"]) not in source_to_runtime:
+                    continue
+                runtime_env_id = source_to_runtime[int(row["env_id"])]
+            elif (
+                args.state_transplant_source_env_id is not None
+                and int(row["env_id"]) != int(args.state_transplant_source_env_id)
+            ):
+                continue
+            else:
+                runtime_env_id = int(row["env_id"])
+            if args.state_transplant_source_env_id is not None:
+                runtime_env_id = 0
+            key = (
+                runtime_env_id,
+                int(row["source_paired_recipe_index"]),
+                round(float(row["offset_s"]), 6),
+            )
+            transplant_records[key] = row
+    snapshot_baseline_rows = {}
+    snapshot_action_rows_by_recipe_offset = {}
+    if args.snapshot_branch_mode:
+        snapshot_path = pathlib.Path(args.snapshot_branch_source).expanduser()
+        if not snapshot_path.is_absolute():
+            snapshot_path = (_repo_root() / snapshot_path).resolve()
+        snapshot_payload = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        source_env_id = int(args.snapshot_branch_source_env_id)
+        for row in snapshot_payload.get("post_strike_state_rows", []):
+            if "offset_s" not in row:
+                continue
+            if int(row.get("env_id", -1)) != source_env_id:
+                continue
+            recipe_index = int(row["source_paired_recipe_index"])
+            offset_key = round(float(row["offset_s"]), 6)
+            if row.get("policy_action") is not None:
+                snapshot_action_rows_by_recipe_offset[(recipe_index, offset_key)] = row
+            if offset_key == round(float(args.snapshot_branch_offset), 6):
+                snapshot_baseline_rows[recipe_index] = row
+        if not snapshot_baseline_rows:
+            raise RuntimeError(
+                "snapshot baseline telemetry has no post-strike row for the requested "
+                f"env={source_env_id}, offset={args.snapshot_branch_offset}"
+            )
 
     sys.argv = sys.argv[:1]
     from isaaclab.app import AppLauncher
@@ -180,8 +433,17 @@ def main() -> int:
             torch.cuda.manual_seed_all(int(args.seed))
         env_cfg = parse_env_cfg(args.task, device=args.device, num_envs=args.num_envs)
         env_cfg.seed = int(args.seed)
-        task_cfg_path = _repo_root() / "cfg" / "task" / "HOPEPingPong.yaml"
-        task_cfg = OmegaConf.load(str(task_cfg_path))
+        base_task_cfg_path = _repo_root() / "cfg" / "task" / "HOPEPingPong.yaml"
+        task_cfg_path = pathlib.Path(args.task_config).expanduser()
+        if not task_cfg_path.is_absolute():
+            task_cfg_path = (_repo_root() / task_cfg_path).resolve()
+        if not task_cfg_path.is_file():
+            raise FileNotFoundError(f"task config not found: {task_cfg_path}")
+        # The stance recipe is a Hydra defaults overlay.  This standalone evaluator does not
+        # invoke Hydra composition, so explicitly merge it onto the complete base recipe.
+        task_cfg = OmegaConf.load(str(base_task_cfg_path))
+        if task_cfg_path.resolve() != base_task_cfg_path.resolve():
+            task_cfg = OmegaConf.merge(task_cfg, OmegaConf.load(str(task_cfg_path)))
         applied_overrides = []
         _apply_task_overrides(env_cfg, SimpleNamespace(task=task_cfg), applied_overrides)
         if args.condition_bh_target:
@@ -199,17 +461,60 @@ def main() -> int:
                     f"commands.racket_target.vb_target_conditioning_delta_max = {float(args.condition_delta_max):g}",
                 ]
             )
+        if args.target_strike_interval_s is not None:
+            interval = tuple(float(value) for value in args.target_strike_interval_s)
+            env_cfg.commands.racket_target.target_strike_interval_s = interval
+            applied_overrides.append(
+                f"commands.racket_target.target_strike_interval_s = {interval}"
+            )
+        if args.short_transition_env_fraction is not None:
+            fraction = float(args.short_transition_env_fraction)
+            if not 0.0 <= fraction <= 1.0:
+                raise ValueError("--short-transition-env-fraction must lie in [0, 1]")
+            env_cfg.commands.motion.short_transition_env_fraction = fraction
+            applied_overrides.append(
+                f"commands.motion.short_transition_env_fraction = {fraction:g}"
+            )
+        if args.transition_clip_sequence is not None:
+            sequence = tuple(
+                int(item.strip())
+                for item in args.transition_clip_sequence.split(",")
+                if item.strip()
+            )
+            if not sequence:
+                raise ValueError("--transition-clip-sequence must contain at least one clip id")
+            env_cfg.commands.motion.transition_clip_sequence = sequence
+            applied_overrides.append(
+                f"commands.motion.transition_clip_sequence = {sequence}"
+            )
         if args.condition_fh_target:
             env_cfg.commands.racket_target.fh_target_conditioning = True
             env_cfg.commands.racket_target.fh_target_conditioning_clip_id = 0
             env_cfg.commands.racket_target.fh_target_conditioning_delta_vx = float(args.condition_fh_dvx)
             env_cfg.commands.racket_target.fh_target_conditioning_delta_vy = float(args.condition_fh_dvy)
+            env_cfg.commands.racket_target.fh_target_conditioning_vx_max = (
+                None if args.condition_fh_vx_max is None else float(args.condition_fh_vx_max)
+            )
+        if args.paired_recipe_mode != "off":
+            if not args.paired_recipe_path:
+                raise ValueError("--paired-recipe-path is required with --paired-recipe-mode")
+            env_cfg.commands.racket_target.paired_recipe_mode = str(args.paired_recipe_mode)
+            env_cfg.commands.racket_target.paired_recipe_path = str(args.paired_recipe_path)
+            env_cfg.commands.racket_target.paired_recipe_source_env_id = args.paired_recipe_source_env_id
+            env_cfg.commands.racket_target.paired_recipe_source_env_ids = paired_recipe_source_env_ids
+            env_cfg.commands.racket_target.paired_recipe_strict = not bool(
+                args.paired_recipe_nonstrict
+            )
             applied_overrides.extend(
                 [
-                    "commands.racket_target.fh_target_conditioning = true",
-                    "commands.racket_target.fh_target_conditioning_clip_id = 0",
-                    f"commands.racket_target.fh_target_conditioning_delta_vx = {float(args.condition_fh_dvx):g}",
-                    f"commands.racket_target.fh_target_conditioning_delta_vy = {float(args.condition_fh_dvy):g}",
+                    f"commands.racket_target.paired_recipe_mode = {args.paired_recipe_mode!r}",
+                    f"commands.racket_target.paired_recipe_path = {args.paired_recipe_path!r}",
+                    "commands.racket_target.paired_recipe_source_env_id = "
+                    f"{args.paired_recipe_source_env_id!r}",
+                    "commands.racket_target.paired_recipe_source_env_ids = "
+                    f"{paired_recipe_source_env_ids!r}",
+                    "commands.racket_target.paired_recipe_strict = "
+                    f"{not bool(args.paired_recipe_nonstrict)!r}",
                 ]
             )
         if args.eval_clip_sequence is not None:
@@ -231,6 +536,31 @@ def main() -> int:
             applied_overrides.append("commands.racket_target.venue_tuple_enabled = False")
             applied_overrides.append("commands.racket_target.venue_tuple_mix_mode = recovery_scaled_online_v1")
             applied_overrides.append("commands.racket_target.venue_tuple_final_mix_prob = 0.0")
+        if args.snapshot_branch_mode:
+            # A snapshot branch must differ only in the transplanted physical state.  Random
+            # mid-swing clip switches are an unrelated topology intervention and can make the
+            # paired event cease to be the normal event-1 wrap in only one branch.
+            env_cfg.commands.motion.clip_switch_prob = 0.0
+            applied_overrides.append("commands.motion.clip_switch_prob = 0.0")
+            # The five in-process branches must share the same plant.  Startup/reset domain
+            # randomization is per environment (mass, friction/CoM, joint defaults, PD gains),
+            # so copying articulation state alone still leaves different dynamics and makes an
+            # action replay branch reset for reasons unrelated to the intervention.  This is a
+            # diagnostic-only nominal-plant override; formal evaluation/training DR is untouched.
+            for event_name in (
+                "physics_material",
+                "add_joint_default_pos",
+                "base_com",
+                "randomize_link_mass",
+                "randomize_pd_gains",
+            ):
+                if hasattr(env_cfg.events, event_name):
+                    setattr(env_cfg.events, event_name, None)
+                    applied_overrides.append(f"events.{event_name} = None (snapshot nominal plant)")
+            policy_obs_cfg = getattr(env_cfg.observations, "policy", None)
+            if policy_obs_cfg is not None and hasattr(policy_obs_cfg, "enable_corruption"):
+                policy_obs_cfg.enable_corruption = False
+                applied_overrides.append("observations.policy.enable_corruption = False (snapshot deterministic obs)")
         print(
             f"[evaluate] applied {len(applied_overrides)} training task override(s)",
             flush=True,
@@ -292,6 +622,83 @@ def main() -> int:
         internal_valid_landings = 0
         internal_legal_landings = 0
         virtual_telemetry_rows = []
+        reset_events = []
+        post_strike_state_rows = []
+        post_offsets_steps = tuple(
+            max(1, int(round(offset / float(base_env.step_dt))))
+            for offset in post_strike_offsets
+        )
+        post_pending = torch.zeros(
+            int(args.num_envs), dtype=torch.bool, device=base_env.device
+        )
+        post_source_step = torch.full(
+            (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
+        )
+        post_source_recipe_index = torch.full(
+            (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
+        )
+        post_source_episode = torch.full(
+            (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
+        )
+        post_source_strike = torch.full(
+            (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
+        )
+        post_source_clip = torch.full(
+            (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
+        )
+        post_source_corrected = torch.zeros(
+            int(args.num_envs), dtype=torch.bool, device=base_env.device
+        )
+        post_captured_mask = torch.zeros(
+            int(args.num_envs), dtype=torch.long, device=base_env.device
+        )
+        post_last_reset = torch.zeros(
+            int(args.num_envs), dtype=torch.bool, device=base_env.device
+        )
+        transplant_events = []
+        snapshot_branch_labels = {
+            0: "G0",
+            1: "G-ang",
+            2: "G-lin",
+            3: "G-upper",
+            4: "G-allvel",
+        }
+        snapshot_branch_events = []
+        snapshot_branch_triggered = False
+        snapshot_blend_remaining = torch.zeros(
+            int(args.num_envs), dtype=torch.long, device=base_env.device
+        )
+        snapshot_blend_rows = {}
+        snapshot_action_replay_remaining = torch.zeros(
+            int(args.num_envs), dtype=torch.long, device=base_env.device
+        )
+        snapshot_action_replay_rows = {}
+        snapshot_action_replay_schedule = {}
+        snapshot_action_replay_start_step = torch.full(
+            (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
+        )
+        # In snapshot-branch mode every branch must contribute exactly one row for
+        # the fixed next-shot recipe.  Exact-strike telemetry and MISS_CAPTURE
+        # fallback rows share this guard so a branch cannot be silently omitted or
+        # counted twice when its time-to-strike edge is not observed.
+        snapshot_event1_logged = torch.zeros(
+            int(args.num_envs), dtype=torch.bool, device=base_env.device
+        )
+        telemetry_episode_ids = torch.zeros(
+            int(args.num_envs), dtype=torch.long, device=base_env.device
+        )
+        telemetry_strike_indices = torch.zeros(
+            int(args.num_envs), dtype=torch.long, device=base_env.device
+        )
+        # Strike-clock telemetry.  The first strike after reset has no interval;
+        # subsequent strikes in the same episode receive the measured simulator-time
+        # delta rather than an inferred command hold value.
+        last_strike_global_step = torch.full(
+            (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
+        )
+        strike_interval_steps = torch.full(
+            (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
+        )
 
         # The racket-target command term exposes the per-strike quantities we score. Attribute names
         # are read defensively (see COUPLING NOTES in the report): the command must expose the racket
@@ -331,6 +738,24 @@ def main() -> int:
                 )
             return target_pos, racket_pos, racket_vel, tts, swing
 
+        def read_robot_state():
+            """Return deploy-relevant robot state at a strike for carry-over auditing."""
+            robot = getattr(cmd, "robot", None)
+            data = getattr(robot, "data", None)
+            if data is None:
+                return (None,) * 6
+            return tuple(
+                _first_attr(data, [name])
+                for name in (
+                    "root_pos_w",
+                    "root_quat_w",
+                    "root_lin_vel_w",
+                    "root_ang_vel_w",
+                    "joint_pos",
+                    "joint_vel",
+                )
+            )
+
         def to_table_frame(pos_w_row, e):
             """Sim-world position -> the shared metric's table frame for env ``e``."""
             p = (pos_w_row - env_origins[e]).cpu().numpy().astype(float)
@@ -360,6 +785,498 @@ def main() -> int:
                 return None
             return bool(value[e].detach().cpu().item())
 
+        transplant_fields = {
+            item.strip() for item in str(args.state_transplant_fields).split(",") if item.strip()
+        }
+        allowed_transplant_fields = {
+            "root_pos", "root_quat", "root_lin_vel", "root_ang_vel", "joint_pos", "joint_vel"
+        }
+        unknown_transplant_fields = transplant_fields - allowed_transplant_fields
+        if unknown_transplant_fields:
+            raise ValueError(
+                "unknown --state-transplant-fields: "
+                + ", ".join(sorted(unknown_transplant_fields))
+            )
+
+        def is_fh_correction_applied(e, clip_id, venue_selected, incoming_v):
+            if clip_id is None or incoming_v is None:
+                return False
+            if int(clip_id[e].detach().cpu().item()) != 0 or _bool(venue_selected, e):
+                return False
+            if not bool(getattr(cmd.cfg, "fh_target_conditioning", False)):
+                return False
+            vx_max = getattr(cmd.cfg, "fh_target_conditioning_vx_max", None)
+            return vx_max is None or float(incoming_v[e, 0].detach().float().cpu().item()) <= float(vx_max)
+
+        def apply_state_transplant(env_ids, source_rows):
+            """Apply selected baseline state fields and return refreshed policy observations."""
+            if not source_rows:
+                return None
+            robot = getattr(cmd, "robot", None)
+            if robot is None or not hasattr(robot, "data"):
+                raise RuntimeError("state transplant requires racket_target.robot articulation access")
+            ids = torch.as_tensor(env_ids, dtype=torch.long, device=base_env.device)
+            # Isaac Lab exposes these buffers as inference tensors.  Allocate
+            # ordinary writable tensors explicitly before editing/transplanting.
+            root_state = torch.empty(
+                robot.data.root_state_w[ids].shape,
+                dtype=robot.data.root_state_w.dtype,
+                device=base_env.device,
+            )
+            root_state.copy_(robot.data.root_state_w[ids])
+            joint_pos = torch.empty(
+                robot.data.joint_pos[ids].shape,
+                dtype=robot.data.joint_pos.dtype,
+                device=base_env.device,
+            )
+            joint_pos.copy_(robot.data.joint_pos[ids])
+            joint_vel = torch.empty(
+                robot.data.joint_vel[ids].shape,
+                dtype=robot.data.joint_vel.dtype,
+                device=base_env.device,
+            )
+            joint_vel.copy_(robot.data.joint_vel[ids])
+            for local, env_id in enumerate(env_ids):
+                row = source_rows[env_id]
+                origin = env_origins[env_id]
+                if "root_pos" in transplant_fields:
+                    root_state[local, :3] = origin + torch.as_tensor(
+                        row["robot_root_pos_env"], dtype=torch.float32, device=base_env.device
+                    )
+                if "root_quat" in transplant_fields:
+                    root_state[local, 3:7] = torch.as_tensor(
+                        row["robot_root_quat_w"], dtype=torch.float32, device=base_env.device
+                    )
+                if "root_lin_vel" in transplant_fields:
+                    root_state[local, 7:10] = torch.as_tensor(
+                        row["robot_root_lin_vel_w"], dtype=torch.float32, device=base_env.device
+                    )
+                if "root_ang_vel" in transplant_fields:
+                    root_state[local, 10:13] = torch.as_tensor(
+                        row["robot_root_ang_vel_w"], dtype=torch.float32, device=base_env.device
+                    )
+                if "joint_pos" in transplant_fields:
+                    joint_pos[local] = torch.as_tensor(
+                        row["robot_joint_pos"], dtype=torch.float32, device=base_env.device
+                    )
+                if "joint_vel" in transplant_fields:
+                    joint_vel[local] = torch.as_tensor(
+                        row["robot_joint_vel"], dtype=torch.float32, device=base_env.device
+                    )
+            with torch.inference_mode():
+                robot.write_root_state_to_sim(root_state, env_ids=ids)
+                robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=ids)
+                base_env.sim.forward()
+            return base_env.observation_manager.compute()["policy"]
+
+        def clone_snapshot_branches(template_env_id, branch_env_ids, baseline_row):
+            """Clone one live simulator state, then apply isolated velocity interventions.
+
+            All branches receive the same gate root pose, joint pose, and velocity state first.
+            The baseline telemetry row is then used only for the requested velocity fields.  This
+            deliberately avoids a second simulator process and keeps the next recipe event common
+            to every branch.
+            """
+            robot = getattr(cmd, "robot", None)
+            if robot is None or not hasattr(robot, "data"):
+                raise RuntimeError("snapshot branch mode requires racket_target.robot articulation access")
+            branch_env_ids = [int(value) for value in branch_env_ids]
+            ids = torch.as_tensor(branch_env_ids, dtype=torch.long, device=base_env.device)
+            source_origin = env_origins[int(template_env_id)]
+            source_root = robot.data.root_state_w[int(template_env_id)]
+            source_joint_pos = robot.data.joint_pos[int(template_env_id)]
+            source_joint_vel = robot.data.joint_vel[int(template_env_id)]
+            root_state = torch.empty(
+                (len(branch_env_ids),) + tuple(robot.data.root_state_w.shape[1:]),
+                dtype=robot.data.root_state_w.dtype,
+                device=base_env.device,
+            )
+            joint_pos = torch.empty(
+                (len(branch_env_ids),) + tuple(robot.data.joint_pos.shape[1:]),
+                dtype=robot.data.joint_pos.dtype,
+                device=base_env.device,
+            )
+            joint_vel = torch.empty(
+                (len(branch_env_ids),) + tuple(robot.data.joint_vel.shape[1:]),
+                dtype=robot.data.joint_vel.dtype,
+                device=base_env.device,
+            )
+            root_state[:] = source_root.detach()
+            root_state[:, :3] = (
+                env_origins[ids]
+                + (source_root[:3].detach() - source_origin)
+            )
+            joint_pos[:] = source_joint_pos.detach()
+            joint_vel[:] = source_joint_vel.detach()
+
+            field_sets = {
+                1: {"root_ang_vel"},
+                2: {"root_lin_vel"},
+                3: {"joint_vel"},
+                4: {"root_lin_vel", "root_ang_vel", "joint_vel"},
+            }
+            for local, env_id in enumerate(branch_env_ids):
+                fields = field_sets.get(env_id, set())
+                if (
+                    "root_lin_vel" in fields
+                    and int(args.snapshot_branch_blend_steps) <= 0
+                    and int(args.snapshot_action_replay_steps) <= 0
+                    and not args.snapshot_action_replay_sequence
+                ):
+                    root_state[local, 7:10] = torch.as_tensor(
+                        baseline_row["robot_root_lin_vel_w"],
+                        dtype=torch.float32,
+                        device=base_env.device,
+                    )
+                if (
+                    "root_ang_vel" in fields
+                    and int(args.snapshot_branch_blend_steps) <= 0
+                    and int(args.snapshot_action_replay_steps) <= 0
+                    and not args.snapshot_action_replay_sequence
+                ):
+                    root_state[local, 10:13] = torch.as_tensor(
+                        baseline_row["robot_root_ang_vel_w"],
+                        dtype=torch.float32,
+                        device=base_env.device,
+                    )
+                if (
+                    "joint_vel" in fields
+                    and int(args.snapshot_branch_blend_steps) <= 0
+                    and int(args.snapshot_action_replay_steps) <= 0
+                    and not args.snapshot_action_replay_sequence
+                ):
+                    joint_vel[local] = torch.as_tensor(
+                        baseline_row["robot_joint_vel"],
+                        dtype=torch.float32,
+                        device=base_env.device,
+                    )
+            with torch.inference_mode():
+                robot.write_root_state_to_sim(root_state, env_ids=ids)
+                robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=ids)
+                base_env.sim.forward()
+            # The first implementation cloned only the articulation.  Parallel evaluation envs
+            # can be at different mocap phases even when paired recipe events are identical, so
+            # their next strike clocks would not be common.  Copy the motion-clock state as part
+            # of the snapshot as well; this is what makes the next event a genuinely shared shot.
+            with torch.inference_mode():
+                for attr_name in (
+                    "time_steps",
+                    "clip_id",
+                    "hold_counter",
+                    "just_resampled",
+                    "_prev_clip_id",
+                    "eval_sequence_index",
+                    "_eval_sequence_counter",
+                ):
+                    source_value = getattr(motion_cmd, attr_name, None)
+                    if not torch.is_tensor(source_value) or source_value.ndim == 0:
+                        continue
+                    if source_value.shape[0] != int(args.num_envs):
+                        continue
+                    writable = torch.empty_like(source_value[ids])
+                    writable.copy_(source_value[int(template_env_id)])
+                    source_value[ids] = writable
+                # The racket-target command keeps a second per-env state machine on top of the
+                # motion clock.  Copy its live question and replay cursors as well; otherwise a
+                # branch whose pre-snapshot resample happened later can still emit the old event
+                # after the physical/motion snapshot, defeating the fixed-next-shot design.
+                for attr_name in (
+                    "racket_target_pos_w",
+                    "racket_target_vel_w",
+                    "racket_target_normal_w",
+                    "base_target_pos_w",
+                    "swing_sign",
+                    "vb_vel_in_w",
+                    "vb_spin_in_w",
+                    "_venue_tuple_selected",
+                    "_venue_intended_landing_xy",
+                    "_venue_outgoing_velocity_seed",
+                    "_venue_tuple_outcome_pending",
+                    "_venue_tuple_outcome_clip",
+                    "_venue_planner_contact_normal_w",
+                    "time_to_strike",
+                    "pre_strike",
+                    "strike_window",
+                    "_paired_recipe_index",
+                    "_paired_recipe_current_index",
+                    "_paired_recipe_current_is_wrap",
+                    "_prev_motion_steps",
+                ):
+                    source_value = getattr(cmd, attr_name, None)
+                    if not torch.is_tensor(source_value) or source_value.ndim == 0:
+                        continue
+                    if source_value.shape[0] != int(args.num_envs):
+                        continue
+                    writable = torch.empty_like(source_value[ids])
+                    writable.copy_(source_value[int(template_env_id)])
+                    source_value[ids] = writable
+                # Absolute world-frame command/mocap positions must be translated to each
+                # destination environment.  The parallel environments have different origins;
+                # copying these tensors verbatim creates the ~2.5 m target-observation mismatch
+                # that invalidates an otherwise identical snapshot branch.
+                origin_delta = env_origins[ids] - source_origin
+
+                def _translate_env_position(name):
+                    value = getattr(cmd, name, None)
+                    if not torch.is_tensor(value) or value.ndim == 0:
+                        return
+                    if value.shape[0] != int(args.num_envs) or value.shape[-1] < 2:
+                        return
+                    copied = value[int(template_env_id)].detach().clone()
+                    copied = copied.unsqueeze(0).expand(len(branch_env_ids), *copied.shape).clone()
+                    copied[..., :2] += origin_delta[:, :2]
+                    if copied.shape[-1] >= 3:
+                        copied[..., 2] += origin_delta[:, 2]
+                    value[ids] = copied
+
+                for attr_name in (
+                    "racket_target_pos_w",
+                    "base_target_pos_w",
+                    "delayed_racket_target_pos_w",
+                    "_held_pos",
+                    "_base_mocap_last_received_pos",
+                    "_actor_base_pos_w",
+                ):
+                    _translate_env_position(attr_name)
+                delay_buf = getattr(cmd, "_base_mocap_delay_buf", None)
+                if (
+                    torch.is_tensor(delay_buf)
+                    and delay_buf.ndim >= 3
+                    and delay_buf.shape[1] == int(args.num_envs)
+                ):
+                    copied = delay_buf[:, int(template_env_id)].detach().clone()
+                    copied = copied.unsqueeze(1).expand(
+                        copied.shape[0], len(branch_env_ids), *copied.shape[1:]
+                    ).clone()
+                    copied[..., :2] += origin_delta[:, :2]
+                    if copied.shape[-1] >= 3:
+                        copied[..., 2] += origin_delta[:, 2]
+                    delay_buf[:, ids] = copied
+                for attr_name in ("_actor_base_quat_w",):
+                    value = getattr(cmd, attr_name, None)
+                    if (
+                        torch.is_tensor(value)
+                        and value.ndim >= 2
+                        and value.shape[0] == int(args.num_envs)
+                    ):
+                        value[ids] = value[int(template_env_id)].detach().clone()
+
+                if hasattr(cmd, "_paired_recipe_current"):
+                    source_event = cmd._paired_recipe_current[int(template_env_id)]
+                    for env_id in branch_env_ids:
+                        cmd._paired_recipe_current[env_id] = source_event
+                # The policy observation also contains manager-side temporal state.  Copy the
+                # action manager history and episode/reset buffers so an otherwise identical
+                # branch is not reset merely because its pre-snapshot env had a different age or
+                # previous action.
+                action_manager = getattr(base_env, "action_manager", None)
+                if action_manager is not None:
+                    for attr_name in ("_action", "_prev_action"):
+                        source_value = getattr(action_manager, attr_name, None)
+                        if not torch.is_tensor(source_value) or source_value.ndim == 0:
+                            continue
+                        if source_value.shape[0] != int(args.num_envs):
+                            continue
+                        writable = torch.empty_like(source_value[ids])
+                        writable.copy_(source_value[int(template_env_id)])
+                        source_value[ids] = writable
+                    action_term = action_manager.get_term("joint_pos")
+                    capture = getattr(action_term, "capture_markov_replay_state", None)
+                    restore = getattr(action_term, "restore_markov_replay_state", None)
+                    if callable(capture) and callable(restore):
+                        source_action_state = capture(
+                            torch.as_tensor(
+                                [int(template_env_id)],
+                                dtype=torch.long,
+                                device=base_env.device,
+                            )
+                        )
+                        source_action_state = {
+                            name: (
+                                value.expand(len(branch_env_ids), *value.shape[1:]).clone()
+                                if torch.is_tensor(value) and value.ndim >= 1 and value.shape[0] == 1
+                                else value
+                            )
+                            for name, value in source_action_state.items()
+                        }
+                        restore(ids, source_action_state)
+                    else:
+                        # Compatibility fallback for older action terms without the explicit
+                        # replay contract.  These are the buffers consumed by applied_last_action.
+                        for attr_name in (
+                            "_raw_actions",
+                            "_applied_raw_actions",
+                            "_unclamped_processed_actions",
+                            "_processed_actions",
+                            "_executed_feedback",
+                        ):
+                            source_value = getattr(action_term, attr_name, None)
+                            if (
+                                torch.is_tensor(source_value)
+                                and source_value.ndim >= 2
+                                and source_value.shape[0] == int(args.num_envs)
+                            ):
+                                source_value[ids] = source_value[int(template_env_id)].detach().clone()
+                for owner, attr_name in (
+                    (base_env, "episode_length_buf"),
+                    (base_env, "reset_buf"),
+                    (getattr(base_env, "termination_manager", None), "terminated"),
+                    (getattr(base_env, "termination_manager", None), "time_outs"),
+                ):
+                    source_value = getattr(owner, attr_name, None) if owner is not None else None
+                    if not torch.is_tensor(source_value) or source_value.ndim == 0:
+                        continue
+                    if source_value.shape[0] != int(args.num_envs):
+                        continue
+                    writable = torch.empty_like(source_value[ids])
+                    writable.copy_(source_value[int(template_env_id)])
+                    source_value[ids] = writable
+            if int(args.snapshot_branch_blend_steps) > 0:
+                for env_id in branch_env_ids:
+                    snapshot_blend_rows[env_id] = baseline_row
+                    snapshot_blend_remaining[env_id] = int(args.snapshot_branch_blend_steps)
+            if int(args.snapshot_action_replay_steps) > 0:
+                if baseline_row.get("policy_action") is None:
+                    raise RuntimeError(
+                        "snapshot action replay requires baseline telemetry with policy_action"
+                    )
+                for env_id in branch_env_ids:
+                    snapshot_action_replay_rows[env_id] = baseline_row
+                    snapshot_action_replay_remaining[env_id] = int(args.snapshot_action_replay_steps)
+            if args.snapshot_action_replay_sequence:
+                recipe_index = int(baseline_row["source_paired_recipe_index"])
+                sequence = {}
+                for (row_recipe, row_offset), row in snapshot_action_rows_by_recipe_offset.items():
+                    if row_recipe != recipe_index or row.get("policy_action") is None:
+                        continue
+                    relative_s = float(row_offset) - float(args.snapshot_branch_offset)
+                    if relative_s < -1.0e-6:
+                        continue
+                    relative_step = int(round(relative_s / float(base_env.step_dt)))
+                    sequence[relative_step] = row
+                if 0 not in sequence and baseline_row.get("policy_action") is not None:
+                    sequence[0] = baseline_row
+                for env_id in branch_env_ids:
+                    snapshot_action_replay_schedule[env_id] = sequence
+                    snapshot_action_replay_start_step[env_id] = int(step_index)
+            # Keep evaluator-side strike edge detection and event counters aligned with the
+            # cloned simulator clock.  Without this, a branch can report the same recipe event
+            # at a different external edge even though its command state was synchronized.
+            live_tts = read_state()[3]
+            prev_tts[ids] = live_tts[int(template_env_id)]
+            episode_value = telemetry_episode_ids[int(template_env_id)].clone()
+            strike_value = telemetry_strike_indices[int(template_env_id)].clone()
+            telemetry_episode_ids[ids] = episode_value
+            telemetry_strike_indices[ids] = strike_value
+            branch_obs = base_env.observation_manager.compute()["policy"]
+            obs_diffs = [
+                float(
+                    torch.max(
+                        torch.abs(branch_obs[env_id] - branch_obs[int(template_env_id)])
+                    ).detach().cpu().item()
+                )
+                for env_id in branch_env_ids
+            ]
+            obs_term_diffs = []
+            obs_manager = base_env.observation_manager
+            term_names = getattr(obs_manager, "_group_obs_term_names", {}).get("policy", [])
+            term_dims = getattr(obs_manager, "_group_obs_term_dim", {}).get("policy", [])
+            term_ranges = []
+            cursor = 0
+            for name, dims in zip(term_names, term_dims):
+                width = 1
+                for dim in dims:
+                    width *= int(dim)
+                term_ranges.append((str(name), cursor, cursor + width))
+                cursor += width
+            for env_id in branch_env_ids:
+                obs_term_diffs.append(
+                    {
+                        name: float(
+                            torch.max(
+                                torch.abs(
+                                    branch_obs[env_id, start:end]
+                                    - branch_obs[int(template_env_id), start:end]
+                                )
+                            ).detach().cpu().item()
+                        )
+                        for name, start, end in term_ranges
+                    }
+                )
+            snapshot_branch_events.append(
+                {
+                    "template_env_id": int(template_env_id),
+                    "branch_env_ids": branch_env_ids,
+                    "branch_labels": [snapshot_branch_labels[e] for e in branch_env_ids],
+                    "baseline_source_env_id": int(args.snapshot_branch_source_env_id),
+                    "baseline_source_paired_recipe_indices": sorted(snapshot_baseline_rows),
+                    "snapshot_offset_s": float(args.snapshot_branch_offset),
+                    "motion_clock_synced": True,
+                    "intervention_mode": (
+                        "action_replay_sequence"
+                        if args.snapshot_action_replay_sequence
+                        else
+                        "action_replay"
+                        if int(args.snapshot_action_replay_steps) > 0
+                        else "smooth_velocity_blend"
+                        if int(args.snapshot_branch_blend_steps) > 0
+                        else "instantaneous_velocity_transplant"
+                    ),
+                    "blend_steps": int(args.snapshot_branch_blend_steps),
+                    "action_replay_steps": int(args.snapshot_action_replay_steps),
+                    "action_replay_sequence": bool(args.snapshot_action_replay_sequence),
+                    "policy_obs_max_abs_diff_vs_G0": obs_diffs,
+                    "policy_obs_term_max_abs_diff_vs_G0": obs_term_diffs,
+                    "fields_by_branch": {
+                        snapshot_branch_labels[0]: [],
+                        snapshot_branch_labels[1]: ["root_ang_vel"],
+                        snapshot_branch_labels[2]: ["root_lin_vel"],
+                        snapshot_branch_labels[3]: ["joint_vel"],
+                        snapshot_branch_labels[4]: ["root_lin_vel", "root_ang_vel", "joint_vel"],
+                    },
+                }
+            )
+            return branch_obs
+
+        def apply_snapshot_velocity_blend():
+            """Move branch velocity state toward the baseline over several control steps."""
+            active_ids = snapshot_blend_remaining.nonzero(as_tuple=False).flatten().tolist()
+            if not active_ids:
+                return None
+            robot = getattr(cmd, "robot", None)
+            if robot is None or not hasattr(robot, "data"):
+                raise RuntimeError("snapshot velocity blending requires racket_target.robot articulation access")
+            ids = torch.as_tensor(active_ids, dtype=torch.long, device=base_env.device)
+            root_state = torch.empty_like(robot.data.root_state_w[ids])
+            root_state.copy_(robot.data.root_state_w[ids])
+            joint_vel = torch.empty_like(robot.data.joint_vel[ids])
+            joint_vel.copy_(robot.data.joint_vel[ids])
+            field_sets = {
+                1: {"root_ang_vel"},
+                2: {"root_lin_vel"},
+                3: {"joint_vel"},
+                4: {"root_lin_vel", "root_ang_vel", "joint_vel"},
+            }
+            for local, env_id in enumerate(active_ids):
+                row = snapshot_blend_rows[env_id]
+                fields = field_sets.get(env_id, set())
+                alpha = 1.0 / float(max(int(snapshot_blend_remaining[env_id].item()), 1))
+                if "root_lin_vel" in fields:
+                    target = torch.as_tensor(row["robot_root_lin_vel_w"], dtype=root_state.dtype, device=base_env.device)
+                    root_state[local, 7:10] += alpha * (target - root_state[local, 7:10])
+                if "root_ang_vel" in fields:
+                    target = torch.as_tensor(row["robot_root_ang_vel_w"], dtype=root_state.dtype, device=base_env.device)
+                    root_state[local, 10:13] += alpha * (target - root_state[local, 10:13])
+                if "joint_vel" in fields:
+                    target = torch.as_tensor(row["robot_joint_vel"], dtype=joint_vel.dtype, device=base_env.device)
+                    joint_vel[local] += alpha * (target - joint_vel[local])
+            with torch.inference_mode():
+                robot.write_root_state_to_sim(root_state, env_ids=ids)
+                robot.write_joint_state_to_sim(robot.data.joint_pos[ids], joint_vel, env_ids=ids)
+                base_env.sim.forward()
+            snapshot_blend_remaining[ids] -= 1
+            return base_env.observation_manager.compute()["policy"]
+
         def _failure_code(fired, net_crossed, net_clear, land_valid, on_opponent, land_xy):
             """Use the first failed physical gate as the stable audit classification."""
             if not fired:
@@ -383,11 +1300,135 @@ def main() -> int:
 
         obs, _ = env.get_observations()
         prev_tts = read_state()[3].clone()
-        for _ in range(args.num_steps):
+        prev_actions = None
+        for step_index in range(args.num_steps):
+            # Capture post-strike state at fixed control-time offsets.  This runs before the next
+            # action, so the state is the actual hand-off state seen by the policy.  A transplant,
+            # when requested, is applied after recording the native gate state and observations are
+            # recomputed before the next policy call.
+            transplant_env_ids = []
+            transplant_rows = {}
+            if args.virtual_telemetry_out:
+                current_target_pos, current_racket_pos, current_racket_vel, _, _ = read_state()
+                for offset_index, (offset_s, offset_steps) in enumerate(
+                    zip(post_strike_offsets, post_offsets_steps)
+                ):
+                    due = (
+                        post_pending
+                        & ((step_index - post_source_step) == int(offset_steps))
+                        & ((post_captured_mask & (1 << offset_index)) == 0)
+                    )
+                    for env_id in due.nonzero(as_tuple=False).flatten().tolist():
+                        root_pos, root_quat, root_lin_vel, root_ang_vel, joint_pos, joint_vel = read_robot_state()
+                        row = {
+                            "env_id": int(env_id),
+                            "offset_s": float(offset_s),
+                            "source_global_step": int(post_source_step[env_id].item()),
+                            "source_episode_id": int(post_source_episode[env_id].item()),
+                            "source_strike_index": int(post_source_strike[env_id].item()),
+                            "source_paired_recipe_index": int(post_source_recipe_index[env_id].item()),
+                            "source_clip_id": int(post_source_clip[env_id].item()),
+                            "source_fh_correction_applied": bool(post_source_corrected[env_id].item()),
+                            "robot_root_pos_env": _tolist(root_pos, env_id, local_position=True),
+                            "robot_root_quat_w": _tolist(root_quat, env_id),
+                            "robot_root_lin_vel_w": _tolist(root_lin_vel, env_id),
+                            "robot_root_ang_vel_w": _tolist(root_ang_vel, env_id),
+                            "robot_joint_pos": _tolist(joint_pos, env_id),
+                            "robot_joint_vel": _tolist(joint_vel, env_id),
+                            "racket_pos_env": _tolist(current_racket_pos, env_id, local_position=True),
+                            "racket_velocity": _tolist(current_racket_vel, env_id),
+                            "policy_action": _tolist(prev_actions, env_id),
+                            "policy_action_norm": (
+                                float(torch.linalg.vector_norm(prev_actions[env_id]).detach().cpu().item())
+                                if prev_actions is not None
+                                else None
+                            ),
+                        }
+                        post_strike_state_rows.append(row)
+                        post_captured_mask[env_id] |= 1 << offset_index
+                        key = (
+                            int(env_id),
+                            int(post_source_recipe_index[env_id].item()),
+                            round(float(offset_s), 6),
+                        )
+                        if key in transplant_records:
+                            transplant_env_ids.append(int(env_id))
+                            transplant_rows[int(env_id)] = transplant_records[key]
+                    if (
+                        args.snapshot_branch_mode
+                        and not snapshot_branch_triggered
+                        and round(float(offset_s), 6) == round(float(args.snapshot_branch_offset), 6)
+                        and bool(due[0].item())
+                        and bool(post_source_corrected[0].item())
+                    ):
+                        recipe_index = int(post_source_recipe_index[0].item())
+                        baseline_row = snapshot_baseline_rows.get(recipe_index)
+                        if baseline_row is None:
+                            raise RuntimeError(
+                                "snapshot baseline telemetry is missing recipe index "
+                                f"{recipe_index} at offset {args.snapshot_branch_offset}"
+                            )
+                        # Clone env 0's live gate state to the four intervention branches.  The
+                        # command replay is already replicated across envs; only physical state is
+                        # changed here, so all five branches face the same next recipe event.
+                        obs = clone_snapshot_branches(0, [1, 2, 3, 4], baseline_row)
+                        snapshot_branch_triggered = True
+            if args.snapshot_branch_mode and int(args.snapshot_branch_blend_steps) > 0:
+                blended_obs = apply_snapshot_velocity_blend()
+                if blended_obs is not None:
+                    obs = blended_obs
+            if transplant_env_ids:
+                refreshed_obs = apply_state_transplant(transplant_env_ids, transplant_rows)
+                if refreshed_obs is not None:
+                    obs = refreshed_obs
+                    for env_id in transplant_env_ids:
+                        transplant_events.append(
+                            {
+                                "env_id": int(env_id),
+                                "source_paired_recipe_index": int(
+                                    post_source_recipe_index[env_id].item()
+                                ),
+                                "offset_s": float(args.state_transplant_offset),
+                                "fields": sorted(transplant_fields),
+                            }
+                        )
             with torch.inference_mode():
-                actions = policy(obs)
+                actions = policy(obs).clone()
+                fixed_replay_ids = (
+                    (snapshot_action_replay_remaining > 0)
+                    .nonzero(as_tuple=False)
+                    .flatten()
+                    .tolist()
+                )
+                for env_id in fixed_replay_ids:
+                    baseline_action = torch.as_tensor(
+                        snapshot_action_replay_rows[env_id]["policy_action"],
+                        dtype=actions.dtype,
+                        device=actions.device,
+                    )
+                    actions[env_id] = baseline_action
+                if args.snapshot_action_replay_sequence:
+                    sequence_replay_ids = []
+                    for env_id, schedule in snapshot_action_replay_schedule.items():
+                        relative_step = int(step_index) - int(snapshot_action_replay_start_step[env_id].item())
+                        row = schedule.get(relative_step)
+                        if row is None:
+                            continue
+                        actions[env_id] = torch.as_tensor(
+                            row["policy_action"], dtype=actions.dtype, device=actions.device
+                        )
+                        sequence_replay_ids.append(int(env_id))
+                    replay_ids = sorted(set(fixed_replay_ids).union(sequence_replay_ids))
+                else:
+                    replay_ids = fixed_replay_ids
                 obs, _, dones, _ = env.step(actions)
+            if fixed_replay_ids:
+                snapshot_action_replay_remaining[fixed_replay_ids] -= 1
+            prev_actions = actions.detach().clone()
             target_pos, racket_pos, racket_vel, tts, swing = read_state()
+            exact_strike_mask = torch.zeros(
+                int(args.num_envs), dtype=torch.bool, device=base_env.device
+            )
             # ``exact_strike_hit_rate`` is a per-environment one-step mask, not a
             # rate despite its historical name.  ``vb_fired`` is the virtual-ball
             # contact gate for exactly the same strike.  Accumulate raw counts here
@@ -404,6 +1445,16 @@ def main() -> int:
                         "racket_target does not expose the complete virtual-ball outcome contract"
                     )
                 exact_strike_mask = exact_strike_mask & (~dones.reshape(-1).to(dtype=torch.bool))
+                strike_interval_steps.fill_(-1)
+                strike_ids = exact_strike_mask.nonzero(as_tuple=False).flatten()
+                if strike_ids.numel() > 0:
+                    previous_steps = last_strike_global_step[strike_ids]
+                    strike_interval_steps[strike_ids] = torch.where(
+                        previous_steps >= 0,
+                        int(step_index) - previous_steps,
+                        torch.full_like(previous_steps, -1),
+                    )
+                    last_strike_global_step[strike_ids] = int(step_index)
                 internal_attempts += int(exact_strike_mask.sum().item())
                 internal_hits += int((exact_strike_mask & vb_fired).sum().item())
                 internal_net_clears += int((exact_strike_mask & vb_fired & vb_net_clear).sum().item())
@@ -424,6 +1475,10 @@ def main() -> int:
                     venue_intended = getattr(cmd, "_venue_intended_landing_xy", None)
                     default_intended = getattr(cmd, "_vb_target_xy", None)
                     clip_id = getattr(motion_cmd, "clip_id", None)
+                    robot_state = read_robot_state()
+                    incoming_vx = getattr(cmd, "vb_vel_in_w", None)
+                    recipe_index = getattr(cmd, "_paired_recipe_current_index", None)
+                    recipe_is_wrap = getattr(cmd, "_paired_recipe_current_is_wrap", None)
                     for e in telemetry_ids:
                         fired = _bool(vb_fired, e)
                         crossed = _bool(net_crossed, e)
@@ -434,6 +1489,9 @@ def main() -> int:
                         if land is None:
                             land = [0.0, 0.0]
                         selected = _bool(venue_selected, e) or False
+                        fh_correction_applied = is_fh_correction_applied(
+                            e, clip_id, venue_selected, incoming_v
+                        )
                         if selected and venue_intended is not None:
                             intended = _tolist(venue_intended, e)
                         elif default_intended is not None:
@@ -443,6 +1501,49 @@ def main() -> int:
                         virtual_telemetry_rows.append(
                             {
                                 "env_id": int(e),
+                                "snapshot_branch": (
+                                    snapshot_branch_labels.get(int(e))
+                                    if args.snapshot_branch_mode
+                                    else None
+                                ),
+                                "global_step": int(step_index),
+                                "episode_id": int(telemetry_episode_ids[e].item()),
+                                "strike_index": int(telemetry_strike_indices[e].item()),
+                                "strike_timestamp_s": float(step_index * base_env.step_dt),
+                                "strike_interval_s": (
+                                    float(strike_interval_steps[e].item() * base_env.step_dt)
+                                    if int(strike_interval_steps[e].item()) >= 0
+                                    else None
+                                ),
+                                "target_strike_interval_s": _scalar(
+                                    getattr(motion_cmd, "metrics", {}).get(
+                                        "target_strike_interval_s"
+                                    ),
+                                    e,
+                                ),
+                                "required_hold_s": _scalar(
+                                    getattr(motion_cmd, "metrics", {}).get("required_hold_s"), e
+                                ),
+                                "scheduled_hold_s": _scalar(
+                                    getattr(motion_cmd, "metrics", {}).get("scheduled_hold_s"), e
+                                ),
+                                "previous_clip_poststrike_s": _scalar(
+                                    getattr(motion_cmd, "metrics", {}).get(
+                                        "previous_clip_poststrike_s"
+                                    ),
+                                    e,
+                                ),
+                                "next_clip_prestrike_s": _scalar(
+                                    getattr(motion_cmd, "metrics", {}).get(
+                                        "next_clip_prestrike_s"
+                                    ),
+                                    e,
+                                ),
+                                "strike_interval_scheduler_unreachable": _bool(
+                                    getattr(motion_cmd, "metrics", {})
+                                    .get("strike_interval_scheduler_unreachable"),
+                                    e,
+                                ),
                                 "clip_id": int(clip_id[e].detach().cpu().item()) if clip_id is not None else None,
                                 "swing_sign": _scalar(getattr(cmd, "swing_sign", None), e),
                                 "venue_tuple_selected": selected,
@@ -478,15 +1579,96 @@ def main() -> int:
                                 "failure_code": _failure_code(
                                     fired, crossed, clear, valid, opponent, land
                                 ),
+                                "fh_correction_applied": fh_correction_applied,
+                                "paired_recipe_index": (
+                                    int(recipe_index[e].item()) if recipe_index is not None else -1
+                                ),
+                                "paired_recipe_is_wrap": (
+                                    bool(recipe_is_wrap[e].item()) if recipe_is_wrap is not None else None
+                                ),
+                                "robot_root_pos_env": _tolist(robot_state[0], e, local_position=True),
+                                "robot_root_quat_w": _tolist(robot_state[1], e),
+                                "robot_root_lin_vel_w": _tolist(robot_state[2], e),
+                                "robot_root_ang_vel_w": _tolist(robot_state[3], e),
+                                "robot_joint_pos": _tolist(robot_state[4], e),
+                                "robot_joint_vel": _tolist(robot_state[5], e),
                             }
                         )
+                        if (
+                            args.snapshot_branch_mode
+                            and recipe_index is not None
+                            and int(recipe_index[e].item()) == 1
+                        ):
+                            snapshot_event1_logged[e] = True
+                        if clip_id is not None and int(clip_id[e].detach().cpu().item()) == 0 and not selected:
+                            post_pending[e] = True
+                            post_source_step[e] = int(step_index)
+                            post_source_recipe_index[e] = (
+                                int(recipe_index[e].item()) if recipe_index is not None else -1
+                            )
+                            post_source_episode[e] = int(telemetry_episode_ids[e].item())
+                            post_source_strike[e] = int(telemetry_strike_indices[e].item())
+                            post_source_clip[e] = 0
+                            post_source_corrected[e] = bool(fh_correction_applied)
+                            post_captured_mask[e] = 0
+                        telemetry_strike_indices[e] += 1
             # A strike happens when the reference clock crosses the strike frame (tts: >0 -> <=0).
             # Environments that RESET this step are excluded: a time-out/fall reset re-seeds the
             # clock, and counting it would contaminate the denominator with non-swings.
             reset_now = dones.reshape(-1).to(dtype=torch.bool, device=tts.device)
+            termination_manager = getattr(base_env, "termination_manager", None)
+            reset_state = read_robot_state() if bool(reset_now.any()) else (None,) * 6
+            if bool(reset_now.any()):
+                active_terms = getattr(termination_manager, "_term_names", []) if termination_manager else []
+                for env_id in reset_now.nonzero(as_tuple=False).flatten().tolist():
+                    reasons = []
+                    for term_name in active_terms:
+                        try:
+                            term_value = termination_manager.get_term(term_name)
+                            if bool(term_value[env_id].detach().cpu().item()):
+                                reasons.append(term_name)
+                        except Exception:
+                            pass
+                    reset_events.append(
+                        {
+                            "env_id": int(env_id),
+                            "global_step": int(step_index),
+                            "episode_id": int(telemetry_episode_ids[env_id].item()),
+                            "paired_recipe_index": int(
+                                getattr(cmd, "_paired_recipe_current_index", torch.full_like(telemetry_episode_ids, -1))[env_id].item()
+                            ),
+                            "termination_reasons": reasons,
+                            "time_out": "time_out" in reasons,
+                            "robot_root_pos_after_reset_env": _tolist(
+                                reset_state[0], env_id, local_position=True
+                            ),
+                            "robot_root_lin_vel_after_reset": _tolist(reset_state[2], env_id),
+                            "robot_root_ang_vel_after_reset": _tolist(reset_state[3], env_id),
+                        }
+                    )
+                    if bool(post_pending[env_id].item()):
+                        post_strike_state_rows.append(
+                            {
+                                "env_id": int(env_id),
+                                "reset_before_post_offset": True,
+                                "source_global_step": int(post_source_step[env_id].item()),
+                                "source_episode_id": int(post_source_episode[env_id].item()),
+                                "source_strike_index": int(post_source_strike[env_id].item()),
+                                "source_paired_recipe_index": int(post_source_recipe_index[env_id].item()),
+                                "source_clip_id": int(post_source_clip[env_id].item()),
+                                "source_fh_correction_applied": bool(post_source_corrected[env_id].item()),
+                                "reset_global_step": int(step_index),
+                                "reset_reasons": reasons,
+                            }
+                        )
+                        post_pending[env_id] = False
+                        post_captured_mask[env_id] = 0
+            telemetry_episode_ids[reset_now] += 1
+            telemetry_strike_indices[reset_now] = 0
+            last_strike_global_step[reset_now] = -1
+            strike_interval_steps[reset_now] = -1
             reset_count += int(reset_now.sum().item())
             if args.diagnostics:
-                termination_manager = getattr(base_env, "termination_manager", None)
                 if termination_manager is not None:
                     for term_name in getattr(termination_manager, "_term_names", []):
                         try:
@@ -507,9 +1689,173 @@ def main() -> int:
                 contact_count += int(outcome.contacted)
                 net_clear_count += int(outcome.net_clear)
                 opponent_bounce_count += int(outcome.on_opponent)
+            # The virtual telemetry contract normally records only exact-strike attempts.  The
+            # in-process branch audit also needs the complementary outcome: a fixed next-shot
+            # clock crossing where the intervention caused the racket to miss capture.  Record it
+            # as an explicit MISS_CAPTURE row so branch comparisons remain paired instead of
+            # silently dropping the branch.
+            if args.snapshot_branch_mode:
+                clip_id_live = getattr(motion_cmd, "clip_id", None)
+                recipe_index_live = getattr(cmd, "_paired_recipe_current_index", None)
+                incoming_live = getattr(cmd, "vb_vel_in_w", None)
+                spin_live = getattr(cmd, "vb_spin_in_w", None)
+                selected_live = getattr(cmd, "_venue_tuple_selected", None)
+                intended_live = getattr(cmd, "_venue_intended_landing_xy", None)
+                default_intended_live = getattr(cmd, "_vb_target_xy", None)
+                robot_state_live = read_robot_state()
+                # A corrected branch can cross the paired recipe's strike time
+                # without producing the exact-strike edge (for example after a
+                # capture/reset mismatch).  Treat that as an explicit MISS_CAPTURE
+                # for event 1 rather than dropping the branch from the paired set.
+                if recipe_index_live is not None:
+                    event1_due = (
+                        (recipe_index_live == 1)
+                        & (tts <= 0.0)
+                        & (~snapshot_event1_logged)
+                        & (~reset_now)
+                    )
+                    due_ids = event1_due.nonzero(as_tuple=False).flatten().tolist()
+                else:
+                    due_ids = []
+                fallback_ids = {
+                    int(e) for e in idx if not bool(exact_strike_mask[e].item())
+                }
+                fallback_ids.update(int(e) for e in due_ids)
+                for e in sorted(fallback_ids):
+                    if bool(snapshot_event1_logged[e].item()):
+                        continue
+                    if bool(exact_strike_mask[e].item()):
+                        continue
+                    selected = _bool(selected_live, e) or False
+                    if selected and intended_live is not None:
+                        intended = _tolist(intended_live, e)
+                    elif default_intended_live is not None:
+                        intended = default_intended_live.detach().float().cpu().tolist()
+                    else:
+                        intended = None
+                    virtual_telemetry_rows.append(
+                        {
+                            "env_id": int(e),
+                            "snapshot_branch": snapshot_branch_labels.get(int(e)),
+                            "global_step": int(step_index),
+                            "episode_id": int(telemetry_episode_ids[e].item()),
+                            "strike_index": int(telemetry_strike_indices[e].item()),
+                            "strike_timestamp_s": float(step_index * base_env.step_dt),
+                            "strike_interval_s": None,
+                            "target_strike_interval_s": _scalar(
+                                getattr(motion_cmd, "metrics", {}).get("target_strike_interval_s"), e
+                            ),
+                            "required_hold_s": _scalar(
+                                getattr(motion_cmd, "metrics", {}).get("required_hold_s"), e
+                            ),
+                            "scheduled_hold_s": _scalar(
+                                getattr(motion_cmd, "metrics", {}).get("scheduled_hold_s"), e
+                            ),
+                            "previous_clip_poststrike_s": _scalar(
+                                getattr(motion_cmd, "metrics", {}).get(
+                                    "previous_clip_poststrike_s"
+                                ),
+                                e,
+                            ),
+                            "next_clip_prestrike_s": _scalar(
+                                getattr(motion_cmd, "metrics", {}).get("next_clip_prestrike_s"), e
+                            ),
+                            "strike_interval_scheduler_unreachable": _bool(
+                                getattr(motion_cmd, "metrics", {})
+                                .get("strike_interval_scheduler_unreachable"),
+                                e,
+                            ),
+                            "clip_id": int(clip_id_live[e].detach().cpu().item()) if clip_id_live is not None else None,
+                            "swing_sign": _scalar(getattr(cmd, "swing_sign", None), e),
+                            "venue_tuple_selected": selected,
+                            "incoming_velocity": _tolist(incoming_live, e),
+                            "incoming_spin": _tolist(spin_live, e),
+                            "intended_landing_xy_env": intended,
+                            "planner_racket_pos_env": _tolist(
+                                getattr(cmd, "racket_target_pos_w", None), e, local_position=True
+                            ),
+                            "planner_racket_velocity": _tolist(
+                                getattr(cmd, "racket_target_vel_w", None), e
+                            ),
+                            "planner_racket_normal": _tolist(
+                                getattr(cmd, "racket_target_normal_w", None), e
+                            ),
+                            "time_to_strike": _scalar(getattr(cmd, "time_to_strike", None), e),
+                            "achieved_racket_pos_env": _tolist(
+                                getattr(cmd, "racket_pos_w", None), e, local_position=True
+                            ),
+                            "achieved_racket_velocity": _tolist(
+                                getattr(cmd, "racket_lin_vel_w", None), e
+                            ),
+                            "achieved_racket_normal": _tolist(
+                                getattr(cmd, "racket_normal_w", None), e
+                            ),
+                            "capture_gate": False,
+                            "net_crossed": False,
+                            "net_clear": False,
+                            "net_z_env": None,
+                            "landing_valid": False,
+                            "landing_xy_env": [0.0, 0.0],
+                            "on_opponent": False,
+                            "failure_code": "MISS_CAPTURE",
+                            "fh_correction_applied": bool(
+                                is_fh_correction_applied(
+                                    e,
+                                    clip_id_live,
+                                    selected_live,
+                                    incoming_live,
+                                )
+                            ),
+                            "paired_recipe_index": (
+                                int(recipe_index_live[e].item()) if recipe_index_live is not None else -1
+                            ),
+                            "paired_recipe_is_wrap": (
+                                bool(getattr(cmd, "_paired_recipe_current_is_wrap")[e].item())
+                                if getattr(cmd, "_paired_recipe_current_is_wrap", None) is not None
+                                else None
+                            ),
+                            "robot_root_pos_env": _tolist(robot_state_live[0], e, local_position=True),
+                            "robot_root_quat_w": _tolist(robot_state_live[1], e),
+                            "robot_root_lin_vel_w": _tolist(robot_state_live[2], e),
+                            "robot_root_ang_vel_w": _tolist(robot_state_live[3], e),
+                            "robot_joint_pos": _tolist(robot_state_live[4], e),
+                            "robot_joint_vel": _tolist(robot_state_live[5], e),
+                        }
+                    )
+                    if recipe_index_live is not None and int(recipe_index_live[e].item()) == 1:
+                        snapshot_event1_logged[e] = True
+                    telemetry_strike_indices[e] += 1
             prev_tts = tts.clone()
 
         result = accumulator.as_dict()
+        strike_intervals = sorted(
+            float(row["strike_interval_s"])
+            for row in virtual_telemetry_rows
+            if row.get("strike_interval_s") is not None
+        )
+
+        def _percentile(values, fraction):
+            if not values:
+                return None
+            if len(values) == 1:
+                return float(values[0])
+            position = (len(values) - 1) * float(fraction)
+            lower = int(position)
+            upper = min(lower + 1, len(values) - 1)
+            weight = position - lower
+            return float(values[lower] * (1.0 - weight) + values[upper] * weight)
+
+        result["strike_interval_summary_s"] = {
+            "count": len(strike_intervals),
+            "mean": (
+                float(sum(strike_intervals) / len(strike_intervals))
+                if strike_intervals
+                else None
+            ),
+            "p10": _percentile(strike_intervals, 0.10),
+            "p50": _percentile(strike_intervals, 0.50),
+            "p90": _percentile(strike_intervals, 0.90),
+        }
         if args.diagnostics:
             # Keep the public external success metric separate from Isaac's internal
             # virtual-ball diagnostics.  The former is an independent no-spin rollout;
@@ -576,14 +1922,30 @@ def main() -> int:
                         "valid_land_per_attempt": float(internal_valid_landings / max(internal_attempts, 1)),
                     },
                     "termination_counts": termination_counts,
+                    "reset_reason_counts": {
+                        reason: sum(reason in event["termination_reasons"] for event in reset_events)
+                        for reason in sorted(
+                            {
+                                reason
+                                for event in reset_events
+                                for reason in event["termination_reasons"]
+                            }
+                        )
+                    },
                     "isaac_internal_metrics_mean": internal_metrics,
+                    "paired_recipe_mismatch_count": int(
+                        len(getattr(cmd, "_paired_recipe_mismatches", []))
+                    ),
+                    "paired_recipe_mismatches": getattr(
+                        cmd, "_paired_recipe_mismatches", []
+                    )[:100],
                 }
             )
         if args.virtual_telemetry_out:
             telemetry_path = os.path.abspath(args.virtual_telemetry_out)
             os.makedirs(os.path.dirname(telemetry_path) or ".", exist_ok=True)
             telemetry_payload = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "checkpoint": checkpoint,
                 "seed": int(args.seed),
                 "num_envs": int(args.num_envs),
@@ -598,6 +1960,27 @@ def main() -> int:
                     "fh_clip_id": 0,
                     "fh_delta_vx": float(args.condition_fh_dvx),
                     "fh_delta_vy": float(args.condition_fh_dvy),
+                    "fh_vx_max": (
+                        None if args.condition_fh_vx_max is None else float(args.condition_fh_vx_max)
+                    ),
+                },
+                "strike_interval_scheduler": {
+                    "enabled": args.target_strike_interval_s is not None,
+                    "target_range_s": (
+                        None
+                        if args.target_strike_interval_s is None
+                        else [float(value) for value in args.target_strike_interval_s]
+                    ),
+                    "short_transition_env_fraction": args.short_transition_env_fraction,
+                    "transition_clip_sequence": (
+                        None
+                        if args.transition_clip_sequence is None
+                        else [
+                            int(item.strip())
+                            for item in args.transition_clip_sequence.split(",")
+                            if item.strip()
+                        ]
+                    ),
                 },
                 "table_frame": {
                     "env_local_table_near_x": table_near_x,
@@ -606,12 +1989,36 @@ def main() -> int:
                     "half_width": table_half_w,
                     "surface_z": table_surface_z,
                 },
+                "reset_events": reset_events,
+                "post_strike_state_rows": post_strike_state_rows,
+                "state_transplant": {
+                    "source": args.state_transplant_source,
+                    "offset_s": args.state_transplant_offset,
+                    "fields": sorted(transplant_fields),
+                    "applied_events": transplant_events,
+                },
+                "snapshot_branch": {
+                    "enabled": bool(args.snapshot_branch_mode),
+                    "source": args.snapshot_branch_source,
+                    "source_env_id": args.snapshot_branch_source_env_id,
+                    "offset_s": float(args.snapshot_branch_offset),
+                    "blend_steps": int(args.snapshot_branch_blend_steps),
+                    "action_replay_steps": int(args.snapshot_action_replay_steps),
+                    "action_replay_sequence": bool(args.snapshot_action_replay_sequence),
+                    "triggered": bool(snapshot_branch_triggered),
+                    "branches": snapshot_branch_labels if args.snapshot_branch_mode else {},
+                    "applied_events": snapshot_branch_events,
+                },
                 "rows": virtual_telemetry_rows,
+                "strike_interval_summary_s": result["strike_interval_summary_s"],
             }
             with open(telemetry_path, "w", encoding="utf-8") as f:
                 json.dump(telemetry_payload, f, ensure_ascii=False)
                 f.write("\n")
             result["virtual_telemetry_out"] = telemetry_path
+        if args.paired_recipe_mode == "capture":
+            recipe_path = cmd.write_paired_recipe(args.paired_recipe_path)
+            result["paired_recipe_out"] = recipe_path
         print(json.dumps(result))
         if args.json_out:
             with open(args.json_out, "w", encoding="utf-8") as f:

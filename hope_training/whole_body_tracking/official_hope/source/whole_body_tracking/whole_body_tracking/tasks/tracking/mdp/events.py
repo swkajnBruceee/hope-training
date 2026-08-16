@@ -246,6 +246,139 @@ class randomize_structured_pd_gains(ManagerTermBase):
         self._publish_metrics(env)
 
 
+class randomize_effective_ground_friction(ManagerTermBase):
+    """Sample one effective foot-floor friction scalar per environment at reset.
+
+    Isaac/PhysX does not expose the same ordinary-contact max rule as MuJoCo, so this event
+    defines the training contract explicitly: the two A3 foot bodies receive equal static and
+    dynamic friction ``mu_ground_contact`` while the plane remains at 1.0 with a multiply
+    combine mode.  The resulting foot-ground coefficient is therefore the sampled scalar.
+
+    The scalar is sampled once per environment reset, never per simulation step.  Its range is
+    coupled to the action term's stance alpha: alpha <= ``start_stance_alpha`` stays nominal,
+    then the range expands continuously to [min, max].  The coefficient is deliberately not an
+    observation; it is exported only through command metrics for diagnostics.
+    """
+
+    def __init__(self, cfg: EventTermCfg, env: ManagerBasedEnv):
+        super().__init__(cfg, env)
+        self.asset_cfg: SceneEntityCfg = cfg.params["asset_cfg"]
+        self.asset: Articulation = env.scene[self.asset_cfg.name]
+        self.mu_nominal = float(cfg.params.get("mu_nominal", 1.0))
+        self.mu_min = float(cfg.params.get("mu_min", 0.3))
+        self.mu_max = float(cfg.params.get("mu_max", 1.5))
+        self.start_stance_alpha = float(cfg.params.get("start_stance_alpha", 0.25))
+        self.restitution_range = tuple(float(x) for x in cfg.params.get("restitution_range", (0.0, 0.0)))
+        self.bucket_edges = tuple(float(x) for x in cfg.params.get(
+            "bucket_edges", (0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5)
+        ))
+        if not (0.0 < self.mu_min <= self.mu_nominal <= self.mu_max):
+            raise ValueError("effective ground friction requires 0 < min <= nominal <= max")
+        if not (0.0 <= self.start_stance_alpha < 1.0):
+            raise ValueError("start_stance_alpha must lie in [0, 1)")
+        if len(self.restitution_range) != 2 or self.restitution_range[1] < self.restitution_range[0]:
+            raise ValueError("restitution_range must be an increasing [lo, hi] pair")
+        if len(self.bucket_edges) < 2 or any(
+            not math.isfinite(value) for value in self.bucket_edges
+        ) or any(a >= b for a, b in zip(self.bucket_edges, self.bucket_edges[1:])):
+            raise ValueError("bucket_edges must be finite and strictly increasing")
+
+        expected = {"left_ankle_roll_Link", "right_ankle_roll_Link"}
+        if self.asset_cfg.body_ids == slice(None):
+            raise RuntimeError("effective ground friction must be scoped to the two A3 foot bodies")
+        resolved = {self.asset.body_names[int(index)] for index in self.asset_cfg.body_ids}
+        if resolved != expected:
+            raise RuntimeError(
+                "effective ground friction scope mismatch: "
+                f"resolved={sorted(resolved)}, expected={sorted(expected)}"
+            )
+
+        # IsaacLab's material buffer is shape-indexed, not body-indexed.  Reuse the same robust
+        # link-path parsing as the upstream material randomizer and fail closed on a mismatch.
+        self.num_shapes_per_body = []
+        for link_path in self.asset.root_physx_view.link_paths[0]:
+            link_view = self.asset._physics_sim_view.create_rigid_body_view(link_path)
+            self.num_shapes_per_body.append(link_view.max_shapes)
+        if sum(self.num_shapes_per_body) != self.asset.root_physx_view.max_shapes:
+            raise ValueError("could not resolve A3 link shape counts for friction randomization")
+
+        num_envs = int(env.scene.num_envs)
+        self.mu = torch.full((num_envs,), self.mu_nominal, device=self.asset.device)
+        self.beta = torch.zeros_like(self.mu)
+        self.low = torch.full_like(self.mu, self.mu_nominal)
+        self.high = torch.full_like(self.mu, self.mu_nominal)
+
+    def _stance_alpha(self, env) -> float:
+        try:
+            term = env.action_manager.get_term("joint_pos")
+            value = getattr(term, "stance_alpha", None)
+            if callable(value):
+                return float(value())
+        except (AttributeError, KeyError, ValueError):
+            pass
+        return 1.0
+
+    def _publish_metrics(self, env) -> None:
+        try:
+            command = env.command_manager.get_term("racket_target")
+        except (AttributeError, KeyError, ValueError):
+            return
+        command.metrics["friction_mu"] = self.mu.clone()
+        command.metrics["friction_beta"] = self.beta.clone()
+        command.metrics["friction_current_low"] = self.low.clone()
+        command.metrics["friction_current_high"] = self.high.clone()
+        edges = torch.as_tensor(self.bucket_edges, device=self.asset.device, dtype=self.mu.dtype)
+        bucket = torch.bucketize(self.mu, edges[1:-1]).to(dtype=torch.long)
+        command.metrics["friction_bucket_index"] = bucket.float()
+        for index, (low, high) in enumerate(zip(self.bucket_edges, self.bucket_edges[1:])):
+            label = f"friction_bucket_{low:g}_{high:g}".replace(".", "p")
+            command.metrics[label] = (bucket == index).float()
+
+    def __call__(
+        self,
+        env: ManagerBasedEnv,
+        env_ids: torch.Tensor | None,
+        asset_cfg: SceneEntityCfg,
+        mu_nominal: float,
+        mu_min: float,
+        mu_max: float,
+        start_stance_alpha: float,
+        restitution_range: tuple[float, float] = (0.0, 0.0),
+        bucket_edges: tuple[float, ...] = (0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5),
+    ):
+        del asset_cfg, mu_nominal, mu_min, mu_max, start_stance_alpha, restitution_range, bucket_edges
+        if env_ids is None:
+            env_ids = torch.arange(env.scene.num_envs, device=self.asset.device, dtype=torch.long)
+        else:
+            env_ids = env_ids.to(device=self.asset.device, dtype=torch.long)
+        cpu_ids = env_ids.to(device="cpu")
+
+        alpha = min(1.0, max(0.0, self._stance_alpha(env)))
+        beta = 0.0 if alpha <= self.start_stance_alpha else (
+            (alpha - self.start_stance_alpha) / (1.0 - self.start_stance_alpha)
+        )
+        low = self.mu_nominal - beta * (self.mu_nominal - self.mu_min)
+        high = self.mu_nominal + beta * (self.mu_max - self.mu_nominal)
+        mu_cpu = low + torch.rand(len(cpu_ids), device="cpu") * (high - low)
+        rest_lo, rest_hi = self.restitution_range
+        restitution_cpu = rest_lo + torch.rand(len(cpu_ids), device="cpu") * (rest_hi - rest_lo)
+
+        materials = self.asset.root_physx_view.get_material_properties()
+        for body_id in self.asset_cfg.body_ids:
+            start = sum(self.num_shapes_per_body[:int(body_id)])
+            end = start + self.num_shapes_per_body[int(body_id)]
+            materials[cpu_ids, start:end, 0] = mu_cpu.unsqueeze(-1)
+            materials[cpu_ids, start:end, 1] = mu_cpu.unsqueeze(-1)
+            materials[cpu_ids, start:end, 2] = restitution_cpu.unsqueeze(-1)
+        self.asset.root_physx_view.set_material_properties(materials, cpu_ids)
+
+        self.mu[env_ids] = mu_cpu.to(device=self.asset.device)
+        self.beta[env_ids] = beta
+        self.low[env_ids] = low
+        self.high[env_ids] = high
+        self._publish_metrics(env)
+
+
 class randomize_a3_message_pd_gains(ManagerTermBase):
     """HKUST-style A3 gain DR without randomizing passive viscous damping.
 

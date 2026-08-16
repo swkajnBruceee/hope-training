@@ -214,6 +214,60 @@ def _apply_domain_rand(env_cfg, dr, applied: list) -> None:
         applied.append(f"events.randomize_pd_gains.nominal_fraction = {float(nominal)}")
 
 
+def _apply_friction_curriculum(env_cfg, friction_cfg, applied: list) -> None:
+    """Install the per-episode effective foot-floor friction contract.
+
+    The normal HITTER env config keeps its historical startup material event for backwards
+    compatibility.  The stance Curriculum-FT task explicitly opts into this reset-time event,
+    scoped only to the two A3 feet and coupled to the action term's stance alpha.
+    """
+    if friction_cfg is None or not bool(friction_cfg.get("enabled", False)):
+        return
+    events = getattr(env_cfg, "events", None)
+    if events is None or not hasattr(events, "physics_material"):
+        raise RuntimeError("friction curriculum requires events.physics_material")
+    from isaaclab.managers import SceneEntityCfg
+    import whole_body_tracking.tasks.tracking.mdp as mdp
+
+    term = getattr(events, "physics_material")
+    if term is None:
+        raise RuntimeError("friction curriculum cannot replace a disabled physics_material event")
+    values = OmegaConf.to_container(friction_cfg, resolve=True)
+    if not bool(values.get("sample_per_episode", True)):
+        raise ValueError("friction_curriculum.sample_per_episode must be true")
+    if not bool(values.get("randomize_per_env", True)):
+        raise ValueError("friction_curriculum.randomize_per_env must be true")
+    nominal = float(values.get("nominal", 1.0))
+    minimum = float(values.get("min", 0.3))
+    maximum = float(values.get("max", 1.5))
+    start_alpha = float(values.get("start_stance_alpha", 0.25))
+    if not (0.0 < minimum <= nominal <= maximum):
+        raise ValueError("friction_curriculum requires 0 < min <= nominal <= max")
+    if not 0.0 <= start_alpha < 1.0:
+        raise ValueError("friction_curriculum.start_stance_alpha must lie in [0, 1)")
+    edges = tuple(float(item) for item in values.get("bucket_edges", (0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5)))
+    term.func = mdp.randomize_effective_ground_friction
+    term.mode = "reset"
+    term.params.clear()
+    term.params.update(
+        asset_cfg=SceneEntityCfg(
+            "robot",
+            body_names=["left_ankle_roll_Link", "right_ankle_roll_Link"],
+            preserve_order=True,
+        ),
+        mu_nominal=nominal,
+        mu_min=minimum,
+        mu_max=maximum,
+        start_stance_alpha=start_alpha,
+        restitution_range=tuple(float(item) for item in values.get("restitution_range", (0.0, 0.0))),
+        bucket_edges=edges,
+    )
+    applied.append(
+        "events.physics_material = effective_ground_friction(reset, feet-only, "
+        f"mu=[{minimum}, {maximum}], nominal={nominal}, start_alpha={start_alpha})"
+    )
+
+
 def _apply_task_overrides(env_cfg, cfg, applied: list) -> None:
     """Apply the task YAML to the registered Isaac environment config.
 
@@ -271,6 +325,7 @@ def _apply_task_overrides(env_cfg, cfg, applied: list) -> None:
             _set_dotted(env_cfg, f"{target_path}.{key}", value, applied, block_name)
     # domain randomization.
     _apply_domain_rand(env_cfg, task.get("domain_rand"), applied)
+    _apply_friction_curriculum(env_cfg, task.get("friction_curriculum"), applied)
     # Reward YAML is a separate recipe layer from the registered EnvCfg. Apply it
     # explicitly so this launcher matches the published HOPE training recipe.
     apply_reward_overrides(env_cfg.rewards, task.get("rewards"), applied)
@@ -435,6 +490,20 @@ def _run(cfg):
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
     runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
+    # Emit the actual completed clip-to-clip transition counts.  The configured clip sequence
+    # describes intent, but reset/fall events can change the realized denominator; checkpoint
+    # selection and transition oversampling must use this audit rather than the config alone.
+    try:
+        motion_cmd = env.unwrapped.command_manager.get_term("motion")
+        counts = getattr(motion_cmd, "transition_event_counts", None)
+        if counts is not None:
+            print(
+                "[train.py] completed_transition_counts="
+                + str(counts.detach().cpu().tolist()),
+                flush=True,
+            )
+    except Exception as exc:
+        print(f"[train.py] transition count audit unavailable: {exc}", flush=True)
     env.close()
 
 

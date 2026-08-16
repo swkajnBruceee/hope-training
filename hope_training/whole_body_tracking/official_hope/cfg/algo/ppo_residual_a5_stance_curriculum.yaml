@@ -1,0 +1,57 @@
+# Main stance-adaptation recipe. There is intentionally no direct-FT branch:
+# the released/previous policy remains frozen and only the bounded lower-body residual adapts.
+
+name: HitterPingPongA5StanceCurriculumResidualPPO
+
+runner:
+  num_steps_per_env: 24
+  max_iterations: 3000
+  save_interval: 50
+  empirical_normalization: false
+
+policy:
+  class_name: ResidualMeanActorCritic
+  residual_architecture: structured_film
+  actor_hidden_dims: [512, 256, 128]
+  critic_hidden_dims: [512, 256, 128]
+  activation: elu
+  init_noise_std: 1.0
+  residual_hidden_dims: [256, 128]
+  structured_proprio_hidden_dims: [128, 64]
+  structured_goal_hidden_dims: [64, 32]
+  structured_time_hidden_dims: [16, 8]
+  structured_fusion_hidden_dims: [256, 128]
+  structured_film_hidden_dims: [32, 32]
+  residual_delta_q_max_rad: 0.05
+  residual_time_scale: 1.0
+  residual_train_std: false
+  residual_active_joint_names:
+  - waist_yaw_joint
+  - waist_roll_joint
+  - waist_pitch_joint
+  - left_hip_pitch_joint
+  - left_hip_roll_joint
+  - left_hip_yaw_joint
+  - left_knee_joint
+  - left_ankle_pitch_joint
+  - left_ankle_roll_joint
+  - right_hip_pitch_joint
+  - right_hip_roll_joint
+  - right_hip_yaw_joint
+  - right_knee_joint
+  - right_ankle_pitch_joint
+  - right_ankle_roll_joint
+
+algorithm:
+  learning_rate: 0.0003
+  schedule: adaptive
+  desired_kl: 0.01
+  entropy_coef: 0.01
+  num_learning_epochs: 5
+  num_mini_batches: 6
+  gamma: 0.99
+  lam: 0.95
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  max_grad_norm: 1.0

@@ -1,0 +1,38 @@
+# Short-transition Stage1.1: continual-learning rehearsal without changing the actor contract.
+# Half of the envs retain the conditioned-core baseline distribution; the other half use the
+# real 2.4--2.6 s strike scheduler and a balanced repeating FH,FH,BH,BH clip sequence.
+defaults:
+  - HOPEPingPong
+  - _self_
+
+name: HitterPingPongShortTransitionStage1_1
+
+motion:
+  hold_steps_range:
+  - 45
+  - 60
+  hold_long_prob: 0.0
+  hold_long_steps_range:
+  - 0
+  - 0
+  short_transition_env_fraction: 0.5
+  transition_clip_sequence:
+  - 0
+  - 0
+  - 1
+  - 1
+
+racket:
+  vb_target_conditioning: true
+  vb_target_conditioning_clip_id: 1
+  vb_target_conditioning_k_z: 0.75
+  vb_target_conditioning_v_ref: 0.25
+  vb_target_conditioning_delta_max: 0.40
+  target_strike_interval_s:
+  - 2.40
+  - 2.60
+  fh_target_conditioning: false
+  fh_target_conditioning_clip_id: 0
+  fh_target_conditioning_delta_vx: 0.0
+  fh_target_conditioning_delta_vy: 0.0
+  fh_target_conditioning_vx_max: null

@@ -69,6 +69,35 @@ class MotionOnPolicyRunner(OnPolicyRunner):
             passive_cols = getattr(action_term, "_passive_action_cols", None)
             if passive_cols is not None and passive_cols.numel() > 0:
                 active[passive_cols.to(device=action_device)] = False
+            configured_names = [
+                str(name) for name in policy_cfg.get("residual_active_joint_names", [])
+            ]
+            if configured_names:
+                action_names = list(getattr(action_term, "_joint_names", ()))
+                missing = [name for name in configured_names if name not in action_names]
+                if missing:
+                    raise RuntimeError(
+                        "Residual active-joint mask contains names missing from the action term: "
+                        f"{missing}; action names={action_names}"
+                    )
+                if len(configured_names) != len(set(configured_names)):
+                    raise RuntimeError(
+                        "Residual active-joint mask contains duplicate joint names: "
+                        f"{configured_names}"
+                    )
+                active.zero_()
+                active[torch.as_tensor(
+                    [action_names.index(name) for name in configured_names],
+                    dtype=torch.long,
+                    device=action_device,
+                )] = True
+                if passive_cols is not None and passive_cols.numel() > 0:
+                    active[passive_cols.to(device=action_device)] = False
+                print(
+                    "[MotionOnPolicyRunner] residual active-joint curriculum mask: "
+                    f"{len(configured_names)}/{action_dim} configured joints",
+                    flush=True,
+                )
             if hasattr(action_term, "_decoder_parameter_rows") and hasattr(action_term, "_scale"):
                 env_ids = torch.arange(int(env.num_envs), dtype=torch.long, device=action_device)
                 all_scales = action_term._decoder_parameter_rows(
@@ -1947,6 +1976,16 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 self._log_scalar(f"Live/Termination/{term_name}", self._mean_tensor(tm.get_term(term_name)), step)
 
         if hasattr(env, "action_manager"):
+            try:
+                stance_term = env.action_manager.get_term("joint_pos")
+            except (AttributeError, ValueError):
+                stance_term = None
+            stance_alpha = getattr(stance_term, "stance_alpha", None)
+            if callable(stance_alpha):
+                self._log_scalar("Live/Stance/alpha", float(stance_alpha()), step)
+            friction_beta = getattr(stance_term, "friction_beta", None)
+            if callable(friction_beta):
+                self._log_scalar("Live/Friction/beta", float(friction_beta()), step)
             action = getattr(env.action_manager, "action", None)
             prev_action = getattr(env.action_manager, "prev_action", None)
             if action is not None:
@@ -1961,6 +2000,50 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                     self._mean_tensor(torch.max(action_delta_abs, dim=-1).values),
                     step,
                 )
+
+        # The reset-time friction event publishes the sampled effective contact scalar through
+        # the command metrics.  Mirror the public contract to stable top-level tags and emit a
+        # lightweight per-bucket performance view from the current vectorized step.  The latter
+        # is intentionally a diagnostic bucket statistic, not an oracle observation.
+        friction_term = None
+        if hasattr(env, "command_manager"):
+            for term_name in env.command_manager.active_terms:
+                candidate = env.command_manager.get_term(term_name)
+                if "friction_mu" in getattr(candidate, "metrics", {}):
+                    friction_term = candidate
+                    break
+        if friction_term is not None:
+            metrics = friction_term.metrics
+            for source, target in (
+                ("friction_mu", "mu"),
+                ("friction_beta", "beta"),
+                ("friction_current_low", "current_low"),
+                ("friction_current_high", "current_high"),
+            ):
+                value = metrics.get(source)
+                if value is not None:
+                    self._log_scalar(f"Live/Friction/{target}", self._mean_tensor(value), step)
+            reward_buf = getattr(env, "reward_buf", None)
+            terminations = getattr(env, "termination_manager", None)
+            for metric_name, mask_value in metrics.items():
+                if not metric_name.startswith("friction_bucket_") or metric_name == "friction_bucket_index":
+                    continue
+                mask = mask_value > 0.5
+                if not torch.is_tensor(mask) or not bool(torch.any(mask).item()):
+                    continue
+                bucket_name = metric_name.removeprefix("friction_bucket_")
+                if torch.is_tensor(reward_buf):
+                    self._log_scalar(
+                        f"Live/Performance/friction_{bucket_name}/step_reward",
+                        self._mean_tensor(reward_buf[mask]), step,
+                    )
+                if terminations is not None:
+                    terminated = getattr(terminations, "terminated", None)
+                    if torch.is_tensor(terminated):
+                        self._log_scalar(
+                            f"Live/Performance/friction_{bucket_name}/terminated_rate",
+                            self._mean_tensor(terminated[mask]), step,
+                        )
 
         policy = getattr(getattr(self, "alg", None), "policy", None)
         residual_diagnostics = getattr(policy, "residual_diagnostics", None)

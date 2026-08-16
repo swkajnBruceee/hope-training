@@ -60,7 +60,7 @@ def generate_launch_description():
         DeclareLaunchArgument("start_flight_packetizer", default_value="true"),
         DeclareLaunchArgument(
             "motive_hostname",
-            default_value="192.168.100.111",
+            default_value="192.168.50.1",
             description="Motive/NatNet server IPv4 address",
         ),
         DeclareLaunchArgument(
