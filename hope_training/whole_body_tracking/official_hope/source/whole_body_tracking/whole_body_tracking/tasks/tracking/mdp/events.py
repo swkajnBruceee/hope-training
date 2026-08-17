@@ -11,6 +11,7 @@ from isaaclab.assets import Articulation
 from isaaclab.actuators import ImplicitActuator
 from isaaclab.envs.mdp.events import _randomize_prop_by_op
 from isaaclab.managers import EventTermCfg, ManagerTermBase, SceneEntityCfg
+from whole_body_tracking.utils.stance_curriculum import smoothstep_stance_alpha
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv
@@ -247,35 +248,58 @@ class randomize_structured_pd_gains(ManagerTermBase):
 
 
 class randomize_effective_ground_friction(ManagerTermBase):
-    """Sample one effective foot-floor friction scalar per environment at reset.
+    """Sample static and dynamic foot-floor friction per environment at reset.
 
-    Isaac/PhysX does not expose the same ordinary-contact max rule as MuJoCo, so this event
-    defines the training contract explicitly: the two A3 foot bodies receive equal static and
-    dynamic friction ``mu_ground_contact`` while the plane remains at 1.0 with a multiply
-    combine mode.  The resulting foot-ground coefficient is therefore the sampled scalar.
-
-    The scalar is sampled once per environment reset, never per simulation step.  Its range is
-    coupled to the action term's stance alpha: alpha <= ``start_stance_alpha`` stays nominal,
-    then the range expands continuously to [min, max].  The coefficient is deliberately not an
-    observation; it is exported only through command metrics for diagnostics.
+    The venue-informed nominal contract is ``mu_static=1.2`` and ``mu_dynamic=0.8``.
+    During the stance migration this pair is fixed.  The later curriculum expands a
+    competition distribution by sampling static friction first and then a correlated
+    dynamic/static ratio.  Once the expansion is complete, 20% of resets use a separate
+    low-friction stress distribution.  The sampled values are not observations; they are
+    exported only through command metrics.
     """
 
     def __init__(self, cfg: EventTermCfg, env: ManagerBasedEnv):
         super().__init__(cfg, env)
         self.asset_cfg: SceneEntityCfg = cfg.params["asset_cfg"]
         self.asset: Articulation = env.scene[self.asset_cfg.name]
-        self.mu_nominal = float(cfg.params.get("mu_nominal", 1.0))
-        self.mu_min = float(cfg.params.get("mu_min", 0.3))
-        self.mu_max = float(cfg.params.get("mu_max", 1.5))
-        self.start_stance_alpha = float(cfg.params.get("start_stance_alpha", 0.25))
+        self.static_nominal = float(cfg.params.get("static_nominal", 1.2))
+        self.dynamic_nominal = float(cfg.params.get("dynamic_nominal", 0.8))
+        self.competition_static_min = float(cfg.params.get("competition_static_min", 1.0))
+        self.competition_static_max = float(cfg.params.get("competition_static_max", 1.5))
+        self.competition_ratio_min = float(cfg.params.get("competition_ratio_min", 0.65))
+        self.competition_ratio_max = float(cfg.params.get("competition_ratio_max", 0.90))
+        self.stress_probability = float(cfg.params.get("stress_probability", 0.20))
+        self.stress_static_min = float(cfg.params.get("stress_static_min", 0.5))
+        self.stress_static_max = float(cfg.params.get("stress_static_max", 1.0))
+        self.stress_dynamic_min = float(cfg.params.get("stress_dynamic_min", 0.3))
+        self.stress_dynamic_max = float(cfg.params.get("stress_dynamic_max", 0.7))
+        self.curriculum_start_iteration = int(
+            cfg.params.get("curriculum_start_iteration", 2100)
+        )
+        self.curriculum_end_iteration = int(
+            cfg.params.get("curriculum_end_iteration", 2700)
+        )
         self.restitution_range = tuple(float(x) for x in cfg.params.get("restitution_range", (0.0, 0.0)))
         self.bucket_edges = tuple(float(x) for x in cfg.params.get(
             "bucket_edges", (0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5)
         ))
-        if not (0.0 < self.mu_min <= self.mu_nominal <= self.mu_max):
-            raise ValueError("effective ground friction requires 0 < min <= nominal <= max")
-        if not (0.0 <= self.start_stance_alpha < 1.0):
-            raise ValueError("start_stance_alpha must lie in [0, 1)")
+        if not (0.0 < self.dynamic_nominal <= self.static_nominal):
+            raise ValueError("effective ground friction requires 0 < dynamic_nominal <= static_nominal")
+        nominal_ratio = self.dynamic_nominal / self.static_nominal
+        if not (0.0 < self.competition_static_min <= self.static_nominal <= self.competition_static_max):
+            raise ValueError("competition static range must contain static_nominal")
+        if not (self.competition_ratio_min <= nominal_ratio <= self.competition_ratio_max):
+            raise ValueError("competition ratio range must contain dynamic_nominal/static_nominal")
+        if not (0.0 <= self.stress_probability <= 1.0):
+            raise ValueError("stress_probability must be in [0, 1]")
+        if not (0.0 < self.stress_static_min <= self.stress_static_max):
+            raise ValueError("stress static range must be positive and ordered")
+        if not (0.0 < self.stress_dynamic_min <= self.stress_dynamic_max):
+            raise ValueError("stress dynamic range must be positive and ordered")
+        if self.curriculum_start_iteration < 0 or self.curriculum_end_iteration <= self.curriculum_start_iteration:
+            raise ValueError(
+                "friction curriculum requires 0 <= start_iteration < end_iteration"
+            )
         if len(self.restitution_range) != 2 or self.restitution_range[1] < self.restitution_range[0]:
             raise ValueError("restitution_range must be an increasing [lo, hi] pair")
         if len(self.bucket_edges) < 2 or any(
@@ -303,63 +327,153 @@ class randomize_effective_ground_friction(ManagerTermBase):
             raise ValueError("could not resolve A3 link shape counts for friction randomization")
 
         num_envs = int(env.scene.num_envs)
-        self.mu = torch.full((num_envs,), self.mu_nominal, device=self.asset.device)
-        self.beta = torch.zeros_like(self.mu)
-        self.low = torch.full_like(self.mu, self.mu_nominal)
-        self.high = torch.full_like(self.mu, self.mu_nominal)
-
-    def _stance_alpha(self, env) -> float:
-        try:
-            term = env.action_manager.get_term("joint_pos")
-            value = getattr(term, "stance_alpha", None)
-            if callable(value):
-                return float(value())
-        except (AttributeError, KeyError, ValueError):
-            pass
-        return 1.0
+        self.mu_static = torch.full((num_envs,), self.static_nominal, device=self.asset.device)
+        self.mu_dynamic = torch.full((num_envs,), self.dynamic_nominal, device=self.asset.device)
+        self.mu_ratio = self.mu_dynamic / self.mu_static
+        self.beta = torch.zeros_like(self.mu_static)
+        self.static_low = torch.full_like(self.mu_static, self.static_nominal)
+        self.static_high = torch.full_like(self.mu_static, self.static_nominal)
+        self.dynamic_low = torch.full_like(self.mu_dynamic, self.dynamic_nominal)
+        self.dynamic_high = torch.full_like(self.mu_dynamic, self.dynamic_nominal)
 
     def _publish_metrics(self, env) -> None:
         try:
             command = env.command_manager.get_term("racket_target")
         except (AttributeError, KeyError, ValueError):
             return
-        command.metrics["friction_mu"] = self.mu.clone()
+        command.metrics["friction_mu_static"] = self.mu_static.clone()
+        command.metrics["friction_mu_dynamic"] = self.mu_dynamic.clone()
+        command.metrics["friction_mu_ratio"] = self.mu_ratio.clone()
         command.metrics["friction_beta"] = self.beta.clone()
-        command.metrics["friction_current_low"] = self.low.clone()
-        command.metrics["friction_current_high"] = self.high.clone()
-        edges = torch.as_tensor(self.bucket_edges, device=self.asset.device, dtype=self.mu.dtype)
-        bucket = torch.bucketize(self.mu, edges[1:-1]).to(dtype=torch.long)
-        command.metrics["friction_bucket_index"] = bucket.float()
+        command.metrics["friction_static_low"] = self.static_low.clone()
+        command.metrics["friction_static_high"] = self.static_high.clone()
+        command.metrics["friction_dynamic_low"] = self.dynamic_low.clone()
+        command.metrics["friction_dynamic_high"] = self.dynamic_high.clone()
+        command.metrics["friction_curriculum_iteration"] = torch.full_like(
+            self.mu_static, float(getattr(env, "_hope_stance_curriculum_iteration", 0))
+        )
+        edges = torch.as_tensor(self.bucket_edges, device=self.asset.device, dtype=self.mu_dynamic.dtype)
+        static_bucket = torch.bucketize(self.mu_static, edges[1:-1]).to(dtype=torch.long)
+        dynamic_bucket = torch.bucketize(self.mu_dynamic, edges[1:-1]).to(dtype=torch.long)
+        command.metrics["friction_bucket_static_index"] = static_bucket.float()
+        command.metrics["friction_bucket_dynamic_index"] = dynamic_bucket.float()
         for index, (low, high) in enumerate(zip(self.bucket_edges, self.bucket_edges[1:])):
             label = f"friction_bucket_{low:g}_{high:g}".replace(".", "p")
-            command.metrics[label] = (bucket == index).float()
+            command.metrics[f"{label}_static"] = (static_bucket == index).float()
+            command.metrics[f"{label}_dynamic"] = (dynamic_bucket == index).float()
 
     def __call__(
         self,
         env: ManagerBasedEnv,
         env_ids: torch.Tensor | None,
         asset_cfg: SceneEntityCfg,
-        mu_nominal: float,
-        mu_min: float,
-        mu_max: float,
-        start_stance_alpha: float,
+        static_nominal: float,
+        dynamic_nominal: float,
+        competition_static_min: float,
+        competition_static_max: float,
+        competition_ratio_min: float,
+        competition_ratio_max: float,
+        stress_probability: float,
+        stress_static_min: float,
+        stress_static_max: float,
+        stress_dynamic_min: float,
+        stress_dynamic_max: float,
+        curriculum_start_iteration: int = 2100,
+        curriculum_end_iteration: int = 2700,
         restitution_range: tuple[float, float] = (0.0, 0.0),
         bucket_edges: tuple[float, ...] = (0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5),
     ):
-        del asset_cfg, mu_nominal, mu_min, mu_max, start_stance_alpha, restitution_range, bucket_edges
+        del (
+            asset_cfg,
+            static_nominal,
+            dynamic_nominal,
+            competition_static_min,
+            competition_static_max,
+            competition_ratio_min,
+            competition_ratio_max,
+            stress_probability,
+            stress_static_min,
+            stress_static_max,
+            stress_dynamic_min,
+            stress_dynamic_max,
+            curriculum_start_iteration,
+            curriculum_end_iteration,
+            restitution_range,
+            bucket_edges,
+        )
         if env_ids is None:
             env_ids = torch.arange(env.scene.num_envs, device=self.asset.device, dtype=torch.long)
         else:
             env_ids = env_ids.to(device=self.asset.device, dtype=torch.long)
         cpu_ids = env_ids.to(device="cpu")
 
-        alpha = min(1.0, max(0.0, self._stance_alpha(env)))
-        beta = 0.0 if alpha <= self.start_stance_alpha else (
-            (alpha - self.start_stance_alpha) / (1.0 - self.start_stance_alpha)
+        iteration = int(getattr(env, "_hope_stance_curriculum_iteration", 0))
+        beta = smoothstep_stance_alpha(
+            iteration,
+            ramp_start_iteration=self.curriculum_start_iteration,
+            ramp_end_iteration=self.curriculum_end_iteration,
         )
-        low = self.mu_nominal - beta * (self.mu_nominal - self.mu_min)
-        high = self.mu_nominal + beta * (self.mu_max - self.mu_nominal)
-        mu_cpu = low + torch.rand(len(cpu_ids), device="cpu") * (high - low)
+        beta_tensor = torch.full((len(env_ids),), beta, device=self.asset.device)
+        beta_cpu = beta_tensor.to(device="cpu")
+        # Expand the competition neighborhood continuously from the fixed nominal pair.
+        nominal_ratio = self.dynamic_nominal / self.static_nominal
+        static_low_cpu = self.static_nominal + beta_cpu * (
+            self.competition_static_min - self.static_nominal
+        )
+        static_high_cpu = self.static_nominal + beta_cpu * (
+            self.competition_static_max - self.static_nominal
+        )
+        ratio_low_cpu = nominal_ratio + beta_cpu * (
+            self.competition_ratio_min - nominal_ratio
+        )
+        ratio_high_cpu = nominal_ratio + beta_cpu * (
+            self.competition_ratio_max - nominal_ratio
+        )
+        sampled_static_cpu = static_low_cpu + torch.rand(len(cpu_ids), device="cpu") * (
+            static_high_cpu - static_low_cpu
+        )
+        sampled_ratio_cpu = ratio_low_cpu + torch.rand(len(cpu_ids), device="cpu") * (
+            ratio_high_cpu - ratio_low_cpu
+        )
+        sampled_dynamic_cpu = sampled_static_cpu * sampled_ratio_cpu
+
+        # The stress mixture is introduced only after beta reaches one.  Dynamic friction is
+        # clipped to the sampled static value so the Coulomb ordering is always respected.
+        stress_mask = (beta >= 1.0 - 1e-6) & (
+            torch.rand(len(cpu_ids), device="cpu") < self.stress_probability
+        )
+        if bool(torch.any(stress_mask).item()):
+            stress_static_cpu = self.stress_static_min + torch.rand(
+                len(cpu_ids), device="cpu"
+            ) * (self.stress_static_max - self.stress_static_min)
+            stress_dynamic_cpu = self.stress_dynamic_min + torch.rand(
+                len(cpu_ids), device="cpu"
+            ) * (self.stress_dynamic_max - self.stress_dynamic_min)
+            stress_dynamic_cpu = torch.minimum(stress_dynamic_cpu, stress_static_cpu)
+            sampled_static_cpu = torch.where(stress_mask, stress_static_cpu, sampled_static_cpu)
+            sampled_dynamic_cpu = torch.where(stress_mask, stress_dynamic_cpu, sampled_dynamic_cpu)
+        sampled_ratio_cpu = sampled_dynamic_cpu / torch.clamp_min(sampled_static_cpu, 1e-6)
+
+        static_low_cpu = torch.where(
+            stress_mask,
+            torch.full_like(static_low_cpu, self.stress_static_min),
+            static_low_cpu,
+        )
+        static_high_cpu = torch.where(
+            stress_mask,
+            torch.full_like(static_high_cpu, self.stress_static_max),
+            static_high_cpu,
+        )
+        dynamic_low_cpu = torch.where(
+            stress_mask,
+            torch.full_like(static_low_cpu, self.stress_dynamic_min),
+            static_low_cpu * ratio_low_cpu,
+        )
+        dynamic_high_cpu = torch.where(
+            stress_mask,
+            torch.full_like(static_high_cpu, self.stress_dynamic_max),
+            static_high_cpu * ratio_high_cpu,
+        )
         rest_lo, rest_hi = self.restitution_range
         restitution_cpu = rest_lo + torch.rand(len(cpu_ids), device="cpu") * (rest_hi - rest_lo)
 
@@ -367,15 +481,19 @@ class randomize_effective_ground_friction(ManagerTermBase):
         for body_id in self.asset_cfg.body_ids:
             start = sum(self.num_shapes_per_body[:int(body_id)])
             end = start + self.num_shapes_per_body[int(body_id)]
-            materials[cpu_ids, start:end, 0] = mu_cpu.unsqueeze(-1)
-            materials[cpu_ids, start:end, 1] = mu_cpu.unsqueeze(-1)
+            materials[cpu_ids, start:end, 0] = sampled_static_cpu.unsqueeze(-1)
+            materials[cpu_ids, start:end, 1] = sampled_dynamic_cpu.unsqueeze(-1)
             materials[cpu_ids, start:end, 2] = restitution_cpu.unsqueeze(-1)
         self.asset.root_physx_view.set_material_properties(materials, cpu_ids)
 
-        self.mu[env_ids] = mu_cpu.to(device=self.asset.device)
-        self.beta[env_ids] = beta
-        self.low[env_ids] = low
-        self.high[env_ids] = high
+        self.mu_static[env_ids] = sampled_static_cpu.to(device=self.asset.device)
+        self.mu_dynamic[env_ids] = sampled_dynamic_cpu.to(device=self.asset.device)
+        self.mu_ratio[env_ids] = sampled_ratio_cpu.to(device=self.asset.device)
+        self.beta[env_ids] = beta_tensor
+        self.static_low[env_ids] = static_low_cpu.to(device=self.asset.device)
+        self.static_high[env_ids] = static_high_cpu.to(device=self.asset.device)
+        self.dynamic_low[env_ids] = dynamic_low_cpu.to(device=self.asset.device)
+        self.dynamic_high[env_ids] = dynamic_high_cpu.to(device=self.asset.device)
         self._publish_metrics(env)
 
 

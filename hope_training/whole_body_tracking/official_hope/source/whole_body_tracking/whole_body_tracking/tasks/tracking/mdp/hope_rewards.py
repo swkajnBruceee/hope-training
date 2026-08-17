@@ -28,6 +28,7 @@ from whole_body_tracking.tasks.tracking.mdp.recovery_safe_set import (
     aggregate_recovery_violations,
     normalized_upper_violation,
 )
+from whole_body_tracking.utils.stance_curriculum import lerp
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -35,6 +36,15 @@ if TYPE_CHECKING:
 
 def _cmd(env: ManagerBasedRLEnv, command_name: str) -> RacketTargetCommand:
     return env.command_manager.get_term(command_name)
+
+
+def _stance_alpha(env) -> float:
+    """Read the one action-owned alpha source used by reset/action/reward."""
+    action_term = env.action_manager.get_term("joint_pos")
+    alpha_fn = getattr(action_term, "stance_alpha", None)
+    if not callable(alpha_fn):
+        raise RuntimeError("stance-dependent reward requires joint_pos.stance_alpha()")
+    return float(max(0.0, min(1.0, alpha_fn())))
 
 
 def _record_metric_snapshot(metrics: dict, name: str, value: torch.Tensor) -> None:
@@ -1579,6 +1589,11 @@ def rally_ready_root_height_debt(
     command_name: str,
     motion_command_name: str,
     min_height: float = 1.02,
+    old_min_height: float = 0.98,
+    new_min_height: float = 0.98,
+    old_height: float = 1.06839,
+    new_height: float = 1.06839,
+    curriculum: bool = False,
     std: float = 0.05,
     ready_t_lo: float = -0.10,
     ready_t_hi: float = 1.10,
@@ -1598,7 +1613,11 @@ def rally_ready_root_height_debt(
     """
     cmd = _cmd(env, command_name)
     motion = env.command_manager.get_term(motion_command_name)
-    deficit = torch.clamp(float(min_height) - cmd.robot.data.root_pos_w[:, 2], min=0.0)
+    alpha = _stance_alpha(env) if curriculum else 0.0
+    target_height = lerp(old_height, new_height, alpha)
+    target_min_height = lerp(old_min_height, new_min_height, alpha)
+    root_height = cmd.robot.data.root_pos_w[:, 2]
+    deficit = torch.clamp(target_min_height - root_height, min=0.0)
     scaled = deficit / max(float(std), 1.0e-6)
     raw = torch.where(scaled <= 1.0, 0.5 * torch.square(scaled), scaled - 0.5)
 
@@ -1611,6 +1630,16 @@ def rally_ready_root_height_debt(
     ready = (cmd.time_to_strike > ready_t_lo) & (cmd.time_to_strike < ready_t_hi)
     post = (cmd.time_to_strike < -post_t_lo) & (cmd.time_to_strike > -post_t_hi)
     gate = in_hold | ready | post
+    cmd.metrics["rally_ready_root_height"] = root_height * gate.float()
+    cmd.metrics["rally_ready_root_height_target"] = torch.full_like(
+        root_height, target_height
+    ) * gate.float()
+    cmd.metrics["rally_ready_root_height_min_target"] = torch.full_like(
+        root_height, target_min_height
+    ) * gate.float()
+    cmd.metrics["rally_ready_root_height_error"] = torch.clamp(
+        target_height - root_height, min=0.0
+    ) * gate.float()
     cmd.metrics["rally_ready_root_height_deficit"] = deficit * gate.float()
     return raw * gate.float()
 
@@ -1660,8 +1689,9 @@ def rally_foot_orientation_discipline(
         # Make the V3 contract explicit instead of relying on MotionCommand.joint_pos's current
         # hold substitution: hold targets deploy-default hip yaw, while the released swing keeps
         # the approved clip reference.  This is two-DOF discipline, not lower-body imitation.
-        default = asset.data.default_joint_pos[:, joint_ids]
-        ref = torch.where(in_hold.unsqueeze(-1), default, ref)
+        action_term = env.action_manager.get_term("joint_pos")
+        nominal = action_term.stance_reset_joint_pos(asset.data.default_joint_pos)
+        ref = torch.where(in_hold.unsqueeze(-1), nominal[:, joint_ids], ref)
     error = torch.abs(q - ref)
     excess = torch.clamp(error - margin, min=0.0)
     raw = torch.mean(1.0 - torch.exp(-torch.square(excess / std)), dim=-1)
@@ -3582,21 +3612,30 @@ def right_elbow_extension_debt(
     return debt * gate.float()
 
 
-def stance_width_band(env, lo: float, hi: float, std: float, asset_cfg=None):
+def stance_width_band(
+    env,
+    lo: float,
+    hi: float,
+    std: float,
+    asset_cfg=None,
+    old_lo: float = 0.25,
+    old_hi: float = 0.35,
+    curriculum: bool = False,
+):
     """Smooth-L1 debt on the horizontal ankle-to-ankle distance outside [lo, hi].
 
     Metric = ||Δp_xy|| between the two ankle-roll link origins: root/yaw-invariant and
-    stagger-aware (the pelvis-frame y-component under-reads a staggered stance — the 0.086 m
-    false alarm of 2026-07-13). Calibration: demo stance 0.281-0.288 across BOTH v13 clips,
-    deploy default stand 0.259, mechanical zero 0.246 — all inside the band, so the demo and
-    normal operation pay ZERO. The linear (smooth-L1) tail keeps transient step peaks cheap
-    while sustained self-invented wide splits (22 s at 0.53 in G3) pay steady rent. Always-on;
-    positive magnitude, use a NEGATIVE RewTerm weight.
+    stagger-aware. The Curriculum-FT target is the model-backed 50 cm parallel stance, so
+    The global term remains disabled in the current task (weight=0), but its target is still
+    alpha-consistent if enabled by another recipe.
     """
     asset = env.scene[asset_cfg.name]
     feet = asset.data.body_pos_w[:, asset_cfg.body_ids, :2]
     d = torch.norm(feet[:, 0] - feet[:, 1], dim=-1)
-    excess = torch.relu(lo - d) + torch.relu(d - hi)
+    alpha = _stance_alpha(env) if curriculum else 0.0
+    target_lo = lerp(old_lo, lo, alpha)
+    target_hi = lerp(old_hi, hi, alpha)
+    excess = torch.relu(target_lo - d) + torch.relu(d - target_hi)
     x = excess / std
     return torch.where(x < 1.0, 0.5 * x * x, x - 0.5)
 
@@ -3822,9 +3861,14 @@ def rally_ready_stance_width_debt(
     command_name: str,
     motion_command_name: str,
     asset_cfg,
-    lo: float = 0.25,
-    hi: float = 0.35,
+    lo: float = 0.45,
+    hi: float = 0.55,
     std: float = 0.05,
+    old_lo: float = 0.25,
+    old_hi: float = 0.35,
+    curriculum: bool = False,
+    sensor_cfg=None,
+    force_threshold: float = 10.0,
     station_reach: float = 0.10,
     heading_gate: float = 0.15,
     speed_gate: float = 0.20,
@@ -3834,10 +3878,14 @@ def rally_ready_stance_width_debt(
     V10 left the existing always-on stance rail at zero because it would also charge a necessary
     lateral step.  This version opens only in the exogenous hold after the base is at its station
     and nearly square.  The calibrated zero-debt band contains both v13 ready clips and the A3
-    default stand, so it removes self-invented narrow/wide stances without prescribing clip legs.
+    default stand. The zero-debt band is now the fixed 50 cm Curriculum-FT target, so this
+    term does not silently pull the policy back toward the historical narrow stance.
     """
-    if not 0.0 < lo < hi or std <= 0.0:
-        raise ValueError(f"invalid ready stance-width band/std: {lo}/{hi}/{std}")
+    if not 0.0 < lo < hi or not 0.0 < old_lo < old_hi or std <= 0.0:
+        raise ValueError(
+            "invalid ready stance-width band/std: "
+            f"old={old_lo}/{old_hi}, new={lo}/{hi}, std={std}"
+        )
     cmd = _cmd(env, command_name)
     motion = env.command_manager.get_term(motion_command_name)
     asset = env.scene[asset_cfg.name]
@@ -3848,15 +3896,57 @@ def rally_ready_stance_width_debt(
 
     feet = asset.data.body_pos_w[:, body_ids, :2]
     width = torch.linalg.norm(feet[:, 0] - feet[:, 1], dim=-1)
-    excess = torch.relu(float(lo) - width) + torch.relu(width - float(hi))
+
+    alpha = _stance_alpha(env) if curriculum else 0.0
+    target_lo = lerp(old_lo, lo, alpha)
+    target_hi = lerp(old_hi, hi, alpha)
+    excess = torch.relu(target_lo - width) + torch.relu(width - target_hi)
     scaled = excess / float(std)
     debt = torch.where(scaled < 1.0, 0.5 * scaled * scaled, scaled - 0.5)
     gate = _rally_ready_stance_gate(
         cmd, motion, station_reach, heading_gate, speed_gate
     )
 
+    cmd.metrics["ready_stance_alpha"] = torch.full_like(width, alpha)
     cmd.metrics["ready_stance_width"] = width * gate.float()
+    cmd.metrics["ready_stance_width_target_lo"] = torch.full_like(width, target_lo)
+    cmd.metrics["ready_stance_width_target_hi"] = torch.full_like(width, target_hi)
+    cmd.metrics["ready_stance_width_target"] = torch.full_like(
+        width, 0.5 * (target_lo + target_hi)
+    )
+    cmd.metrics["ready_stance_width_error"] = excess * gate.float()
     cmd.metrics["ready_stance_width_excess"] = excess * gate.float()
+
+    # Telemetry only: do not add a double-support reward in this V2 run.  These metrics are
+    # deliberately phase-gated and force-based so the audit can distinguish support loss from
+    # mere collision/contact bookkeeping.
+    sensor = None
+    try:
+        sensor = env.scene.sensors[sensor_cfg.name] if sensor_cfg is not None else None
+        sensor_body_ids = sensor_cfg.body_ids if sensor_cfg is not None else body_ids
+    except (AttributeError, KeyError, TypeError):
+        sensor_body_ids = body_ids
+    if sensor is not None and len(sensor_body_ids) == 2:
+        force_vec = sensor.data.net_forces_w[:, sensor_body_ids, :]
+        fz = torch.abs(force_vec[..., 2])
+        contact = torch.linalg.norm(force_vec, dim=-1) > float(force_threshold)
+        support_gate = gate.float()
+        left = contact[:, 0].float() * support_gate
+        right = contact[:, 1].float() * support_gate
+        both = (contact[:, 0] & contact[:, 1]).float() * support_gate
+        feet_vel_xy = torch.linalg.norm(
+            asset.data.body_lin_vel_w[:, body_ids, :2], dim=-1
+        )
+        total_fz = torch.sum(fz, dim=-1).clamp(min=1.0e-6)
+        cmd.metrics["ready_left_contact_rate"] = left
+        cmd.metrics["ready_right_contact_rate"] = right
+        cmd.metrics["ready_double_support_rate"] = both
+        cmd.metrics["ready_left_fz"] = fz[:, 0] * support_gate
+        cmd.metrics["ready_right_fz"] = fz[:, 1] * support_gate
+        cmd.metrics["ready_load_ratio_left"] = fz[:, 0] / total_fz * support_gate
+        cmd.metrics["ready_load_ratio_right"] = fz[:, 1] / total_fz * support_gate
+        cmd.metrics["ready_left_foot_slip"] = feet_vel_xy[:, 0] * left
+        cmd.metrics["ready_right_foot_slip"] = feet_vel_xy[:, 1] * right
     return debt * gate.float()
 
 
@@ -3894,9 +3984,9 @@ def rally_ready_foot_alignment_debt(
             f"RallyV11 ready-foot alignment requires exactly six joints, got {count}"
         )
 
-    error = torch.abs(
-        asset.data.joint_pos[:, joint_ids] - asset.data.default_joint_pos[:, joint_ids]
-    )
+    action_term = env.action_manager.get_term("joint_pos")
+    nominal_joint_pos = action_term.stance_reset_joint_pos(asset.data.default_joint_pos)
+    error = torch.abs(asset.data.joint_pos[:, joint_ids] - nominal_joint_pos[:, joint_ids])
     per_joint = _deadband_huber(error, float(margin), float(std))
     debt = (
         (1.0 - float(max_blend)) * torch.mean(per_joint, dim=-1)

@@ -133,6 +133,14 @@ def _run(cfg, simulation_app):
     print("[play.py] creating gym environment", flush=True)
     env = gym.make(task_id, cfg=env_cfg, render_mode=render_mode)
     print("[play.py] gym environment created", flush=True)
+    replay_iteration = cfg.get("replay_curriculum_iteration", None)
+    if replay_iteration is not None:
+        env.unwrapped._hope_stance_curriculum_iteration = int(replay_iteration)
+        print(
+            "[play.py] replay curriculum iteration: "
+            f"{int(replay_iteration)}",
+            flush=True,
+        )
     env = RslRlVecEnvWrapper(env)
     print("[play.py] RSL-RL wrapper reset completed", flush=True)
 

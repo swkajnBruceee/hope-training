@@ -38,6 +38,9 @@ verification_disable_scoring: false
 progress_interval: 50
 # false uses the standard play.py behavior; true applies the Hydra task recipe exactly as train.py.
 apply_task_overrides: false
+# Optional curriculum phase used for replay.  When set, this is published before the first
+# environment reset so stance/friction schedules match the checkpoint's training iteration.
+replay_curriculum_iteration: null
 
 hydra:
   job:

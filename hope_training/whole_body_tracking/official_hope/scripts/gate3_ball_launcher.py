@@ -13,6 +13,7 @@ import time
 import numpy as np
 
 import rclpy
+from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import Point, Vector3
 from mujoco_sim_msgs.msg import Gate3BallCommand, Gate3BallState
 from rclpy.node import Node
@@ -469,16 +470,24 @@ class Gate3Launcher(Node):
             (args.x0, args.y0, args.z0, args.vx, args.vy, args.vz)
         ]
         self.pub = self.create_publisher(Gate3BallCommand, args.command_topic, 10)
+        # Gate3BallState is published at high rate.  A single-threaded
+        # executor can keep servicing that subscription and starve the
+        # 10-ms launch/park timer after the first ball becomes active.
         self.sub = self.create_subscription(
-            Gate3BallState, args.state_topic, self._on_state, 20
+            Gate3BallState, args.state_topic, self._on_state, 1
         )
         self.timer = self.create_timer(0.01, self._tick)
         self.shot_id = 0
         self.active = False
+        self.park_pending = False
+        self.next_park_retry = 0.0
+        self.park_retry_deadline = 0.0
+        self.seen_active_state = False
         self.next_launch = time.monotonic() + 1.0
         self.park_time = 0.0
         self.last_state = None
         self.launch_count = 0
+        self._command_wait_logged = False
         # MuJoCo resets the per-ball contact counters when a shot is parked.
         # Keep the previous counter per shot; a single process-global counter
         # would silently miss contacts after the first successful ball.
@@ -501,15 +510,58 @@ class Gate3Launcher(Node):
 
     def _tick(self):
         now = time.monotonic()
+        # The launch command is intentionally a one-shot message. Do not
+        # spend that one shot before the MuJoCo ROS subscriber has discovered
+        # the publisher: otherwise the launcher log says "launch" while the
+        # plant keeps shot_id=0 and no Ball object ever reaches the mocap
+        # bridge. This race is especially visible after restarting AimRT.
+        if not self.active and self.count_subscribers(self.args.command_topic) < 1:
+            if not self._command_wait_logged:
+                self.get_logger().info(
+                    "waiting for MuJoCo Gate3 command subscriber before launch"
+                )
+                self._command_wait_logged = True
+            return
+        if not self.active and self._command_wait_logged:
+            self.get_logger().info("MuJoCo Gate3 command subscriber ready")
+            self._command_wait_logged = False
         if self.active:
+            # The simulator is authoritative about the active/parked state.
+            # Do not advance to the next shot until it acknowledges the park
+            # for the current shot.  Repeating the same park command is safe:
+            # the simulator treats an already-parked command as a duplicate.
+            if self.park_pending:
+                if now >= self.next_park_retry:
+                    self._publish(False, self.shot_id)
+                    self.get_logger().info(
+                        "park request shot={} retry".format(self.shot_id)
+                    )
+                    self.next_park_retry = now + 0.10
+                # Do not deadlock the whole sequence if the state publisher
+                # drops the inactive acknowledgement.  The park command has
+                # already been repeated several times; advance after a short
+                # bounded window while preserving the same monotonic shot ID
+                # on all park retries.
+                if now >= self.park_retry_deadline:
+                    self.park_pending = False
+                    self.active = False
+                    self.next_launch = now + self.args.inter_shot
+                    self.get_logger().warning(
+                        "park acknowledgement timeout shot={} "
+                        "(advancing after retries)".format(self.shot_id)
+                    )
+                return
             if now < self.park_time:
                 return
             # Every shot, including the final one, must emit an inactive
             # state so the evidence recorder can close its shot window.
+            self.park_pending = True
+            self.next_park_retry = now
+            self.park_retry_deadline = now + max(0.8, self.args.contact_hold)
             self._publish(False, self.shot_id)
-            self.active = False
-            if self.launch_count < self.args.shots:
-                self.next_launch = now + self.args.inter_shot
+            self.get_logger().info(
+                "park request shot={} initial".format(self.shot_id)
+            )
             return
         if self.launch_count >= self.args.shots:
             return
@@ -517,6 +569,8 @@ class Gate3Launcher(Node):
             self.shot_id += 1
             self._publish(True, self.shot_id)
             self.active = True
+            self.park_pending = False
+            self.seen_active_state = False
             self.launch_count += 1
             self.park_time = now + self.args.flight_window
             self.get_logger().info(
@@ -533,6 +587,27 @@ class Gate3Launcher(Node):
         previous_count = self.last_contact_count_by_shot.get(shot_id)
         self.last_contact_count_by_shot[shot_id] = int(msg.racket_contact_count)
         self.last_state = msg
+        if self.active and shot_id == self.shot_id and bool(msg.active):
+            # A park acknowledgement is only valid after the simulator has
+            # published the active state for this exact shot.  This prevents
+            # a delayed pre-launch inactive state from being mistaken for a
+            # successful park.
+            self.seen_active_state = True
+        if (
+            self.active
+            and self.park_pending
+            and shot_id == self.shot_id
+            and self.seen_active_state
+            and not bool(msg.active)
+        ):
+            self.park_pending = False
+            self.active = False
+            self.next_launch = time.monotonic() + self.args.inter_shot
+            self.get_logger().info(
+                "park acknowledged shot={} next_launch_in={:.2f}s".format(
+                    shot_id, self.args.inter_shot
+                )
+            )
         if previous_count is None:
             return
         if int(msg.racket_contact_count) > previous_count:
@@ -625,13 +700,17 @@ def main():
         args.serves = None
     rclpy.init()
     node = Gate3Launcher(args)
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
     try:
         while rclpy.ok() and node.launch_count < args.shots:
-            rclpy.spin_once(node, timeout_sec=0.02)
+            executor.spin_once(timeout_sec=0.02)
         end = time.monotonic() + args.flight_window + 0.5
         while rclpy.ok() and time.monotonic() < end:
-            rclpy.spin_once(node, timeout_sec=0.02)
+            executor.spin_once(timeout_sec=0.02)
     finally:
+        executor.shutdown(timeout_sec=1.0)
+        executor.remove_node(node)
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

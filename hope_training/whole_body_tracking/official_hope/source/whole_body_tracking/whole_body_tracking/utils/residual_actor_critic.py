@@ -551,10 +551,21 @@ class ResidualMeanActorCritic(ActorCritic):
 
     @torch.no_grad()
     def load_official_model_state(self, model_state: dict[str, torch.Tensor]) -> list[str]:
-        """Load base actor/critic/std weights without touching the new optimizer."""
+        """Load base actor/critic/std weights without touching the new optimizer.
+
+        The residual action contract is resolved from the current environment and algorithm
+        configuration before warm-start.  Contract buffers saved by an older residual checkpoint
+        are therefore deliberately excluded here; loading them would silently replace the
+        configured active-joint mask, bounds, and action scales (for example 29 inherited
+        channels overwriting a new 15-channel lower-body contract).
+        """
         # rsl_rl's ActorCritic.load_state_dict intentionally returns a boolean, so call the
         # nn.Module implementation directly to retain missing/unexpected-key diagnostics.
-        incompatible = nn.Module.load_state_dict(self, model_state, strict=False)
+        contract_keys = {"residual_active_mask", "residual_bound_raw", "resolved_action_scale"}
+        base_state = {
+            key: value for key, value in model_state.items() if key not in contract_keys
+        }
+        incompatible = nn.Module.load_state_dict(self, base_state, strict=False)
         allowed_missing = {
             key
             for key in incompatible.missing_keys

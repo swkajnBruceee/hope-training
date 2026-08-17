@@ -112,7 +112,12 @@ _add_float_params(
     "rally_ankle_qdes",
     {"safe_abs": "safe_abs", "t_pre": "t_pre", "t_post": "t_post"},
 )
-_add_float_params("stance_width", "stance_width", {"lo": "lo", "hi": "hi"})
+_add_float_params(
+    "stance_width",
+    "stance_width",
+    {"lo": "lo", "hi": "hi", "old_lo": "old_lo", "old_hi": "old_hi"},
+)
+_add_bool_params("stance_width", "stance_width", {"curriculum": "curriculum"})
 _add_float_params(
     "racket_normal_alignment_debt",
     "racket_normal_alignment_debt",
@@ -212,7 +217,12 @@ INT_PARAM_SPECS["ready_deadline_target_step_class"] = (
     "ready_deadline",
     "target_step_class",
 )
-_add_float_params("ready_stance_width", "ready_stance_width", {"lo": "lo", "hi": "hi"})
+_add_float_params(
+    "ready_stance_width",
+    "ready_stance_width",
+    {"lo": "lo", "hi": "hi", "old_lo": "old_lo", "old_hi": "old_hi"},
+)
+_add_bool_params("ready_stance_width", "ready_stance_width", {"curriculum": "curriculum"})
 _add_float_params(
     "ready_foot_alignment",
     "ready_foot_alignment",
@@ -293,11 +303,20 @@ _add_float_params(
     "rally_ready_root_height_debt",
     {
         "min_height": "min_height",
+        "old_min_height": "old_min_height",
+        "new_min_height": "new_min_height",
+        "old_height": "old_height",
+        "new_height": "new_height",
         "ready_t_lo": "ready_t_lo",
         "ready_t_hi": "ready_t_hi",
         "post_t_lo": "post_t_lo",
         "post_t_hi": "post_t_hi",
     },
+)
+_add_bool_params(
+    "rally_ready_root_height_debt",
+    "rally_ready_root_height_debt",
+    {"curriculum": "curriculum"},
 )
 _add_float_params(
     "post_swing_tilt_debt",

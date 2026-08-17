@@ -32,6 +32,7 @@ from .qdes_contract import (
     feasible_qdes_v3,
     feasible_qdes_v3_dynamic_inputs_finite,
 )
+from whole_body_tracking.utils.stance_curriculum import smoothstep_stance_alpha
 
 
 A3_PASSIVE_HEAD_JOINT_NAMES = ("head_yaw_joint", "head_pitch_joint")
@@ -236,26 +237,25 @@ class ClampedJointPositionAction(JointPositionAction):
         total = int(getattr(self.cfg, "stance_curriculum_steps", 0))
         if total <= 0 or not self._stance_offset_joint_names:
             return 1.0 if self._stance_offset_joint_names else 0.0
-        hold_fraction = float(getattr(self.cfg, "stance_curriculum_hold_fraction", 0.10))
-        if not 0.0 <= hold_fraction < 1.0:
-            raise ValueError("stance_curriculum_hold_fraction must lie in [0, 1)")
-        step = int(getattr(self._env, "common_step_counter", 0))
-        hold_steps = int(round(total * hold_fraction))
-        ramp_steps = max(1, total - hold_steps)
-        return float(max(0.0, min(1.0, (step - hold_steps) / ramp_steps)))
+        start = int(getattr(self.cfg, "stance_curriculum_ramp_start_iteration", 300))
+        end = int(getattr(self.cfg, "stance_curriculum_ramp_end_iteration", 2100))
+        iteration = int(getattr(self._env, "_hope_stance_curriculum_iteration", 0))
+        return smoothstep_stance_alpha(
+            iteration,
+            ramp_start_iteration=start,
+            ramp_end_iteration=end,
+        )
 
-    def friction_beta(self, start_stance_alpha: float = 0.25) -> float:
-        """Return the friction curriculum phase derived from the stance curriculum.
-
-        Friction remains nominal while the policy is still learning the first quarter of the
-        stance migration.  The ground-friction event owns the actual per-environment sampling;
-        this scalar is only the shared schedule/telemetry contract.
-        """
-        start = float(start_stance_alpha)
-        if not 0.0 <= start < 1.0:
-            raise ValueError("start_stance_alpha must lie in [0, 1)")
-        alpha = self.stance_alpha()
-        return float(max(0.0, min(1.0, (alpha - start) / (1.0 - start))))
+    def friction_beta(
+        self, start_iteration: int = 2100, end_iteration: int = 2700
+    ) -> float:
+        """Return the independent friction phase for diagnostics."""
+        iteration = int(getattr(self._env, "_hope_stance_curriculum_iteration", 0))
+        return smoothstep_stance_alpha(
+            iteration,
+            ramp_start_iteration=int(start_iteration),
+            ramp_end_iteration=int(end_iteration),
+        )
 
     def stance_reset_joint_pos(
         self, articulation_joint_pos: torch.Tensor, env_ids: torch.Tensor | None = None
@@ -343,7 +343,9 @@ class ClampedJointPositionActionCfg(JointPositionActionCfg):
     passive_joint_names: tuple[str, ...] = ()
     stance_offset_path: str = ""
     stance_curriculum_steps: int = 0
-    stance_curriculum_hold_fraction: float = 0.10
+    # These are PPO learning-iteration boundaries, not simulation control-step counts.
+    stance_curriculum_ramp_start_iteration: int = 300
+    stance_curriculum_ramp_end_iteration: int = 2100
     """Exact joint names fixed at default q and zeroed in applied last-action feedback.
 
     Empty by default to avoid changing non-A3 tasks.  A passive-head A3 task must explicitly set

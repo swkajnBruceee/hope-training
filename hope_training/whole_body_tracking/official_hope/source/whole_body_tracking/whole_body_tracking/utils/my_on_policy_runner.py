@@ -1197,6 +1197,12 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 high=int(self.env.max_episode_length),
             )
 
+        start_iter = self.current_learning_iteration
+        # The stance schedule is defined in PPO iterations.  Publish the same scalar source
+        # before the first observation and before every rollout; action/reset/reward code reads
+        # it through the action term's stance_alpha() method.
+        self.env.unwrapped._hope_stance_curriculum_iteration = int(start_iter)
+
         initial_observations = getattr(
             self, "_exact_resume_initial_observations", None
         )
@@ -1257,9 +1263,9 @@ class MotionOnPolicyRunner(OnPolicyRunner):
             )
             self.alg.broadcast_parameters()
 
-        start_iter = self.current_learning_iteration
         tot_iter = start_iter + num_learning_iterations
         for it in range(start_iter, tot_iter):
+            self.env.unwrapped._hope_stance_curriculum_iteration = int(it)
             self._configure_transfer_actor_update(it)
             start = time.time()
             with torch.inference_mode():
@@ -1945,6 +1951,35 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                         step,
                     )
 
+            # Publish the stance/recovery audit under stable top-level names. The underlying
+            # command metrics remain available under Live/racket_target/* as well.
+            try:
+                stance_metrics = env.command_manager.get_term("racket_target").metrics
+            except (AttributeError, KeyError, ValueError):
+                stance_metrics = {}
+            stance_log_map = {
+                "ready_stance_width": "Live/Stance/actual_width",
+                "ready_stance_width_target": "Live/Stance/target_width",
+                "ready_stance_width_target_lo": "Live/Stance/width_lo",
+                "ready_stance_width_target_hi": "Live/Stance/width_hi",
+                "ready_stance_width_error": "Live/Stance/width_error",
+                "rally_ready_root_height": "Live/Stance/root_height",
+                "rally_ready_root_height_target": "Live/Stance/target_root_height",
+                "rally_ready_root_height_error": "Live/Stance/root_height_error",
+                "ready_left_contact_rate": "Live/Support/left_contact_rate",
+                "ready_right_contact_rate": "Live/Support/right_contact_rate",
+                "ready_double_support_rate": "Live/Support/double_support_rate",
+                "ready_left_foot_slip": "Live/Support/left_foot_slip",
+                "ready_right_foot_slip": "Live/Support/right_foot_slip",
+                "ready_left_fz": "Live/Support/left_Fz",
+                "ready_right_fz": "Live/Support/right_Fz",
+                "ready_load_ratio_left": "Live/Support/load_ratio_left",
+                "ready_load_ratio_right": "Live/Support/load_ratio_right",
+            }
+            for source_name, log_name in stance_log_map.items():
+                if source_name in stance_metrics:
+                    self._log_scalar(log_name, self._mean_tensor(stance_metrics[source_name]), step)
+
         if hasattr(env, "action_manager") and step % 10 == 0:
             try:
                 action_term = env.action_manager.get_term("joint_pos")
@@ -1985,7 +2020,7 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 self._log_scalar("Live/Stance/alpha", float(stance_alpha()), step)
             friction_beta = getattr(stance_term, "friction_beta", None)
             if callable(friction_beta):
-                self._log_scalar("Live/Friction/beta", float(friction_beta()), step)
+                self._log_scalar("Live/Friction/schedule_beta", float(friction_beta()), step)
             action = getattr(env.action_manager, "action", None)
             prev_action = getattr(env.action_manager, "prev_action", None)
             if action is not None:
@@ -2001,24 +2036,28 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                     step,
                 )
 
-        # The reset-time friction event publishes the sampled effective contact scalar through
-        # the command metrics.  Mirror the public contract to stable top-level tags and emit a
-        # lightweight per-bucket performance view from the current vectorized step.  The latter
-        # is intentionally a diagnostic bucket statistic, not an oracle observation.
+        # The reset-time friction event publishes sampled static/dynamic contact coefficients
+        # through command metrics.  Mirror the public 2-D contract to stable top-level tags and
+        # emit lightweight per-bucket performance views from the current vectorized step.  These
+        # are diagnostics, not oracle observations.
         friction_term = None
         if hasattr(env, "command_manager"):
             for term_name in env.command_manager.active_terms:
                 candidate = env.command_manager.get_term(term_name)
-                if "friction_mu" in getattr(candidate, "metrics", {}):
+                if "friction_mu_static" in getattr(candidate, "metrics", {}):
                     friction_term = candidate
                     break
         if friction_term is not None:
             metrics = friction_term.metrics
             for source, target in (
-                ("friction_mu", "mu"),
-                ("friction_beta", "beta"),
-                ("friction_current_low", "current_low"),
-                ("friction_current_high", "current_high"),
+                ("friction_mu_static", "sample_mu_static_mean"),
+                ("friction_mu_dynamic", "sample_mu_dynamic_mean"),
+                ("friction_mu_ratio", "sample_mu_ratio_mean"),
+                ("friction_beta", "sample_beta_mean"),
+                ("friction_static_low", "sample_static_range_low_mean"),
+                ("friction_static_high", "sample_static_range_high_mean"),
+                ("friction_dynamic_low", "sample_dynamic_range_low_mean"),
+                ("friction_dynamic_high", "sample_dynamic_range_high_mean"),
             ):
                 value = metrics.get(source)
                 if value is not None:
@@ -2026,7 +2065,7 @@ class MotionOnPolicyRunner(OnPolicyRunner):
             reward_buf = getattr(env, "reward_buf", None)
             terminations = getattr(env, "termination_manager", None)
             for metric_name, mask_value in metrics.items():
-                if not metric_name.startswith("friction_bucket_") or metric_name == "friction_bucket_index":
+                if not metric_name.startswith("friction_bucket_") or metric_name.endswith("_index"):
                     continue
                 mask = mask_value > 0.5
                 if not torch.is_tensor(mask) or not bool(torch.any(mask).item()):

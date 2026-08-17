@@ -124,6 +124,8 @@ class OptitrackMctRelay(Node):
         self._last_ball_rx = 0.0
         self._last_stale_warn = 0.0
         self._sanitized_orientation_names: set[str] = set()
+        self._frame_count = 0
+        self._logged_frame_shape = False
 
         self._tf_broadcaster = TransformBroadcaster(self)
         self._pose_array_pub = self.create_publisher(
@@ -158,6 +160,22 @@ class OptitrackMctRelay(Node):
         return self.get_clock().now().nanoseconds * 1e-9
 
     def _on_frame(self, msg) -> None:
+        self._frame_count += 1
+        if not self._logged_frame_shape:
+            names = []
+            for named in msg.poses:
+                names.append(repr(getattr(named, "name", None)))
+            self.get_logger().info(
+                "first NamedPoseArray frame: count=%d names=%s frame_id=%r stamp=%d.%09d"
+                % (
+                    len(msg.poses),
+                    names,
+                    getattr(msg.header, "frame_id", ""),
+                    int(getattr(msg.header.stamp, "sec", 0)),
+                    int(getattr(msg.header.stamp, "nanosec", 0)),
+                )
+            )
+            self._logged_frame_shape = True
         if not msg.poses:
             self._warn_no_competition_bodies()
             return

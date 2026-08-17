@@ -47,9 +47,15 @@ def build_parser() -> argparse.ArgumentParser:
                    help="record the MuJoCo replay to an MP4 at 50 fps")
     p.add_argument("--video-width", type=int, default=960)
     p.add_argument("--video-height", type=int, default=720)
-    p.add_argument("--initial-stance", choices=["standard", "right_front", "left_front"],
-                   default=None,
-                   help="initial MuJoCo pose; right_front uses the project's V13B ready stance")
+    p.add_argument(
+        "--initial-stance",
+        choices=["standard", "right_front", "left_front", "width50_parallel"],
+        default=None,
+        help=(
+            "initial MuJoCo pose; width50_parallel is the fixed 50 cm parallel "
+            "Curriculum-FT target"
+        ),
+    )
     p.add_argument("--duration", type=float, default=None, help="run for N seconds")
     p.add_argument("--max-ticks", type=int, default=None, help="run for N control ticks")
     feed = p.add_mutually_exclusive_group()

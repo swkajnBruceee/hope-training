@@ -360,7 +360,11 @@ def run_eval(args) -> dict:
         video_path=args.video,
         video_width=args.video_width,
         video_height=args.video_height,
-        initial_stance=args.initial_stance,
+        initial_stance=(
+            args.initial_stance
+            if args.initial_stance is not None
+            else getattr(runtime_cfg, "initial_stance", "standard")
+        ),
         mu_ground_contact=args.mu_ground_contact,
     )
 
@@ -609,7 +613,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--video-height", type=int, default=720)
     parser.add_argument(
         "--initial-stance", choices=["standard", "right_front", "left_front", "width50_parallel"],
-        default="standard", help="Initial robot pose; width50_parallel is the fixed Curriculum-FT target.",
+        default=None,
+        help="Initial robot pose; defaults to the runtime config (width50_parallel for the Curriculum-FT bundle).",
     )
     parser.add_argument(
         "--mu-ground-contact", type=float, default=None,

@@ -1,0 +1,391 @@
+{
+  "action_adapter_config": "a3_deploy/a3_deploy_example/config/action_adapter.yaml",
+  "action_dim": 31,
+  "contract_name": "hitter_pure",
+  "control_rate_hz": 50,
+  "joint_order": [
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "head_yaw_joint",
+    "head_pitch_joint",
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "left_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "left_wrist_yaw_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint",
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint"
+  ],
+  "model_metadata": {
+    "base_checkpoint_sha256": "0d884ac0c5327106482c96ccc7021f18f889602b9ed557fbb3fc278e8a6eade4",
+    "film_enabled": true,
+    "model_variant": "Frozen HOPE + Structured FiLM Bounded Residual Mean",
+    "observation_contract": "hitter_pure",
+    "observation_contract_dim": 110,
+    "observation_contract_layout": {
+      "actions": [
+        65,
+        96
+      ],
+      "base_ang_vel": [
+        0,
+        3
+      ],
+      "base_forward_xy": [
+        99,
+        101
+      ],
+      "base_target_delta_xy": [
+        101,
+        103
+      ],
+      "joint_pos": [
+        3,
+        34
+      ],
+      "joint_vel": [
+        34,
+        65
+      ],
+      "projected_gravity": [
+        96,
+        99
+      ],
+      "racket_target_rel_base": [
+        103,
+        106
+      ],
+      "racket_target_vel_w": [
+        106,
+        109
+      ],
+      "time_to_strike": [
+        109,
+        110
+      ]
+    },
+    "observation_normalization": "none",
+    "policy_class": "ResidualMeanActorCritic",
+    "residual_active_count": 15,
+    "residual_active_joint_names": [
+      "waist_yaw_joint",
+      "waist_roll_joint",
+      "waist_pitch_joint",
+      "left_hip_pitch_joint",
+      "left_hip_roll_joint",
+      "left_hip_yaw_joint",
+      "left_knee_joint",
+      "left_ankle_pitch_joint",
+      "left_ankle_roll_joint",
+      "right_hip_pitch_joint",
+      "right_hip_roll_joint",
+      "right_hip_yaw_joint",
+      "right_knee_joint",
+      "right_ankle_pitch_joint",
+      "right_ankle_roll_joint"
+    ],
+    "residual_active_mask_31d": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "residual_actor_parameter_count": 97479,
+    "residual_architecture": "structured_film",
+    "residual_bound_raw_31d": [
+      0.0727272778749466,
+      0.0727272778749466,
+      0.07727272808551788,
+      0.10909091681241989,
+      0.10909091681241989,
+      0.21739129722118378,
+      0.0727272778749466,
+      0.0727272778749466,
+      0.08474576473236084,
+      0.15625,
+      0.15625,
+      0.0,
+      0.0,
+      0.0,
+      0.08460237085819244,
+      0.08460237085819244,
+      0.0,
+      0.0,
+      0.0,
+      0.1826484054327011,
+      0.1826484054327011,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "residual_contract_bound": true,
+    "residual_delta_q_max_rad": 0.05,
+    "residual_time_scale": 1.0,
+    "residual_train_std": false,
+    "resolved_action_scale_31d": [
+      0.6875,
+      0.6875,
+      0.6470588445663452,
+      0.4583333432674408,
+      0.4583333432674408,
+      0.23000000417232513,
+      0.6875,
+      0.6875,
+      0.5899999737739563,
+      0.3199999928474426,
+      0.3199999928474426,
+      0.03750000149011612,
+      0.375,
+      0.375,
+      0.5910000205039978,
+      0.5910000205039978,
+      0.03750000149011612,
+      0.375,
+      0.375,
+      0.2737500071525574,
+      0.2737500071525574,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.20000000298023224,
+      0.07500000298023224,
+      0.07500000298023224,
+      0.07500000298023224,
+      0.07500000298023224
+    ],
+    "std_trainable": false,
+    "structured_film_hidden_dims": [
+      32,
+      32
+    ],
+    "structured_fusion_hidden_dims": [
+      256,
+      128
+    ],
+    "structured_goal_hidden_dims": [
+      64,
+      32
+    ],
+    "structured_goal_terms": [
+      "base_target_delta_xy",
+      "racket_target_rel_base",
+      "racket_target_vel_w"
+    ],
+    "structured_proprio_hidden_dims": [
+      128,
+      64
+    ],
+    "structured_proprio_terms": [
+      "base_ang_vel",
+      "joint_pos",
+      "joint_vel",
+      "actions",
+      "projected_gravity",
+      "base_forward_xy"
+    ],
+    "structured_split_indices": {
+      "actions": [
+        65,
+        96
+      ],
+      "base_ang_vel": [
+        0,
+        3
+      ],
+      "base_forward_xy": [
+        99,
+        101
+      ],
+      "base_target_delta_xy": [
+        101,
+        103
+      ],
+      "joint_pos": [
+        3,
+        34
+      ],
+      "joint_vel": [
+        34,
+        65
+      ],
+      "projected_gravity": [
+        96,
+        99
+      ],
+      "racket_target_rel_base": [
+        103,
+        106
+      ],
+      "racket_target_vel_w": [
+        106,
+        109
+      ],
+      "time_to_strike": [
+        109,
+        110
+      ]
+    },
+    "structured_time_hidden_dims": [
+      16,
+      8
+    ],
+    "trainable_parameter_count": 430280
+  },
+  "obs_dim": 110,
+  "observation_layout": [
+    {
+      "dim": 3,
+      "name": "base_ang_vel",
+      "slice": [
+        0,
+        3
+      ]
+    },
+    {
+      "dim": 31,
+      "name": "joint_pos",
+      "slice": [
+        3,
+        34
+      ]
+    },
+    {
+      "dim": 31,
+      "name": "joint_vel",
+      "slice": [
+        34,
+        65
+      ]
+    },
+    {
+      "dim": 31,
+      "name": "actions",
+      "slice": [
+        65,
+        96
+      ]
+    },
+    {
+      "dim": 3,
+      "name": "projected_gravity",
+      "slice": [
+        96,
+        99
+      ]
+    },
+    {
+      "dim": 2,
+      "name": "base_forward_xy",
+      "slice": [
+        99,
+        101
+      ]
+    },
+    {
+      "dim": 2,
+      "name": "base_target_delta_xy",
+      "slice": [
+        101,
+        103
+      ]
+    },
+    {
+      "dim": 3,
+      "name": "racket_target_rel_base",
+      "slice": [
+        103,
+        106
+      ]
+    },
+    {
+      "dim": 3,
+      "name": "racket_target_vel_w",
+      "slice": [
+        106,
+        109
+      ]
+    },
+    {
+      "dim": 1,
+      "name": "time_to_strike",
+      "slice": [
+        109,
+        110
+      ]
+    }
+  ],
+  "observation_normalization": "none",
+  "onnx_file": "policy.onnx",
+  "onnx_signature": {
+    "input": {
+      "name": "observation",
+      "shape": [
+        1,
+        110
+      ]
+    },
+    "output": {
+      "name": "raw_action",
+      "shape": [
+        1,
+        31
+      ]
+    }
+  }
+}

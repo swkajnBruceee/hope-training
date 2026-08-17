@@ -69,6 +69,9 @@ class PingPongReferenceRunner:
         )
 
         self.default_q = cfg.action_adapter.default_q.copy()
+        # Observations remain centered on the training default_q.  Deployed
+        # neutral/hold targets include the fixed Curriculum-FT stance offset.
+        self.stance_q = cfg.action_adapter.stance_q.copy()
         self.kp = cfg.sim_kp.copy()
         self.kd = cfg.sim_kd.copy()
         self.stand_kp, self.stand_kd = _official_stand_gains()
@@ -80,7 +83,7 @@ class PingPongReferenceRunner:
             self.stand_kd = np.full(NUM_JOINTS, 4.0, dtype=np.float64)
         self.last_action = np.zeros(NUM_JOINTS, dtype=np.float64)
         self.base_target_xy: np.ndarray | None = None
-        self._last_q_des = self.default_q.copy()
+        self._last_q_des = self.stance_q.copy()
         self._blend_from_q: np.ndarray | None = None
         self._blend_tick = cfg.motion_blend_ticks
         self._had_swing = False
@@ -102,7 +105,7 @@ class PingPongReferenceRunner:
         # measured posture for a continuous handoff.
         warmup = max(0, int(self.cfg.warmup_ticks))
         for warm_tick in range(warmup):
-            self.bridge.write_targets(self.default_q, self.stand_kp, self.stand_kd)
+            self.bridge.write_targets(self.stance_q, self.stand_kp, self.stand_kd)
             self.bridge.step()
             self.bridge.sync_viewer()
             self.bridge.record_frame()
@@ -156,7 +159,7 @@ class PingPongReferenceRunner:
                     q_des = state.q.copy()
                     kp, kd = np.zeros(NUM_JOINTS), np.zeros(NUM_JOINTS)
                 elif static_hold:
-                    q_des = self.default_q.copy()
+                    q_des = self.stance_q.copy()
                     kp, kd = self.stand_kp.copy(), self.stand_kd.copy()
                 else:
                     obs = build_observation(
@@ -181,14 +184,14 @@ class PingPongReferenceRunner:
                     # Native runner's optional level-0 auto leg/waist hold.
                     hold_ground = self.cfg.auto_leg_hold and not active
                     if hold_ground:
-                        q_des[_WAIST_IDX] = self.default_q[_WAIST_IDX]
-                        q_des[_LEG_IDX] = self.default_q[_LEG_IDX]
+                        q_des[_WAIST_IDX] = self.stance_q[_WAIST_IDX]
+                        q_des[_LEG_IDX] = self.stance_q[_LEG_IDX]
 
                     if self.cfg.leg_clamp_rad > 0.0 and not hold_ground:
                         r = float(self.cfg.leg_clamp_rad)
                         q_des[_LEG_IDX] = np.clip(
-                            q_des[_LEG_IDX], self.default_q[_LEG_IDX] - r,
-                            self.default_q[_LEG_IDX] + r,
+                            q_des[_LEG_IDX], self.stance_q[_LEG_IDX] - r,
+                            self.stance_q[_LEG_IDX] + r,
                         )
 
                     # Leg EMA is applied before the pose blend, matching the

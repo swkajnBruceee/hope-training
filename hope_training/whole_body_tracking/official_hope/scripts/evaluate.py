@@ -428,6 +428,12 @@ def main() -> int:
             evaluate_return,
         )
 
+        # The checkpoint's PPO iteration is part of the stance/friction curriculum contract.
+        # Load it before the first environment reset so replay/evaluation starts with the same
+        # alpha/beta phase as the saved policy instead of silently falling back to iteration 0.
+        checkpoint_payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+        checkpoint_iteration = int(checkpoint_payload.get("iter", 0))
+
         torch.manual_seed(int(args.seed))
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(int(args.seed))
@@ -587,13 +593,18 @@ def main() -> int:
 
         env = gym.make(args.task, cfg=env_cfg, render_mode=None)
         base_env = env.unwrapped
+        base_env._hope_stance_curriculum_iteration = checkpoint_iteration
+        print(
+            "[evaluate] curriculum iteration aligned to checkpoint: "
+            f"{checkpoint_iteration}",
+            flush=True,
+        )
         env = RslRlVecEnvWrapper(env)
 
         agent_cfg = RslRlOnPolicyRunnerCfg(
             **runner_kwargs(load_ppo_params(args.algo_config), args.experiment_name)
         )
         agent_cfg.device = args.device
-        checkpoint_payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
         if bool(agent_cfg.empirical_normalization) and "obs_norm_state_dict" not in checkpoint_payload:
             print(
                 "[evaluate] checkpoint has no observation-normalizer state; "
@@ -699,6 +710,25 @@ def main() -> int:
         strike_interval_steps = torch.full(
             (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
         )
+        # READY recovery audit state. A cycle begins at an exact strike and is resolved at the
+        # next exact strike or an intervening reset. Normal time limits are not failures by
+        # themselves; only a missing strict READY pass or a reset before it is counted.
+        ready_pending = torch.zeros(
+            int(args.num_envs), dtype=torch.bool, device=base_env.device
+        )
+        ready_cycle_passed = torch.zeros(
+            int(args.num_envs), dtype=torch.bool, device=base_env.device
+        )
+        ready_cycle_start_step = torch.full(
+            (int(args.num_envs),), -1, dtype=torch.long, device=base_env.device
+        )
+        ready_deadline_gate_steps = 0
+        ready_deadline_strict_pass_steps = 0
+        ready_cycles_completed = 0
+        ready_cycles_passed = 0
+        ready_cycles_failed = 0
+        ready_cycles_failed_by_reset = 0
+        ready_recovery_times_steps = []
 
         # The racket-target command term exposes the per-strike quantities we score. Attribute names
         # are read defensively (see COUPLING NOTES in the report): the command must expose the racket
@@ -1426,6 +1456,22 @@ def main() -> int:
                 snapshot_action_replay_remaining[fixed_replay_ids] -= 1
             prev_actions = actions.detach().clone()
             target_pos, racket_pos, racket_vel, tts, swing = read_state()
+            ready_metrics = getattr(cmd, "metrics", {})
+            ready_gate_metric = ready_metrics.get("v11_ready_deadline_gate")
+            ready_pass_metric = ready_metrics.get("ready_deadline_strict_pass")
+            if ready_gate_metric is not None and ready_pass_metric is not None:
+                ready_gate_now = ready_gate_metric > 0.5
+                ready_pass_now = ready_gate_now & (ready_pass_metric > 0.5)
+                ready_deadline_gate_steps += int(ready_gate_now.sum().item())
+                ready_deadline_strict_pass_steps += int(ready_pass_now.sum().item())
+                newly_ready = ready_pending & ready_pass_now & (~ready_cycle_passed)
+                if bool(newly_ready.any()):
+                    ready_recovery_times_steps.extend(
+                        (
+                            int(step_index) - ready_cycle_start_step[newly_ready]
+                        ).to(dtype=torch.float32).cpu().tolist()
+                    )
+                    ready_cycle_passed[newly_ready] = True
             exact_strike_mask = torch.zeros(
                 int(args.num_envs), dtype=torch.bool, device=base_env.device
             )
@@ -1448,6 +1494,15 @@ def main() -> int:
                 strike_interval_steps.fill_(-1)
                 strike_ids = exact_strike_mask.nonzero(as_tuple=False).flatten()
                 if strike_ids.numel() > 0:
+                    # Resolve the previous strike-to-READY cycle before opening the new one.
+                    preceding = exact_strike_mask & ready_pending
+                    if bool(preceding.any()):
+                        ready_cycles_completed += int(preceding.sum().item())
+                        ready_cycles_passed += int((preceding & ready_cycle_passed).sum().item())
+                        ready_cycles_failed += int((preceding & (~ready_cycle_passed)).sum().item())
+                    ready_pending[strike_ids] = True
+                    ready_cycle_passed[strike_ids] = False
+                    ready_cycle_start_step[strike_ids] = int(step_index)
                     previous_steps = last_strike_global_step[strike_ids]
                     strike_interval_steps[strike_ids] = torch.where(
                         previous_steps >= 0,
@@ -1616,6 +1671,12 @@ def main() -> int:
             # Environments that RESET this step are excluded: a time-out/fall reset re-seeds the
             # clock, and counting it would contaminate the denominator with non-swings.
             reset_now = dones.reshape(-1).to(dtype=torch.bool, device=tts.device)
+            reset_pending = ready_pending & reset_now
+            if bool(reset_pending.any()):
+                ready_cycles_failed_by_reset += int(reset_pending.sum().item())
+                ready_pending[reset_pending] = False
+                ready_cycle_passed[reset_pending] = False
+                ready_cycle_start_step[reset_pending] = -1
             termination_manager = getattr(base_env, "termination_manager", None)
             reset_state = read_robot_state() if bool(reset_now.any()) else (None,) * 6
             if bool(reset_now.any()):
@@ -1855,6 +1916,44 @@ def main() -> int:
             "p10": _percentile(strike_intervals, 0.10),
             "p50": _percentile(strike_intervals, 0.50),
             "p90": _percentile(strike_intervals, 0.90),
+        }
+        ready_recovery_times = sorted(
+            float(value) * float(base_env.step_dt) for value in ready_recovery_times_steps
+        )
+        ready_recovery_summary = {
+            "count": len(ready_recovery_times),
+            "mean_s": (
+                float(sum(ready_recovery_times) / len(ready_recovery_times))
+                if ready_recovery_times
+                else None
+            ),
+            "p10_s": _percentile(ready_recovery_times, 0.10),
+            "p50_s": _percentile(ready_recovery_times, 0.50),
+            "p90_s": _percentile(ready_recovery_times, 0.90),
+            "max_s": _percentile(ready_recovery_times, 1.00),
+        }
+        ready_failure_denominator = ready_cycles_completed + ready_cycles_failed_by_reset
+        ready_failure_numerator = ready_cycles_failed + ready_cycles_failed_by_reset
+        result["ready_deadline_audit"] = {
+            "deadline_gate_steps": int(ready_deadline_gate_steps),
+            "strict_pass_steps": int(ready_deadline_strict_pass_steps),
+            "strict_pass_step_rate": float(
+                ready_deadline_strict_pass_steps / max(ready_deadline_gate_steps, 1)
+            ),
+            "completed_recovery_cycles": int(ready_cycles_completed),
+            "passed_recovery_cycles": int(ready_cycles_passed),
+            "failed_recovery_cycles_before_next_strike": int(ready_cycles_failed),
+            "failed_recovery_cycles_by_reset": int(ready_cycles_failed_by_reset),
+            "ready_failure_rate": float(
+                ready_failure_numerator / max(ready_failure_denominator, 1)
+            ),
+            "unresolved_recovery_cycles_at_end": int(ready_pending.sum().item()),
+            "recovery_time_s": ready_recovery_summary,
+            "definition": (
+                "A cycle starts at an exact strike. It passes when the phase-gated "
+                "ready_deadline_strict_pass is observed before the next exact strike. "
+                "Reset-ended cycles count as failures; normal timeout alone is not a failure."
+            ),
         }
         if args.diagnostics:
             # Keep the public external success metric separate from Isaac's internal

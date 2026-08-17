@@ -360,6 +360,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", required=True, help="Local checkpoint (.pt) to export.")
     parser.add_argument("--output-dir", default=None, help="Output directory (default: <ckpt_dir>/exported).")
     parser.add_argument("--task", default="HOPE-HitterPingPong-AgibotA3-v0", help="Gym task id.")
+    parser.add_argument(
+        "--task-config",
+        default="cfg/task/HOPEPingPong.yaml",
+        help=(
+            "Task YAML merged on top of the base HOPEPingPong recipe; use "
+            "cfg/task/HOPEPingPongStanceCurriculum.yaml for Curriculum-FT exports."
+        ),
+    )
     parser.add_argument("--onnx-name", default="policy.onnx", help="Exported ONNX filename.")
     parser.add_argument(
         "--native-format",
@@ -425,8 +433,15 @@ def main() -> int:
         # Export must instantiate the exact same task recipe as train/evaluate.
         # The registered Gym defaults alone omit the full-pose mocap and ping-pong
         # command overrides required by one_way_strike_gate_v1.
-        task_cfg_path = _repo_root() / "cfg" / "task" / "HOPEPingPong.yaml"
-        task_cfg = OmegaConf.load(str(task_cfg_path))
+        base_task_cfg_path = _repo_root() / "cfg" / "task" / "HOPEPingPong.yaml"
+        task_cfg_path = pathlib.Path(args.task_config).expanduser()
+        if not task_cfg_path.is_absolute():
+            task_cfg_path = (_repo_root() / task_cfg_path).resolve()
+        if not task_cfg_path.is_file():
+            raise FileNotFoundError(f"task config not found: {task_cfg_path}")
+        task_cfg = OmegaConf.load(str(base_task_cfg_path))
+        if task_cfg_path.resolve() != base_task_cfg_path.resolve():
+            task_cfg = OmegaConf.merge(task_cfg, OmegaConf.load(str(task_cfg_path)))
         applied_overrides = []
         _apply_task_overrides(env_cfg, SimpleNamespace(task=task_cfg), applied_overrides)
         clips = [_resolve_motion_path(c) for c in (args.motion_file, args.motion_file_2) if c]

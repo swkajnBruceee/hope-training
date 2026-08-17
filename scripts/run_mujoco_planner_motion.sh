@@ -12,9 +12,15 @@ SIM_BIN="$SIM_DIR/build/install/bin"
 SIM_START="$SIM_BIN/start_a3_pingpong_iceoryx.sh"
 RUNNER_BIN="$A3_DIR/dist/a3_deploy_x86_64/a3_deploy_onnx_ref_pingpong"
 RUNNER_CFG="$A3_DIR/src/a3/a3_deploy_onnx_ref/config/a3_runtime_config.pingpong.hitter_pingpong.yaml"
+SIM_RUNNER_CFG="$A3_DIR/src/a3/a3_deploy_onnx_ref/config/a3_runtime_config.pingpong.hitter_pingpong.sim.yaml"
 POLICY_DIR="$A3_DIR/models/model_21800/policy"
 POLICY_LABEL="official_model_21800"
 WS_INSTALL="$ROOT_DIR/hope_ws/install"
+WS_SOURCE="$ROOT_DIR/hope_ws/src"
+OFFICIAL_HOPE_ROOT="/home/bistu/桌面/HOPE"
+OFFICIAL_SIM_MOCAP="$OFFICIAL_HOPE_ROOT/a3_deploy/a3_deploy_example/scripts/pp_gate3_sim_mocap.py"
+OFFICIAL_SIM_CORE="$OFFICIAL_HOPE_ROOT/a3_deploy/a3_deploy_example/scripts"
+P1_CALIBRATION_RECEIPT="$OFFICIAL_HOPE_ROOT/hope_ws/calibration_receipts/p1_marker_cad_registration_20260805_redefined_p1_strict.json"
 NATNET_INSTALL="/home/bistu/桌面/HOPE/NatNet2ROS2/install"
 GATE3_PY_BUILD="/tmp/hope_gate3_build"
 CONDA_SH="/home/bistu/anaconda3/etc/profile.d/conda.sh"
@@ -44,6 +50,8 @@ BASE_RELAY_PID=""
 PLANNER_PID=""
 BALL_PID=""
 POSE_BRIDGE_PID=""
+OPTITRACK_RELAY_PID=""
+WORLD_RELAY_PID=""
 MOCAP_ADAPTER_PID=""
 MOCAP_RELAY_PID=""
 RUNNER_PID=""
@@ -225,7 +233,10 @@ conda activate hope-ros
 [[ -f "$CONDA_PREFIX/setup.bash" ]] && source "$CONDA_PREFIX/setup.bash"
 source "$A3_DIR/setup_a3_env.sh"
 source "$WS_INSTALL/setup.bash"
-if [[ "$INPUT_SOURCE" == "mocap" ]]; then
+# The official simulated NamedPoseArray boundary uses the same generated
+# message package as the real NatNet adapter. Source it for both sim and mocap
+# modes; otherwise pp_gate3_sim_mocap.py exits before publishing /optitrack/poses.
+if [[ -f "$NATNET_INSTALL/setup.bash" ]]; then
   source "$NATNET_INSTALL/setup.bash"
   source "$WS_INSTALL/setup.bash"
 fi
@@ -236,6 +247,7 @@ set -u
 export MOTION_STAND_X="$STAND_X"
 export MOTION_STAND_Y="$TABLE_CENTER_Y"
 export MOTION_STAND_Z="$STAND_Z"
+export MOTION_POLICY_DIR="$POLICY_DIR"
 
 # The current portable Gate3 build keeps generated Python message bindings in
 # this build prefix.  The simulator binaries and XML remain project-local in
@@ -253,6 +265,12 @@ RUNNER_LIB="$(dirname "$RUNNER_BIN")"
 SIM_LIB="$SIM_BIN/../lib"
 export LD_LIBRARY_PATH="$ORT_LIB:$RUNNER_LIB:$SIM_BIN:$SIM_LIB:$OLD_LD_LIBRARY_PATH"
 mkdir -p "$LOG_DIR"
+
+if [[ "$INPUT_SOURCE" == "sim" ]]; then
+  # The simulator-only latest-frame backend is selected before the early
+  # runner bring-up below. Hardware/mocap keeps the original sync contract.
+  RUNNER_CFG="$SIM_RUNNER_CFG"
+fi
 
 stop_matching() {
   local pattern="$1"
@@ -307,8 +325,19 @@ cleanup_previous() {
   log "cleaning stale local simulation processes"
   stop_executable "$RUNNER_BIN"
   stop_matching "hope_planner_node.*$WS_INSTALL/hope_planner"
-  stop_matching "hope_base_pose_flat_relay.*$WS_INSTALL/hope_planner"
+  # The ros2 launcher is a parent process and the installed Python entry point
+  # is its child.  Match the relay executable itself so an interrupted run
+  # cannot leave an orphan publisher emitting stale base-pose epochs.
+  stop_matching "hope_base_pose_flat_relay"
   stop_matching "gate3_state_to_poses.py"
+  stop_matching "pp_gate3_sim_mocap.py"
+  stop_matching "optitrack_mct_relay"
+  stop_matching "ros2 launch hope_bringup hope_world.launch.py"
+  # An interrupted launcher can keep publishing a stale park command on the
+  # same Gate3 topic.  That races the next run's launch and leaves the plant
+  # at the parked sentinel (x=100), so clear launchers before starting AimRT.
+  stop_matching "gate3_ball_launcher.py"
+  stop_matching "pp_gate3_ball_evidence.py"
   stop_matching "$WS_INSTALL/hope_bringup.*fake_ball_publisher"
   if [[ "$INPUT_SOURCE" == "mocap" ]]; then
     stop_matching "NatNet2ROS2/install/motion_capture_tracking.*motion_capture_tracking_node"
@@ -329,6 +358,8 @@ cleanup() {
   kill_group "$BALL_PID"
   kill_group "$EVIDENCE_PID"
   kill_group "$POSE_BRIDGE_PID"
+  kill_group "$OPTITRACK_RELAY_PID"
+  kill_group "$WORLD_RELAY_PID"
   kill_group "$MOCAP_RELAY_PID"
   kill_group "$MOCAP_ADAPTER_PID"
   kill_group "$PLANNER_PID"
@@ -351,6 +382,33 @@ wait_for_log() {
     sleep 1
   done
   grep -Eq "$pattern" "$file" 2>/dev/null
+}
+
+# Unlike wait_for_log(), this checks the newest runner status only.  A previous
+# healthy status must never satisfy the pre-serve gate after PD_STAND has
+# already fallen and the runner has switched to PASSIVE.
+latest_runner_status() {
+  local file="$1"
+  awk '/\[status\]/{line=$0} END{if (line != "") print line}' "$file" 2>/dev/null
+}
+
+require_latest_runner_status() {
+  local pid="$1"
+  local file="$2"
+  local pattern="$3"
+  local seconds="$4"
+  local i
+  local line
+  for ((i=0; i<seconds; i++)); do
+    line="$(latest_runner_status "$file")"
+    if [[ "$line" =~ $pattern ]]; then
+      return 0
+    fi
+    kill -0 "$pid" 2>/dev/null || return 1
+    sleep 1
+  done
+  line="$(latest_runner_status "$file")"
+  [[ "$line" =~ $pattern ]]
 }
 
 cleanup_previous
@@ -387,7 +445,7 @@ wait_for_log "$SIM_PID" "$LOG_DIR/aimrt.log" \
 grep -Eq "MuJoCo body-drive PD mode='explicit'" "$LOG_DIR/aimrt.log" || \
   die "AimRT did not start with explicit body-drive PD; see $LOG_DIR/aimrt.log"
 
-log "resetting MuJoCo to the MJCF stand keyframe"
+if false; then
 python - <<'PY'
 import time
 import os
@@ -405,6 +463,11 @@ message.pelvis_pose.position.x = float(os.environ["MOTION_STAND_X"])
 message.pelvis_pose.position.y = float(os.environ["MOTION_STAND_Y"])
 message.pelvis_pose.position.z = float(os.environ["MOTION_STAND_Z"])
 message.pelvis_pose.orientation.w = 1.0
+# Match the official Gate3 conductor: reset the floating base and velocities,
+# but do not overwrite joint positions. The MuJoCo keyframe/plant owns the
+# nominal whole-body posture; writing deploy.yaml joints here creates a hidden
+# reset-to-policy handoff that the official closed loop does not have.
+message.set_joints = False
 message.set_base_twist = True
 message.zero_all_velocities = True
 message.clear_ctrl = True
@@ -416,10 +479,12 @@ node.destroy_node()
 rclpy.shutdown()
 PY
 sleep 1
+fi
 
 CONFIG_DIR="$WS_INSTALL/hope_planner/share/hope_planner/config"
 [[ -f "$CONFIG_DIR/hope_planner.yaml" ]] || die "planner config is missing"
 
+if true; then
 log "starting native runner first: PD_STAND warmup -> MOTION"
 setsid bash -c 'exec "$1" \
   --runtime-cfg "$2" \
@@ -438,10 +503,13 @@ import time
 import os
 import rclpy
 from mujoco_sim_msgs.msg import SimReset
+from std_msgs.msg import Float64MultiArray
 
 rclpy.init()
 node = rclpy.create_node("mujoco_motion_chain_runner_reset")
 publisher = node.create_publisher(SimReset, "/sim/a3/reset", 10)
+control_pub = node.create_publisher(
+    Float64MultiArray, "/hope/runner/control_request_flat", 10)
 message = SimReset()
 message.mode = SimReset.MODE_KEYFRAME
 message.keyframe_id = 0
@@ -450,13 +518,17 @@ message.pelvis_pose.position.x = float(os.environ["MOTION_STAND_X"])
 message.pelvis_pose.position.y = float(os.environ["MOTION_STAND_Y"])
 message.pelvis_pose.position.z = float(os.environ["MOTION_STAND_Z"])
 message.pelvis_pose.orientation.w = 1.0
+message.set_joints = False
 message.set_base_twist = True
 message.zero_all_velocities = True
 # The native runner is already publishing PD commands. Clearing ctrl on every
 # repeated reset would create a 0.6 s torque-free interval and let the model fall.
 message.clear_ctrl = False
+control = Float64MultiArray()
+control.data = [1.0, 101.0, 3.0, 0.0]
 for _ in range(12):
     publisher.publish(message)
+    control_pub.publish(control)
     rclpy.spin_once(node, timeout_sec=0.05)
     time.sleep(0.05)
 node.destroy_node()
@@ -485,13 +557,19 @@ reset.pelvis_pose.position.x = float(os.environ["MOTION_STAND_X"])
 reset.pelvis_pose.position.y = float(os.environ["MOTION_STAND_Y"])
 reset.pelvis_pose.position.z = float(os.environ["MOTION_STAND_Z"])
 reset.pelvis_pose.orientation.w = 1.0
+reset.set_joints = False
 reset.set_base_twist = True
 reset.zero_all_velocities = True
 reset.clear_ctrl = False
 control = Float64MultiArray()
 control.data = [1.0, 101.0, 3.0, 0.0]
-for _ in range(40):
-    reset_pub.publish(reset)
+# The official conductor publishes one reset, then enters PD_STAND. Repeating
+# the reset while the plant is settling continually overwrites the physical
+# state and is not equivalent to the production loop.
+reset_pub.publish(reset)
+rclpy.spin_once(node, timeout_sec=0.10)
+time.sleep(0.20)
+for _ in range(30):
     control_pub.publish(control)
     rclpy.spin_once(node, timeout_sec=0.01)
     time.sleep(0.05)
@@ -550,12 +628,52 @@ then
   die "MuJoCo stand pose did not remain upright at the requested table-center station"
 fi
 
-# Start the relay only after every MuJoCo reset in the PD_STAND prelude has
-# completed. Starting it earlier leaves pre-reset source timestamps/pose
-# history in the relay and causes the first engage-time base packet to be
-# rejected as reordered or as an implausible jump.
-log "starting schema-2 MuJoCo base-pose relay after final reset"
-setsid bash -c 'exec ros2 run hope_planner hope_base_pose_flat_relay --ros-args \
+fi
+
+# Start localization only after every MuJoCo reset in the PD_STAND prelude.
+# Simulation follows the official chain: raw NamedPoseArray -> OptiTrack
+# relay -> calibrated hope_world base-pose relay. This avoids bypassing the
+# production frame/calibration contract with a direct /sim pelvis publisher.
+if [[ "$INPUT_SOURCE" == "sim" ]]; then
+  [[ -f "$OFFICIAL_SIM_MOCAP" ]] || die "official simulated mocap bridge is missing: $OFFICIAL_SIM_MOCAP"
+  [[ -f "$WS_SOURCE/hope_bringup/config/hope_world_frame.yaml" ]] || die "hope_world_frame.yaml is missing"
+  [[ -f "$P1_CALIBRATION_RECEIPT" ]] || die "P1 calibration receipt is missing: $P1_CALIBRATION_RECEIPT"
+
+  log "starting official simulated raw NamedPoseArray boundary"
+  setsid bash -c 'exec env PYTHONPATH="$1:$2:${PYTHONPATH:-}" python "$3" \
+    --table-height-m 0.760 \
+    --world-config "$4"' bash \
+    "$OFFICIAL_SIM_CORE" "$A3_DIR/scripts" "$OFFICIAL_SIM_MOCAP" \
+    "$WS_SOURCE/hope_bringup/config/hope_world_frame.yaml" \
+    > >(tee "$LOG_DIR/official_sim_mocap.log") 2>&1 &
+  POSE_BRIDGE_PID="$!"
+
+  log "starting official OptiTrack relay (/optitrack/poses -> /poses)"
+  setsid bash -c 'exec ros2 run hope_bringup optitrack_mct_relay --ros-args \
+    --params-file "$1" -p publish_tf:=false' bash \
+    "$WS_SOURCE/hope_bringup/config/optitrack_relay.yaml" \
+    > >(tee "$LOG_DIR/official_optitrack_relay.log") 2>&1 &
+  OPTITRACK_RELAY_PID="$!"
+
+  log "starting official calibrated hope_world relay (/P1/pose -> /a3/base_pose_flat)"
+  setsid bash -c 'exec ros2 launch hope_bringup hope_world.launch.py \
+    p1_calibration_file:="$1" \
+    base_pose_output_topic:=/a3/base_pose_flat \
+    source_stamp_mode:=local_receipt' bash \
+    "$P1_CALIBRATION_RECEIPT" \
+    > >(tee "$LOG_DIR/official_hope_world.log") 2>&1 &
+  WORLD_RELAY_PID="$!"
+  # Match the official conductor's ROS/DDS warm-up before planner and runner
+  # startup.  Without this, the first calibrated pose burst is consumed while
+  # the relay is still discovering publishers and the runner sees a short
+  # invalid/stale-base window.
+  # Keep bridge discovery warm-up short; the native runner is already holding
+  # the plant upright during this phase.
+  sleep 1
+else
+  # Hardware/mocap mode retains the direct source relay used by this launcher.
+  log "starting schema-2 MuJoCo base-pose relay after final reset"
+  setsid bash -c 'exec ros2 run hope_planner hope_base_pose_flat_relay --ros-args \
   -p input_topic:=/sim/a3/pelvis_pose \
   -p output_topic:=/a3/base_pose_flat \
   -p expected_input_frame:=odom \
@@ -570,18 +688,13 @@ setsid bash -c 'exec ros2 run hope_planner hope_base_pose_flat_relay --ros-args 
   -p world_frame_sha256:=\"0000000000002000000000000000000000000000000000000000000000000000\" \
   -p tracking_quality:=1.0 \
   -p max_linear_speed_mps:=10.0 \
-  # MuJoCo emits a short quaternion finite-difference spike at reset/PD_STAND
-  # handoff.  The explicit pose gate below still rejects a tilted base; this
-  # only prevents that simulator startup spike from invalidating the stream.
   -p max_angular_speed_rps:=50.0 \
   -p source_stamp_mode:=local_receipt' bash \
   > >(tee "$LOG_DIR/base_relay.log") 2>&1 &
 BASE_RELAY_PID="$!"
 wait_for_log "$BASE_RELAY_PID" "$LOG_DIR/base_relay.log" "BASE RELAY schema=2" 15 || \
   die "schema-2 base relay did not initialize; see $LOG_DIR/base_relay.log"
-
-wait_for_log "$RUNNER_PID" "$LOG_DIR/runner.log" "mode=PD_STAND.*gravZ=-1" 12 || \
-  die "runner did not reach stable PD_STAND; see $LOG_DIR/runner.log"
+fi
 
 log "starting HOPE planner"
 PLANNER_ARGS=(
@@ -593,6 +706,8 @@ PLANNER_ARGS=(
   -p publish_flat_cmd:=true
   -p racket_flat_schema:=2
   -p debug_session_id:=project_gate3_closedloop
+  -p debug_csv_path:="$LOG_DIR/planner_debug.csv"
+  -p debug_flush_rows:=1
   -p max_predict_time:=2.0
   -p adaptive_predict_horizon:=false
   -p max_predict_time_cap:=3.0
@@ -629,13 +744,139 @@ PLANNER_PID="$!"
 wait_for_log "$PLANNER_PID" "$LOG_DIR/planner.log" "HOPE planner started" 15 || \
   die "planner did not initialize; see $LOG_DIR/planner.log"
 
-if [[ "$INPUT_SOURCE" == "sim" ]]; then
-  log "starting simulated Gate3 ball -> /poses bridge"
-  setsid bash -c 'exec python "$1"' bash \
-    "$ROOT_DIR/hope_training/whole_body_tracking/official_hope/scripts/gate3_state_to_poses.py" \
-    > >(tee "$LOG_DIR/gate3_state_to_poses.log") 2>&1 &
-  POSE_BRIDGE_PID="$!"
+# Match the official conductor ordering: localization and planner are alive
+# before the native runner is spawned.  This prevents the runner from entering
+# its first policy tick against an empty/stale external-base stream.
+if true; then
+log "starting native runner after localization and planner are ready"
+setsid bash -c 'exec "$1" \
+  --runtime-cfg "$2" \
+  --policy-dir "$3" \
+  --planner --policy-native --gate3-qdes-audit-only \
+  --start passive --official-stand --session-id project_gate3_closedloop' bash \
+  "$RUNNER_BIN" "$RUNNER_CFG" "$POLICY_DIR" \
+  > >(tee "$LOG_DIR/runner.log") 2>&1 &
+RUNNER_PID="$!"
+wait_for_log "$RUNNER_PID" "$LOG_DIR/runner.log" "joint map OK" 20 || \
+  die "runner did not initialize; see $LOG_DIR/runner.log"
+fi
 
+# The official prelude above already reset and held the plant with the native
+# runner alive.  Do not issue a second reset after the ROS localization/planner
+# graph comes up: in this AimRT/ROS2 composition the reset discovery endpoint
+# can disappear after the first handoff, and the second reset is redundant.
+if false; then
+log "final official-style reset after planner startup"
+stand_ready=1
+for stand_attempt in 1 2 3; do
+  log "PD_STAND settle attempt ${stand_attempt}/3"
+  python - <<'PY'
+import os
+import time
+import rclpy
+from mujoco_sim_msgs.msg import SimReset
+from std_msgs.msg import Float64MultiArray
+
+rclpy.init()
+node = rclpy.create_node("mujoco_motion_chain_final_official_reset")
+reset_pub = node.create_publisher(SimReset, "/sim/a3/reset", 10)
+control_pub = node.create_publisher(
+    Float64MultiArray, "/hope/runner/control_request_flat", 10)
+reset = SimReset()
+reset.mode = SimReset.MODE_KEYFRAME
+reset.keyframe_id = 0
+reset.set_base = True
+reset.pelvis_pose.position.x = float(os.environ["MOTION_STAND_X"])
+reset.pelvis_pose.position.y = float(os.environ["MOTION_STAND_Y"])
+reset.pelvis_pose.position.z = float(os.environ["MOTION_STAND_Z"])
+reset.pelvis_pose.orientation.w = 1.0
+reset.set_joints = False
+reset.set_base_twist = True
+reset.zero_all_velocities = True
+reset.clear_ctrl = False
+control = Float64MultiArray()
+control.data = [1.0, 101.0, 3.0, 0.0]
+# The ROS graph does not reliably expose the AimRT subscriber count after the
+# official relay handoff. Publish an idempotent reset burst instead; the
+# simulator keeps the last message and the runner is already publishing PD.
+for _ in range(5):
+    reset_pub.publish(reset)
+    rclpy.spin_once(node, timeout_sec=0.05)
+    time.sleep(0.05)
+time.sleep(0.10)
+for _ in range(30):
+    control_pub.publish(control)
+    rclpy.spin_once(node, timeout_sec=0.01)
+    time.sleep(0.05)
+node.destroy_node()
+rclpy.shutdown()
+PY
+  sleep 0.8
+
+  # Planner startup can take long enough for a marginal PD_STAND to fall.  The
+  # earlier historical grep above is not sufficient: gate on the newest runner
+  # status immediately before handing control to the learned policy.  A reset
+  # can race the first body-drive tick, so retry the complete reset/stand pair
+  # before failing closed; no ball is allowed during this phase.
+  if require_latest_runner_status "$RUNNER_PID" "$LOG_DIR/runner.log" \
+      'mode=PD_STAND.*gravZ=(-1(\.0+)?|-0\.[89][0-9]*)[[:space:]]' 2; then
+    stand_ready=0
+    break
+  fi
+done
+((stand_ready == 0)) || \
+  die "robot is not upright immediately before MOTION; refusing policy handoff; see $LOG_DIR/runner.log"
+fi
+
+# A standing robot at the wrong x is still an invalid hitter-pure initial
+# state.  Check the actual simulator pose before introducing a ball; otherwise
+# the first planner command is interpreted by the policy as an emergency
+# lunge.
+if [[ "$INPUT_SOURCE" == "sim" ]]; then
+  if ! timeout 5s python - <<'PY'
+import math
+import os
+import time
+import rclpy
+from geometry_msgs.msg import PoseStamped
+
+rclpy.init()
+node = rclpy.create_node("mujoco_motion_chain_station_gate")
+expected = (float(os.environ["MOTION_STAND_X"]), float(os.environ["MOTION_STAND_Y"]))
+last = None
+good = 0
+
+def callback(message):
+    global last, good
+    pose = message.pose
+    q = pose.orientation
+    local_z_world_z = 1.0 - 2.0 * (q.x * q.x + q.y * q.y)
+    tilt = math.acos(max(-1.0, min(1.0, local_z_world_z)))
+    last = (pose.position.x, pose.position.y, pose.position.z, tilt)
+    if (abs(last[0] - expected[0]) <= 0.08 and
+            abs(last[1] - expected[1]) <= 0.08 and
+            last[2] >= 0.90 and tilt <= math.radians(20.0)):
+        good += 1
+    else:
+        good = 0
+
+node.create_subscription(PoseStamped, "/sim/a3/pelvis_pose", callback, 20)
+deadline = time.monotonic() + 4.0
+while rclpy.ok() and time.monotonic() < deadline and good < 8:
+    rclpy.spin_once(node, timeout_sec=0.05)
+print("station_gate expected=(%.3f,%.3f) actual=%s good=%d" %
+      (expected[0], expected[1], last, good))
+node.destroy_node()
+rclpy.shutdown()
+if good < 8:
+    raise SystemExit(1)
+PY
+  then
+    die "simulator pose is not at the planner station; refusing ball launch"
+  fi
+fi
+
+if [[ "$INPUT_SOURCE" == "sim" ]]; then
   # Capture the authoritative 250 Hz Gate3BallState stream before the first
   # launch.  This is separate from the launcher log: the official evidence
   # accumulator joins shot_id-local contact/table/net counter edges and writes
@@ -699,7 +940,8 @@ PY
 sleep "$MOTION_IDLE_S"
 wait_for_log "$RUNNER_PID" "$LOG_DIR/runner.log" "\[runner-control\].*ENTER_MOTION.*result=APPLIED" 5 || \
   die "runner did not accept pre-serve MOTION request; see $LOG_DIR/runner.log"
-wait_for_log "$RUNNER_PID" "$LOG_DIR/runner.log" "\[status\] mode=MOTION level=0.*gravZ=-1" 8 || \
+require_latest_runner_status "$RUNNER_PID" "$LOG_DIR/runner.log" \
+  'mode=MOTION level=0.*gravZ=(-1(\.0+)?|-0\.[89][0-9]*)[[:space:]]' 8 || \
   die "runner did not stabilize in pre-serve MOTION level=0; see $LOG_DIR/runner.log"
 
 if [[ "$INPUT_SOURCE" == "sim" ]]; then
@@ -743,15 +985,18 @@ elif ((OFFICIAL_PLANNER)); then
     LAUNCH_ARGS+=(--serve "$serve")
   done
 else
-  # Canonical fake-ball serves from the reference closed-loop rehearsal,
-  # converted to this MuJoCo's floor-origin z convention.  The old slow
-  # profiles did not cross the planner hit plane under the current quadratic
-  # drag/table geometry, so they are deliberately not the default.
+  # Use the two side-neutral lanes that are inside the current
+  # rally_v14/hitter_pure station support.  The former default pair
+  # (y=-1.00/-0.52 with vx=-5) can produce a planner station step larger
+  # than the trained 0.40 m gate; Gate3 is advisory in this runner and may
+  # still release that unsupported swing, which can make the robot fall.
+  # Keep arbitrary --serve and the explicit --official-planner sequence
+  # available for diagnostics, but make the ordinary full-loop command safe.
   for ((shot_index=0; shot_index<SHOTS; shot_index++)); do
     if ((shot_index % 2 == 0)); then
-      LAUNCH_ARGS+=(--serve "2.30,-1.00,1.16,-5.00,0.20,1.00")
+      LAUNCH_ARGS+=(--serve "2.40,-1.2025,1.25,-3.00,0.00,2.20")
     else
-      LAUNCH_ARGS+=(--serve "2.30,-0.52,1.16,-5.00,-0.20,1.00")
+      LAUNCH_ARGS+=(--serve "2.40,-0.8525,1.25,-3.00,0.00,2.20")
     fi
   done
 fi

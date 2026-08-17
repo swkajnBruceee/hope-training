@@ -1329,7 +1329,8 @@ class HOPEPingPongHitterPureRallyV8RewardsCfg(HOPEHitterPureRewardsCfg):
     stance_width = RewTerm(
         func=mdp.stance_width_band, weight=0.0,
         params={
-            "lo": 0.25, "hi": 0.35, "std": 0.05,
+            "lo": 0.45, "hi": 0.55, "std": 0.05,
+            "old_lo": 0.25, "old_hi": 0.35, "curriculum": False,
             "asset_cfg": SceneEntityCfg("robot", body_names=list(A3_FEET_BODIES)),
         },
     )
@@ -2354,9 +2355,16 @@ class HOPEPingPongHitterPureRallyV11RewardsCfg(HOPEPingPongHitterPureRallyV10Rew
             "asset_cfg": SceneEntityCfg(
                 "robot", body_names=list(A3_FEET_BODIES), preserve_order=True
             ),
-            "lo": 0.25,
-            "hi": 0.35,
+            "lo": 0.45,
+            "hi": 0.55,
             "std": 0.05,
+            "old_lo": 0.25,
+            "old_hi": 0.35,
+            "curriculum": False,
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=list(A3_FEET_BODIES), preserve_order=True
+            ),
+            "force_threshold": 10.0,
             "station_reach": 0.10,
             "heading_gate": 0.15,
             "speed_gate": 0.20,
@@ -2778,6 +2786,11 @@ class HOPEPingPongHitterPureRallyV13RewardsCfg(
             "command_name": "racket_target",
             "motion_command_name": "motion",
             "min_height": 0.98,
+            "old_min_height": 0.98,
+            "new_min_height": 0.937833554,
+            "old_height": 1.068390000,
+            "new_height": 1.026223554,
+            "curriculum": False,
             "std": 0.05,
             "ready_t_lo": -0.10,
             "ready_t_hi": 1.10,
@@ -3140,16 +3153,16 @@ class HitterPingPongAgibotA3EnvCfg(
             },
         )
 
-        # Preserve the exact V14 material ranges, adding only cat_stable's correctness invariant:
-        # sampled dynamic friction is clamped not to exceed sampled static friction.
+        # Keep the fallback material contract consistent with the effective foot-floor scalar;
+        # the Curriculum-FT launcher replaces this event with its reset-time sampler.
         material = self.events.physics_material.params
         material.update(
             asset_cfg=SceneEntityCfg(
                 "robot", body_names=list(A3_FEET_BODIES), preserve_order=True
             ),
-            static_friction_range=(0.3, 1.6),
-            dynamic_friction_range=(0.3, 1.2),
-            restitution_range=(0.0, 0.5),
+            static_friction_range=(0.3, 1.5),
+            dynamic_friction_range=(0.3, 1.5),
+            restitution_range=(0.0, 0.0),
             num_buckets=64,
             make_consistent=True,
         )

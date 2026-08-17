@@ -5,7 +5,7 @@
 The adapter is a pure, deterministic numeric transform (a joint-position residual
 plus a clamp). It is NOT a rejection filter and emits no failure status:
 
-    q_des = default_q + raw_action * action_scale
+    q_des = default_q + stance_offset + raw_action * action_scale
     q_des = clip(q_des, clamp_lower, clamp_upper)
 
 The runtime may load either the neutral public example
@@ -34,6 +34,7 @@ class ActionAdapter:
     action_scale: np.ndarray  # (31,) per-column residual scale (uniform in the example)
     clamp_lower: np.ndarray   # (31,) lower joint-position clamp, rad
     clamp_upper: np.ndarray   # (31,) upper joint-position clamp, rad
+    stance_offset: np.ndarray | None = None  # (31,) fixed stance offset, rad
     raw_action_clip: float = 20.0
 
     def __post_init__(self) -> None:
@@ -42,8 +43,23 @@ class ActionAdapter:
             if v.shape[0] != NUM_JOINTS:
                 raise ValueError(f"{field} must be length {NUM_JOINTS}, got {v.shape[0]}")
             setattr(self, field, v)
+        if self.stance_offset is None:
+            self.stance_offset = np.zeros(NUM_JOINTS, dtype=np.float64)
+        else:
+            self.stance_offset = np.asarray(self.stance_offset, dtype=np.float64).reshape(-1)
+            if self.stance_offset.shape[0] != NUM_JOINTS:
+                raise ValueError(
+                    f"stance_offset must be length {NUM_JOINTS}, got {self.stance_offset.shape[0]}"
+                )
+        if not np.all(np.isfinite(self.stance_offset)):
+            raise ValueError("stance_offset must contain only finite values")
         if np.any(self.clamp_lower > self.clamp_upper):
             raise ValueError("action_adapter clamp_lower must be <= clamp_upper for every joint")
+
+    @property
+    def stance_q(self) -> np.ndarray:
+        """Fixed target posture used by the deployed affine action contract."""
+        return self.default_q + self.stance_offset
 
     def decode(self, raw_action: np.ndarray) -> np.ndarray:
         """Map raw policy output to q_des using HOPE's deploy contract.
@@ -55,7 +71,7 @@ class ActionAdapter:
         if raw.shape[0] != NUM_JOINTS:
             raise ValueError(f"raw_action must be length {NUM_JOINTS}, got {raw.shape[0]}")
         raw = np.clip(raw, -float(self.raw_action_clip), float(self.raw_action_clip))
-        q_des = self.default_q + raw * self.action_scale
+        q_des = self.stance_q + raw * self.action_scale
         return np.clip(q_des, self.clamp_lower, self.clamp_upper)
 
     @classmethod
@@ -106,6 +122,10 @@ class ActionAdapter:
             action_scale=reorder(action["scale"], "JointPositionAction.scale"),
             clamp_lower=lower,
             clamp_upper=upper,
+            stance_offset=reorder(
+                action.get("stance_offset", [0.0] * NUM_JOINTS),
+                "JointPositionAction.stance_offset",
+            ),
             raw_action_clip=20.0,
         )
 

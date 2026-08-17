@@ -237,14 +237,38 @@ def _apply_friction_curriculum(env_cfg, friction_cfg, applied: list) -> None:
         raise ValueError("friction_curriculum.sample_per_episode must be true")
     if not bool(values.get("randomize_per_env", True)):
         raise ValueError("friction_curriculum.randomize_per_env must be true")
-    nominal = float(values.get("nominal", 1.0))
-    minimum = float(values.get("min", 0.3))
-    maximum = float(values.get("max", 1.5))
-    start_alpha = float(values.get("start_stance_alpha", 0.25))
-    if not (0.0 < minimum <= nominal <= maximum):
-        raise ValueError("friction_curriculum requires 0 < min <= nominal <= max")
-    if not 0.0 <= start_alpha < 1.0:
-        raise ValueError("friction_curriculum.start_stance_alpha must lie in [0, 1)")
+    nominal_static = float(values.get("nominal_static", 1.2))
+    nominal_dynamic = float(values.get("nominal_dynamic", 0.8))
+    competition_static_min = float(values.get("competition_static_min", 1.0))
+    competition_static_max = float(values.get("competition_static_max", 1.5))
+    competition_ratio_min = float(values.get("competition_ratio_min", 0.65))
+    competition_ratio_max = float(values.get("competition_ratio_max", 0.90))
+    stress_probability = float(values.get("stress_probability", 0.20))
+    stress_static_min = float(values.get("stress_static_min", 0.5))
+    stress_static_max = float(values.get("stress_static_max", 1.0))
+    stress_dynamic_min = float(values.get("stress_dynamic_min", 0.3))
+    stress_dynamic_max = float(values.get("stress_dynamic_max", 0.7))
+    start_iteration = int(values.get("curriculum_start_iteration", 2100))
+    end_iteration = int(values.get("curriculum_end_iteration", 2700))
+    if not (0.0 < nominal_dynamic <= nominal_static):
+        raise ValueError("friction_curriculum requires 0 < nominal_dynamic <= nominal_static")
+    if not (0.0 < competition_static_min <= nominal_static <= competition_static_max):
+        raise ValueError("competition static range must contain nominal_static")
+    if not (0.0 < competition_ratio_min <= nominal_dynamic / nominal_static <= competition_ratio_max):
+        raise ValueError("competition ratio range must contain nominal_dynamic / nominal_static")
+    if not (0.0 <= stress_probability <= 1.0):
+        raise ValueError("stress_probability must be in [0, 1]")
+    if not (0.0 < stress_static_min <= stress_static_max):
+        raise ValueError("stress static range must be positive and ordered")
+    if not (0.0 < stress_dynamic_min <= stress_dynamic_max):
+        raise ValueError("stress dynamic range must be positive and ordered")
+    if stress_dynamic_min > stress_static_max:
+        raise ValueError("stress dynamic range can exceed neither stress static maximum nor contact")
+    if start_iteration < 0 or end_iteration <= start_iteration:
+        raise ValueError(
+            "friction_curriculum requires 0 <= curriculum_start_iteration < "
+            "curriculum_end_iteration"
+        )
     edges = tuple(float(item) for item in values.get("bucket_edges", (0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5)))
     term.func = mdp.randomize_effective_ground_friction
     term.mode = "reset"
@@ -255,16 +279,136 @@ def _apply_friction_curriculum(env_cfg, friction_cfg, applied: list) -> None:
             body_names=["left_ankle_roll_Link", "right_ankle_roll_Link"],
             preserve_order=True,
         ),
-        mu_nominal=nominal,
-        mu_min=minimum,
-        mu_max=maximum,
-        start_stance_alpha=start_alpha,
+        static_nominal=nominal_static,
+        dynamic_nominal=nominal_dynamic,
+        competition_static_min=competition_static_min,
+        competition_static_max=competition_static_max,
+        competition_ratio_min=competition_ratio_min,
+        competition_ratio_max=competition_ratio_max,
+        stress_probability=stress_probability,
+        stress_static_min=stress_static_min,
+        stress_static_max=stress_static_max,
+        stress_dynamic_min=stress_dynamic_min,
+        stress_dynamic_max=stress_dynamic_max,
+        curriculum_start_iteration=start_iteration,
+        curriculum_end_iteration=end_iteration,
         restitution_range=tuple(float(item) for item in values.get("restitution_range", (0.0, 0.0))),
         bucket_edges=edges,
     )
     applied.append(
         "events.physics_material = effective_ground_friction(reset, feet-only, "
-        f"mu=[{minimum}, {maximum}], nominal={nominal}, start_alpha={start_alpha})"
+        f"static_nominal={nominal_static}, dynamic_nominal={nominal_dynamic}, "
+        f"competition_static=[{competition_static_min}, {competition_static_max}], "
+        f"competition_ratio=[{competition_ratio_min}, {competition_ratio_max}], "
+        f"iterations={start_iteration}->{end_iteration})"
+    )
+
+    # Fail closed here, before gym.make() constructs the PhysX environment.  The event is
+    # deliberately installed by the launcher because the registered base task still carries a
+    # legacy startup material randomizer for backwards compatibility.  A silent failure at this
+    # boundary would make the advertised beta schedule meaningless.
+    _assert_friction_curriculum_event(env_cfg)
+
+
+def _assert_friction_curriculum_event(env_cfg) -> None:
+    """Require the resolved env config to use the reset-time feet-only friction event."""
+    events = getattr(env_cfg, "events", None)
+    term = getattr(events, "physics_material", None) if events is not None else None
+    if term is None:
+        raise RuntimeError("resolved env config has no physics_material friction event")
+    func_name = getattr(getattr(term, "func", None), "__name__", "")
+    if func_name != "randomize_effective_ground_friction":
+        raise RuntimeError(
+            "friction curriculum launch contract failed: events.physics_material.func must be "
+            "randomize_effective_ground_friction after launcher replacement; "
+            f"resolved={func_name or term.func!r}"
+        )
+    if str(getattr(term, "mode", "")) != "reset":
+        raise RuntimeError(
+            "friction curriculum launch contract failed: effective ground friction event must "
+            f"run at reset, resolved mode={getattr(term, 'mode', None)!r}"
+        )
+    params = getattr(term, "params", None)
+    asset_cfg = params.get("asset_cfg") if params is not None else None
+    body_names = tuple(getattr(asset_cfg, "body_names", ()) or ())
+    expected = ("left_ankle_roll_Link", "right_ankle_roll_Link")
+    if body_names != expected:
+        raise RuntimeError(
+            "friction curriculum launch contract failed: reset event must target exactly the "
+            f"two foot links {expected}, resolved={body_names}"
+        )
+    required_params = (
+        "static_nominal",
+        "dynamic_nominal",
+        "competition_static_min",
+        "competition_static_max",
+        "competition_ratio_min",
+        "competition_ratio_max",
+        "stress_probability",
+        "stress_static_min",
+        "stress_static_max",
+        "stress_dynamic_min",
+        "stress_dynamic_max",
+        "curriculum_start_iteration",
+        "curriculum_end_iteration",
+    )
+    missing = [key for key in required_params if key not in params]
+    if missing:
+        raise RuntimeError(
+            "friction curriculum launch contract failed: resolved event is missing "
+            f"parameters {missing}"
+        )
+
+
+def _print_curriculum_initial_state(env, runner) -> None:
+    """Print the first PPO-iteration curriculum contract before rollout begins."""
+    base_env = env.unwrapped
+    base_env._hope_stance_curriculum_iteration = int(runner.current_learning_iteration)
+    try:
+        action_term = base_env.action_manager.get_term("joint_pos")
+        alpha = float(action_term.stance_alpha())
+        beta = float(action_term.friction_beta())
+    except (AttributeError, KeyError, ValueError) as exc:
+        raise RuntimeError("could not read the initial stance/friction curriculum state") from exc
+    try:
+        racket = base_env.command_manager.get_term("racket_target")
+        metrics = getattr(racket, "metrics", {})
+        static_low_tensor = metrics.get("friction_static_low")
+        static_high_tensor = metrics.get("friction_static_high")
+        dynamic_low_tensor = metrics.get("friction_dynamic_low")
+        dynamic_high_tensor = metrics.get("friction_dynamic_high")
+        # The first env construction can precede the first reset-event dispatch, leaving the
+        # command-side telemetry tensors at their zero allocation values.  Read the event's
+        # initialized nominal state in that narrow window; the first rollout will republish the
+        # sampled values into the command metrics.
+        if (
+            static_low_tensor is None
+            or static_high_tensor is None
+            or dynamic_low_tensor is None
+            or dynamic_high_tensor is None
+            or not bool((static_low_tensor > 0.0).any().item())
+        ):
+            term_cfg = base_env.event_manager.get_term_cfg("physics_material")
+            friction_event = getattr(term_cfg, "func", None)
+            if friction_event is None:
+                raise RuntimeError("resolved reset event has no effective ground friction instance")
+            static_low_tensor = friction_event.static_low
+            static_high_tensor = friction_event.static_high
+            dynamic_low_tensor = friction_event.dynamic_low
+            dynamic_high_tensor = friction_event.dynamic_high
+        static_low = float(static_low_tensor.mean().item())
+        static_high = float(static_high_tensor.mean().item())
+        dynamic_low = float(dynamic_low_tensor.mean().item())
+        dynamic_high = float(dynamic_high_tensor.mean().item())
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        raise RuntimeError("could not read initial effective-friction metrics") from exc
+    print(
+        "[train.py] Curriculum-FT initial contract: "
+        f"iteration={runner.current_learning_iteration}, alpha={alpha:.6f}, beta={beta:.6f}, "
+        f"mu_static={static_low:.6f}, mu_dynamic={dynamic_low:.6f}, "
+        f"static_range=[{static_low:.6f},{static_high:.6f}], "
+        f"dynamic_range=[{dynamic_low:.6f},{dynamic_high:.6f}]",
+        flush=True,
     )
 
 
@@ -334,6 +478,11 @@ def _apply_task_overrides(env_cfg, cfg, applied: list) -> None:
     if overrides:
         for dotted, value in OmegaConf.to_container(overrides, resolve=True).items():
             _set_dotted(env_cfg, str(dotted), value, applied, "overrides")
+    # Re-check after the generic override layer as well.  The friction event is a launch
+    # contract, so a later dotted override must not silently restore the legacy startup event.
+    friction_cfg = task.get("friction_curriculum")
+    if friction_cfg is not None and bool(friction_cfg.get("enabled", False)):
+        _assert_friction_curriculum_event(env_cfg)
 
 
 def _run(cfg):
@@ -459,6 +608,11 @@ def _run(cfg):
             "set only one of residual_warm_start_path and checkpoint_path; "
             "Residual warm-start and ordinary continuation have different optimizer semantics"
         )
+    if residual_warm_start is not None and bool(getattr(cfg, "checkpoint_exact_resume", False)):
+        raise ValueError(
+            "checkpoint_exact_resume applies only to checkpoint_path; use residual_warm_start_path "
+            "alone for a fresh model-only Curriculum-FT warm-start"
+        )
     if residual_warm_start is not None:
         residual_warm_start = os.path.abspath(str(residual_warm_start))
         if not os.path.isfile(residual_warm_start):
@@ -466,8 +620,19 @@ def _run(cfg):
                 f"[train.py] residual_warm_start_path does not exist: {residual_warm_start}"
             )
         runner.load_residual_warm_start(residual_warm_start)
+        if (
+            int(getattr(runner, "current_learning_iteration", -1)) != 0
+            or int(getattr(runner, "tot_timesteps", -1)) != 0
+        ):
+            raise RuntimeError(
+                "residual warm-start contract failed: runner did not reset training progress to "
+                "iteration=0/timesteps=0"
+            )
+        provenance = dict(getattr(runner, "checkpoint_provenance", {}))
         print(
-            f"[train.py] Residual model-only warm-start from: {residual_warm_start}",
+            f"[train.py] Residual model-only warm-start from: {residual_warm_start} "
+            f"(source_iteration={provenance.get('warm_start_iteration', 'unknown')}, "
+            "current_learning_iteration=0, optimizer_restored=False)",
             flush=True,
         )
 
@@ -487,6 +652,7 @@ def _run(cfg):
             print(f"[train.py] resumed from checkpoint: {ckpt}", flush=True)
 
     # 7) dump the resolved configuration + train.
+    _print_curriculum_initial_state(env, runner)
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
     runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)

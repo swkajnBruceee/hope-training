@@ -6,6 +6,10 @@ defaults:
 
 name: HitterPingPongA5StanceCurriculum
 
+env:
+  # Fixed training scale selected for this Curriculum-FT run.
+  num_envs: 16384
+
 motion:
   # Keep an explicit no-ball hold between clips; this is a reference-clock hold, while the
   # action term below supplies the stance offset target.
@@ -19,18 +23,32 @@ motion:
 
 action:
   stance_offset_path: configs/stance_offsets/a3_hip15_knee25_width50_parallel.json
+  # PPO-iteration schedule: 0..300 hold, 300..2100 smoothstep, 2100..3000 alpha=1.
   stance_curriculum_steps: 3000
-  stance_curriculum_hold_fraction: 0.10
+  stance_curriculum_ramp_start_iteration: 300
+  stance_curriculum_ramp_end_iteration: 2100
 
-# Double curriculum: beta is derived from stance alpha inside the reset-time material event.
-# The nominal value is a provisional simulator contract, not a claim about 8 mm PVC; replace it
-# after the corrected MuJoCo effective-contact sweep is calibrated against the intended venue.
+# Friction curriculum is intentionally delayed until the stance attractor is established.
+# The competition-informed nominal contact is static=1.2, dynamic=0.8; these are simulator
+# anchors from the venue specification, not a claim that the robot/PVC interface has been
+# directly measured.  During 2100..2700 the competition distribution expands smoothly.  Once
+# beta reaches one, 80% of resets remain in the competition neighborhood and 20% are sampled
+# from a low-friction stress distribution.
 friction_curriculum:
   enabled: true
-  nominal: 1.0
-  min: 0.3
-  max: 1.5
-  start_stance_alpha: 0.25
+  nominal_static: 1.2
+  nominal_dynamic: 0.8
+  competition_static_min: 1.0
+  competition_static_max: 1.5
+  competition_ratio_min: 0.65
+  competition_ratio_max: 0.90
+  stress_probability: 0.20
+  stress_static_min: 0.5
+  stress_static_max: 1.0
+  stress_dynamic_min: 0.3
+  stress_dynamic_max: 0.7
+  curriculum_start_iteration: 2100
+  curriculum_end_iteration: 2700
   sample_per_episode: true
   randomize_per_env: true
   restitution_range: [0.0, 0.0]

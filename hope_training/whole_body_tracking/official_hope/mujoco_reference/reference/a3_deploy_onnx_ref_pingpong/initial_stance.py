@@ -8,6 +8,9 @@ published deploy pose.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 RIGHT_FRONT_JOINTS: dict[str, float] = {
     "left_hip_pitch_joint": -0.1611863932866333,
     "right_hip_pitch_joint": -0.318726339288822,
@@ -39,6 +42,27 @@ LEFT_FRONT_JOINTS: dict[str, float] = {
 LEFT_FRONT_ROOT_HEIGHT_DELTA_M = RIGHT_FRONT_ROOT_HEIGHT_DELTA_M
 
 
+def get_initial_stance_offset(name: str | None) -> tuple[dict[str, float], float] | None:
+    """Return an additive joint/root offset for a model-backed stance."""
+    if name in (None, "standard", "right_front", "left_front"):
+        return None
+    if name != "width50_parallel":
+        raise ValueError(f"unknown initial stance: {name!r}")
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "configs"
+        / "stance_offsets"
+        / "a3_hip15_knee25_width50_parallel.json"
+    )
+    with path.open("r", encoding="utf-8") as fh:
+        payload = json.load(fh)
+    names = [str(value) for value in payload["joint_names"]]
+    offsets = [float(value) for value in payload["offset_rad"]]
+    if len(names) != len(offsets) or len(names) != 31 or len(set(names)) != 31:
+        raise ValueError(f"invalid width50_parallel stance contract: {path}")
+    return dict(zip(names, offsets)), float(payload["root_offset_m"][2])
+
+
 def get_initial_stance(name: str | None) -> tuple[dict[str, float], float] | None:
     if name in (None, "standard"):
         return None
@@ -46,4 +70,7 @@ def get_initial_stance(name: str | None) -> tuple[dict[str, float], float] | Non
         return RIGHT_FRONT_JOINTS.copy(), RIGHT_FRONT_ROOT_HEIGHT_DELTA_M
     if name == "left_front":
         return LEFT_FRONT_JOINTS.copy(), LEFT_FRONT_ROOT_HEIGHT_DELTA_M
+    if name == "width50_parallel":
+        # This stance is additive and is handled by get_initial_stance_offset().
+        raise ValueError("width50_parallel is an additive stance; use get_initial_stance_offset")
     raise ValueError(f"unknown initial stance: {name!r}")

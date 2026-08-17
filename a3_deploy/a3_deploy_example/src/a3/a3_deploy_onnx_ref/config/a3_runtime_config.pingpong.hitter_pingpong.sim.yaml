@@ -1,0 +1,15 @@
+# MuJoCo-only runtime variant of hitter_pingpong.yaml.
+#
+# The simulator emits all body-drive groups from the same physics tick.  At
+# process startup, however, ROS2/iceoryx delivery can have a larger arrival
+# skew than the hardware min_skew_pair contract.  latest_frame keeps the
+# simulator controller alive through that bridge skew; the hardware config is
+# intentionally unchanged.
+
+obs_debug:
+  loc_mode: external_base
+
+backend:
+  aimrt_cfg_path: a3_aimrt_config.pingpong_iceoryx.yaml
+  sync_mode: latest_frame
+  sync_hz: 100.0

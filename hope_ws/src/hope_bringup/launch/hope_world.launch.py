@@ -81,6 +81,7 @@ def generate_launch_description():
     x_hit = config["planner"]["x_hit"]
     p1_calibration_file = LaunchConfiguration("p1_calibration_file")
     base_pose_output_topic = LaunchConfiguration("base_pose_output_topic")
+    source_stamp_mode = LaunchConfiguration("source_stamp_mode")
 
     nodes = [
         _static_tf(frames["world"], frames["table_center"], landmarks["table_center"], [0.0, 0.0, 0.0]),
@@ -116,10 +117,12 @@ def generate_launch_description():
                 "world_frame_sha256": str(
                     contract.get("calibration_sha256", "")
                 ),
-                # Production launches this relay next to NatNet on the laptop.
-                # The input header is already mapped into that host's
-                # disciplined ROS system-time epoch.
-                "source_stamp_mode": "input_header",
+                # Production launches this relay next to NatNet on the laptop,
+                # where the input header is already mapped into the host's
+                # disciplined ROS system-time epoch.  Simulation feeds carry
+                # simulator-time headers, so the launcher may explicitly use
+                # the local receipt clock for that mode.
+                "source_stamp_mode": source_stamp_mode,
             }],
         ),
     ]
@@ -136,6 +139,14 @@ def generate_launch_description():
                 "base_pose_output_topic",
                 default_value="/a3/base_pose_flat",
                 description="schema-2 base-pose output topic",
+            ),
+            DeclareLaunchArgument(
+                "source_stamp_mode",
+                default_value="input_header",
+                description=(
+                    "base relay timestamp mode: input_header for real mocap, "
+                    "local_receipt for simulator feeds"
+                ),
             ),
             *nodes,
         ]

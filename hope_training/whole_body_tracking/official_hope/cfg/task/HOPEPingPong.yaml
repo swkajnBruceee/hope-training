@@ -98,9 +98,14 @@ rewards:
   hold_upper_pose_imitation_weight: 1.0
   hold_upper_pose_imitation_std: 0.5
   stance_width_weight: 0.0
-  stance_width_lo: 0.25
-  stance_width_hi: 0.35
+  # Global stance rail remains disabled by stance_width_weight=0.  If enabled by another
+  # recipe, its target is still alpha-consistent with the READY/recovery target below.
+  stance_width_lo: 0.45
+  stance_width_hi: 0.55
   stance_width_std: 0.05
+  stance_width_curriculum: true
+  stance_width_old_lo: 0.25
+  stance_width_old_hi: 0.35
   racket_normal_alignment_debt_weight: -2.0
   racket_normal_alignment_debt_margin: 0.1
   racket_normal_alignment_debt_std: 0.35
@@ -175,9 +180,15 @@ rewards:
   ready_stance_heading_gate_rad: 0.15
   ready_stance_speed_gate: 0.2
   ready_stance_width_weight: -0.3
-  ready_stance_width_lo: 0.25
-  ready_stance_width_hi: 0.35
+  # New FK-backed target: W_old=0.264713494 m, W_new=0.500000000 m.  The active reward
+  # interpolates the legacy and new bands using the shared stance alpha.
+  ready_stance_width_lo: 0.45
+  ready_stance_width_hi: 0.55
   ready_stance_width_std: 0.05
+  # The READY reward follows the same alpha as the stance offset during V2 migration.
+  ready_stance_width_curriculum: true
+  ready_stance_width_old_lo: 0.25
+  ready_stance_width_old_hi: 0.35
   ready_foot_alignment_weight: -0.15
   ready_foot_alignment_margin: 0.12
   ready_foot_alignment_std: 0.25
@@ -242,7 +253,14 @@ rewards:
   settle_foot_slip_post_t_hi: 1.55
   settle_foot_slip_huber_tail: true
   rally_ready_root_height_debt_weight: -0.35
+  # MuJoCo FK measurements: H_old=1.068390000 m, H_new=1.026223554 m.  Keep the old
+  # 0.98 m margin at alpha=0 and move the same margin with the nominal root target.
   rally_ready_root_height_debt_min_height: 0.98
+  rally_ready_root_height_debt_old_min_height: 0.98
+  rally_ready_root_height_debt_new_min_height: 0.937833554
+  rally_ready_root_height_debt_old_height: 1.068390000
+  rally_ready_root_height_debt_new_height: 1.026223554
+  rally_ready_root_height_debt_curriculum: true
   rally_ready_root_height_debt_std: 0.05
   rally_ready_root_height_debt_ready_t_lo: -0.1
   rally_ready_root_height_debt_ready_t_hi: 1.1
@@ -482,12 +500,12 @@ friction_contract:
   ground_dynamic_friction: 1.0
   robot_static_friction_range:
   - 0.3
-  - 1.6
+  - 1.5
   robot_dynamic_friction_range:
   - 0.3
-  - 1.2
+  - 1.5
   restitution_range:
   - 0.0
-  - 0.5
+  - 0.0
   make_consistent: true
   joint_friction: legacy_v14_unidentified

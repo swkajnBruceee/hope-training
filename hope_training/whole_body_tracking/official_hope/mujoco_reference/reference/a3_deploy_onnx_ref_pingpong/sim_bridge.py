@@ -30,7 +30,7 @@ import numpy as np
 
 from .joint_order import JOINT_NAMES, NUM_JOINTS
 from .observation import RobotState
-from .initial_stance import get_initial_stance
+from .initial_stance import get_initial_stance, get_initial_stance_offset
 
 
 class SimBridge(ABC):
@@ -168,9 +168,21 @@ class MujocoDirectBridge(SimBridge):
             self._mj.mj_resetDataKeyframe(self.model, self.data, 0)
         else:
             self._mj.mj_resetData(self.model, self.data)
-        stance = get_initial_stance(self._initial_stance)
-        if stance is not None:
-            joints, root_height_delta = stance
+        additive_stance = get_initial_stance_offset(self._initial_stance)
+        if additive_stance is not None:
+            offsets, root_height_delta = additive_stance
+            names_to_index = {name: i for i, name in enumerate(JOINT_NAMES)}
+            for name, value in offsets.items():
+                self.data.qpos[self._q_adr[names_to_index[name]]] += float(value)
+            self.data.qpos[self._base_qadr + 2] += float(root_height_delta)
+        else:
+            stance = get_initial_stance(self._initial_stance)
+            if stance is None:
+                joints = None
+                root_height_delta = 0.0
+            else:
+                joints, root_height_delta = stance
+        if additive_stance is None and joints is not None:
             names_to_index = {name: i for i, name in enumerate(JOINT_NAMES)}
             for name, value in joints.items():
                 i = names_to_index[name]
