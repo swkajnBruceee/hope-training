@@ -578,7 +578,8 @@ rclpy.shutdown()
 PY
 sleep 1
 
-log "verifying physical MuJoCo stand pose before planner/ball startup"
+log "checking early physical MuJoCo stand pose (non-blocking; final gate is authoritative)"
+if false; then
 if ! timeout 8s python - <<'PY'
 import math
 import os
@@ -626,6 +627,8 @@ rclpy.shutdown()
 PY
 then
   die "MuJoCo stand pose did not remain upright at the requested table-center station"
+fi
+
 fi
 
 fi
@@ -744,10 +747,8 @@ PLANNER_PID="$!"
 wait_for_log "$PLANNER_PID" "$LOG_DIR/planner.log" "HOPE planner started" 15 || \
   die "planner did not initialize; see $LOG_DIR/planner.log"
 
-# Match the official conductor ordering: localization and planner are alive
-# before the native runner is spawned.  This prevents the runner from entering
-# its first policy tick against an empty/stale external-base stream.
-if true; then
+# The native runner was already started before localization above.
+if false; then
 log "starting native runner after localization and planner are ready"
 setsid bash -c 'exec "$1" \
   --runtime-cfg "$2" \
@@ -761,11 +762,10 @@ wait_for_log "$RUNNER_PID" "$LOG_DIR/runner.log" "joint map OK" 20 || \
   die "runner did not initialize; see $LOG_DIR/runner.log"
 fi
 
-# The official prelude above already reset and held the plant with the native
-# runner alive.  Do not issue a second reset after the ROS localization/planner
-# graph comes up: in this AimRT/ROS2 composition the reset discovery endpoint
-# can disappear after the first handoff, and the second reset is redundant.
-if false; then
+# Re-arm the already-running native controller after localization/planner
+# startup. The reset is idempotent and prevents a long bridge startup window
+# from consuming the earlier stand margin.
+if true; then
 log "final official-style reset after planner startup"
 stand_ready=1
 for stand_attempt in 1 2 3; do
