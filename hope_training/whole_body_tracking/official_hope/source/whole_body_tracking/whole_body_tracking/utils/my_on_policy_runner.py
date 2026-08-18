@@ -1619,6 +1619,24 @@ class MotionOnPolicyRunner(OnPolicyRunner):
     def load(self, path: str, load_optimizer: bool = True, map_location=None):
         """Load a checkpoint and retain YAML optimizer settings after state restoration."""
         loaded = torch.load(path, map_location=map_location, weights_only=False)
+        # model_21800 belongs to the raw-observation HITTER lineage and predates rsl_rl's
+        # empirical-normalization checkpoint fields.  The current YAML retained a historical
+        # runner flag, but treating that flag as active here would both fail on the missing
+        # keys and normalize raw observations with a newly initialized (wrong) running mean.
+        # Switch this legacy checkpoint to the identity path before delegating to rsl_rl; actor,
+        # critic, optimizer and iteration loading remain unchanged.
+        if (
+            bool(getattr(self, "empirical_normalization", False))
+            and "obs_norm_state_dict" not in loaded
+        ):
+            self.empirical_normalization = False
+            self.obs_normalizer = torch.nn.Identity().to(self.device)
+            self.privileged_obs_normalizer = torch.nn.Identity().to(self.device)
+            print(
+                "[MotionOnPolicyRunner] legacy raw-observation checkpoint detected; "
+                "using identity observation normalization (normalizer state absent)",
+                flush=True,
+            )
         # rsl_rl versions differ: newer forks accept ``map_location`` while the IsaacLab-pinned
         # runner exposes only ``(path, load_optimizer)``.  Keep the repository wrapper portable
         # without changing checkpoint semantics.

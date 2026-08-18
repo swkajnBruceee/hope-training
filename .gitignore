@@ -18,10 +18,17 @@ dist/
 hope_ws/build/
 hope_ws/install/
 hope_ws/log/
+hope_ws/build_*/
+hope_ws/install_*/
+hope_ws/log_*/
 hope_ws/src/*/build/
 hope_ws/src/*/install/
 hope_ws/src/*/log/
 /log/
+
+# Local build/install outputs and experiment logs at repository root.
+/install/
+/logs/
 
 # Isaac/training outputs.
 hope_training/whole_body_tracking/logs/
@@ -118,6 +125,7 @@ a3_ik_point_offline_wrapper_v2/*/
 a3_ik_point_offline_wrapper_v2.zip
 AimSim/*.tar
 AimSim/*.whl
+model_deployment/*.zip
 a3_deploy_example/thirdparty/
 third_party/**/bin/
 third_party/**/deps/

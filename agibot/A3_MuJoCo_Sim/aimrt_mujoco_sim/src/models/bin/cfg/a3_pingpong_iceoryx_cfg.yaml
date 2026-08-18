@@ -31,6 +31,17 @@ aimrt:
         type: asio_thread
         options:
           thread_num: 4
+      # Keep body-drive loan/publish work isolated from ROS2 pose/ball fan-out.
+      # A blocked iceoryx loan must never starve the authoritative simulator
+      # pose consumed by the planner/base relay.
+      - name: body_drive_thread_pool
+        type: asio_thread
+        options:
+          thread_num: 6
+      - name: ros2_pub_thread
+        type: asio_thread
+        options:
+          thread_num: 2
 
   channel:
     backends:
@@ -189,32 +200,36 @@ MujocoSimModule:
 
   publisher_options:
     - topic: /body_drive/waist_joint_state
-      frequency: 500
-      executor: work_thread_pool
+      # The policy runner consumes synchronized frames at 100 Hz. Publishing
+      # six body-drive state/IMU streams at 500 Hz creates avoidable iceoryx
+      # back-pressure in the simulator-only bridge and can exhaust the
+      # 2-kB mempool before the runner releases the chunks.
+      frequency: 100
+      executor: body_drive_thread_pool
       type: body_drive_joint_sensor
       options:
         joints: *waist_joints
     - topic: /body_drive/neck_joint_state
-      frequency: 500
-      executor: work_thread_pool
+      frequency: 100
+      executor: body_drive_thread_pool
       type: body_drive_joint_sensor
       options:
         joints: *neck_joints
     - topic: /body_drive/arm_joint_state
-      frequency: 500
-      executor: work_thread_pool
+      frequency: 100
+      executor: body_drive_thread_pool
       type: body_drive_joint_sensor
       options:
         joints: *arm_joints
     - topic: /body_drive/leg_joint_state
-      frequency: 500
-      executor: work_thread_pool
+      frequency: 100
+      executor: body_drive_thread_pool
       type: body_drive_joint_sensor
       options:
         joints: *leg_joints
     - topic: /body_drive/pelvis_imu/data
-      frequency: 500
-      executor: work_thread_pool
+      frequency: 100
+      executor: body_drive_thread_pool
       type: imu_sensor_ros2
       options:
         bind_site: imu_in_pelvis
@@ -222,8 +237,8 @@ MujocoSimModule:
         bind_gyro: pelvis_imu_gyro
         bind_accelerometer: pelvis_imu_accel
     - topic: /body_drive/torso_imu/data
-      frequency: 500
-      executor: work_thread_pool
+      frequency: 100
+      executor: body_drive_thread_pool
       type: imu_sensor_ros2
       options:
         bind_site: imu_in_torso
@@ -232,7 +247,7 @@ MujocoSimModule:
         bind_accelerometer: torso_imu_accel
     - topic: /sim/a3/pelvis_pose
       frequency: 100
-      executor: work_thread_pool
+      executor: ros2_pub_thread
       type: pose_sensor_ros2
       options:
         frame_id: odom
@@ -240,7 +255,7 @@ MujocoSimModule:
         bind_framequat: pelvis_framequat
     - topic: /sim/a3/pelvis_twist
       frequency: 100
-      executor: work_thread_pool
+      executor: ros2_pub_thread
       type: twist_sensor_ros2
       options:
         frame_id: odom
@@ -248,23 +263,23 @@ MujocoSimModule:
         bind_angular_vel: pelvis_frameangvel
     - topic: /sim/a3/right_racket_pose
       frequency: 100
-      executor: work_thread_pool
+      executor: ros2_pub_thread
       type: pose_sensor_ros2
       options:
         frame_id: odom
         bind_framepos: right_racket_framepos
         bind_framequat: right_racket_framequat
     - topic: /sim/gate3/ball_state
-      # AimRT's millisecond scheduler requires an integer-compatible period.
-      # 250 Hz preserves brief-contact evidence through the latched edge
-      # counters in Gate3BallState and avoids the unsupported 1000/300 period.
+      # The planner needs enough samples to fit the incoming ball trajectory.
+      # Keep the Gate3 mocap stream at 250 Hz so the estimator can become ready
+      # during the short flight window while retaining the latched edge counters.
       frequency: 250
-      executor: work_thread_pool
+      executor: ros2_pub_thread
       type: gate3_ball_state_ros2
       options: {}
     - topic: /tf
       frequency: 100
-      executor: work_thread_pool
+      executor: ros2_pub_thread
       type: odometry_ros2
       options:
         frame_id: odom

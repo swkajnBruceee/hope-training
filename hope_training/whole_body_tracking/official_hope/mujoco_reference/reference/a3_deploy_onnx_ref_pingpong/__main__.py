@@ -24,7 +24,11 @@ import argparse
 import sys
 from pathlib import Path
 
+import numpy as np
+
 from .config import RuntimeConfig
+from .initial_stance import get_initial_stance_offset
+from .joint_order import JOINT_NAMES
 from .racket_command import ExampleCommandFeed, QueueRacketCommandSource
 from .ros_command_source import DEFAULT_COMMAND_TOPIC
 from .runner import PingPongReferenceRunner
@@ -84,6 +88,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--gain-scale", type=float, default=None)
     p.add_argument("--leg-gain-scale", type=float, default=None)
     p.add_argument("--ankle-gain-scale", type=float, default=None)
+    p.add_argument(
+        "--waist-pitch-offset-rad", type=float, default=0.0,
+        help="extra waist pitch stance offset for stability comparison",
+    )
+    p.add_argument(
+        "--hip-pitch-offset-rad", type=float, default=0.0,
+        help=(
+            "extra symmetric left/right hip pitch stance offset; in the A3 "
+            "model negative values increase forward hip flexion"
+        ),
+    )
+    p.add_argument(
+        "--stability-csv", type=Path, default=None,
+        help="write COM/support/tilt stability telemetry CSV",
+    )
     return p
 
 
@@ -117,6 +136,28 @@ def main(argv: list[str] | None = None) -> int:
         cfg.ankle_gain_scale = args.ankle_gain_scale
     if args.initial_stance is not None:
         cfg.initial_stance = args.initial_stance
+
+    # The MuJoCo bridge applies the selected stance to the reset qpos.  Keep
+    # the same stance in subsequent q_des targets as well; otherwise a
+    # width50_parallel reset is immediately pulled back toward the neutral
+    # adapter posture during PD_STAND/policy execution.  Native deployment
+    # applies this offset in its action adapter, so the reference runner must
+    # do the same for bundle configs that carry the stance as a separate JSON.
+    if cfg.initial_stance == "width50_parallel":
+        stance = get_initial_stance_offset(cfg.initial_stance)
+        if stance is not None:
+            offsets, _ = stance
+            if np.allclose(cfg.action_adapter.stance_offset, 0.0):
+                cfg.action_adapter.stance_offset = np.asarray(
+                    [offsets[name] for name in JOINT_NAMES], dtype=np.float64
+                )
+    if abs(float(args.waist_pitch_offset_rad)) > 0.0:
+        cfg.action_adapter.stance_offset[2] += float(args.waist_pitch_offset_rad)
+    if abs(float(args.hip_pitch_offset_rad)) > 0.0:
+        for name in ("left_hip_pitch_joint", "right_hip_pitch_joint"):
+            cfg.action_adapter.stance_offset[JOINT_NAMES.index(name)] += float(
+                args.hip_pitch_offset_rad
+            )
 
     if not Path(cfg.onnx_path).is_file():
         print(
@@ -158,7 +199,11 @@ def main(argv: list[str] | None = None) -> int:
 
     runner = PingPongReferenceRunner(cfg, bridge, source)
     try:
-        runner.run(max_ticks=max_ticks, realtime=args.realtime)
+        runner.run(
+            max_ticks=max_ticks,
+            realtime=args.realtime,
+            stability_csv=args.stability_csv,
+        )
     finally:
         close = getattr(source, "close", None)
         if close is not None:

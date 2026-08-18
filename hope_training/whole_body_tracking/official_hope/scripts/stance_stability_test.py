@@ -85,6 +85,8 @@ def parse_config(args: argparse.Namespace) -> StanceConfig:
         fore_aft_m=args.fore_aft,
         lead_leg="none" if args.fore_aft == 0.0 else args.lead_leg,
         pelvis_height_offset_m=args.pelvis_offset,
+        pelvis_back_m=args.pelvis_back,
+        pelvis_pitch_deg=args.pelvis_pitch,
     )
 
 
@@ -471,6 +473,10 @@ def main() -> int:
     p.add_argument("--torso", type=float, default=0.0); p.add_argument("--width-scale", type=float, default=1.0)
     p.add_argument("--width-m", type=float, default=None); p.add_argument("--fore-aft", type=float, default=0.0)
     p.add_argument("--lead-leg", choices=("left", "right"), default="left"); p.add_argument("--pelvis-offset", type=float, default=None)
+    p.add_argument("--pelvis-back", type=float, default=0.0,
+                   help="hip-hinge pelvis setback in metres; + value moves pelvis backward (-x)")
+    p.add_argument("--pelvis-pitch", type=float, default=0.0,
+                   help="hip-hinge free-pelvis/trunk pitch in degrees; waist joint remains unchanged")
     p.add_argument("--hips", default="0,5,10,15,20,25"); p.add_argument("--knees", default="0,15,20,25,30,35,40,45")
     p.add_argument("--torsos", default="0,5,10"); p.add_argument("--width-scales", default="1.0,1.1,1.2")
     p.add_argument("--fore-afts", default="0,0.05,0.10,0.15,0.20"); p.add_argument("--leads", default="left,right")

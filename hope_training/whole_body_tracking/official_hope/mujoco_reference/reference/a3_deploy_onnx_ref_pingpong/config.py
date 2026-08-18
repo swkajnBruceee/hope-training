@@ -85,6 +85,11 @@ class RuntimeConfig:
         model_xml_path = _resolve(cfg_dir, doc["simulation"]["model_xml_path"])
         adapter_path = _resolve(cfg_dir, doc["action_adapter"]["config_path"])
         adapter = ActionAdapter.from_yaml(adapter_path)
+        metadata_path = doc["action_adapter"].get("metadata_onnx_path")
+        if metadata_path:
+            adapter = ActionAdapter.from_onnx_deploy_metadata(
+                _resolve(cfg_dir, metadata_path), adapter
+            )
 
         sim_kp, sim_kd = _expand_pd_gains(doc["simulation"]["pd_gains"], cfg_dir)
 

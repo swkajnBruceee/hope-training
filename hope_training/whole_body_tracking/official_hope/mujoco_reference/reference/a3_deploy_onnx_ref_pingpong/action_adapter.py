@@ -129,6 +129,53 @@ class ActionAdapter:
             raw_action_clip=20.0,
         )
 
+    @classmethod
+    def from_onnx_deploy_metadata(
+        cls, path: str | Path, fallback: "ActionAdapter"
+    ) -> "ActionAdapter":
+        """Resolve the native deployment affine contract from ONNX metadata.
+
+        Some exported bundles keep a human-readable neutral action_adapter.yaml
+        beside the policy while the model-specific default pose, action scales,
+        and safe q_des interval are embedded in the native graph.  Prefer those
+        authoritative values when a runtime config explicitly points at that
+        native metadata graph.
+        """
+        import onnxruntime as ort
+
+        session = ort.InferenceSession(
+            str(Path(path).resolve()), providers=["CPUExecutionProvider"]
+        )
+        meta = session.get_modelmeta().custom_metadata_map or {}
+        names = tuple(filter(None, meta.get("joint_names", "").split(",")))
+        if len(names) != NUM_JOINTS or set(names) != set(JOINT_NAMES):
+            raise ValueError("native ONNX metadata joint_names must name all 31 A3 joints")
+
+        def values(key: str) -> np.ndarray:
+            raw = meta.get(key, "")
+            parsed = np.asarray([float(item) for item in raw.split(",")], dtype=np.float64)
+            if parsed.size != NUM_JOINTS:
+                raise ValueError(f"native ONNX metadata {key} must contain 31 values")
+            return parsed
+
+        native_to_sdk = {name: index for index, name in enumerate(names)}
+
+        def reorder(key: str) -> np.ndarray:
+            parsed = values(key)
+            return np.asarray(
+                [parsed[native_to_sdk[name]] for name in JOINT_NAMES],
+                dtype=np.float64,
+            )
+
+        return cls(
+            default_q=reorder("default_joint_pos"),
+            action_scale=reorder("action_scale"),
+            clamp_lower=reorder("qdes_safe_lower_rad"),
+            clamp_upper=reorder("qdes_safe_upper_rad"),
+            stance_offset=fallback.stance_offset.copy(),
+            raw_action_clip=fallback.raw_action_clip,
+        )
+
 
 def _resolve_per_joint(spec, field_name: str) -> np.ndarray:
     """Accept either an ordered length-31 list or a ``{joint_name: value}`` map."""

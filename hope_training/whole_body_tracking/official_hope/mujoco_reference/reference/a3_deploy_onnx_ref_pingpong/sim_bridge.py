@@ -59,6 +59,9 @@ class SimBridge(ABC):
     def record_frame(self) -> None:  # optional video recorder hook
         ...
 
+    def stability_metrics(self) -> dict[str, float]:  # optional telemetry hook
+        return {}
+
 
 class MujocoDirectBridge(SimBridge):
     def __init__(
@@ -209,6 +212,80 @@ class MujocoDirectBridge(SimBridge):
             qd=qd,
             base_lin_vel_w=base_lin_vel_w,
         )
+
+    @staticmethod
+    def _convex_hull(points: np.ndarray) -> np.ndarray:
+        points = sorted({(float(x), float(y)) for x, y in points})
+        if len(points) <= 1:
+            return np.asarray(points, dtype=np.float64)
+
+        def cross(o, a, b):
+            return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+        lower = []
+        for point in points:
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], point) <= 0:
+                lower.pop()
+            lower.append(point)
+        upper = []
+        for point in reversed(points):
+            while len(upper) >= 2 and cross(upper[-2], upper[-1], point) <= 0:
+                upper.pop()
+            upper.append(point)
+        return np.asarray(lower[:-1] + upper[:-1], dtype=np.float64)
+
+    @staticmethod
+    def _signed_polygon_margin(point: np.ndarray, polygon: np.ndarray) -> float:
+        if len(polygon) < 3:
+            return float("nan")
+        distances = []
+        inside = True
+        for index in range(len(polygon)):
+            a = polygon[index]
+            b = polygon[(index + 1) % len(polygon)]
+            edge = b - a
+            rel = point - a
+            signed_cross = edge[0] * rel[1] - edge[1] * rel[0]
+            inside &= signed_cross >= -1e-9
+            length = float(np.linalg.norm(edge))
+            if length > 1e-12:
+                distances.append(abs(signed_cross) / length)
+        if not distances:
+            return float("nan")
+        margin = min(distances)
+        return float(margin if inside else -margin)
+
+    def stability_metrics(self) -> dict[str, float]:
+        """Return COM/support and body-motion telemetry for this MuJoCo plant."""
+        from .quaternion import projected_gravity_body
+
+        self._mj.mj_comPos(self.model, self.data)
+        com = np.asarray(self.data.subtree_com[0], dtype=np.float64).copy()
+        self._mj.mj_comVel(self.model, self.data)
+        com_vel = np.asarray(self.data.subtree_linvel[0], dtype=np.float64).copy()
+
+        foot_points = []
+        for name in ("left_foot", "right_foot"):
+            sid = self._mj.mj_name2id(self.model, self._mj.mjtObj.mjOBJ_SITE, name)
+            center = np.asarray(self.data.site_xpos[sid], dtype=np.float64)
+            rotation = np.asarray(self.data.site_xmat[sid], dtype=np.float64).reshape(3, 3)
+            for x in (-0.05, 0.05):
+                for y in (-0.04, 0.04):
+                    foot_points.append((center + rotation @ np.asarray([x, y, 0.0]))[:2])
+        polygon = self._convex_hull(np.asarray(foot_points))
+        support_margin = self._signed_polygon_margin(com[:2], polygon)
+
+        state = self.read_state()
+        grav = np.asarray(projected_gravity_body(state.base_quat_w), dtype=np.float64)
+        tilt_rad = float(np.arccos(np.clip(-grav[2], -1.0, 1.0)))
+        return {
+            "com_x": float(com[0]), "com_y": float(com[1]), "com_z": float(com[2]),
+            "com_vx": float(com_vel[0]), "com_vy": float(com_vel[1]), "com_vz": float(com_vel[2]),
+            "support_margin_m": support_margin,
+            "tilt_deg": float(np.degrees(tilt_rad)),
+            "base_ang_speed_rps": float(np.linalg.norm(state.base_ang_vel_b)),
+            "grav_x": float(grav[0]), "grav_y": float(grav[1]), "grav_z": float(grav[2]),
+        }
 
     def write_targets(self, q_des: np.ndarray, kp: np.ndarray, kd: np.ndarray) -> None:
         self._q_des = np.asarray(q_des, dtype=np.float64).reshape(NUM_JOINTS)

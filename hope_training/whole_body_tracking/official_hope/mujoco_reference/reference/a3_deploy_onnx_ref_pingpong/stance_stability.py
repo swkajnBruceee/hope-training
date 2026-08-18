@@ -52,6 +52,10 @@ class StanceConfig:
     fore_aft_m: float = 0.0
     lead_leg: str = "none"
     pelvis_height_offset_m: float | None = None
+    # Hip-hinge geometry: move the pelvis backward along -x and pitch the free
+    # pelvis/trunk forward while leaving the waist-pitch joint unchanged.
+    pelvis_back_m: float = 0.0
+    pelvis_pitch_deg: float = 0.0
 
     def __post_init__(self) -> None:
         if self.lead_leg not in ("none", "left", "right"):
@@ -67,7 +71,8 @@ class StanceConfig:
         return (
             f"hip{self.hip_flexion_deg:g}_knee{self.knee_flexion_deg:g}_"
             f"torso{self.torso_pitch_deg:g}_w{self.stance_width_scale:g}_"
-            f"fa{self.fore_aft_m:g}_{lead}"
+            f"fa{self.fore_aft_m:g}_{lead}_"
+            f"hinge{self.pelvis_back_m:g}m_{self.pelvis_pitch_deg:g}deg"
         )
 
 
@@ -117,6 +122,22 @@ def _orientation_error(target: np.ndarray, actual: np.ndarray) -> np.ndarray:
 def _smoothstep(x: float) -> float:
     x = min(1.0, max(0.0, x))
     return x * x * (3.0 - 2.0 * x)
+
+
+def _quat_from_rpy(roll: float, pitch: float, yaw: float) -> np.ndarray:
+    """Return MuJoCo (w, x, y, z) quaternion for XYZ roll/pitch/yaw."""
+    cr, sr = math.cos(roll / 2.0), math.sin(roll / 2.0)
+    cp, sp = math.cos(pitch / 2.0), math.sin(pitch / 2.0)
+    cy, sy = math.cos(yaw / 2.0), math.sin(yaw / 2.0)
+    return np.array(
+        [
+            cr * cp * cy + sr * sp * sy,
+            sr * cp * cy - cr * sp * sy,
+            cr * sp * cy + sr * cp * sy,
+            cr * cp * sy - sr * sp * cy,
+        ],
+        dtype=float,
+    )
 
 
 class StanceGenerator:
@@ -256,6 +277,13 @@ class StanceGenerator:
             root[2] = float(np.mean(derived_heights))
         else:
             root[2] += float(config.pelvis_height_offset_m)
+        if config.pelvis_back_m:
+            # +x is forward in this model; hip hinge moves the pelvis backward.
+            root[0] -= float(config.pelvis_back_m)
+        if config.pelvis_pitch_deg:
+            # Root/trunk pitch is deliberately separate from waist pitch.  The
+            # latter remains at its baseline value below.
+            root[3:7] = _quat_from_rpy(0.0, math.radians(config.pelvis_pitch_deg), 0.0)
         self.data.qpos[self.root_qadr:self.root_qadr + 7] = root
         self.mj.mj_forward(self.model, self.data)
         width = float(config.stance_width_m if config.stance_width_m is not None
@@ -305,6 +333,9 @@ class StanceGenerator:
             "coordinate_forward": "+x",
             "coordinate_left": "+y",
             "fore_aft_definition": "lead + fore_aft/2, trail - fore_aft/2",
+            "pelvis_back_m": config.pelvis_back_m,
+            "pelvis_pitch_deg": config.pelvis_pitch_deg,
+            "waist_pitch_changed": False,
             "valid": valid,
         }
         return GeneratedStance(
@@ -587,6 +618,14 @@ class StanceMujoco:
         else:
             self.mj.mj_resetData(self.model, self.data)
         self.time = 0.0
+        if stance is not None and (
+            stance.config.pelvis_back_m != 0.0 or stance.config.pelvis_pitch_deg != 0.0
+        ):
+            # For the geometry-only hinge audit, initialize the complete pose
+            # consistently.  This avoids measuring the transient caused by a
+            # root pose and leg target that describe different configurations.
+            self.data.qpos[self.root_qadr:self.root_qadr + 7] = stance.root_qpos
+            self.data.qpos[self.q_adr] = stance.q
         self._q_des = self.baseline_q() if stance is None else stance.q.copy()
         # Keep the physical reset at the measured baseline root pose.  The candidate pelvis height
         # is a target implied by the leg IK, and is reached through the same smooth q_des transition

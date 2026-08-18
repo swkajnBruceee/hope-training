@@ -48,16 +48,19 @@ def _resolve_motion_path(value: str) -> str:
 
 
 def _resolve_motion_sources(cfg) -> list[str]:
-    """Return the list of local clip paths [forehand, backhand] (CLI overrides the task cfg)."""
-    primary = cfg.motion_file if cfg.motion_file is not None else cfg.task.get("motion_file")
-    secondary = cfg.motion_file_2 if cfg.motion_file_2 is not None else cfg.task.get("motion_file_2")
-    clips = [primary]
-    if secondary is not None:
-        clips.append(secondary)
+    """Return configured local clip paths (CLI overrides the task cfg)."""
+    clips = []
+    for field in ("motion_file", "motion_file_2", "motion_file_3"):
+        value = getattr(cfg, field, None)
+        if value is None:
+            value = cfg.task.get(field)
+        if value is not None:
+            clips.append(value)
     resolved = [_resolve_motion_path(c) for c in clips if c is not None]
     if not resolved:
         raise RuntimeError(
-            "No motion clip configured. Set motion_file (and motion_file_2) on the CLI or in "
+            "No motion clip configured. Set motion_file (and optional motion_file_2/motion_file_3) "
+            "on the CLI or in "
             "cfg/task/HOPEPingPong.yaml."
         )
     for clip in resolved:
@@ -104,7 +107,7 @@ def _resolve_racket_clip_ranges(key: str, value):
     if not isinstance(value, dict):
         return value
     axes = ("x", "y", "z")
-    sides = ("forehand", "backhand")
+    sides = ("forehand", "backhand", "serve") if "serve" in value else ("forehand", "backhand")
     try:
         return tuple(
             tuple(tuple(float(v) for v in side_cfg[axis]) for axis in axes)
@@ -392,6 +395,23 @@ def _print_curriculum_initial_state(env, runner) -> None:
             friction_event = getattr(term_cfg, "func", None)
             if friction_event is None:
                 raise RuntimeError("resolved reset event has no effective ground friction instance")
+            # Some official task variants use Isaac Lab's generic material randomizer here,
+            # rather than the custom curriculum event that exposes effective-friction tensors.
+            # That event is still valid for ordinary checkpoint continuation; only this
+            # pre-rollout telemetry is unavailable.
+            required_state = (
+                "static_low",
+                "static_high",
+                "dynamic_low",
+                "dynamic_high",
+            )
+            if not all(hasattr(friction_event, name) for name in required_state):
+                print(
+                    "[train.py] effective-friction curriculum telemetry unavailable; "
+                    "preserving the configured physics_material event",
+                    flush=True,
+                )
+                return
             static_low_tensor = friction_event.static_low
             static_high_tensor = friction_event.static_high
             dynamic_low_tensor = friction_event.dynamic_low

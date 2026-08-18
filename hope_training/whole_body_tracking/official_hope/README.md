@@ -71,6 +71,17 @@ hope_isaac_py scripts/train.py task=HOPEPingPong algo=ppo headless=true \
 上述 play 命令确认环境和权重正常，再做正式续训。新的 checkpoint 默认写入本快照的本地
 训练日志目录。
 
+model_21800 的上肢发球适配续训使用官方 continuation 任务，保留 forehand/backhand，额外
+以 10% 比例采样 serve 参考轨迹：
+
+```bash
+./scripts/continue_model_21800_serve.sh 1000
+```
+
+该入口使用 `checkpoint_path`，不是 `residual_warm_start_path`。model_21800 是旧 checkpoint，
+没有 `hope_exact_resume_state`，因此明确使用普通官方 continuation（恢复 actor、critic、
+optimizer 和 iteration=21800），不能设置 `checkpoint_exact_resume=true`。
+
 ## 3. 输出与后续部署
 
 当前 actor 输出的是 31 维 raw joint-position residual，不是轨迹点。动作适配关系为：

@@ -1,0 +1,39 @@
+# Dedicated RouDi pool for the A3 MuJoCo body-drive bridge.
+#
+# The runner and simulator exchange several 100 Hz JointState/IMU streams plus
+# 50 Hz JointCommand streams.  The stock hard-coded pool has only 1000 chunks
+# in the 16 KiB class; with the latest-frame bridge that is exhausted during a
+# long closed-loop run.  Keep the small pools for control traffic and provide
+# enough 16 KiB chunks for the body-drive stream.
+[general]
+version = 1
+
+[[segment]]
+
+[[segment.mempool]]
+size = 128
+count = 10000
+
+[[segment.mempool]]
+size = 1024
+count = 5000
+
+[[segment.mempool]]
+size = 16384
+count = 20000
+
+[[segment.mempool]]
+size = 131072
+count = 500
+
+[[segment.mempool]]
+size = 524288
+count = 100
+
+[[segment.mempool]]
+size = 1048576
+count = 60
+
+[[segment.mempool]]
+size = 4194304
+count = 20

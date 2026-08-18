@@ -501,7 +501,12 @@ class Gate3Launcher(Node):
         msg.shot_id = shot_id
         msg.active = active
         if active:
-            x0, y0, z0, vx, vy, vz = self.serves[self.launch_count - 1]
+            # ``launch_count`` is incremented immediately after this call.
+            # Using ``launch_count - 1`` here made the first command use
+            # ``serves[-1]`` while the log below reported ``serves[0]``.  In a
+            # multi-shot run that swapped the first and last serve payloads
+            # and made the simulator state look inconsistent with the log.
+            x0, y0, z0, vx, vy, vz = self.serves[self.launch_count]
             msg.position = Point(x=x0, y=y0, z=z0)
             msg.linear_velocity = Vector3(
                 x=vx, y=vy, z=vz
@@ -537,18 +542,18 @@ class Gate3Launcher(Node):
                         "park request shot={} retry".format(self.shot_id)
                     )
                     self.next_park_retry = now + 0.10
-                # Do not deadlock the whole sequence if the state publisher
-                # drops the inactive acknowledgement.  The park command has
-                # already been repeated several times; advance after a short
-                # bounded window while preserving the same monotonic shot ID
-                # on all park retries.
+                # Never advance on a local timeout.  The simulator is the
+                # authority for the lifecycle, and launching the next shot
+                # before it acknowledges this park is rejected as an
+                # out-of-order command.  Keep retrying instead of creating a
+                # false multi-shot result.
                 if now >= self.park_retry_deadline:
-                    self.park_pending = False
-                    self.active = False
-                    self.next_launch = now + self.args.inter_shot
                     self.get_logger().warning(
-                        "park acknowledgement timeout shot={} "
-                        "(advancing after retries)".format(self.shot_id)
+                        "still waiting for simulator park acknowledgement "
+                        "shot={} (will keep retrying)".format(self.shot_id)
+                    )
+                    self.park_retry_deadline = now + max(
+                        1.0, self.args.contact_hold
                     )
                 return
             if now < self.park_time:

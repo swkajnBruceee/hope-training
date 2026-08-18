@@ -76,6 +76,20 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--ready-telemetry-out",
+        default=None,
+        help=(
+            "Write one JSON record per recovery cycle with deadline component checks, "
+            "late/never/unstable classification, numeric state, and residual saturation. "
+            "Requires --with-rewards so the deadline gate is available."
+        ),
+    )
+    parser.add_argument(
+        "--ready-telemetry-offsets",
+        default="0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.5,2.0,2.5",
+        help="Recovery trace offsets in seconds for --ready-telemetry-out.",
+    )
+    parser.add_argument(
         "--with-rewards",
         action="store_true",
         help="Keep the training RewardManager active; disabled by default for evaluation speed.",
@@ -99,6 +113,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--motion-file-2", default="motions/preprocessed/hope_backhand.npz", help="Backhand clip."
+    )
+    parser.add_argument(
+        "--motion-file-3", default=None, help="Optional third clip (serve adaptation clip)."
     )
     parser.add_argument(
         "--eval-clip-sequence",
@@ -293,6 +310,24 @@ def main() -> int:
         raise ValueError("--post-strike-offsets must be comma-separated seconds") from exc
     if not post_strike_offsets or any(value <= 0.0 for value in post_strike_offsets):
         raise ValueError("--post-strike-offsets must contain positive values")
+    try:
+        ready_telemetry_offsets = tuple(
+            float(item.strip())
+            for item in str(args.ready_telemetry_offsets).split(",")
+            if item.strip()
+        )
+    except ValueError as exc:
+        raise ValueError("--ready-telemetry-offsets must be comma-separated seconds") from exc
+    if args.ready_telemetry_out and (
+        not ready_telemetry_offsets
+        or any(value < 0.0 for value in ready_telemetry_offsets)
+        or tuple(sorted(set(ready_telemetry_offsets))) != ready_telemetry_offsets
+    ):
+        raise ValueError(
+            "--ready-telemetry-offsets must be sorted, unique, and non-negative"
+        )
+    if args.ready_telemetry_out and not args.with_rewards:
+        raise ValueError("--ready-telemetry-out requires --with-rewards")
     if args.state_transplant_source and args.state_transplant_offset is None:
         raise ValueError("--state-transplant-offset is required with --state-transplant-source")
     if args.snapshot_branch_mode:
@@ -411,7 +446,7 @@ def main() -> int:
         # Gym task supplies dataclass defaults, while the task YAML carries the full-pose mocap,
         # action, motion, and domain-randomization overrides used by training.  Omitting this
         # step silently evaluates a different environment (or fails during command construction).
-        from train import _apply_task_overrides
+        from train import _apply_friction_curriculum, _apply_task_overrides
         from whole_body_tracking.utils.ppo_cfg import load_ppo_params, runner_kwargs
         # Pin the pure-NumPy scoring metric to this project.  Without
         # this explicit contract, a stale shell override or a missing local
@@ -452,6 +487,15 @@ def main() -> int:
             task_cfg = OmegaConf.merge(task_cfg, OmegaConf.load(str(task_cfg_path)))
         applied_overrides = []
         _apply_task_overrides(env_cfg, SimpleNamespace(task=task_cfg), applied_overrides)
+        # Evaluation must install the same reset-time feet-only friction event as training.
+        # Without this explicit launcher step, the registered task's legacy startup material
+        # event remains active and endpoint telemetry cannot be interpreted against the saved
+        # curriculum phase.
+        _apply_friction_curriculum(
+            env_cfg,
+            getattr(task_cfg, "friction_curriculum", None),
+            applied_overrides,
+        )
         if args.condition_bh_target:
             env_cfg.commands.racket_target.vb_target_conditioning = True
             env_cfg.commands.racket_target.vb_target_conditioning_clip_id = 1
@@ -571,7 +615,11 @@ def main() -> int:
             f"[evaluate] applied {len(applied_overrides)} training task override(s)",
             flush=True,
         )
-        clips = [_resolve_motion_path(c) for c in (args.motion_file, args.motion_file_2) if c]
+        clips = [
+            _resolve_motion_path(c)
+            for c in (args.motion_file, args.motion_file_2, args.motion_file_3)
+            if c
+        ]
         env_cfg.commands.motion.motion_file = clips if len(clips) > 1 else clips[0]
 
         # The external success metric below does not consume training rewards.  Leaving the
@@ -615,6 +663,7 @@ def main() -> int:
         runner = HOPEOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=args.device)
         runner.load(checkpoint)
         policy = runner.get_inference_policy(device=base_env.device)
+        policy_module = getattr(getattr(runner, "alg", None), "policy", None)
 
         physics = BallPhysics.from_config()
         table = TableGeometry.from_config()
@@ -729,6 +778,45 @@ def main() -> int:
         ready_cycles_failed = 0
         ready_cycles_failed_by_reset = 0
         ready_recovery_times_steps = []
+
+        # Optional per-cycle READY diagnosis.  This is deliberately kept out of the normal
+        # evaluator path: it stores sparse recovery traces and deadline snapshots only when the
+        # caller explicitly requests --ready-telemetry-out.
+        ready_cycle_states = [None for _ in range(int(args.num_envs))]
+        ready_cycle_records = []
+        ready_next_cycle_id = 0
+        ready_trace_offsets_steps = tuple(
+            int(round(offset / float(base_env.step_dt))) for offset in ready_telemetry_offsets
+        ) if args.ready_telemetry_out else ()
+        ready_trace_offset_seconds = (
+            {steps: float(offset) for steps, offset in zip(ready_trace_offsets_steps, ready_telemetry_offsets)}
+            if args.ready_telemetry_out
+            else {}
+        )
+        ready_component_names = (
+            "position",
+            "planar_velocity",
+            "heading",
+            "yaw_rate",
+            "tilt",
+            "joint_velocity",
+        )
+        ready_component_metric_names = {
+            "position": "position",
+            "planar_velocity": "speed",
+            "heading": "heading",
+            "yaw_rate": "yaw_rate",
+            "tilt": "tilt",
+            "joint_velocity": "joint_speed",
+            "foot_slip": "foot_slip",
+        }
+        ready_support_names = (
+            "left_contact",
+            "right_contact",
+            "double_support",
+            "left_slip",
+            "right_slip",
+        )
 
         # The racket-target command term exposes the per-strike quantities we score. Attribute names
         # are read defensively (see COUPLING NOTES in the report): the command must expose the racket
@@ -1328,6 +1416,309 @@ def main() -> int:
                 return "LEGAL"
             return "LAND_OUT_OTHER"
 
+        def _ready_metric(name, env_id, default=0.0):
+            value = getattr(cmd, "metrics", {}).get(name)
+            if value is not None:
+                scalar = _scalar(value, env_id)
+                # The reset-time friction event owns the authoritative sampled values.  During
+                # evaluation the command metric buffers can be reinitialized after the event
+                # publishes them, so fall back to the event instance rather than exporting a
+                # misleading zero coefficient.
+                if name in {
+                    "friction_mu_static",
+                    "friction_mu_dynamic",
+                    "friction_beta",
+                } and abs(scalar) <= 1.0e-12:
+                    event_attr = {
+                        "friction_mu_static": "mu_static",
+                        "friction_mu_dynamic": "mu_dynamic",
+                        "friction_beta": "beta",
+                    }[name]
+                    try:
+                        term_cfg = base_env.event_manager.get_term_cfg("physics_material")
+                        event = getattr(term_cfg, "func", None)
+                        tensor = getattr(event, event_attr, None)
+                        if tensor is not None:
+                            return _scalar(tensor, env_id)
+                    except (AttributeError, KeyError, TypeError, ValueError):
+                        pass
+                return scalar
+            if name in {
+                "friction_mu_static",
+                "friction_mu_dynamic",
+                "friction_beta",
+            }:
+                event_attr = {
+                    "friction_mu_static": "mu_static",
+                    "friction_mu_dynamic": "mu_dynamic",
+                    "friction_beta": "beta",
+                }[name]
+                try:
+                    term_cfg = base_env.event_manager.get_term_cfg("physics_material")
+                    event = getattr(term_cfg, "func", None)
+                    tensor = getattr(event, event_attr, None)
+                    if tensor is not None:
+                        return _scalar(tensor, env_id)
+                except (AttributeError, KeyError, TypeError, ValueError):
+                    pass
+            return float(default)
+
+        def _ready_snapshot(env_id):
+            """Capture deploy-facing READY components and continuous values for one env."""
+            x_error = _ready_metric("ready_station_x_error", env_id)
+            y_error = _ready_metric("ready_station_y_error", env_id)
+            base_speed = _ready_metric("ready_station_base_speed", env_id)
+            heading_deg = _ready_metric("ready_station_heading_error_deg", env_id)
+            yaw_rate = _ready_metric("ready_station_yaw_rate_abs", env_id)
+            tilt = _ready_metric("ready_station_tilt", env_id)
+            joint_speed = _ready_metric("ready_station_joint_speed", env_id)
+            component_pass = {
+                "position": abs(x_error) <= 0.10 and abs(y_error) <= 0.10,
+                "planar_velocity": base_speed <= 0.20,
+                "heading": heading_deg <= 15.0,
+                "yaw_rate": yaw_rate <= 0.35,
+                "tilt": tilt <= 0.14,
+                "joint_velocity": joint_speed <= 0.80,
+            }
+            all_pass = all(component_pass.get(name, False) for name in ready_component_names)
+
+            left_contact = _ready_metric("ready_left_contact_rate", env_id)
+            right_contact = _ready_metric("ready_right_contact_rate", env_id)
+            double_support = _ready_metric("ready_double_support_rate", env_id)
+            left_slip = _ready_metric("ready_left_foot_slip", env_id)
+            right_slip = _ready_metric("ready_right_foot_slip", env_id)
+            # The existing READY/settle contract uses 3 cm as the foot-slip margin.  Keep the
+            # threshold explicit in the output so downstream analysis cannot confuse it with the
+            # deploy monitor's disabled default foot-slip field.
+            slip_threshold = float(getattr(cmd.cfg, "step_settle_slip_thresh", 0.03))
+            support_pass = {
+                "left_contact": left_contact > 0.5,
+                "right_contact": right_contact > 0.5,
+                "double_support": double_support > 0.5,
+                "left_slip": left_slip <= slip_threshold,
+                "right_slip": right_slip <= slip_threshold,
+            }
+
+            # The reward-side stance/support metrics are intentionally phase-gated.  At the
+            # exact deadline that gate can be closed even though the robot is physically in
+            # contact, which would turn an unobserved metric into a false support failure.  For
+            # audit telemetry, read the two foot links and contact-force sensor directly.
+            robot = getattr(cmd, "robot", None)
+            try:
+                foot_names = ("left_ankle_roll_Link", "right_ankle_roll_Link")
+                robot_body_names = tuple(getattr(robot, "body_names", ()))
+                robot_foot_ids = [robot_body_names.index(name) for name in foot_names]
+                foot_pos = robot.data.body_pos_w[env_id, robot_foot_ids, :2]
+                foot_vel = robot.data.body_lin_vel_w[env_id, robot_foot_ids, :2]
+                direct_width = float(torch.linalg.norm(foot_pos[0] - foot_pos[1]).detach().cpu().item())
+                direct_slip = torch.linalg.norm(foot_vel, dim=-1)
+                direct_left_slip = float(direct_slip[0].detach().cpu().item())
+                direct_right_slip = float(direct_slip[1].detach().cpu().item())
+                sensor = base_env.scene.sensors["contact_forces"]
+                sensor_body_names = tuple(getattr(sensor, "body_names", ())) if sensor is not None else ()
+                sensor_ids = [sensor_body_names.index(name) for name in foot_names]
+                force_vec = sensor.data.net_forces_w[env_id, sensor_ids, :]
+                force_mag = torch.linalg.norm(force_vec, dim=-1)
+                direct_fz = torch.abs(force_vec[:, 2])
+                direct_contact = force_mag > 10.0
+                direct_left_contact = float(direct_contact[0].detach().cpu().item())
+                direct_right_contact = float(direct_contact[1].detach().cpu().item())
+                direct_both = float((direct_contact[0] & direct_contact[1]).detach().cpu().item())
+                direct_left_fz = float(direct_fz[0].detach().cpu().item())
+                direct_right_fz = float(direct_fz[1].detach().cpu().item())
+                force_total = max(direct_left_fz + direct_right_fz, 1.0e-6)
+                direct_load_left = direct_left_fz / force_total
+                direct_load_right = direct_right_fz / force_total
+                action_term = base_env.action_manager.get_term("joint_pos")
+                alpha = float(action_term.stance_alpha())
+                target_lo = (1.0 - alpha) * 0.25 + alpha * 0.45
+                target_hi = (1.0 - alpha) * 0.35 + alpha * 0.55
+                direct_width_error = max(target_lo - direct_width, 0.0) + max(direct_width - target_hi, 0.0)
+                left_contact = direct_left_contact
+                right_contact = direct_right_contact
+                double_support = direct_both
+                left_slip = direct_left_slip
+                right_slip = direct_right_slip
+                support_pass = {
+                    "left_contact": left_contact > 0.5,
+                    "right_contact": right_contact > 0.5,
+                    "double_support": double_support > 0.5,
+                    "left_slip": left_slip <= slip_threshold,
+                    "right_slip": right_slip <= slip_threshold,
+                }
+            except (AttributeError, KeyError, ValueError, IndexError, TypeError):
+                direct_width = _ready_metric("ready_stance_width", env_id)
+                direct_width_error = _ready_metric("ready_stance_width_error", env_id)
+                direct_left_fz = _ready_metric("ready_left_fz", env_id)
+                direct_right_fz = _ready_metric("ready_right_fz", env_id)
+                direct_load_left = _ready_metric("ready_load_ratio_left", env_id)
+                direct_load_right = _ready_metric("ready_load_ratio_right", env_id)
+
+            data = getattr(getattr(cmd, "robot", None), "data", None)
+            quat = getattr(cmd, "base_quat_w", None)
+            if quat is not None:
+                q = quat[env_id]
+                roll = torch.atan2(
+                    2.0 * (q[0] * q[1] + q[2] * q[3]),
+                    1.0 - 2.0 * (q[1] * q[1] + q[2] * q[2]),
+                )
+                pitch = torch.asin(
+                    torch.clamp(2.0 * (q[0] * q[2] - q[3] * q[1]), -1.0, 1.0)
+                )
+                roll = float(roll.detach().cpu().item())
+                pitch = float(pitch.detach().cpu().item())
+            else:
+                roll = pitch = None
+
+            base_ang_vel = None
+            joint_vel_max = None
+            if data is not None:
+                ang = getattr(data, "root_ang_vel_b", None)
+                if ang is not None:
+                    base_ang_vel = _tolist(ang, env_id)
+                jv = getattr(data, "joint_vel", None)
+                if jv is not None:
+                    joint_vel_max = float(torch.abs(jv[env_id]).max().detach().cpu().item())
+
+            values = {
+                "position_error_x": x_error,
+                "position_error_y": y_error,
+                "base_xy_speed": base_speed,
+                "heading_error_deg": heading_deg,
+                "yaw_rate": yaw_rate,
+                "tilt": tilt,
+                "joint_velocity_rms": joint_speed,
+                "joint_velocity_max": joint_vel_max,
+                "stance_width": direct_width,
+                "stance_width_error": direct_width_error,
+                "left_fz": direct_left_fz,
+                "right_fz": direct_right_fz,
+                "load_ratio_left": direct_load_left,
+                "load_ratio_right": direct_load_right,
+                "left_foot_slip": left_slip,
+                "right_foot_slip": right_slip,
+                "roll_rad": roll,
+                "pitch_rad": pitch,
+                "base_angular_velocity_b": base_ang_vel,
+                "mu_static": _ready_metric("friction_mu_static", env_id),
+                "mu_dynamic": _ready_metric("friction_mu_dynamic", env_id),
+                "friction_beta": _ready_metric("friction_beta", env_id),
+            }
+            return {
+                "component_pass": component_pass,
+                "support_pass": support_pass,
+                "ready_all_pass": bool(all_pass),
+                "values": values,
+                "support_values": {
+                    "left_contact_rate": left_contact,
+                    "right_contact_rate": right_contact,
+                    "double_support_rate": double_support,
+                    "left_foot_slip": left_slip,
+                    "right_foot_slip": right_slip,
+                    "foot_slip_threshold": slip_threshold,
+                },
+            }
+
+        def _residual_ratio(env_id, observation):
+            """Return residual-mean / raw bound for one env when the policy exposes the contract."""
+            if not args.ready_telemetry_out or policy_module is None:
+                return None
+            mean_components = getattr(policy_module, "_mean_components", None)
+            bound = getattr(policy_module, "residual_bound_raw", None)
+            active = getattr(policy_module, "residual_active_mask", None)
+            if not callable(mean_components) or bound is None or active is None:
+                return None
+            try:
+                _, residual_mean, _ = mean_components(observation)
+                bound = bound.to(device=residual_mean.device, dtype=residual_mean.dtype)
+                active = active.to(device=residual_mean.device)
+                ratio = torch.zeros_like(residual_mean)
+                valid = active & (bound > 1.0e-8)
+                ratio[:, valid] = torch.abs(residual_mean[:, valid]) / bound[valid]
+                return ratio[env_id].detach().cpu().tolist()
+            except Exception:
+                return None
+
+        def _finalize_ready_cycle(env_id, terminal="next_strike"):
+            nonlocal ready_cycle_states
+            state = ready_cycle_states[env_id]
+            if state is None:
+                return
+            deadline = state.get("deadline_step")
+            first_ready = state.get("first_ready_step")
+            stable_ready = state.get("stable_ready_step")
+            if deadline is None:
+                # The configured reward deadline is only active for its selected station step
+                # class.  Such cycles remain useful for traces, but must not be classified as
+                # late/never/unstable against a deadline that was never observed.
+                classification = "deadline_not_observed"
+            elif stable_ready is not None:
+                classification = "on_time" if stable_ready <= deadline else "late"
+            elif first_ready is None:
+                classification = "never_ready"
+            else:
+                classification = "unstable_ready"
+            state["terminal"] = terminal
+            state["classification"] = classification
+            state["first_ready_time_s"] = (
+                (first_ready - state["strike_step"]) * float(base_env.step_dt)
+                if first_ready is not None else None
+            )
+            state["stable_ready_time_s"] = (
+                (stable_ready - state["strike_step"]) * float(base_env.step_dt)
+                if stable_ready is not None else None
+            )
+            state["ready_deadline_time_s"] = (
+                (deadline - state["strike_step"]) * float(base_env.step_dt)
+                if deadline is not None else None
+            )
+            state["deadline_observed"] = deadline is not None
+            deadline_snapshot = state.pop("deadline_snapshot", None)
+            if deadline_snapshot is None:
+                state["position_pass_at_deadline"] = None
+                state["planar_velocity_pass_at_deadline"] = None
+                state["heading_pass_at_deadline"] = None
+                state["tilt_pass_at_deadline"] = None
+                state["joint_velocity_pass_at_deadline"] = None
+                state["left_contact_pass_at_deadline"] = None
+                state["right_contact_pass_at_deadline"] = None
+                state["double_support_pass_at_deadline"] = None
+                state["left_slip_pass_at_deadline"] = None
+                state["right_slip_pass_at_deadline"] = None
+                state["ready_all_pass_at_deadline"] = None
+                state["deadline_values"] = None
+                state["deadline_support_values"] = None
+            else:
+                component_pass = deadline_snapshot["component_pass"]
+                support_pass = deadline_snapshot["support_pass"]
+                state["position_pass_at_deadline"] = component_pass.get("position")
+                state["planar_velocity_pass_at_deadline"] = component_pass.get("planar_velocity")
+                state["heading_pass_at_deadline"] = component_pass.get("heading")
+                state["tilt_pass_at_deadline"] = component_pass.get("tilt")
+                state["joint_velocity_pass_at_deadline"] = component_pass.get("joint_velocity")
+                state["left_contact_pass_at_deadline"] = support_pass.get("left_contact")
+                state["right_contact_pass_at_deadline"] = support_pass.get("right_contact")
+                state["double_support_pass_at_deadline"] = support_pass.get("double_support")
+                state["left_slip_pass_at_deadline"] = support_pass.get("left_slip")
+                state["right_slip_pass_at_deadline"] = support_pass.get("right_slip")
+                state["ready_all_pass_at_deadline"] = deadline_snapshot["ready_all_pass"]
+                state["deadline_values"] = deadline_snapshot["values"]
+                state["deadline_support_values"] = deadline_snapshot["support_values"]
+                state["deadline_component_pass"] = component_pass
+                state["deadline_support_pass"] = support_pass
+            state["residual_saturation_fraction"] = (
+                float(state["residual_saturated_samples"])
+                / float(
+                    max(
+                        state["residual_samples"]
+                        * int(getattr(policy_module, "residual_active_mask", torch.ones(31)).sum().item()),
+                        1,
+                    )
+                )
+            )
+            ready_cycle_records.append(state)
+            ready_cycle_states[env_id] = None
+
         obs, _ = env.get_observations()
         prev_tts = read_state()[3].clone()
         prev_actions = None
@@ -1424,6 +1815,26 @@ def main() -> int:
                         )
             with torch.inference_mode():
                 actions = policy(obs).clone()
+                residual_ratio_batch = None
+                if args.ready_telemetry_out and policy_module is not None:
+                    mean_components = getattr(policy_module, "_mean_components", None)
+                    bound = getattr(policy_module, "residual_bound_raw", None)
+                    active = getattr(policy_module, "residual_active_mask", None)
+                    if callable(mean_components) and bound is not None and active is not None:
+                        try:
+                            _, residual_mean, _ = mean_components(obs)
+                            bound = bound.to(
+                                device=residual_mean.device,
+                                dtype=residual_mean.dtype,
+                            )
+                            active = active.to(device=residual_mean.device)
+                            residual_ratio_batch = torch.zeros_like(residual_mean)
+                            valid = active & (bound > 1.0e-8)
+                            residual_ratio_batch[:, valid] = (
+                                torch.abs(residual_mean[:, valid]) / bound[valid]
+                            )
+                        except Exception:
+                            residual_ratio_batch = None
                 fixed_replay_ids = (
                     (snapshot_action_replay_remaining > 0)
                     .nonzero(as_tuple=False)
@@ -1472,6 +1883,51 @@ def main() -> int:
                         ).to(dtype=torch.float32).cpu().tolist()
                     )
                     ready_cycle_passed[newly_ready] = True
+            if args.ready_telemetry_out:
+                ready_gate_value = ready_metrics.get("v11_ready_deadline_gate")
+                ready_gate_now = (
+                    ready_gate_value > 0.5
+                    if ready_gate_value is not None
+                    else torch.zeros(int(args.num_envs), dtype=torch.bool, device=base_env.device)
+                )
+                for env_id, state in enumerate(ready_cycle_states):
+                    if state is None:
+                        continue
+                    snapshot = _ready_snapshot(env_id)
+                    if snapshot["ready_all_pass"] and state["first_ready_step"] is None:
+                        state["first_ready_step"] = int(step_index)
+                    latched = _ready_metric("ready_station_latched", env_id) > 0.5
+                    if latched and state["stable_ready_step"] is None:
+                        state["stable_ready_step"] = int(step_index)
+                    if bool(ready_gate_now[env_id].item()):
+                        state["deadline_step"] = int(step_index)
+                        state["deadline_snapshot"] = snapshot
+                    relative_step = int(step_index) - int(state["strike_step"])
+                    if relative_step in ready_trace_offset_seconds:
+                        trace_row = {
+                            "offset_s": ready_trace_offset_seconds[relative_step],
+                            "strict_ready_sample": snapshot["ready_all_pass"],
+                            "stable_ready": bool(latched),
+                            "component_pass": snapshot["component_pass"],
+                            "support_pass": snapshot["support_pass"],
+                            "values": snapshot["values"],
+                            "support_values": snapshot["support_values"],
+                        }
+                        state["trace"].append(trace_row)
+                    if residual_ratio_batch is not None:
+                        ratio = residual_ratio_batch[env_id].detach().cpu().tolist()
+                        peak = state.get("residual_peak_ratio_31d")
+                        if peak is None:
+                            state["residual_peak_ratio_31d"] = ratio
+                        else:
+                            state["residual_peak_ratio_31d"] = [
+                                max(float(old), float(new))
+                                for old, new in zip(peak, ratio)
+                            ]
+                        state["residual_samples"] += 1
+                        state["residual_saturated_samples"] += int(
+                            sum(float(value) >= 0.95 for value in ratio)
+                        )
             exact_strike_mask = torch.zeros(
                 int(args.num_envs), dtype=torch.bool, device=base_env.device
             )
@@ -1500,9 +1956,35 @@ def main() -> int:
                         ready_cycles_completed += int(preceding.sum().item())
                         ready_cycles_passed += int((preceding & ready_cycle_passed).sum().item())
                         ready_cycles_failed += int((preceding & (~ready_cycle_passed)).sum().item())
+                    if args.ready_telemetry_out:
+                        for env_id in strike_ids.tolist():
+                            _finalize_ready_cycle(env_id, terminal="next_strike")
                     ready_pending[strike_ids] = True
                     ready_cycle_passed[strike_ids] = False
                     ready_cycle_start_step[strike_ids] = int(step_index)
+                    if args.ready_telemetry_out:
+                        for env_id in strike_ids.tolist():
+                            ready_next_cycle_id += 1
+                            ready_cycle_states[env_id] = {
+                                "cycle_id": int(ready_next_cycle_id),
+                                "env_id": int(env_id),
+                                "checkpoint": os.path.basename(checkpoint),
+                                "strike_end_time_s": float(step_index * base_env.step_dt),
+                                "strike_step": int(step_index),
+                                "ready_deadline_time_s": None,
+                                "first_ready_time_s": None,
+                                "stable_ready_time_s": None,
+                                "deadline_step": None,
+                                "first_ready_step": None,
+                                "stable_ready_step": None,
+                                "deadline_snapshot": None,
+                                "trace": [],
+                                "terminal": None,
+                                "classification": None,
+                                "residual_peak_ratio_31d": None,
+                                "residual_samples": 0,
+                                "residual_saturated_samples": 0,
+                            }
                     previous_steps = last_strike_global_step[strike_ids]
                     strike_interval_steps[strike_ids] = torch.where(
                         previous_steps >= 0,
@@ -1674,6 +2156,9 @@ def main() -> int:
             reset_pending = ready_pending & reset_now
             if bool(reset_pending.any()):
                 ready_cycles_failed_by_reset += int(reset_pending.sum().item())
+                if args.ready_telemetry_out:
+                    for env_id in reset_pending.nonzero(as_tuple=False).flatten().tolist():
+                        _finalize_ready_cycle(env_id, terminal="reset")
                 ready_pending[reset_pending] = False
                 ready_cycle_passed[reset_pending] = False
                 ready_cycle_start_step[reset_pending] = -1
@@ -1888,6 +2373,10 @@ def main() -> int:
                     telemetry_strike_indices[e] += 1
             prev_tts = tts.clone()
 
+        if args.ready_telemetry_out:
+            for env_id in range(int(args.num_envs)):
+                if ready_cycle_states[env_id] is not None:
+                    _finalize_ready_cycle(env_id, terminal="end_of_rollout")
         result = accumulator.as_dict()
         strike_intervals = sorted(
             float(row["strike_interval_s"])
@@ -2115,6 +2604,68 @@ def main() -> int:
                 json.dump(telemetry_payload, f, ensure_ascii=False)
                 f.write("\n")
             result["virtual_telemetry_out"] = telemetry_path
+        if args.ready_telemetry_out:
+            from collections import Counter
+
+            class_counts = Counter(str(row.get("classification")) for row in ready_cycle_records)
+            failed_condition_counts = Counter()
+            failure_combinations = Counter()
+            support_failure_combinations = Counter()
+            for row in ready_cycle_records:
+                component_pass = row.get("deadline_component_pass") or {}
+                failed = tuple(sorted(name for name, passed in component_pass.items() if not passed))
+                if failed:
+                    for name in failed:
+                        failed_condition_counts[name] += 1
+                    failure_combinations["+".join(failed)] += 1
+                support_pass = row.get("deadline_support_pass") or {}
+                support_failed = tuple(sorted(name for name, passed in support_pass.items() if not passed))
+                if support_failed:
+                    support_failure_combinations["+".join(support_failed)] += 1
+            ready_path = os.path.abspath(args.ready_telemetry_out)
+            os.makedirs(os.path.dirname(ready_path) or ".", exist_ok=True)
+            ready_payload = {
+                "schema_version": 1,
+                "checkpoint": checkpoint,
+                "seed": int(args.seed),
+                "num_envs": int(args.num_envs),
+                "num_steps": int(args.num_steps),
+                "control_dt_s": float(base_env.step_dt),
+                "ready_contract": {
+                    "position_x_y_margin_m": 0.10,
+                    "planar_speed_margin_mps": 0.20,
+                    "heading_margin_deg": 15.0,
+                    "yaw_rate_margin_radps": 0.35,
+                    "tilt_margin_projected_gravity": 0.14,
+                    "joint_velocity_rms_margin_radps": 0.80,
+                    "dwell_s": 0.12,
+                    "foot_slip_margin_mps": float(getattr(cmd.cfg, "step_settle_slip_thresh", 0.03)),
+                    "classification": {
+                        "on_time": "stable READY observed by the fixed deadline",
+                        "late": "stable READY first observed after the fixed deadline",
+                        "never_ready": "no strict READY sample observed in the cycle",
+                        "unstable_ready": "strict READY sample observed but no stable READY dwell",
+                        "deadline_not_observed": (
+                            "the configured deadline gate did not apply to this cycle's station step class"
+                        ),
+                    },
+                },
+                "summary": {
+                    "cycles": len(ready_cycle_records),
+                    "deadline_observed_cycles": sum(
+                        bool(row.get("deadline_observed")) for row in ready_cycle_records
+                    ),
+                    "classification_counts": dict(class_counts),
+                    "deadline_failure_condition_counts": dict(failed_condition_counts),
+                    "top_deadline_failure_combinations": failure_combinations.most_common(20),
+                    "top_support_failure_combinations": support_failure_combinations.most_common(20),
+                },
+                "rows": ready_cycle_records,
+            }
+            with open(ready_path, "w", encoding="utf-8") as f:
+                json.dump(ready_payload, f, ensure_ascii=False)
+                f.write("\n")
+            result["ready_telemetry_out"] = ready_path
         if args.paired_recipe_mode == "capture":
             recipe_path = cmd.write_paired_recipe(args.paired_recipe_path)
             result["paired_recipe_out"] = recipe_path

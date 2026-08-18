@@ -35,7 +35,8 @@ def _resolve_motion_path(value: str) -> str:
 def _resolve_motion_sources(cfg) -> list[str]:
     primary = cfg.motion_file if cfg.motion_file is not None else cfg.task.get("motion_file")
     secondary = cfg.motion_file_2 if cfg.motion_file_2 is not None else cfg.task.get("motion_file_2")
-    clips = [c for c in (primary, secondary) if c is not None]
+    tertiary = cfg.motion_file_3 if cfg.motion_file_3 is not None else cfg.task.get("motion_file_3")
+    clips = [c for c in (primary, secondary, tertiary) if c is not None]
     return [_resolve_motion_path(c) for c in clips]
 
 
@@ -95,6 +96,21 @@ def _run(cfg, simulation_app):
         env_cfg.commands.motion.motion_file = motion_files if len(motion_files) > 1 else motion_files[0]
     if cfg.task.get("motion") is not None and cfg.task.motion.get("wrap_teleport") is not None:
         env_cfg.commands.motion.wrap_teleport = bool(cfg.task.motion.wrap_teleport)
+    if cfg.get("eval_clip_sequence") is not None:
+        sequence = tuple(
+            int(item.strip())
+            for item in str(cfg.eval_clip_sequence).split(",")
+            if item.strip()
+        )
+        if not sequence:
+            raise ValueError("eval_clip_sequence must contain at least one clip id")
+        env_cfg.commands.motion.eval_clip_sequence = sequence
+        env_cfg.commands.motion.fixed_clip_env_fraction_per_clip = 0.0
+        if hasattr(env_cfg.commands.racket_target, "venue_tuple_enabled"):
+            env_cfg.commands.racket_target.venue_tuple_enabled = False
+            env_cfg.commands.racket_target.venue_tuple_final_mix_prob = 0.0
+            env_cfg.commands.racket_target.venue_tuple_mix_mode = "recovery_scaled_online_v1"
+        applied.append(f"commands.motion.eval_clip_sequence = {sequence}")
 
     # Rewards are training-only bookkeeping.  They are not consumed by the actor, physics,
     # command manager, action manager, or actor observations.  Disabling them is therefore safe

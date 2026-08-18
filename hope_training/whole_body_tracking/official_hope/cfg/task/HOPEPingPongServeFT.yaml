@@ -1,0 +1,98 @@
+# Official continuation recipe for model_21800.
+#
+# This remains the original HITTER actor/critic task and 110-D -> 31-D contract. It only adds
+# a small third reference-motion cohort; scripts/train.py must be launched with checkpoint_path,
+# never residual_warm_start_path.
+defaults:
+  - HOPEPingPong
+  - _self_
+
+name: HitterPingPongServeFT
+experiment_name: agibot_a3_hitter_pingpong_model21800_serve_continue
+
+# Keep both official clips and add the processed upper-body serve clip.
+motion_file: motions/preprocessed/hope_forehand.npz
+motion_file_2: motions/preprocessed/hope_backhand.npz
+motion_file_3: motions/preprocessed/hope_serve_upper.npz
+
+motion:
+  # Rehearsal mixture: official FH/BH remain 90% of resets, serve adaptation is 10%.
+  clip_sampling_probabilities:
+  - 0.45
+  - 0.45
+  - 0.10
+  clip_swing_signs:
+  - 1.0
+  - -1.0
+  - -1.0
+  fixed_clip_env_fraction_per_clip: 0.0
+
+racket:
+  # FH/BH boxes are inherited unchanged. The serve box is a provisional envelope centered on
+  # the processed clip's SWING_COMMIT FK state (global frame 59 / 1.18 s).
+  pos_range_per_clip:
+    forehand:
+      x: [0.58, 0.58]
+      y: [-0.48, -0.40]
+      z: [0.85, 1.30]
+    backhand:
+      x: [0.58, 0.58]
+      y: [-0.13, -0.05]
+      z: [0.85, 1.30]
+    serve:
+      x: [0.38, 0.43]
+      y: [-0.19, -0.11]
+      z: [0.82, 0.90]
+  vel_range_per_clip:
+    forehand:
+      x: [1.24, 2.60]
+      y: [-0.31, 0.69]
+      z: [0.40, 1.66]
+    backhand:
+      x: [1.50, 2.60]
+      y: [-0.66, 0.40]
+      z: [0.00, 1.35]
+    serve:
+      x: [0.60, 1.00]
+      y: [0.30, 0.65]
+      z: [0.55, 0.95]
+  # The inherited V14 velocity curriculum also requires matching per-clip start/planner boxes.
+  vel_start_range_per_clip:
+    forehand:
+      x: [1.24, 2.24]
+      y: [-0.31, 0.69]
+      z: [0.66, 1.66]
+    backhand:
+      x: [1.60, 2.60]
+      y: [-0.66, 0.34]
+      z: [0.00, 0.54]
+    serve:
+      x: [0.60, 0.90]
+      y: [0.30, 0.60]
+      z: [0.55, 0.90]
+  vel_planner_range_per_clip:
+    forehand:
+      x: [1.57, 2.55]
+      y: [0.10, 0.52]
+      z: [0.66, 1.35]
+    backhand:
+      x: [1.55, 2.52]
+      y: [-0.18, 0.29]
+      z: [0.40, 0.54]
+    serve:
+      x: [0.65, 0.95]
+      y: [0.35, 0.60]
+      z: [0.60, 0.90]
+  # The inherited fixed-balanced venue bank is a two-clip FH/BH cohort and cannot be
+  # permanently aligned with the added third serve clip. Keep the per-clip target boxes above.
+  venue_tuple_enabled: false
+  venue_tuple_final_mix_prob: 0.0
+  venue_tuple_mix_mode: recovery_scaled_online_v1
+  strike_phase_per_clip:
+  - 0.38679245
+  - 0.44444444
+  - 0.42142857
+  mount_normal_sign_per_clip:
+  - 1.0
+  - -1.0
+  - -1.0

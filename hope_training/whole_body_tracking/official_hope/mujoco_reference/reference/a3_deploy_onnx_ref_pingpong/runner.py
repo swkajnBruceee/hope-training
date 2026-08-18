@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import sys
 import time
+import csv
+from pathlib import Path
 
 import numpy as np
 
@@ -93,8 +95,22 @@ class PingPongReferenceRunner:
         self._safety_stopped = False
 
     def run(self, max_ticks: int | None = None, realtime: bool = False,
-            status_every: int = 100) -> None:
+            status_every: int = 100, stability_csv: str | Path | None = None) -> None:
         dt = self.cfg.control_dt
+        telemetry_stream = None
+        telemetry_writer = None
+        if stability_csv is not None:
+            telemetry_path = Path(stability_csv)
+            telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+            telemetry_stream = telemetry_path.open("w", newline="", encoding="utf-8")
+            telemetry_writer = csv.DictWriter(
+                telemetry_stream,
+                fieldnames=[
+                    "tick", "time_s", "com_x", "com_y", "com_z", "com_vx", "com_vy", "com_vz",
+                    "support_margin_m", "tilt_deg", "base_ang_speed_rps", "grav_x", "grav_y", "grav_z",
+                ],
+            )
+            telemetry_writer.writeheader()
         self.bridge.reset()
         state = self.bridge.read_state()
         self.lifecycle.set_initial_station(state.base_pos_w[:2])
@@ -232,6 +248,14 @@ class PingPongReferenceRunner:
                 self.bridge.sync_viewer()
                 self.bridge.record_frame()
 
+                if telemetry_writer is not None:
+                    telemetry_writer.writerow({
+                        "tick": tick,
+                        "time_s": tick * dt,
+                        **self.bridge.stability_metrics(),
+                    })
+                    telemetry_stream.flush()
+
                 if not self.bridge.is_viewer_running():
                     break
                 if status_every and tick % status_every == 0:
@@ -240,6 +264,8 @@ class PingPongReferenceRunner:
                 if realtime:
                     self._sleep_to_rate(loop_start, dt)
         finally:
+            if telemetry_stream is not None:
+                telemetry_stream.close()
             self.bridge.close()
 
     def _print_status(self, tick: int, target, static_hold: bool, grav: np.ndarray) -> None:

@@ -1,0 +1,43 @@
+# Simple MuJoCo validation config for model2400_deployment_bundle.
+# The bundle action adapter is authoritative for q_des decoding; the PD gains
+# below only realize those targets in the project-local MuJoCo plant.
+contract: hitter_pure
+control_hz: 50.0
+observation_normalization: none
+passive_neck: true
+
+policy:
+  onnx_path: /home/bistu/桌面/model2400_deployment_bundle/policy/policy.onnx
+  joint_order: agibot_a3
+
+action_adapter:
+  config_path: /home/bistu/桌面/model2400_deployment_bundle/config/action_adapter.yaml
+  # The bundle's native graph carries the model-specific affine q_des contract;
+  # use it instead of the neutral example values in config/action_adapter.yaml.
+  metadata_onnx_path: /home/bistu/桌面/model2400_deployment_bundle/native_policy/policy.onnx
+
+simulation:
+  model_xml_path: /home/bistu/桌面/HOPETableTennis/agibot/A3_MuJoCo_Sim/aimrt_mujoco_sim/src/models/bin/cfg/model/a3_pingpong/a3_pingpong.xml
+  pd_gains:
+    deploy_config_path: ../models/model_21800/policy/params/deploy.yaml
+
+runtime:
+  warmup_ticks: 100
+  motion_blend_ticks: 25
+  hold_recover_s: 2.5
+  official_stand: true
+  auto_leg_hold: false
+  leg_clamp_rad: 0.0
+  leg_smooth_alpha: 1.0
+  gain_scale: 1.0
+  leg_gain_scale: 1.0
+  ankle_gain_scale: 1.0
+  initial_stance: width50_parallel
+
+lifecycle:
+  follow_through_s: 0.6
+  recovery_s: 0.8
+  ready_time_to_strike: 1.0
+  ready_reach_x: 0.40
+  ready_reach_y: 0.20
+  ready_reach_z: -0.05

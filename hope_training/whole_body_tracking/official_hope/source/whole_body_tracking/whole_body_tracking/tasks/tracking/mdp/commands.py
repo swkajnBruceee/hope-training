@@ -785,7 +785,27 @@ class MotionCommand(CommandTerm):
                     self.eval_sequence_index[env_ids] = sequence_index
                     self._eval_sequence_counter[env_ids] += 1
                 else:
-                    new_clip = torch.randint(0, self.motion.num_segments, (n,), device=self.device)
+                    clip_probs = tuple(
+                        float(value)
+                        for value in getattr(self.cfg, "clip_sampling_probabilities", ())
+                    )
+                    if clip_probs:
+                        if len(clip_probs) != self.motion.num_segments:
+                            raise ValueError(
+                                "clip_sampling_probabilities must have one value per motion clip: "
+                                f"got {len(clip_probs)} for {self.motion.num_segments} clips"
+                            )
+                        if any(value < 0.0 for value in clip_probs) or sum(clip_probs) <= 0.0:
+                            raise ValueError(
+                                "clip_sampling_probabilities must be non-negative with a positive sum"
+                            )
+                        probabilities = torch.as_tensor(
+                            clip_probs, dtype=torch.float32, device=self.device
+                        )
+                        probabilities = probabilities / probabilities.sum()
+                        new_clip = torch.multinomial(probabilities, n, replacement=True)
+                    else:
+                        new_clip = torch.randint(0, self.motion.num_segments, (n,), device=self.device)
                 env_ids_t = torch.as_tensor(
                     env_ids, dtype=torch.long, device=self.device
                 )
@@ -2732,6 +2752,12 @@ class MotionCommandCfg(CommandTermCfg):
     # transition sequence while the prefix keeps the ordinary conditioned-core distribution.
     short_transition_env_fraction: float = 0.0
     transition_clip_sequence: tuple[int, ...] = ()
+    # Optional weighted sampling for a multi-clip continuation. Empty preserves the official
+    # uniform FH/BH sampler; e.g. (0.45, 0.45, 0.10) adds a small serve cohort.
+    clip_sampling_probabilities: tuple[float, ...] = ()
+    # Optional actor-visible swing signs aligned with the motion clips. Empty preserves the
+    # official rule clip 0 -> +1 and every other clip -> -1.
+    clip_swing_signs: tuple[float, ...] = ()
 
     adaptive_kernel_size: int = 1
     adaptive_lambda: float = 0.8

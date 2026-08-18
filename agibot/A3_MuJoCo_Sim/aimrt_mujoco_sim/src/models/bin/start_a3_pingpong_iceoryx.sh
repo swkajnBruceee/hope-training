@@ -22,9 +22,11 @@ start_iox_roudi() {
   fi
 
   if command -v setsid >/dev/null 2>&1; then
-    setsid "${roudi_cmd}" >/tmp/a3_pingpong_iox_roudi.log 2>&1 </dev/null &
+    setsid "${roudi_cmd}" -c "${SCRIPT_DIR}/cfg/roudi_config_pingpong.toml" \
+      >/tmp/a3_pingpong_iox_roudi.log 2>&1 </dev/null &
   else
-    nohup "${roudi_cmd}" >/tmp/a3_pingpong_iox_roudi.log 2>&1 </dev/null &
+    nohup "${roudi_cmd}" -c "${SCRIPT_DIR}/cfg/roudi_config_pingpong.toml" \
+      >/tmp/a3_pingpong_iox_roudi.log 2>&1 </dev/null &
   fi
   disown "$!" 2>/dev/null || true
 

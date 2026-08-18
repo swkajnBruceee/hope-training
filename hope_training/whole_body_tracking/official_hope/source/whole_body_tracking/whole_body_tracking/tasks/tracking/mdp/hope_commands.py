@@ -4910,7 +4910,22 @@ class RacketTargetCommand(CommandTerm):
         # -> -1), matching the swing_type observation. Single-clip legacy: infer from the target Y side.
         if motion._multiseg:
             clip = motion.clip_id[env_ids]
-            self.swing_sign[env_ids] = torch.where(clip == 0, 1.0, -1.0)
+            clip_signs = tuple(
+                float(value)
+                for value in getattr(motion.cfg, "clip_swing_signs", ())
+            )
+            if clip_signs:
+                if len(clip_signs) != motion.motion.num_segments:
+                    raise ValueError(
+                        "clip_swing_signs must have one value per motion clip: "
+                        f"got {len(clip_signs)} for {motion.motion.num_segments} clips"
+                    )
+                sign_table = torch.as_tensor(
+                    clip_signs, dtype=torch.float32, device=self.device
+                )
+                self.swing_sign[env_ids] = sign_table[clip]
+            else:
+                self.swing_sign[env_ids] = torch.where(clip == 0, 1.0, -1.0)
             # Start a fresh safety-minimum accumulator only for a newly armed backhand.  Forehands
             # leave the previous backhand result visible to tail-averaged evaluation.
             ids_t = torch.as_tensor(env_ids, dtype=torch.long, device=self.device)

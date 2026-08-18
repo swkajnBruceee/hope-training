@@ -25,6 +25,10 @@ checkpoint: null       # explicit local model_*.pt path (else: latest local chec
 # Reference motion clips (null -> the task's placeholder clips).
 motion_file: null      # clip 0 (forehand)
 motion_file_2: null    # clip 1 (backhand)
+motion_file_3: null    # clip 2 (serve adaptation)
+
+# Optional evaluation-only fixed clip sequence, e.g. 2 for the serve clip.
+eval_clip_sequence: null
 
 video: false
 video_length: 200
