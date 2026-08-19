@@ -498,7 +498,7 @@ class randomize_effective_ground_friction(ManagerTermBase):
 
 
 class randomize_a3_message_pd_gains(ManagerTermBase):
-    """HKUST-style A3 gain DR without randomizing passive viscous damping.
+    """HKUST-style A3 gain DR with separately randomized passive damping.
 
     The A3 Isaac drive stores ``Kd_message + damping_passive``.  Consequently the
     randomized drive must be ``beta * Kd_message + damping_passive`` rather than
@@ -516,6 +516,10 @@ class randomize_a3_message_pd_gains(ManagerTermBase):
         )
         self.beta_range = randomize_structured_pd_gains._validate_range(
             cfg.params["beta_range"], "beta_range"
+        )
+        self.passive_damping_range = randomize_structured_pd_gains._validate_range(
+            cfg.params.get("passive_damping_range", (1.0, 1.0)),
+            "passive_damping_range",
         )
         self.nominal_fraction = float(cfg.params["nominal_fraction"])
         if not (
@@ -562,6 +566,7 @@ class randomize_a3_message_pd_gains(ManagerTermBase):
             num_envs, num_joints, device=self.asset.device
         )
         self.beta = torch.ones_like(self.alpha)
+        self.passive_multiplier = torch.ones_like(self.alpha)
         env_ids = torch.arange(
             num_envs, dtype=torch.long, device=self.asset.device
         )
@@ -573,6 +578,7 @@ class randomize_a3_message_pd_gains(ManagerTermBase):
             "nominal_mask": self.nominal_mask,
             "alpha": self.alpha,
             "beta": self.beta,
+            "passive_multiplier": self.passive_multiplier,
         }
 
     def _select_nominal(self, env_ids: torch.Tensor) -> torch.Tensor:
@@ -611,6 +617,7 @@ class randomize_a3_message_pd_gains(ManagerTermBase):
             "pd_nominal_env": self.nominal_mask.float(),
             "pd_kp_multiplier_mean": self.alpha.mean(dim=-1),
             "pd_kd_message_multiplier_mean": self.beta.mean(dim=-1),
+            "pd_passive_damping_multiplier_mean": self.passive_multiplier.mean(dim=-1),
         }
         for name, value in values.items():
             existing = command.metrics.get(name)
@@ -627,8 +634,9 @@ class randomize_a3_message_pd_gains(ManagerTermBase):
         alpha_range: tuple[float, float],
         beta_range: tuple[float, float],
         nominal_fraction: float,
+        passive_damping_range: tuple[float, float] = (1.0, 1.0),
     ):
-        del asset_cfg, alpha_range, beta_range, nominal_fraction
+        del asset_cfg, alpha_range, beta_range, nominal_fraction, passive_damping_range
         if env_ids is None:
             env_ids = torch.arange(
                 env.scene.num_envs,
@@ -645,17 +653,22 @@ class randomize_a3_message_pd_gains(ManagerTermBase):
         beta = self._sample_log_uniform(
             shape, self.beta_range, self.asset.device
         )
+        passive_multiplier = self._sample_log_uniform(
+            shape, self.passive_damping_range, self.asset.device
+        )
         nominal = self._select_nominal(env_ids)
         alpha[nominal] = 1.0
         beta[nominal] = 1.0
+        passive_multiplier[nominal] = 1.0
         self.alpha[env_ids] = alpha
         self.beta[env_ids] = beta
+        self.passive_multiplier[env_ids] = passive_multiplier
         self.nominal_mask[env_ids] = nominal
 
         stiffness = self.asset.data.default_joint_stiffness[env_ids] * alpha
         damping = (
             self.message_kd.unsqueeze(0) * beta
-            + self.passive_damping.unsqueeze(0)
+            + self.passive_damping.unsqueeze(0) * passive_multiplier
         )
         self.asset.write_joint_stiffness_to_sim(stiffness, env_ids=env_ids)
         self.asset.write_joint_damping_to_sim(damping, env_ids=env_ids)
@@ -668,6 +681,206 @@ class randomize_a3_message_pd_gains(ManagerTermBase):
             actuator.stiffness[env_ids] = stiffness[:, joint_ids]
             actuator.damping[env_ids] = damping[:, joint_ids]
         self._publish_metrics(env)
+
+
+class randomize_a3_torque_capacity(ManagerTermBase):
+    """Startup-randomize A3 actuator torque capacity with a fixed nominal cohort.
+
+    The sampled limit is written to PhysX and to the q_des projector's cached effort-limit
+    contract, so torque clipping, torque headroom reward, and feasible-q_des projection all use
+    the same per-environment capacity.  Sampling is startup-only: each environment represents a
+    fixed motor/voltage/thermal cohort for the whole run.
+    """
+
+    def __init__(self, cfg: EventTermCfg, env: ManagerBasedEnv):
+        super().__init__(cfg, env)
+        self.asset_cfg: SceneEntityCfg = cfg.params["asset_cfg"]
+        self.asset: Articulation = env.scene[self.asset_cfg.name]
+        self.capacity_range = randomize_structured_pd_gains._validate_range(
+            cfg.params.get("capacity_range", (1.0, 1.0)), "capacity_range"
+        )
+        self.nominal_fraction = float(cfg.params.get("nominal_fraction", 0.0))
+        if not math.isfinite(self.nominal_fraction) or not 0.0 <= self.nominal_fraction <= 1.0:
+            raise ValueError("torque-capacity nominal_fraction must be finite and in [0, 1]")
+        self.nominal_limits = self.asset.data.joint_effort_limits[0].detach().clone()
+        if bool(torch.any(self.nominal_limits <= 0.0)):
+            raise RuntimeError("A3 torque-capacity randomization requires positive effort limits")
+        num_envs = int(env.scene.num_envs)
+        num_joints = len(self.asset.joint_names)
+        self.multiplier = torch.ones(num_envs, num_joints, device=self.asset.device)
+        env_ids = torch.arange(num_envs, dtype=torch.long, device=self.asset.device)
+        self.nominal_mask = self._select_nominal(env_ids)
+        self.asset._hope_a3_torque_capacity_telemetry = {
+            "nominal_mask": self.nominal_mask,
+            "multiplier": self.multiplier,
+            "nominal_limits": self.nominal_limits,
+        }
+
+    def _select_nominal(self, env_ids: torch.Tensor) -> torch.Tensor:
+        if self.nominal_fraction <= 0.0:
+            return torch.zeros_like(env_ids, dtype=torch.bool)
+        if self.nominal_fraction >= 1.0:
+            return torch.ones_like(env_ids, dtype=torch.bool)
+        reciprocal = 1.0 / self.nominal_fraction
+        stride = int(round(reciprocal))
+        if not math.isclose(reciprocal, float(stride), rel_tol=0.0, abs_tol=1.0e-9):
+            raise RuntimeError("A3 torque-capacity nominal fraction must be the reciprocal of an integer")
+        return torch.remainder(env_ids, stride) == 0
+
+    @staticmethod
+    def _sample_log_uniform(shape: tuple[int, ...], value_range: tuple[float, float], device) -> torch.Tensor:
+        lo, hi = value_range
+        return torch.empty(shape, device=device).uniform_(math.log(lo), math.log(hi)).exp_()
+
+    def _publish_metrics(self, env: ManagerBasedEnv) -> None:
+        try:
+            command = env.command_manager.get_term("racket_target")
+        except (AttributeError, KeyError, ValueError):
+            return
+        values = {
+            "motor_capacity_nominal_env": self.nominal_mask.float(),
+            "motor_capacity_multiplier_mean": self.multiplier.mean(dim=-1),
+            "motor_capacity_multiplier_min": self.multiplier.min(dim=-1).values,
+            "motor_capacity_multiplier_max": self.multiplier.max(dim=-1).values,
+        }
+        for name, value in values.items():
+            existing = command.metrics.get(name)
+            if torch.is_tensor(existing) and existing.shape == value.shape:
+                existing.copy_(value)
+            else:
+                command.metrics[name] = value.clone()
+
+    def __call__(
+        self,
+        env: ManagerBasedEnv,
+        env_ids: torch.Tensor | None,
+        asset_cfg: SceneEntityCfg,
+        capacity_range: tuple[float, float],
+        nominal_fraction: float,
+    ):
+        del asset_cfg, capacity_range, nominal_fraction
+        if env_ids is None:
+            env_ids = torch.arange(env.scene.num_envs, dtype=torch.long, device=self.asset.device)
+        else:
+            env_ids = env_ids.to(device=self.asset.device, dtype=torch.long)
+        shape = (env_ids.numel(), len(self.asset.joint_names))
+        multiplier = self._sample_log_uniform(shape, self.capacity_range, self.asset.device)
+        nominal = self._select_nominal(env_ids)
+        multiplier[nominal] = 1.0
+        limits = self.nominal_limits.unsqueeze(0) * multiplier
+        writer = getattr(self.asset, "write_joint_effort_limit_to_sim", None)
+        if not callable(writer):
+            raise RuntimeError("Isaac articulation does not expose write_joint_effort_limit_to_sim")
+        writer(limits, env_ids=env_ids)
+        for actuator in self.asset.actuators.values():
+            joint_ids = actuator.joint_indices
+            if hasattr(actuator, "effort_limit"):
+                actuator.effort_limit[env_ids] = limits[:, joint_ids]
+
+        self.multiplier[env_ids] = multiplier
+        self.nominal_mask[env_ids] = nominal
+        # The q_des action term caches limits at construction; keep its feasibility projector
+        # synchronized with the same sampled actuator capacity used by PhysX.
+        try:
+            action_term = env.action_manager.get_term("joint_pos")
+            action_joint_ids = getattr(action_term, "_action_joint_ids", None)
+            cached_limits = getattr(action_term, "_effort_limit", None)
+            if torch.is_tensor(action_joint_ids) and torch.is_tensor(cached_limits):
+                cached_limits[env_ids] = limits.index_select(1, action_joint_ids)
+        except (AttributeError, KeyError, ValueError):
+            pass
+        self._publish_metrics(env)
+
+
+def push_a3_competence_gated(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor | None,
+    asset_cfg: SceneEntityCfg,
+    command_name: str,
+    force_magnitude_range: tuple[float, float] = (20.0, 60.0),
+    torque_magnitude_range: tuple[float, float] = (5.0, 10.0),
+    ramp_start_delay_steps: int = 4000,
+    ramp_steps: int = 8000,
+    skip_hold: bool = True,
+):
+    """Apply a delayed, ramped one-step 20--60 N / 5--10 Nm wrench after competence is learned.
+
+    The event is called in ``interval`` mode.  IsaacLab's public
+    ``set_external_force_and_torque`` API stores a persistent wrench, so it is not suitable here:
+    using it would leave the push active until the next event instead of applying one impulse-like
+    physics-step disturbance.  We therefore call the underlying articulation PhysX view directly;
+    ``apply_forces_and_torques_at_position`` applies the wrench for the next physics step only.
+
+    The event starts after a short post-gate delay and then ramps independently of the
+    sensor-corruption curriculum.  This keeps recovery perturbations from arriving at the same
+    time as the first mocap/target corruption.
+    """
+    if int(ramp_start_delay_steps) < 0:
+        raise ValueError("ramp_start_delay_steps must be non-negative")
+    if int(ramp_steps) <= 0:
+        raise ValueError("ramp_steps must be positive")
+    asset: Articulation = env.scene[asset_cfg.name]
+    command = env.command_manager.get_term(command_name)
+    unlocked = bool(getattr(command, "_ability_unlocked", True))
+    if not unlocked:
+        return
+    unlock_step = int(getattr(command, "_ability_unlock_step", -1))
+    current_step = int(getattr(env, "common_step_counter", 0))
+    if unlock_step < 0:
+        scale = 1.0
+    else:
+        ramp_elapsed = current_step - unlock_step - int(ramp_start_delay_steps)
+        scale = min(max(ramp_elapsed / int(ramp_steps), 0.0), 1.0)
+    if scale <= 0.0:
+        return
+    if env_ids is None:
+        env_ids = torch.arange(env.scene.num_envs, dtype=torch.long, device=asset.device)
+    else:
+        env_ids = env_ids.to(device=asset.device, dtype=torch.long)
+    if skip_hold:
+        hold = getattr(command, "in_hold", None)
+        if torch.is_tensor(hold):
+            env_ids = env_ids[~hold[env_ids].bool()]
+    if env_ids.numel() == 0:
+        return
+    force_lo, force_hi = (float(value) for value in force_magnitude_range)
+    torque_lo, torque_hi = (float(value) for value in torque_magnitude_range)
+    if force_lo < 0.0 or force_hi < force_lo or torque_lo < 0.0 or torque_hi < torque_lo:
+        raise ValueError("external push magnitude ranges must be ordered and non-negative")
+    try:
+        body_ids = asset.find_bodies("pelvis_link", preserve_order=True)[0]
+    except Exception:
+        body_ids = [0]
+    body_ids = torch.as_tensor(body_ids, dtype=torch.long, device=asset.device)
+    force_direction = torch.randn(env_ids.numel(), 1, 3, device=asset.device)
+    force_direction = force_direction / torch.linalg.norm(force_direction, dim=-1, keepdim=True).clamp_min(1.0e-6)
+    torque_direction = torch.randn(env_ids.numel(), 1, 3, device=asset.device)
+    torque_direction = torque_direction / torch.linalg.norm(torque_direction, dim=-1, keepdim=True).clamp_min(1.0e-6)
+    force_magnitude = torch.empty(env_ids.numel(), 1, 1, device=asset.device).uniform_(force_lo, force_hi) * scale
+    torque_magnitude = torch.empty(env_ids.numel(), 1, 1, device=asset.device).uniform_(torque_lo, torque_hi) * scale
+    # ArticulationView expects one force/torque slot for every link in each selected
+    # articulation.  Fill only the pelvis slot(s); zero entries leave the other links
+    # untouched.  Applying directly through the PhysX view is transient for the next
+    # physics step, unlike Articulation.set_external_force_and_torque(), which buffers
+    # a persistent wrench.
+    forces = torch.zeros(
+        (env_ids.numel(), asset.num_bodies, 3), device=asset.device, dtype=force_direction.dtype
+    )
+    torques = torch.zeros_like(forces)
+    forces[:, body_ids, :] = force_direction * force_magnitude
+    torques[:, body_ids, :] = torque_direction * torque_magnitude
+    asset.root_physx_view.apply_forces_and_torques_at_position(
+        force_data=forces,
+        torque_data=torques,
+        position_data=None,
+        indices=env_ids,
+        is_global=True,
+    )
+    try:
+        command.metrics["external_push_scale"][env_ids] = float(scale)
+        command.metrics["external_push_count"][env_ids] += 1.0
+    except (AttributeError, KeyError):
+        pass
 
 
 def assert_material_randomization_scope(

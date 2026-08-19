@@ -40,8 +40,12 @@ max_steps: null
 # Verification-only fast path: rewards/terminations do not affect actor inference or physics.
 verification_disable_scoring: false
 progress_interval: 50
-# false uses the standard play.py behavior; true applies the Hydra task recipe exactly as train.py.
-apply_task_overrides: false
+# Apply the Hydra task recipe exactly as train.py so qdes delay, domain randomization and
+# command/action settings match the current scratch training contract.
+apply_task_overrides: true
+# Current experiment is scratch PPO. Set false only when intentionally replaying a legacy
+# A5/Residual checkpoint with an explicitly matching algo config.
+scratch_training: true
 # Optional curriculum phase used for replay.  When set, this is published before the first
 # environment reset so stance/friction schedules match the checkpoint's training iteration.
 replay_curriculum_iteration: null

@@ -41,7 +41,16 @@ class MyOnPolicyRunner(OnPolicyRunner):
 
 
 class MotionOnPolicyRunner(OnPolicyRunner):
-    def __init__(self, env: VecEnv, train_cfg: dict, log_dir: str | None = None, device="cpu", registry_name=None):
+    def __init__(
+        self,
+        env: VecEnv,
+        train_cfg: dict,
+        log_dir: str | None = None,
+        device="cpu",
+        registry_name=None,
+        amp_cfg: dict | None = None,
+        scratch_contract_enabled: bool = False,
+    ):
         # The resolved action term is authoritative for which fixed actor outputs execute.  The
         # residual contract is bound immediately after rsl_rl constructs the policy, so its
         # 29 active A3 channels are fixed before the first rollout while preserving the 31-D
@@ -60,6 +69,15 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                     int(index) for index in passive_cols.detach().cpu().tolist()
                 ]
         super().__init__(env, train_cfg, log_dir, device)
+        self.scratch_contract_enabled = bool(scratch_contract_enabled)
+        if self.scratch_contract_enabled:
+            policy_class = str(policy_cfg.get("class_name", "ActorCritic"))
+            if policy_class != "ActorCritic":
+                raise ValueError(
+                    "scratch_training requires standard ActorCritic; "
+                    f"got {policy_class!r}"
+                )
+        self._setup_amp(amp_cfg)
         bind_residual = getattr(self.alg.policy, "bind_residual_action_contract", None)
         if callable(bind_residual):
             action_term = env.unwrapped.action_manager.get_term("joint_pos")
@@ -172,6 +190,467 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 active[passive_cols] = False
             bind_projection(lower, upper, active)
         self.registry_name = registry_name
+
+    def _setup_amp(self, amp_cfg: dict | None) -> None:
+        """Install the optional AMP sidecar without touching the HOPE RewardManager."""
+        self.amp = None
+        self.amp_cfg = dict(amp_cfg or {})
+        if not bool(self.amp_cfg.get("enabled", False)):
+            return
+        from whole_body_tracking.utils.amp import (
+            AMPMotionFeature,
+            amp_transition_valid_mask,
+            build_amp_from_config,
+            expert_motion_feature,
+            robot_motion_feature,
+        )
+
+        env = self.env.unwrapped
+        self._amp_feature = AMPMotionFeature(
+            joint_velocity_scale=float(self.amp_cfg.get("joint_velocity_scale", 0.1)),
+            body_linear_velocity_scale=float(
+                self.amp_cfg.get("body_linear_velocity_scale", 0.1)
+            ),
+            body_angular_velocity_scale=float(
+                self.amp_cfg.get("body_angular_velocity_scale", 0.1)
+            ),
+            excluded_joint_names=tuple(
+                self.amp_cfg.get(
+                    "excluded_joint_names",
+                    ("head_yaw_joint", "head_pitch_joint"),
+                )
+            ),
+            lower_body_body_names=tuple(
+                self.amp_cfg.get(
+                    "lower_body_body_names",
+                    (
+                        "left_hip_roll_Link",
+                        "left_knee_Link",
+                        "left_ankle_roll_Link",
+                        "right_hip_roll_Link",
+                        "right_knee_Link",
+                        "right_ankle_roll_Link",
+                    ),
+                )
+            ),
+            lower_body_joint_names=tuple(
+                self.amp_cfg.get(
+                    "lower_body_joint_names",
+                    (
+                        "left_hip_pitch_joint",
+                        "left_hip_roll_joint",
+                        "left_hip_yaw_joint",
+                        "left_knee_joint",
+                        "left_ankle_pitch_joint",
+                        "left_ankle_roll_joint",
+                        "right_hip_pitch_joint",
+                        "right_hip_roll_joint",
+                        "right_hip_yaw_joint",
+                        "right_knee_joint",
+                        "right_ankle_pitch_joint",
+                        "right_ankle_roll_joint",
+                    ),
+                )
+            ),
+            lower_body_feature_scale=float(
+                self.amp_cfg.get("lower_body_feature_scale", 0.3)
+            ),
+        )
+        policy_state = robot_motion_feature(env, self._amp_feature)
+        expert_state = expert_motion_feature(env, self._amp_feature)
+        if policy_state.shape != expert_state.shape or policy_state.ndim != 2:
+            raise RuntimeError(
+                "AMP robot/reference state shape mismatch: "
+                f"robot={tuple(policy_state.shape)} expert={tuple(expert_state.shape)}"
+            )
+        self._amp_feature_dim = int(policy_state.shape[-1])
+        self._amp_transition_dim = self._amp_feature_dim * 2
+        self._amp_feature_signature = self._amp_feature.signature()
+        self._amp_transition_valid_mask = amp_transition_valid_mask
+        self.amp = build_amp_from_config(self._amp_transition_dim, self.amp_cfg).to(self.device)
+        self._amp_lambda_initial = float(self.amp_cfg.get("lambda_amp", 0.05))
+        self._amp_lambda_min = float(self.amp_cfg.get("lambda_min", 0.0))
+        self._amp_lambda_max = float(self.amp_cfg.get("lambda_max", 2.0))
+        if not (
+            math.isfinite(self._amp_lambda_initial)
+            and math.isfinite(self._amp_lambda_min)
+            and math.isfinite(self._amp_lambda_max)
+            and 0.0 <= self._amp_lambda_min <= self._amp_lambda_max
+        ):
+            raise ValueError("AMP lambda bounds must be finite and satisfy 0 <= min <= max")
+        self._amp_lambda = float(
+            min(max(self._amp_lambda_initial, self._amp_lambda_min), self._amp_lambda_max)
+        )
+        self._amp_ema_decay = float(self.amp_cfg.get("ema_decay", 0.9))
+        self._amp_lambda_smoothing = float(self.amp_cfg.get("lambda_smoothing", 0.25))
+        self._amp_warmup_rollouts = int(self.amp_cfg.get("warmup_rollouts", 2))
+        self._amp_schedule_iterations = max(
+            int(self.amp_cfg.get("schedule_iterations", 10000)), 1
+        )
+        self._amp_ignore_hold = bool(self.amp_cfg.get("ignore_hold", True))
+        self._amp_ignore_terminal = bool(self.amp_cfg.get("ignore_terminal", True))
+        self._amp_ignore_resample = bool(self.amp_cfg.get("ignore_resample", True))
+        self._amp_ignore_hold_exit = bool(self.amp_cfg.get("ignore_hold_exit", True))
+        if not (0.0 <= self._amp_ema_decay < 1.0):
+            raise ValueError("AMP ema_decay must satisfy 0 <= ema_decay < 1")
+        if not (0.0 < self._amp_lambda_smoothing <= 1.0):
+            raise ValueError("AMP lambda_smoothing must satisfy 0 < smoothing <= 1")
+        if self._amp_warmup_rollouts < 0:
+            raise ValueError("AMP warmup_rollouts must be non-negative")
+        self._amp_target_schedule = self._resolve_amp_target_schedule(
+            self.amp_cfg.get(
+                "contribution_schedule",
+                self.amp_cfg.get("target_contribution_schedule"),
+            )
+        )
+        self._amp_original_abs_ema = 0.0
+        self._amp_reward_abs_ema = 0.0
+        self._amp_rollout_count = 0
+        self._amp_last_contribution = 0.0
+        self._amp_last_contribution_valid = 0.0
+        self._amp_last_contribution_global = 0.0
+        self._amp_last_target = self._amp_target_schedule[0][1]
+        self._amp_last_lambda_target = self._amp_lambda
+        self._amp_prev_policy: torch.Tensor | None = None
+        self._amp_prev_expert: torch.Tensor | None = None
+        self._amp_prev_hold: torch.Tensor | None = None
+        self._amp_rollout_policy: list[torch.Tensor] = []
+        self._amp_rollout_expert: list[torch.Tensor] = []
+        self._amp_rollout_original_abs: list[torch.Tensor] = []
+        self._amp_rollout_amp_abs: list[torch.Tensor] = []
+        self._amp_rollout_valid_original_abs: list[torch.Tensor] = []
+        self._amp_rollout_valid_amp_abs: list[torch.Tensor] = []
+        self._amp_rollout_valid_count = 0
+        self._amp_rollout_total_count = 0
+        self._amp_last_reward = torch.zeros(int(self.env.num_envs), device=self.device)
+        self._amp_last_original_reward = torch.zeros(int(self.env.num_envs), device=self.device)
+        self._amp_last_total_reward = torch.zeros(int(self.env.num_envs), device=self.device)
+        print(
+            "[MotionOnPolicyRunner] AMP enabled as reward-side regularizer: "
+            f"lambda_initial={self._amp_lambda:g}, feature_dim={self._amp_feature_dim}, "
+            f"transition_dim={self._amp_transition_dim}, target_final=0.075, "
+            f"schedule_iterations={self._amp_schedule_iterations}, "
+            f"lower_body_scale={self._amp_feature.lower_body_feature_scale:g}, "
+            f"excluded_joints={list(self._amp_feature.excluded_joint_names)}, "
+            f"lambda_range=[{self._amp_lambda_min:g}, {self._amp_lambda_max:g}], "
+            "HOPE RewardManager unchanged",
+            flush=True,
+        )
+        print(
+            "[MotionOnPolicyRunner] AMP feature contract: "
+            f"joints={self._amp_feature_signature['joint_names']}; "
+            f"bodies={self._amp_feature_signature['body_names']}",
+            flush=True,
+        )
+
+    @staticmethod
+    def _resolve_amp_target_schedule(value) -> list[tuple[float, float]]:
+        default = ((0.0, 0.35), (0.10, 0.35), (0.35, 0.20), (0.70, 0.10), (1.0, 0.075))
+        if value is None:
+            return list(default)
+        try:
+            schedule = [(float(item[0]), float(item[1])) for item in value]
+        except (TypeError, ValueError, IndexError) as exc:
+            raise ValueError("AMP target_contribution_schedule must contain [progress, ratio] pairs") from exc
+        if len(schedule) < 2 or schedule[0][0] != 0.0 or schedule[-1][0] != 1.0:
+            raise ValueError("AMP target contribution schedule must start at 0.0 and end at 1.0")
+        if any(
+            not (math.isfinite(progress) and math.isfinite(ratio))
+            or not (0.0 <= progress <= 1.0 and 0.0 < ratio < 1.0)
+            for progress, ratio in schedule
+        ) or any(a[0] >= b[0] for a, b in zip(schedule, schedule[1:])):
+            raise ValueError("AMP target contribution schedule must be finite, ordered, and in (0,1)")
+        if abs(schedule[-1][1] - 0.075) > 1.0e-9:
+            raise ValueError("AMP final target contribution is locked to 7.5%")
+        return schedule
+
+    def _amp_target_contribution(self, progress: float) -> float:
+        progress = min(max(float(progress), 0.0), 1.0)
+        schedule = self._amp_target_schedule
+        for (p0, r0), (p1, r1) in zip(schedule, schedule[1:]):
+            if progress <= p1:
+                alpha = (progress - p0) / max(p1 - p0, 1.0e-12)
+                return r0 + alpha * (r1 - r0)
+        return schedule[-1][1]
+
+    def _amp_capture_state_pair(self) -> tuple[torch.Tensor, torch.Tensor]:
+        from whole_body_tracking.utils.amp import expert_motion_feature, robot_motion_feature
+
+        env = self.env.unwrapped
+        return (
+            robot_motion_feature(env, self._amp_feature).detach(),
+            expert_motion_feature(env, self._amp_feature).detach(),
+        )
+
+    def _amp_begin_rollout(self) -> None:
+        if self.amp is None:
+            return
+        self._amp_prev_policy, self._amp_prev_expert = self._amp_capture_state_pair()
+        self._amp_prev_hold = self._amp_hold_mask()
+
+    def _amp_hold_mask(self) -> torch.Tensor:
+        motion = self.env.unwrapped.command_manager.get_term("motion")
+        hold = getattr(motion, "in_hold", None)
+        if torch.is_tensor(hold):
+            return hold.reshape(-1).bool().detach()
+        value = getattr(motion, "metrics", {}).get("in_hold")
+        if torch.is_tensor(value):
+            return value.reshape(-1) > 0.5
+        return torch.zeros(int(self.env.num_envs), dtype=torch.bool, device=self.device)
+
+    def _amp_resample_mask(self) -> torch.Tensor:
+        motion = self.env.unwrapped.command_manager.get_term("motion")
+        signal = getattr(motion, "just_resampled", None)
+        if torch.is_tensor(signal):
+            result = signal.reshape(-1).bool().detach().clone()
+        else:
+            result = torch.zeros(int(self.env.num_envs), dtype=torch.bool, device=self.device)
+        for term in (motion,):
+            metrics = getattr(term, "metrics", {})
+            for name in ("midswing_resample_count", "clip_switch_count"):
+                value = metrics.get(name)
+                if torch.is_tensor(value):
+                    result |= value.reshape(-1) > 0.5
+        try:
+            target = self.env.unwrapped.command_manager.get_term("racket_target")
+        except (AttributeError, KeyError, ValueError):
+            target = None
+        if target is not None:
+            value = getattr(target, "metrics", {}).get("midswing_resample_count")
+            if torch.is_tensor(value):
+                result |= value.reshape(-1) > 0.5
+        return result
+
+    def _amp_add_rollout_reward(self, rewards: torch.Tensor, dones: torch.Tensor) -> torch.Tensor:
+        """Add AMP after the original reward and collect non-terminal motion transitions."""
+        if self.amp is None:
+            return rewards
+        # Rollout collection runs under inference_mode.  Disable it for the copied discriminator
+        # inputs so the later discriminator backward pass receives ordinary tensors rather than
+        # inference tensors.
+        with torch.inference_mode(False):
+            policy_state, expert_state = self._amp_capture_state_pair()
+            if self._amp_prev_policy is None or self._amp_prev_expert is None:
+                self._amp_prev_policy, self._amp_prev_expert = policy_state, expert_state
+            policy_transition = self.amp.transition(self._amp_prev_policy, policy_state)
+            expert_transition = self.amp.transition(self._amp_prev_expert, expert_state)
+            with torch.no_grad():
+                amp_reward = self.amp.reward(policy_transition)
+        done_mask = dones.reshape(-1).bool()
+        current_hold = self._amp_hold_mask()
+        resample_mask = self._amp_resample_mask()
+        previous_hold = (
+            self._amp_prev_hold
+            if self._amp_prev_hold is not None
+            else torch.zeros_like(current_hold)
+        )
+        valid = self._amp_transition_valid_mask(
+            done_mask,
+            current_hold,
+            previous_hold,
+            resample_mask,
+            ignore_hold=self._amp_ignore_hold,
+            ignore_terminal=self._amp_ignore_terminal,
+            ignore_resample=self._amp_ignore_resample,
+            ignore_hold_exit=self._amp_ignore_hold_exit,
+        )
+        keep = valid
+        amp_reward = torch.where(valid, amp_reward, torch.zeros_like(amp_reward))
+        if bool(keep.any()):
+            self._amp_rollout_policy.append(policy_transition[keep].detach())
+            self._amp_rollout_expert.append(expert_transition[keep].detach())
+        original = rewards.detach().clone()
+        amp_column = amp_reward.to(device=rewards.device, dtype=rewards.dtype).reshape(-1, 1)
+        if rewards.ndim == 1:
+            amp_column = amp_column[:, 0]
+        self._amp_last_reward = amp_reward.detach()
+        self._amp_last_original_reward = original.detach().reshape(-1)
+        self._amp_rollout_original_abs.append(original.detach().reshape(-1).abs())
+        self._amp_rollout_amp_abs.append(amp_reward.detach().reshape(-1).abs())
+        if bool(valid.any()):
+            valid_flat = valid.reshape(-1)
+            original_flat = original.detach().reshape(-1)
+            amp_flat = amp_reward.detach().reshape(-1)
+            self._amp_rollout_valid_original_abs.append(original_flat[valid_flat].abs())
+            self._amp_rollout_valid_amp_abs.append(amp_flat[valid_flat].abs())
+        self._amp_rollout_valid_count += int(valid.sum().item())
+        self._amp_rollout_total_count += int(valid.numel())
+        total = rewards + float(self._amp_lambda) * amp_column
+        self._amp_last_total_reward = total.detach().reshape(-1)
+        self._amp_prev_policy = policy_state
+        self._amp_prev_expert = expert_state
+        self._amp_prev_hold = current_hold
+        return total
+
+    def _amp_update_after_rollout(self) -> dict[str, float]:
+        if self.amp is None:
+            return {}
+        stats = {}
+        if self._amp_rollout_policy:
+            policy_transitions = torch.cat(self._amp_rollout_policy, dim=0)
+            expert_transitions = torch.cat(self._amp_rollout_expert, dim=0)
+            stats = self.amp.update(
+                policy_transitions,
+                expert_transitions,
+                lambda_amp=self._amp_lambda,
+            )
+        global_original_abs = (
+            torch.cat(self._amp_rollout_original_abs).mean().item()
+            if self._amp_rollout_original_abs
+            else 0.0
+        )
+        global_amp_abs = (
+            torch.cat(self._amp_rollout_amp_abs).mean().item()
+            if self._amp_rollout_amp_abs
+            else 0.0
+        )
+        valid_original_abs = (
+            torch.cat(self._amp_rollout_valid_original_abs).mean().item()
+            if self._amp_rollout_valid_original_abs
+            else None
+        )
+        valid_amp_abs = (
+            torch.cat(self._amp_rollout_valid_amp_abs).mean().item()
+            if self._amp_rollout_valid_amp_abs
+            else None
+        )
+        decay = self._amp_ema_decay
+        # Lambda is calibrated on transitions where AMP is actually active. The global values
+        # remain diagnostics; using them for control would amplify AMP during hold/reset-heavy
+        # rollouts because invalid transitions contribute zero AMP reward.
+        if valid_original_abs is not None and valid_amp_abs is not None:
+            if self._amp_rollout_count == 0:
+                self._amp_original_abs_ema = valid_original_abs
+                self._amp_reward_abs_ema = valid_amp_abs
+            else:
+                self._amp_original_abs_ema = decay * self._amp_original_abs_ema + (1.0 - decay) * valid_original_abs
+                self._amp_reward_abs_ema = decay * self._amp_reward_abs_ema + (1.0 - decay) * valid_amp_abs
+        valid_weighted_abs = abs(self._amp_lambda) * (valid_amp_abs or 0.0)
+        global_weighted_abs = abs(self._amp_lambda) * global_amp_abs
+        self._amp_last_contribution_valid = valid_weighted_abs / max(
+            (valid_original_abs or 0.0) + valid_weighted_abs, 1.0e-8
+        )
+        self._amp_last_contribution_global = global_weighted_abs / max(
+            global_original_abs + global_weighted_abs, 1.0e-8
+        )
+        self._amp_last_contribution = self._amp_last_contribution_valid
+        progress = min(
+            float(self.current_learning_iteration) / float(self._amp_schedule_iterations),
+            1.0,
+        )
+        target = self._amp_target_contribution(progress)
+        self._amp_last_target = target
+        lambda_target = target / max(1.0 - target, 1.0e-8) * self._amp_original_abs_ema / max(
+            self._amp_reward_abs_ema, 1.0e-8
+        )
+        lambda_target = min(max(lambda_target, self._amp_lambda_min), self._amp_lambda_max)
+        self._amp_last_lambda_target = lambda_target
+        if self._amp_rollout_count + 1 > self._amp_warmup_rollouts:
+            self._amp_lambda = min(
+                max(
+                    (1.0 - self._amp_lambda_smoothing) * self._amp_lambda
+                    + self._amp_lambda_smoothing * lambda_target,
+                    self._amp_lambda_min,
+                ),
+                self._amp_lambda_max,
+            )
+        self._amp_rollout_count += 1
+        stats.update(
+            {
+                "lambda": self._amp_lambda,
+                "lambda_target": lambda_target,
+                "target_contribution": target,
+                "contribution_ratio": self._amp_last_contribution_valid,
+                "contribution_valid": self._amp_last_contribution_valid,
+                "contribution_global": self._amp_last_contribution_global,
+                "original_abs_ema": self._amp_original_abs_ema,
+                "amp_abs_ema": self._amp_reward_abs_ema,
+                "rollout_original_abs": global_original_abs,
+                "rollout_amp_abs": global_amp_abs,
+                "valid_original_abs": valid_original_abs or 0.0,
+                "valid_amp_abs": valid_amp_abs or 0.0,
+                "valid_transition_fraction": self._amp_rollout_valid_count
+                / max(self._amp_rollout_total_count, 1),
+            }
+        )
+        self.amp.last_stats["valid_transition_fraction"] = float(
+            stats["valid_transition_fraction"]
+        )
+        self.amp.last_stats["contribution_valid"] = float(self._amp_last_contribution_valid)
+        self.amp.last_stats["contribution_global"] = float(self._amp_last_contribution_global)
+        self._amp_rollout_policy.clear()
+        self._amp_rollout_expert.clear()
+        self._amp_rollout_original_abs.clear()
+        self._amp_rollout_amp_abs.clear()
+        self._amp_rollout_valid_original_abs.clear()
+        self._amp_rollout_valid_amp_abs.clear()
+        self._amp_rollout_valid_count = 0
+        self._amp_rollout_total_count = 0
+        return stats
+
+    def _log_amp_original_reward_groups(self, step: int) -> None:
+        """Log read-only task/tracking/stability views of the unchanged RewardManager terms."""
+        if self.amp is None or not hasattr(self.env.unwrapped, "reward_manager"):
+            return
+        manager = self.env.unwrapped.reward_manager
+        step_reward = getattr(manager, "_step_reward", None)
+        if step_reward is None:
+            return
+        groups = {"task": 0.0, "tracking": 0.0, "stability": 0.0}
+        task_keys = ("racket", "strike", "ball", "target", "hold_heading")
+        tracking_keys = ("motion", "tracking", "body", "pose", "anchor", "joint_position")
+        for index, name in enumerate(manager.active_terms):
+            key = str(name).lower()
+            group = (
+                "task"
+                if any(token in key for token in task_keys)
+                else "tracking"
+                if any(token in key for token in tracking_keys)
+                else "stability"
+            )
+            groups[group] += float(
+                (step_reward[:, index] * float(self.env.unwrapped.step_dt)).mean().detach().cpu()
+            )
+        for group, value in groups.items():
+            self._log_scalar(f"Live/Reward/{group}_reward", value, step)
+
+    def _restore_amp_checkpoint(self, loaded: dict, path: str, *, load_optimizer: bool) -> None:
+        if self.amp is None:
+            return
+        state = loaded.get("amp_state_dict")
+        if state is None:
+            raise RuntimeError(
+                "AMP is enabled but checkpoint has no amp_state_dict; refusing to silently "
+                f"restart the discriminator on resume: {path}"
+            )
+            return
+        saved_signature = loaded.get("amp_feature_signature")
+        if saved_signature != self._amp_feature_signature:
+            raise RuntimeError(
+                "AMP feature signature mismatch; refusing to restore discriminator with changed "
+                f"motion semantics: checkpoint={saved_signature!r}, "
+                f"runtime={self._amp_feature_signature!r}, path={path}"
+            )
+        self.amp.load_state_dict(state)
+        optimizer_state = loaded.get("amp_optimizer_state_dict")
+        if load_optimizer and optimizer_state is not None:
+            self.amp.optimizer.load_state_dict(optimizer_state)
+        runtime = loaded.get("amp_runtime_state")
+        if isinstance(runtime, dict):
+            for name in (
+                "_amp_lambda",
+                "_amp_original_abs_ema",
+                "_amp_reward_abs_ema",
+                "_amp_last_contribution",
+                "_amp_last_contribution_valid",
+                "_amp_last_contribution_global",
+                "_amp_last_target",
+                "_amp_last_lambda_target",
+            ):
+                if name in runtime:
+                    setattr(self, name, float(runtime[name]))
+            if "_amp_rollout_count" in runtime:
+                self._amp_rollout_count = int(runtime["_amp_rollout_count"])
 
     def _prepare_logging_writer(self) -> None:
         """Create a bounded W&B writer and preserve exact-resume configuration."""
@@ -768,6 +1247,8 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 "default_joint_damping",
                 "default_mass",
                 "default_inertia",
+                "joint_friction_coeff",
+                "joint_armature",
                 "joint_stiffness",
                 "joint_damping",
             ):
@@ -833,6 +1314,10 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 asset.write_joint_stiffness_to_sim(asset.data.joint_stiffness)
             if "joint_damping" in articulation.get("data", {}):
                 asset.write_joint_damping_to_sim(asset.data.joint_damping)
+            if "joint_friction_coeff" in articulation.get("data", {}):
+                asset.write_joint_friction_coefficient_to_sim(asset.data.joint_friction_coeff)
+            if "joint_armature" in articulation.get("data", {}):
+                asset.write_joint_armature_to_sim(asset.data.joint_armature)
 
     def _capture_environment_resume_state(self) -> dict:
         """Capture the complete logical MDP boundary needed by the next rollout."""
@@ -1268,6 +1753,7 @@ class MotionOnPolicyRunner(OnPolicyRunner):
             self.env.unwrapped._hope_stance_curriculum_iteration = int(it)
             self._configure_transfer_actor_update(it)
             start = time.time()
+            self._amp_begin_rollout()
             with torch.inference_mode():
                 for _ in range(self.num_steps_per_env):
                     actions = self.alg.act(obs, privileged_obs)
@@ -1279,6 +1765,10 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                         rewards.to(self.device),
                         dones.to(self.device),
                     )
+                    # The environment has now produced the complete original HOPE reward. AMP is
+                    # added as a sidecar scalar only at this boundary; no RewardManager term or
+                    # original reward weight is modified.
+                    rewards = self._amp_add_rollout_reward(rewards, dones)
                     if self.privileged_obs_type is not None:
                         privileged_obs = self.privileged_obs_normalizer(
                             extras["observations"][self.privileged_obs_type].to(
@@ -1342,7 +1832,10 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 # diagnostics. This is outside PPO storage and never affects the loss.
                 self._last_observation_for_metrics = obs.detach()
 
+            amp_stats = self._amp_update_after_rollout()
             loss_dict = self.alg.update()
+            if amp_stats:
+                loss_dict.update({f"amp/{key}": value for key, value in amp_stats.items()})
             stop = time.time()
             learn_time = stop - start
             self.current_learning_iteration = it
@@ -1475,12 +1968,34 @@ class MotionOnPolicyRunner(OnPolicyRunner):
             "infos": infos,
             "hope_exact_resume_state": resume_state,
         }
+        if bool(getattr(self, "scratch_contract_enabled", False)):
+            from whole_body_tracking.utils.scratch_contract import build_scratch_contract
+
+            saved_dict["hope_scratch_contract"] = build_scratch_contract(
+                amp_enabled=self.amp is not None
+            )
         metadata_fn = getattr(self.alg.policy, "get_model_metadata", None)
         if callable(metadata_fn):
             saved_dict["model_metadata"] = metadata_fn()
         if hasattr(self.alg, "rnd") and self.alg.rnd:
             saved_dict["rnd_state_dict"] = self.alg.rnd.state_dict()
             saved_dict["rnd_optimizer_state_dict"] = self.alg.rnd_optimizer.state_dict()
+        if self.amp is not None:
+            saved_dict["amp_state_dict"] = self.amp.state_dict()
+            saved_dict["amp_optimizer_state_dict"] = self.amp.optimizer.state_dict()
+            saved_dict["amp_config"] = dict(self.amp_cfg)
+            saved_dict["amp_feature_signature"] = dict(self._amp_feature_signature)
+            saved_dict["amp_runtime_state"] = {
+                "_amp_lambda": float(self._amp_lambda),
+                "_amp_original_abs_ema": float(self._amp_original_abs_ema),
+                "_amp_reward_abs_ema": float(self._amp_reward_abs_ema),
+                "_amp_last_contribution": float(self._amp_last_contribution),
+                "_amp_last_contribution_valid": float(self._amp_last_contribution_valid),
+                "_amp_last_contribution_global": float(self._amp_last_contribution_global),
+                "_amp_last_target": float(self._amp_last_target),
+                "_amp_last_lambda_target": float(self._amp_last_lambda_target),
+                "_amp_rollout_count": int(self._amp_rollout_count),
+            }
         temporary_checkpoint = checkpoint.with_name(
             f".{checkpoint.name}.tmp-{os.getpid()}"
         )
@@ -1648,6 +2163,7 @@ class MotionOnPolicyRunner(OnPolicyRunner):
             infos = super().load(path, load_optimizer=load_optimizer)
         self._validate_loaded_residual_contract(loaded, path)
         self._restore_residual_model_metadata(loaded, path)
+        self._restore_amp_checkpoint(loaded, path, load_optimizer=load_optimizer)
         if load_optimizer and "optimizer_state_dict" in loaded:
             self._restore_yaml_optimizer_hyperparameters(loaded["optimizer_state_dict"])
         return infos
@@ -1844,6 +2360,7 @@ class MotionOnPolicyRunner(OnPolicyRunner):
             infos = super().load(path, load_optimizer=True)
         self._validate_loaded_residual_contract(loaded, path)
         self._restore_residual_model_metadata(loaded, path)
+        self._restore_amp_checkpoint(loaded, path, load_optimizer=True)
         saved_exploration_contract = state.get("policy_exploration_contract")
         active_exploration_contract = getattr(
             self.alg.policy, "exploration_contract", None
@@ -2019,6 +2536,29 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 self._log_scalar(
                     f"Live/Reward/{term_name}", self._mean_tensor(env.reward_manager._step_reward[:, idx]), step
                 )
+            self._log_amp_original_reward_groups(step)
+
+        # Keep the two reward streams visible during the AMP ablation.  reward_buf is the
+        # untouched HOPE RewardManager output; the latter three values describe only the sidecar.
+        if self.amp is not None:
+            self._log_scalar("Live/Reward/original_total", self._mean_tensor(self._amp_last_original_reward), step)
+            self._log_scalar("Live/Reward/amp", self._mean_tensor(self._amp_last_reward), step)
+            self._log_scalar(
+                "Live/Reward/amp_weighted",
+                self._mean_tensor(self._amp_last_reward * float(self._amp_lambda)),
+                step,
+            )
+            self._log_scalar("Live/Reward/total_with_amp", self._mean_tensor(self._amp_last_total_reward), step)
+            self._log_scalar("Live/AMP/lambda", float(self._amp_lambda), step)
+            self._log_scalar("Live/AMP/lambda_target", float(self._amp_last_lambda_target), step)
+            self._log_scalar("Live/AMP/target_contribution", float(self._amp_last_target), step)
+            self._log_scalar("Live/AMP/contribution_ratio", float(self._amp_last_contribution), step)
+            self._log_scalar("Live/AMP/contribution_valid", float(self._amp_last_contribution_valid), step)
+            self._log_scalar("Live/AMP/contribution_global", float(self._amp_last_contribution_global), step)
+            self._log_scalar("Live/AMP/original_abs_ema", float(self._amp_original_abs_ema), step)
+            self._log_scalar("Live/AMP/reward_abs_ema", float(self._amp_reward_abs_ema), step)
+            for name, value in getattr(self.amp, "last_stats", {}).items():
+                self._log_scalar(f"Live/AMP/{name}", value, step)
 
         if hasattr(env, "termination_manager"):
             tm = env.termination_manager

@@ -65,6 +65,7 @@ WEIGHT_SPECS.update(
         "rally_ankle_qdes_saturation_weight": "rally_ankle_qdes_saturation",
         "post_strike_leg_quiet_weight": "post_strike_leg_quiet",
         "joint_torques_weight": "joint_torques",
+        "torque_headroom_weight": "torque_headroom",
         "action_rate_weight": "action_rate_l2",
         "joint_acc_weight": "joint_acc",
         "joint_limit_weight": "joint_limit",
@@ -260,10 +261,20 @@ _add_float_params(
         "topk_blend": "topk_blend",
     },
 )
+_add_float_params(
+    "torque_headroom",
+    "torque_headroom",
+    {
+        "safe_fraction": "safe_fraction",
+        "topk_blend": "topk_blend",
+        "penalty_cap": "penalty_cap",
+    },
+)
 INT_PARAM_SPECS["all_joint_qdes_barrier_topk"] = (
     "rally_joint_qdes_saturation",
     "topk",
 )
+INT_PARAM_SPECS["torque_headroom_topk"] = ("torque_headroom", "topk")
 _add_float_params(
     "post_swing_xlock",
     "post_swing_xlock",

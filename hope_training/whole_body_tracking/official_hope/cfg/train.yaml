@@ -7,8 +7,8 @@
 # Override any field on the CLI, e.g.:
 #   python scripts/train.py task=HOPEPingPong num_envs=2048 max_iterations=20000 seed=1
 #
-# The baseline algorithm is algo=ppo. The first model MVP is selected explicitly with
-# algo=ppo_residual; it keeps cfg/algo/ppo.yaml unchanged and adds only the Residual actor fields.
+# This experiment is scratch-only: use algo=ppo.  The Residual configs remain available for
+# historical ablations, but are rejected when scratch_training=true.
 # Tune environment/reward/racket/DR in cfg/task/HOPEPingPong.yaml and PPO/model fields in cfg/algo/.
 # =============================================================================
 
@@ -40,13 +40,77 @@ run_name: null
 #   checkpoint_path=logs/rsl_rl/hope_pingpong/<run>/model_<iter>.pt
 checkpoint_path: null
 
+# Scratch contract for the current experiment.  A checkpoint is allowed only when it was written
+# by this contract, so an old A5/PingPong/Residual model cannot be loaded accidentally.  This still
+# permits exact continuation of a checkpoint produced by the same scratch run.
+scratch_training: true
+
 # When true, checkpoint_path restores the stateful MDP boundary, RNG and rollout bookkeeping
 # saved in hope_exact_resume_state. False keeps the ordinary weights/optimizer continuation path.
 checkpoint_exact_resume: false
 
-# Residual MVP warm-start: load baseline model weights only and rebuild the optimizer.  This is
-# intentionally separate from checkpoint_path, whose semantics remain ordinary continuation/resume.
+# Legacy Residual-only option.  It is incompatible with scratch_training and must remain null here.
 residual_warm_start_path: null
+
+# Current formal AMP + torque-headroom experiment. Set `amp.enabled=false` for the matched
+# scratch baseline; lambda_amp is the short warm-up value and is then controlled by the independent
+# rollout-level target contribution schedule below.
+amp:
+  enabled: true
+  lambda_amp: 0.05
+  joint_velocity_scale: 0.1
+  body_linear_velocity_scale: 0.1
+  body_angular_velocity_scale: 0.1
+  hidden_dims: [256, 256]
+  activation: elu
+  learning_rate: 0.0001
+  batch_size: 1024
+  updates_per_rollout: 2
+  reward_clip: 5.0
+  # Keep BCE logits for the minimal integration, with AMP's interpolation gradient penalty.
+  gradient_penalty_weight: 5.0
+  lambda_min: 0.0
+  lambda_max: 2.0
+  ema_decay: 0.9
+  lambda_smoothing: 0.25
+  warmup_rollouts: 2
+  # AMP has its own finite 10000-iteration schedule; never derive progress from PPO's
+  # effectively unbounded max_iterations. The first 10% is a 35% bootstrap plateau.
+  schedule_iterations: 10000
+  contribution_schedule:
+    - [0.00, 0.35]
+    - [0.10, 0.35]
+    - [0.35, 0.20]
+    - [0.70, 0.10]
+    - [1.00, 0.075]
+  lower_body_feature_scale: 0.3
+  lower_body_body_names:
+    - left_hip_roll_Link
+    - left_knee_Link
+    - left_ankle_roll_Link
+    - right_hip_roll_Link
+    - right_knee_Link
+    - right_ankle_roll_Link
+  lower_body_joint_names:
+    - left_hip_pitch_joint
+    - left_hip_roll_joint
+    - left_hip_yaw_joint
+    - left_knee_joint
+    - left_ankle_pitch_joint
+    - left_ankle_roll_joint
+    - right_hip_pitch_joint
+    - right_hip_roll_joint
+    - right_hip_yaw_joint
+    - right_knee_joint
+    - right_ankle_pitch_joint
+    - right_ankle_roll_joint
+  excluded_joint_names:
+    - head_yaw_joint
+    - head_pitch_joint
+  ignore_hold: true
+  ignore_terminal: true
+  ignore_resample: true
+  ignore_hold_exit: true
 
 # Video capture (off by default).
 video: false

@@ -29,6 +29,7 @@ from whole_body_tracking.tasks.tracking.mdp.recovery_safe_set import (
     normalized_upper_violation,
 )
 from whole_body_tracking.utils.stance_curriculum import lerp
+from whole_body_tracking.utils.torque_headroom import torque_headroom_penalty
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -3003,16 +3004,18 @@ def strike_vertical_bob(env: ManagerBasedRLEnv, command_name: str) -> torch.Tens
 # EXPLICIT clipped-PD motor cannot deliver. Under IdealPDActuatorCfg the model computes the pre-clip
 # effort (kp*(q_des-q)+kd*(-qd)) and clips it to ±effort_limit; the ratio |computed| / effort_limit >1
 # is exactly the over-demand that lags on the real robot. Penalizing the mean over-limit fraction over
-# the arm + waist joints teaches a swing that lives inside the torque envelope (the elbow was measured
+# the active policy joints teaches a swing that lives inside the torque envelope (the elbow was measured
 # at ~6.7x its 24 Nm limit in the failing trace). Uses ``data.computed_torque`` (Isaac copies each
 # actuator's PRE-clip computed_effort into it) and ``data.joint_effort_limits`` (the per-joint sim
 # limit written from effort_limit_sim). Both degrade to a 0 reward if unavailable, so it can never crash.
 # ============================================================================================== #
 _TORQUE_SAT_JOINT_EXPR = [".*shoulder.*", ".*elbow.*", ".*wrist.*", "waist_.*_joint"]
+_RACKET_SIDE_TORQUE_TOKENS = ("right_shoulder", "right_elbow", "right_wrist")
+_LEG_TORQUE_TOKENS = ("hip", "knee", "ankle")
 
 
 def _torque_sat_joint_idx(env: ManagerBasedRLEnv, command_name: str):
-    """Resolve+cache the arm+waist joint indices on the command term (once)."""
+    """Resolve+cache the legacy racket-arm/waist joint indices on the command term (once)."""
     cmd = _cmd(env, command_name)
     idx = getattr(cmd, "_torque_sat_joint_idx", None)
     if idx is None:
@@ -3022,6 +3025,42 @@ def _torque_sat_joint_idx(env: ManagerBasedRLEnv, command_name: str):
             idx = []
         cmd._torque_sat_joint_idx = idx  # cache (empty list means "unresolvable")
     return cmd, idx
+
+
+def _active_torque_joint_indices(cmd) -> tuple[list[int], list[int], list[int], list[int]]:
+    """Resolve active, racket-side, leg, and waist columns without assuming articulation order."""
+    names = tuple(str(name) for name in getattr(cmd.robot, "joint_names", ()))
+    if not names:
+        return [], [], [], []
+    action_term = cmd._env.action_manager.get_term("joint_pos")
+    passive = set(str(name) for name in getattr(action_term, "passive_joint_names", ()))
+    active = [index for index, name in enumerate(names) if name not in passive]
+    racket_side = [
+        index
+        for index, name in enumerate(names)
+        if name not in passive and any(token in name for token in _RACKET_SIDE_TORQUE_TOKENS)
+    ]
+    legs = [
+        index
+        for index, name in enumerate(names)
+        if name not in passive and any(token in name for token in _LEG_TORQUE_TOKENS)
+    ]
+    waist = [
+        index for index, name in enumerate(names) if name not in passive and "waist_" in name
+    ]
+    return active, racket_side, legs, waist
+
+
+def _record_torque_utilization_group(metrics: dict, prefix: str, utilization: torch.Tensor) -> None:
+    finite = torch.nan_to_num(utilization, nan=0.0, posinf=10.0, neginf=0.0).clamp_min(0.0)
+    if finite.ndim != 2 or finite.shape[-1] == 0:
+        return
+    _record_metric_snapshot(metrics, f"{prefix}_utilization_mean", finite.mean(dim=-1))
+    _record_metric_snapshot(metrics, f"{prefix}_utilization_p95", torch.quantile(finite, 0.95, dim=-1))
+    _record_metric_snapshot(metrics, f"{prefix}_utilization_p99", torch.quantile(finite, 0.99, dim=-1))
+    _record_metric_snapshot(metrics, f"{prefix}_utilization_max", finite.max(dim=-1).values)
+    _record_metric_snapshot(metrics, f"{prefix}_fraction_over_90pct", (finite > 0.9).float().mean(dim=-1))
+    _record_metric_snapshot(metrics, f"{prefix}_fraction_over_100pct", (finite > 1.0).float().mean(dim=-1))
 
 
 def arm_torque_saturation(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
@@ -3043,6 +3082,83 @@ def arm_torque_saturation(env: ManagerBasedRLEnv, command_name: str) -> torch.Te
     frac = over.mean(dim=-1)
     cmd.metrics["arm_torque_sat_frac"] = frac  # watch-metric: should fall toward 0 during fine-tune
     return frac
+
+
+def arm_torque_headroom(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    safe_fraction: float = 0.9,
+    topk: int = 2,
+    topk_blend: float = 0.7,
+    penalty_cap: float = 9.0,
+) -> torch.Tensor:
+    """Penalize all active-joint pre-clip torque demand that consumes the final safety headroom.
+
+    Unlike :func:`arm_torque_saturation`, this term starts at 90% utilization and therefore
+    discourages policies that sit on the torque rail without waiting for hard clipping.  The
+    reward is positive-valued and must use a negative ``RewTerm`` weight.
+    """
+    cmd, arm_idx = _torque_sat_joint_idx(env, command_name)
+    all_idx, racket_side_idx, leg_idx, waist_idx = _active_torque_joint_indices(cmd)
+    idx = all_idx or arm_idx
+    data = cmd.robot.data
+    tau = getattr(data, "computed_torque", None)
+    lim = getattr(data, "joint_effort_limits", None)
+    if not idx or tau is None or lim is None:
+        zero = torch.zeros(cmd.num_envs, device=cmd.device)
+        for name in (
+            "utilization_mean",
+            "utilization_p95",
+            "utilization_p99",
+            "utilization_max",
+            "over_safe_fraction",
+            "saturation_fraction",
+            "headroom_penalty",
+        ):
+            _record_metric_snapshot(cmd.metrics, f"torque_headroom_{name}", zero)
+        return zero
+
+    utilization = torch.abs(tau[:, idx]) / lim[:, idx].clamp_min(1.0e-3)
+    penalty, metrics = torque_headroom_penalty(
+        utilization,
+        safe_fraction=safe_fraction,
+        topk=topk,
+        topk_blend=topk_blend,
+        penalty_cap=penalty_cap,
+    )
+    for name, value in metrics.items():
+        _record_metric_snapshot(cmd.metrics, f"torque_headroom_{name}", value)
+    if arm_idx:
+        _record_torque_utilization_group(
+            cmd.metrics,
+            "arm_torque",
+            torch.abs(tau[:, arm_idx]) / lim[:, arm_idx].clamp_min(1.0e-3),
+        )
+    if all_idx:
+        _record_torque_utilization_group(
+            cmd.metrics,
+            "all_active_torque",
+            torch.abs(tau[:, all_idx]) / lim[:, all_idx].clamp_min(1.0e-3),
+        )
+    if racket_side_idx:
+        _record_torque_utilization_group(
+            cmd.metrics,
+            "racket_side_torque",
+            torch.abs(tau[:, racket_side_idx]) / lim[:, racket_side_idx].clamp_min(1.0e-3),
+        )
+    if leg_idx:
+        _record_torque_utilization_group(
+            cmd.metrics,
+            "legs_torque",
+            torch.abs(tau[:, leg_idx]) / lim[:, leg_idx].clamp_min(1.0e-3),
+        )
+    if waist_idx:
+        _record_torque_utilization_group(
+            cmd.metrics,
+            "waist_torque",
+            torch.abs(tau[:, waist_idx]) / lim[:, waist_idx].clamp_min(1.0e-3),
+        )
+    return penalty
 
 def _mask_when_upper_intervened(
     env, reward: torch.Tensor, intervention_action_name: str | None

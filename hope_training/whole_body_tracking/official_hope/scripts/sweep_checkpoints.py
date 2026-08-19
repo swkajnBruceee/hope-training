@@ -59,11 +59,13 @@ def run_one(args: argparse.Namespace, checkpoint: pathlib.Path, seed: int, outpu
         "--seed",
         str(seed),
         "--diagnostics",
-        "--algo-config",
-        args.algo_config,
         "--json-out",
         str(output),
     ]
+    if args.algo_config is not None:
+        command.extend(["--algo-config", args.algo_config])
+    if args.allow_legacy_checkpoint:
+        command.append("--allow-legacy-checkpoint")
     print("[sweep]", " ".join(command), flush=True)
     if args.dry_run:
         return {"checkpoint": str(checkpoint), "seed": seed, "dry_run": True}
@@ -142,7 +144,16 @@ def main() -> int:
     parser.add_argument("--num-envs", type=int, default=32)
     parser.add_argument("--num-steps", type=int, default=750)
     parser.add_argument("--device", default="cuda:1")
-    parser.add_argument("--algo-config", default="cfg/algo/ppo_residual.yaml")
+    parser.add_argument(
+        "--algo-config",
+        default=None,
+        help="Optional PPO YAML; default uses the current standard cfg/algo/ppo.yaml.",
+    )
+    parser.add_argument(
+        "--allow-legacy-checkpoint",
+        action="store_true",
+        help="Explicitly allow historical A5/Residual/non-scratch checkpoints.",
+    )
     parser.add_argument("--output", type=pathlib.Path, default=None)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()

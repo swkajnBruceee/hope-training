@@ -243,8 +243,8 @@ class HOPERewardsCfg(RewardsCfg):
 ##
 # Domain randomization (HITTER + standard sim-to-real reconstruction).
 #
-# HITTER publishes no DR table; it states PD gains are FIXED. The mass/friction/push/observation-noise
-# terms below are standard BeyondMimic practice; PD-gain and motor-strength randomization are added for
+# HITTER publishes no DR table; the mass/friction/push/observation-noise terms below are standard
+# BeyondMimic practice; PD-gain and motor-strength randomization are added for
 # sim-to-real robustness and can be disabled to match HITTER exactly.
 #
 # Already provided by the base EventCfg: friction (physics_material, startup), CoM (startup),
@@ -255,9 +255,8 @@ class HOPERewardsCfg(RewardsCfg):
 
 @configclass
 class HOPEEventCfg(EventCfg):
-    # HITTER alignment: no external push. HITTER's prose DR is mass/friction/restitution + perception
-    # noise/delays only — there is no random shove. Keep friction (physics_material) and CoM (base_com)
-    # from the base EventCfg; disable the base interval push.
+    # The formal Hitter override installs a competence-gated disturbance event below; other tasks
+    # retain the clean Stage-1 default here.
     push_robot = None
 
     # link mass randomization (±10%) — HITTER prose randomizes link mass.
@@ -272,7 +271,21 @@ class HOPEEventCfg(EventCfg):
             "recompute_inertia": True,
         },
     )
-    # PD gain / motor strength randomization (±20%). NOTE: HITTER keeps PD fixed; this is a
+    # Independent joint mechanical parameters.  These are separate from the A3 deploy-message
+    # Kp/Kd event below: friction and armature are written to the articulation, while passive
+    # viscous damping is included explicitly in the A3 damping contract.
+    randomize_joint_mechanics = EventTerm(
+        func=mdp.randomize_joint_parameters,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+            "friction_distribution_params": (0.7, 1.3),
+            "armature_distribution_params": (0.95, 1.05),
+            "operation": "scale",
+            "distribution": "uniform",
+        },
+    )
+    # PD gain / motor strength randomization (±10%). NOTE: HITTER keeps PD fixed; this is a
     # sim-to-real robustness choice. Set to None to disable.
     randomize_pd_gains = EventTerm(
         func=mdp.randomize_actuator_gains,
@@ -3034,6 +3047,20 @@ class HitterPingPongRewardsCfg(
     """V14 reward surface plus Unitree's standard actual-joint acceleration cost."""
 
     joint_acc = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
+    # Torque headroom is distinct from joint_torques_l2 and q_des barriers: it penalizes
+    # pre-clip demand across all active actuators above 90% of the actuator limit, with top-k
+    # emphasis so one saturated actuator cannot disappear in an all-joint mean.
+    torque_headroom = RewTerm(
+        func=mdp.arm_torque_headroom,
+        weight=-0.2,
+        params={
+            "command_name": "racket_target",
+            "safe_fraction": 0.9,
+            "topk": 2,
+            "topk_blend": 0.7,
+            "penalty_cap": 9.0,
+        },
+    )
 
 
 @configclass
@@ -3098,9 +3125,10 @@ class HitterPingPongAgibotA3EnvCfg(
         self.commands.racket_target.post_strike_capture_delays_s = ()
         self.actions.joint_pos.actual_q_hard_tolerance_rad = 0.002
         self.actions.joint_pos.actual_q_hard_audit_mode = "telemetry"
+        # Episode-fixed execution delay: 0, 1, or 2 control ticks (0--40 ms at 50 Hz).
         self.actions.joint_pos.qdes_delay_min_steps = 0
-        self.actions.joint_pos.qdes_delay_max_steps = 0
-        self.actions.joint_pos.qdes_delay_nominal_fraction = 1.0
+        self.actions.joint_pos.qdes_delay_max_steps = 2
+        self.actions.joint_pos.qdes_delay_nominal_fraction = 0.0
         self.rewards.rally_joint_qdes_saturation.weight = -0.65
         self.rewards.rally_joint_qdes_saturation.params.update(
             safe_margin_fraction=0.08, topk_blend=0.90
@@ -3140,16 +3168,49 @@ class HitterPingPongAgibotA3EnvCfg(
         racket.base_mocap_robustness_ramp_steps = 8000
 
         # A3 Parkour-style log-uniform Kp/Kd randomization, with a fixed 25% nominal
-        # actuator cohort.  Kd randomizes only the deploy message term; passive damping
-        # remains fixed and the V14 affine action scale remains nominal.
+        # actuator cohort.  Message Kd and real passive damping are randomized separately;
+        # the V14 affine action scale remains nominal.
         self.events.randomize_pd_gains = EventTerm(
             func=mdp.randomize_a3_message_pd_gains,
             mode="startup",
             params={
                 "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-                "alpha_range": (0.85, 1.15),
-                "beta_range": (0.85, 1.15),
+                "alpha_range": (0.9, 1.1),
+                "beta_range": (0.9, 1.1),
+                "passive_damping_range": (0.85, 1.15),
                 "nominal_fraction": 0.25,
+            },
+        )
+
+        # Fixed per-environment actuator-capacity cohorts model voltage/current/thermal margin.
+        # The event also updates the q_des projector cache, so PhysX clipping and torque headroom
+        # use the same sampled effort limit.  Keep 25% exactly nominal for a clean reference cohort.
+        self.events.randomize_torque_capacity = EventTerm(
+            func=mdp.randomize_a3_torque_capacity,
+            mode="startup",
+            params={
+                "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+                "capacity_range": (0.90, 1.05),
+                "nominal_fraction": 0.25,
+            },
+        )
+
+        # External disturbances are enabled only after the strike-competence gate, held off for
+        # 4000 additional steps while sensor robustness ramps in, and then ramped over 8000
+        # steps.  They are one-step 20--60 N / 5--10 Nm pelvis wrenches, not a second task
+        # objective during scratch bootstrap.
+        self.events.push_robot = EventTerm(
+            func=mdp.push_a3_competence_gated,
+            mode="interval",
+            interval_range_s=(4.0, 8.0),
+            params={
+                "asset_cfg": SceneEntityCfg("robot"),
+                "command_name": "racket_target",
+                "force_magnitude_range": (20.0, 60.0),
+                "torque_magnitude_range": (5.0, 10.0),
+                "ramp_start_delay_steps": 4000,
+                "ramp_steps": 8000,
+                "skip_hold": True,
             },
         )
 
@@ -3160,8 +3221,8 @@ class HitterPingPongAgibotA3EnvCfg(
             asset_cfg=SceneEntityCfg(
                 "robot", body_names=list(A3_FEET_BODIES), preserve_order=True
             ),
-            static_friction_range=(0.3, 1.5),
-            dynamic_friction_range=(0.3, 1.5),
+            static_friction_range=(0.7, 1.4),
+            dynamic_friction_range=(0.7, 1.4),
             restitution_range=(0.0, 0.0),
             num_buckets=64,
             make_consistent=True,

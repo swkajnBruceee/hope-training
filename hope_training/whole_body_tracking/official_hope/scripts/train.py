@@ -8,8 +8,7 @@ machinery.
 
 Usage:
     python scripts/train.py task=HOPEPingPong algo=ppo headless=true
-    python scripts/train.py task=HOPEPingPong algo=ppo_residual \
-        residual_warm_start_path=checkpoints/model_21800.pt headless=true
+    python scripts/train.py task=HOPEPingPong algo=ppo amp.enabled=true headless=true
 
 Override any field on the CLI, e.g.:
     python scripts/train.py task=HOPEPingPong num_envs=2048 max_iterations=20000 seed=1 \
@@ -137,7 +136,12 @@ def _apply_domain_rand(env_cfg, dr, applied: list) -> None:
         HitterPingPong recipe, ``mdp.randomize_a3_message_pd_gains``):
         ``pd_gain_range`` MUST be null (it only retires the generic scale DR — the
         a3-message term stays), and ``pd_alpha_range`` / ``pd_beta_range`` /
-        ``pd_nominal_fraction`` override the term's alpha/beta/nominal params.
+        ``passive_damping_range`` / ``pd_nominal_fraction`` override the term's
+        alpha/beta/passive/nominal params.
+      * ``motor_strength_range`` controls the fixed per-environment actuator-capacity cohort;
+        ``motor_capacity_nominal_fraction`` keeps an exact nominal reference cohort.
+      * ``external_push_ramp_start_steps`` delays external push after the strike-ability gate;
+        ``external_push_ramp_steps`` controls its post-delay ramp duration.
     """
     if dr is None:
         return
@@ -175,6 +179,58 @@ def _apply_domain_rand(env_cfg, dr, applied: list) -> None:
         applied.append(f"events.{event_name} = {(lo, hi)}")
 
     _apply("link_mass_range", "randomize_link_mass", ("mass_distribution_params",))
+    _apply(
+        "joint_friction_range",
+        "randomize_joint_mechanics",
+        ("friction_distribution_params",),
+    )
+    _apply(
+        "joint_armature_range",
+        "randomize_joint_mechanics",
+        ("armature_distribution_params",),
+    )
+    _apply(
+        "ground_friction_range",
+        "physics_material",
+        ("static_friction_range", "dynamic_friction_range"),
+    )
+    _apply(
+        "motor_strength_range",
+        "randomize_torque_capacity",
+        ("capacity_range",),
+    )
+    capacity_nominal = dr.get("motor_capacity_nominal_fraction")
+    if capacity_nominal is not None:
+        term = getattr(events, "randomize_torque_capacity", None)
+        if term is None:
+            print(
+                "[train.py] WARNING: motor_capacity_nominal_fraction: "
+                "events.randomize_torque_capacity is disabled; override ignored.",
+                flush=True,
+            )
+        else:
+            term.params["nominal_fraction"] = float(capacity_nominal)
+            applied.append(
+                "events.randomize_torque_capacity.nominal_fraction = "
+                f"{float(capacity_nominal)}"
+            )
+
+    push_term = getattr(events, "push_robot", None)
+    if push_term is not None:
+        push_start = dr.get("external_push_ramp_start_steps")
+        if push_start is not None:
+            push_term.params["ramp_start_delay_steps"] = int(push_start)
+            applied.append(
+                "events.push_robot.ramp_start_delay_steps = "
+                f"{int(push_start)}"
+            )
+        push_duration = dr.get("external_push_ramp_steps")
+        if push_duration is not None:
+            push_term.params["ramp_steps"] = int(push_duration)
+            applied.append(
+                "events.push_robot.ramp_steps = "
+                f"{int(push_duration)}"
+            )
 
     pd_mode = dr.get("pd_mode")
     if pd_mode is None:
@@ -206,6 +262,7 @@ def _apply_domain_rand(env_cfg, dr, applied: list) -> None:
     for range_key, param_key in (
         ("pd_alpha_range", "alpha_range"),
         ("pd_beta_range", "beta_range"),
+        ("passive_damping_range", "passive_damping_range"),
     ):
         rng = dr.get(range_key)
         if rng is not None:
@@ -544,6 +601,13 @@ def _run(cfg):
 
     # 3) PPO runner cfg from cfg/algo/ppo.yaml.
     algo = OmegaConf.to_container(cfg.algo, resolve=True)
+    scratch_training = bool(getattr(cfg, "scratch_training", False))
+    from whole_body_tracking.utils.scratch_contract import (
+        validate_scratch_algorithm,
+        validate_scratch_checkpoint,
+    )
+
+    validate_scratch_algorithm(algo, enabled=scratch_training)
     agent_cfg = RslRlOnPolicyRunnerCfg(**runner_kwargs(algo, str(cfg.task.experiment_name)))
     agent_cfg.seed = int(cfg.seed)
     agent_cfg.device = str(cfg.device)
@@ -618,11 +682,24 @@ def _run(cfg):
         )
     env = RslRlVecEnvWrapper(env)
 
-    runner = HOPEOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    amp_cfg = OmegaConf.to_container(cfg.amp, resolve=True) if cfg.get("amp") is not None else {}
+    runner = HOPEOnPolicyRunner(
+        env,
+        agent_cfg.to_dict(),
+        log_dir=log_dir,
+        device=agent_cfg.device,
+        amp_cfg=amp_cfg,
+        scratch_contract_enabled=scratch_training,
+    )
     runner.add_git_repo_to_log(__file__)
 
     # 6) optional Residual MVP model-only warm-start, or ordinary continuation resume.
     residual_warm_start = getattr(cfg, "residual_warm_start_path", None)
+    if scratch_training and residual_warm_start is not None:
+        raise ValueError(
+            "scratch_training=true forbids residual_warm_start_path; "
+            "this experiment must use a randomly initialized standard PPO policy."
+        )
     if residual_warm_start is not None and getattr(cfg, "checkpoint_path", None) is not None:
         raise ValueError(
             "set only one of residual_warm_start_path and checkpoint_path; "
@@ -662,6 +739,15 @@ def _run(cfg):
         ckpt = os.path.abspath(str(ckpt))
         if not os.path.isfile(ckpt):
             raise FileNotFoundError(f"[train.py] checkpoint_path does not exist: {ckpt}")
+        if scratch_training:
+            import torch
+
+            payload = torch.load(ckpt, map_location="cpu", weights_only=False)
+            validate_scratch_checkpoint(
+                payload,
+                amp_enabled=bool(amp_cfg.get("enabled", False)),
+                path=ckpt,
+            )
         exact_resume = bool(getattr(cfg, "checkpoint_exact_resume", False))
         if exact_resume:
             runner.checkpoint_exact_resume = True
@@ -675,6 +761,8 @@ def _run(cfg):
     _print_curriculum_initial_state(env, runner)
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
+    if amp_cfg:
+        dump_yaml(os.path.join(log_dir, "params", "amp.yaml"), amp_cfg)
     runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
     # Emit the actual completed clip-to-clip transition counts.  The configured clip sequence
     # describes intent, but reset/fall events can change the realized denominator; checkpoint

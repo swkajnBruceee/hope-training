@@ -358,6 +358,11 @@ def export_deploy_policy(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--checkpoint", required=True, help="Local checkpoint (.pt) to export.")
+    parser.add_argument(
+        "--allow-legacy-checkpoint",
+        action="store_true",
+        help="Explicitly allow historical A5/Residual/non-scratch checkpoints; current exports must omit this.",
+    )
     parser.add_argument("--output-dir", default=None, help="Output directory (default: <ckpt_dir>/exported).")
     parser.add_argument("--task", default="HOPE-HitterPingPong-AgibotA3-v0", help="Gym task id.")
     parser.add_argument(
@@ -390,7 +395,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--algo-config",
         default=None,
-        help="Optional PPO YAML (for example cfg/algo/ppo_residual.yaml); default keeps baseline ppo.yaml.",
+        help="Optional PPO YAML; default uses the current standard cfg/algo/ppo.yaml.",
     )
     return parser.parse_args()
 
@@ -400,6 +405,19 @@ def main() -> int:
     checkpoint = os.path.abspath(args.checkpoint)
     if not os.path.isfile(checkpoint):
         raise FileNotFoundError(f"checkpoint not found: {checkpoint}")
+    import torch
+
+    checkpoint_payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    if not args.allow_legacy_checkpoint:
+        from whole_body_tracking.utils.scratch_contract import validate_scratch_checkpoint
+
+        validate_scratch_checkpoint(
+            checkpoint_payload,
+            amp_enabled=None,
+            path=checkpoint,
+        )
+    else:
+        print("[export_onnx] legacy checkpoint compatibility explicitly enabled", flush=True)
     output_dir = args.output_dir or os.path.join(os.path.dirname(checkpoint), "exported")
 
     # Launch Isaac (headless) before importing isaaclab modules; clear argv so Kit ignores our args.
@@ -425,6 +443,7 @@ def main() -> int:
         from whole_body_tracking.utils.action_adapter_config import load_joint_order
         from whole_body_tracking.utils.my_on_policy_runner import HOPEOnPolicyRunner
         from whole_body_tracking.utils.ppo_cfg import load_ppo_params, runner_kwargs
+        from whole_body_tracking.utils.scratch_contract import validate_scratch_algorithm
         from whole_body_tracking.utils.exporter import export_motion_policy_as_onnx
         from train import _apply_task_overrides
         from omegaconf import OmegaConf
@@ -480,9 +499,9 @@ def main() -> int:
 
         env = RslRlVecEnvWrapper(env)
 
-        agent_cfg = RslRlOnPolicyRunnerCfg(
-            **runner_kwargs(load_ppo_params(args.algo_config), args.experiment_name)
-        )
+        algo_params = load_ppo_params(args.algo_config)
+        validate_scratch_algorithm(algo_params, enabled=not args.allow_legacy_checkpoint)
+        agent_cfg = RslRlOnPolicyRunnerCfg(**runner_kwargs(algo_params, args.experiment_name))
         agent_cfg.device = args.device
         runner = HOPEOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=args.device)
         runner.load(checkpoint)

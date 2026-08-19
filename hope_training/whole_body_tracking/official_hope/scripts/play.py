@@ -57,6 +57,10 @@ def _run(cfg, simulation_app):
     from train import _apply_task_overrides
     from whole_body_tracking.utils.my_on_policy_runner import HOPEOnPolicyRunner
     from whole_body_tracking.utils.ppo_cfg import runner_kwargs
+    from whole_body_tracking.utils.scratch_contract import (
+        validate_scratch_algorithm,
+        validate_scratch_checkpoint,
+    )
 
     task_id = str(cfg.task.gym_task)
     num_envs = int(cfg.num_envs)
@@ -137,6 +141,14 @@ def _run(cfg, simulation_app):
         log_root = os.path.abspath(os.path.join("logs", "rsl_rl", experiment_name))
         resume_path = get_checkpoint_path(log_root, ".*", ".*")
     print(f"[play.py] loading checkpoint: {resume_path}", flush=True)
+    algo = OmegaConf.to_container(cfg.algo, resolve=True)
+    scratch_training = bool(cfg.get("scratch_training", True))
+    validate_scratch_algorithm(algo, enabled=scratch_training)
+    checkpoint = torch.load(resume_path, map_location="cpu", weights_only=False)
+    if scratch_training:
+        validate_scratch_checkpoint(checkpoint, amp_enabled=None, path=resume_path)
+    else:
+        print("[play.py] legacy checkpoint compatibility explicitly enabled", flush=True)
 
     # Use the same recording path as train.py when video=true.  This verifies the complete
     # inference chain without depending on the desktop viewport being visible.
@@ -173,7 +185,6 @@ def _run(cfg, simulation_app):
         else:
             print("[play.py] WARNING: Isaac viewport camera controller is unavailable", flush=True)
 
-    algo = OmegaConf.to_container(cfg.algo, resolve=True)
     from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg
 
     agent_cfg = RslRlOnPolicyRunnerCfg(**runner_kwargs(algo, experiment_name))
@@ -184,7 +195,6 @@ def _run(cfg, simulation_app):
     # Playback only needs policy/value parameters.  Read the checkpoint on CPU first: direct
     # CUDA deserialization can block on this workstation's unhealthy CUDA context, while the
     # state dict copy into the already-created policy is deterministic and inference-equivalent.
-    checkpoint = torch.load(resume_path, map_location="cpu", weights_only=False)
     runner.alg.policy.load_state_dict(checkpoint["model_state_dict"], strict=True)
     print("[play.py] checkpoint loaded", flush=True)
     policy = runner.get_inference_policy(device=env.unwrapped.device)

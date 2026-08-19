@@ -55,6 +55,11 @@ def _resolve_motion_path(value: str) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--checkpoint", required=True, help="Local checkpoint (.pt) to evaluate.")
+    parser.add_argument(
+        "--allow-legacy-checkpoint",
+        action="store_true",
+        help="Explicitly allow historical A5/Residual/non-scratch checkpoints; current experiments must omit this.",
+    )
     parser.add_argument("--task", default="HOPE-HitterPingPong-AgibotA3-v0", help="Gym task id.")
     parser.add_argument("--num-envs", type=int, default=256, help="Parallel environments.")
     parser.add_argument("--num-steps", type=int, default=4000, help="Policy steps to roll out.")
@@ -98,7 +103,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--algo-config",
         default=None,
-        help="Optional PPO YAML (for example cfg/algo/ppo_residual.yaml); default keeps official ppo.yaml.",
+        help="Optional PPO YAML; default uses the current standard cfg/algo/ppo.yaml.",
     )
     parser.add_argument(
         "--task-config",
@@ -448,6 +453,10 @@ def main() -> int:
         # step silently evaluates a different environment (or fails during command construction).
         from train import _apply_friction_curriculum, _apply_task_overrides
         from whole_body_tracking.utils.ppo_cfg import load_ppo_params, runner_kwargs
+        from whole_body_tracking.utils.scratch_contract import (
+            validate_scratch_algorithm,
+            validate_scratch_checkpoint,
+        )
         # Pin the pure-NumPy scoring metric to this project.  Without
         # this explicit contract, a stale shell override or a missing local
         # configs/ball_physics.yaml can silently select another checkout or the
@@ -468,6 +477,17 @@ def main() -> int:
         # alpha/beta phase as the saved policy instead of silently falling back to iteration 0.
         checkpoint_payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
         checkpoint_iteration = int(checkpoint_payload.get("iter", 0))
+        scratch_training = not bool(args.allow_legacy_checkpoint)
+        algo_params = load_ppo_params(args.algo_config)
+        validate_scratch_algorithm(algo_params, enabled=scratch_training)
+        if scratch_training:
+            validate_scratch_checkpoint(
+                checkpoint_payload,
+                amp_enabled=None,
+                path=checkpoint,
+            )
+        else:
+            print("[evaluate] legacy checkpoint compatibility explicitly enabled", flush=True)
 
         torch.manual_seed(int(args.seed))
         if torch.cuda.is_available():
@@ -650,7 +670,7 @@ def main() -> int:
         env = RslRlVecEnvWrapper(env)
 
         agent_cfg = RslRlOnPolicyRunnerCfg(
-            **runner_kwargs(load_ppo_params(args.algo_config), args.experiment_name)
+            **runner_kwargs(algo_params, args.experiment_name)
         )
         agent_cfg.device = args.device
         if bool(agent_cfg.empirical_normalization) and "obs_norm_state_dict" not in checkpoint_payload:

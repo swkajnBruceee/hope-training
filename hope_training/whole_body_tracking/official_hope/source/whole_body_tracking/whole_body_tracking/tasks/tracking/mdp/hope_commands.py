@@ -1421,6 +1421,14 @@ class RacketTargetCommand(CommandTerm):
         self._target_robustness_curriculum_by_recovery_scale = bool(
             cfg.target_robustness_curriculum_by_recovery_scale
         )
+        self._target_robustness_curriculum_by_ability_gate = bool(
+            cfg.target_robustness_curriculum_by_ability_gate
+        )
+        self._target_robustness_ability_ramp_steps = int(
+            cfg.target_robustness_ability_ramp_steps
+        )
+        if self._target_robustness_ability_ramp_steps < 1:
+            raise ValueError("target_robustness_ability_ramp_steps must be positive")
         self._target_robustness_recovery_start_scale = float(
             cfg.target_robustness_recovery_start_scale
         )
@@ -1435,6 +1443,17 @@ class RacketTargetCommand(CommandTerm):
         ):
             raise ValueError(
                 "target robustness can be driven by velocity stage or recovery scale, not both"
+            )
+        if sum(
+            (
+                self._target_robustness_curriculum_by_velocity_stage,
+                self._target_robustness_curriculum_by_recovery_scale,
+                self._target_robustness_curriculum_by_ability_gate,
+            )
+        ) > 1:
+            raise ValueError(
+                "target robustness can be driven by only one of velocity stage, recovery scale, "
+                "or ability gate"
             )
         if (
             self._target_robustness_curriculum_by_recovery_scale
@@ -1463,6 +1482,7 @@ class RacketTargetCommand(CommandTerm):
             if (
                 self._target_robustness_curriculum_by_velocity_stage
                 or self._target_robustness_curriculum_by_recovery_scale
+                or self._target_robustness_curriculum_by_ability_gate
             )
             else 1.0
         )
@@ -1511,6 +1531,7 @@ class RacketTargetCommand(CommandTerm):
             if (
                 self._target_robustness_curriculum_by_velocity_stage
                 or self._target_robustness_curriculum_by_recovery_scale
+                or self._target_robustness_curriculum_by_ability_gate
             )
             else 1.0
         )
@@ -1526,6 +1547,12 @@ class RacketTargetCommand(CommandTerm):
             self.num_envs, device=self.device
         )
         self.metrics["velocity_planner_mix_effective"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
+        self.metrics["external_push_scale"] = torch.zeros(
+            self.num_envs, device=self.device
+        )
+        self.metrics["external_push_count"] = torch.zeros(
             self.num_envs, device=self.device
         )
 
@@ -6690,6 +6717,20 @@ class RacketTargetCommand(CommandTerm):
     def _effective_target_robustness(self) -> tuple[float, int]:
         """Return weight-ramped corruption scale and integer delay."""
 
+        if self._target_robustness_curriculum_by_ability_gate:
+            if not self._ability_unlocked:
+                return 0.0, 0
+            unlock_step = max(int(self._ability_unlock_step), 0)
+            current_step = int(getattr(self._env, "common_step_counter", 0))
+            scale = min(
+                max(
+                    (current_step - unlock_step)
+                    / float(self._target_robustness_ability_ramp_steps),
+                    0.0,
+                ),
+                1.0,
+            )
+            return scale, int(round(float(self._delay_steps) * scale))
         if self._target_robustness_curriculum_by_recovery_scale:
             start = self._target_robustness_recovery_start_scale
             scale = min(
@@ -11478,6 +11519,10 @@ class RacketTargetCommandCfg(CommandTermCfg):
     # velocity-stage driver.
     target_robustness_curriculum_by_recovery_scale: bool = False
     target_robustness_recovery_start_scale: float = 0.5
+    # Build competence-gated target corruption: clean target stream until both strike sides pass
+    # the existing one-way ability gate, then ramp the measured target defects over this window.
+    target_robustness_curriculum_by_ability_gate: bool = False
+    target_robustness_ability_ramp_steps: int = 8000
 
     # --- Actor-visible robot localization ------------------------------------------------------
     # V15 uses position receipt v1. V17 additionally enables the calibrated full-pose schema-2

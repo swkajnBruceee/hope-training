@@ -372,7 +372,7 @@ def attach_onnx_metadata(
                     )
                     == "telemetry"
                     and int(getattr(action_cfg, "qdes_delay_min_steps", -1)) == 0
-                    and int(getattr(action_cfg, "qdes_delay_max_steps", -1)) == 0
+                    and int(getattr(action_cfg, "qdes_delay_max_steps", -1)) == 2
                     and abs(
                         float(
                             getattr(
@@ -381,7 +381,7 @@ def attach_onnx_metadata(
                                 -1.0,
                             )
                         )
-                        - 1.0
+                        - 0.0
                     )
                     <= 1.0e-12
                     and str(
@@ -418,10 +418,15 @@ def attach_onnx_metadata(
                         float(value)
                         for value in pd_params.get("alpha_range", ())
                     )
-                    == (0.85, 1.15)
+                    == (0.9, 1.1)
                     and tuple(
                         float(value)
                         for value in pd_params.get("beta_range", ())
+                    )
+                    == (0.9, 1.1)
+                    and tuple(
+                        float(value)
+                        for value in pd_params.get("passive_damping_range", ())
                     )
                     == (0.85, 1.15)
                     and abs(float(pd_params.get("nominal_fraction", -1.0)) - 0.25)
@@ -441,11 +446,11 @@ def attach_onnx_metadata(
                             "legacy_state_v1,1,1,capture=wrap_only,min_fill=256"
                         ),
                         "hitter_pingpong_qdes_delay_contract": (
-                            "post_clamp_direct,0..0,nominal_fraction=1.0"
+                            "episode_fixed_post_clamp_fifo_v1,0..2,nominal_fraction=0.0"
                         ),
                         "hitter_pingpong_pd_contract": (
-                            "a3_message_kd_plus_fixed_passive,kp=0.85..1.15,"
-                            "kd_message=0.85..1.15,nominal_fraction=0.25"
+                            "a3_message_kd_plus_randomized_passive,kp=0.9..1.1,"
+                            "kd_message=0.9..1.1,passive=0.85..1.15,nominal_fraction=0.25"
                         ),
                         "hitter_pingpong_tuple_contract": (
                             "fixed_balanced_bank_v1,0.2500,"

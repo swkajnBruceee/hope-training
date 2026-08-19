@@ -9,7 +9,8 @@ cover: enabled override, disabled (null) range, absent key (keep default), an en
 cfg without the term, and the shipped a3-message PD mode
 (``pd_mode: a3_message_passive_nominal_cohort_v1``): under it ``pd_gain_range: null``
 must NOT disable the installed ``randomize_a3_message_pd_gains`` term — the
-``pd_alpha_range`` / ``pd_beta_range`` / ``pd_nominal_fraction`` knobs refine it.
+``pd_alpha_range`` / ``pd_beta_range`` / ``passive_damping_range`` /
+``pd_nominal_fraction`` knobs refine it.
 
 ``train.py`` imports hydra/omegaconf at module scope; light stubs are injected so
 the function under test loads without those packages (they are not needed by it).
@@ -91,8 +92,27 @@ def _events_cfg_a3_message():
             params={
                 "alpha_range": (0.85, 1.15),
                 "beta_range": (0.85, 1.15),
+                "passive_damping_range": (0.85, 1.15),
                 "nominal_fraction": 0.25,
             }
+        ),
+        randomize_joint_mechanics=SimpleNamespace(
+            params={
+                "friction_distribution_params": (0.7, 1.3),
+                "armature_distribution_params": (0.95, 1.05),
+            }
+        ),
+        physics_material=SimpleNamespace(
+            params={
+                "static_friction_range": (0.7, 1.4),
+                "dynamic_friction_range": (0.7, 1.4),
+            }
+        ),
+        randomize_torque_capacity=SimpleNamespace(
+            params={"capacity_range": (0.9, 1.05), "nominal_fraction": 0.25}
+        ),
+        push_robot=SimpleNamespace(
+            params={"ramp_start_delay_steps": 4000, "ramp_steps": 8000}
         ),
     )
 
@@ -158,7 +178,15 @@ def test_a3_message_pd_mode_null_range_keeps_the_term():
             "pd_mode": "a3_message_passive_nominal_cohort_v1",
             "pd_alpha_range": [0.9, 1.1],
             "pd_beta_range": [0.8, 1.2],
+            "passive_damping_range": [0.85, 1.15],
             "pd_nominal_fraction": 0.5,
+            "joint_friction_range": [0.7, 1.3],
+            "joint_armature_range": [0.95, 1.05],
+            "ground_friction_range": [0.7, 1.4],
+            "motor_strength_range": [0.9, 1.05],
+            "motor_capacity_nominal_fraction": 0.25,
+            "external_push_ramp_start_steps": 5000,
+            "external_push_ramp_steps": 9000,
         },
         applied,
     )
@@ -166,8 +194,15 @@ def test_a3_message_pd_mode_null_range_keeps_the_term():
     assert term is not None, "a3-message PD term must NOT be disabled by pd_gain_range: null"
     assert term.params["alpha_range"] == (0.9, 1.1)
     assert term.params["beta_range"] == (0.8, 1.2)
+    assert term.params["passive_damping_range"] == (0.85, 1.15)
     assert term.params["nominal_fraction"] == 0.5
-    assert len(applied) == 4  # link mass + alpha + beta + nominal
+    assert env_cfg.events.randomize_joint_mechanics.params["friction_distribution_params"] == (0.7, 1.3)
+    assert env_cfg.events.randomize_joint_mechanics.params["armature_distribution_params"] == (0.95, 1.05)
+    assert env_cfg.events.physics_material.params["static_friction_range"] == (0.7, 1.4)
+    assert env_cfg.events.physics_material.params["dynamic_friction_range"] == (0.7, 1.4)
+    assert env_cfg.events.push_robot.params["ramp_start_delay_steps"] == 5000
+    assert env_cfg.events.push_robot.params["ramp_steps"] == 9000
+    assert len(applied) == 12  # + capacity range/cohort + delayed push ramp
 
 
 def test_default_base_yaml_knobs_resolve_against_real_event_names():
@@ -204,9 +239,18 @@ def test_hitter_pingpong_task_yaml_resolves_the_a3_message_recipe():
     assert env_cfg.events.randomize_link_mass.params["mass_distribution_params"] == (0.85, 1.15)
     term = env_cfg.events.randomize_pd_gains
     assert term is not None
-    assert term.params["alpha_range"] == (0.85, 1.15)
-    assert term.params["beta_range"] == (0.85, 1.15)
+    assert term.params["alpha_range"] == (0.9, 1.1)
+    assert term.params["beta_range"] == (0.9, 1.1)
+    assert term.params["passive_damping_range"] == (0.85, 1.15)
     assert term.params["nominal_fraction"] == 0.25
+    assert env_cfg.events.randomize_joint_mechanics.params["friction_distribution_params"] == (0.7, 1.3)
+    assert env_cfg.events.randomize_joint_mechanics.params["armature_distribution_params"] == (0.95, 1.05)
+    assert env_cfg.events.physics_material.params["static_friction_range"] == (0.7, 1.4)
+    assert env_cfg.events.physics_material.params["dynamic_friction_range"] == (0.7, 1.4)
+    assert env_cfg.events.randomize_torque_capacity.params["capacity_range"] == (0.9, 1.05)
+    assert env_cfg.events.randomize_torque_capacity.params["nominal_fraction"] == 0.25
+    assert env_cfg.events.push_robot.params["ramp_start_delay_steps"] == 4000
+    assert env_cfg.events.push_robot.params["ramp_steps"] == 8000
 
 
 def main() -> int:
