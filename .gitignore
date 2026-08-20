@@ -138,3 +138,13 @@ third_party/**/thirdparty/
 !DATA_PingPang/**/Csv/**/*.csv
 !DATA_PingPang/**/CSV/**/*.csv
 !data/analysis/mocap_cleaning_outputs/**/*.npz
+
+# Experiment results
+results/
+frozen_results/
+
+# Action optimizer generated datasets
+hope_training/whole_body_tracking/deployment_v2_isaac/scripts/action_optimizer/datasets/
+
+# Local python dependencies
+.local_deps/
