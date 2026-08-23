@@ -163,6 +163,11 @@ class OneBallEpisodeRunner:
         cross_net=False
         bounce=False
 
+        contact_time=None
+        ball_velocity_at_contact=None
+        max_contact_force=0.0
+        final_ball_velocity=None
+
         previous=None
         net_clearance=None
 
@@ -281,7 +286,17 @@ class OneBallEpisodeRunner:
 
 
                 if force>CONTACT_FORCE_THRESHOLD:
+
+                    if not contact:
+                        contact_time = elapsed
+                        ball_velocity_at_contact = v.copy()
+
                     contact=True
+
+                    max_contact_force=max(
+                        max_contact_force,
+                        force
+                    )
 
 
                 if previous is not None:
@@ -310,6 +325,8 @@ class OneBallEpisodeRunner:
                     )
                 )
 
+
+                final_ball_velocity=v.copy()
 
                 previous=p.copy()
 
@@ -348,4 +365,9 @@ class OneBallEpisodeRunner:
             "bounce":bounce,
             "legal_return":legal,
             "net_clearance":net_clearance,
+
+            "contact_time":contact_time,
+            "ball_velocity_at_contact":ball_velocity_at_contact,
+            "max_contact_force":max_contact_force,
+            "final_ball_velocity":final_ball_velocity,
         }
